@@ -1,0 +1,39 @@
+sudo: false
+dist: trusty
+
+language: cpp
+compiler:
+  - clang
+
+git:
+  depth: 1
+
+addons:
+  apt:
+    packages:
+      - libboost1.55-dev
+      - libboost-filesystem1.55-dev
+      - libboost-iostreams1.55-dev
+      - libboost-program-options1.55-dev
+      - libboost-regex1.55-dev
+      - libboost-system1.55-dev
+      - libboost-thread1.55-dev
+      - libssl-dev
+      - libmysqlclient-dev
+      - libreadline6-dev
+      - zlib1g-dev
+      - libbz2-dev
+
+before_install:
+  - git config user.email "travis@build.bot" && git config user.name "Travis CI"
+  - git tag -a -m "Travis build" init
+
+install:
+  - cd bin
+  - cmake ../ -DWITH_WARNINGS=1 -DWITH_COREDEBUG=0 -DUSE_COREPCH=0 -DUSE_SCRIPTPCH=0 -DTOOLS=0 -DSCRIPTS=dynamic -DSERVERS=1 -DNOJEM=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-Werror" -DCMAKE_CXX_FLAGS="-Werror" -DCMAKE_C_FLAGS_DEBUG="-DNDEBUG" -DCMAKE_CXX_FLAGS_DEBUG="-DNDEBUG" -DCMAKE_INSTALL_PREFIX=check_install
+
+script:
+  - $CXX --version
+  - cd bin
+  - make -j 4 -k && make install
+
