@@ -37,4 +37,3 @@ script:
   - $CXX --version
   - cd bin
   - make -j 4 -k && make install
-
