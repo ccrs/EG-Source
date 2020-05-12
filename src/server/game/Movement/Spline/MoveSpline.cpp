@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -123,13 +122,12 @@ void MoveSpline::init_spline(MoveSplineInitArgs const& args)
     if (args.flags.cyclic)
     {
         uint32 cyclic_point = 0;
-        // MoveSplineFlag::Enter_Cycle support dropped
-        //if (splineflags & SPLINEFLAG_ENTER_CYCLE)
-        //cyclic_point = 1;   // shouldn't be modified, came from client
-        spline.init_cyclic_spline(&args.path[0], args.path.size(), modes[args.flags.isSmooth()], cyclic_point);
+        if (splineflags.enter_cycle)
+            cyclic_point = 1;   // shouldn't be modified, came from client
+        spline.init_cyclic_spline(&args.path[0], args.path.size(), modes[args.flags.isSmooth()], cyclic_point, args.initialOrientation);
     }
     else
-        spline.init_spline(&args.path[0], args.path.size(), modes[args.flags.isSmooth()]);
+        spline.init_spline(&args.path[0], args.path.size(), modes[args.flags.isSmooth()], args.initialOrientation);
 
     // init spline timestamps
     if (splineflags.falling)
@@ -164,6 +162,8 @@ void MoveSpline::Initialize(MoveSplineInitArgs const& args)
     vertical_acceleration = 0.f;
     effect_start_time = 0;
 
+    velocity = args.velocity;
+
     // Check if its a stop spline
     if (args.flags.done)
     {
@@ -187,7 +187,7 @@ void MoveSpline::Initialize(MoveSplineInitArgs const& args)
 }
 
 MoveSpline::MoveSpline() : m_Id(0), time_passed(0),
-    vertical_acceleration(0.f), initialOrientation(0.f), effect_start_time(0), point_Idx(0), point_Idx_offset(0),
+    vertical_acceleration(0.f), initialOrientation(0.f), effect_start_time(0), point_Idx(0), point_Idx_offset(0), velocity(0.f),
     onTransport(false)
 {
     splineflags.done = true;
@@ -200,11 +200,14 @@ bool MoveSplineInitArgs::Validate(Unit* unit) const
 #define CHECK(exp) \
     if (!(exp))\
     {\
-        TC_LOG_ERROR("misc.movesplineinitargs", "MoveSplineInitArgs::Validate: expression '%s' failed for GUID: %u Entry: %u", #exp, unit->GetTypeId() == TYPEID_PLAYER ? unit->GetGUID().GetCounter() : unit->ToCreature()->GetSpawnId(), unit->GetEntry());\
+        if (unit)\
+            TC_LOG_ERROR("misc.movesplineinitargs", "MoveSplineInitArgs::Validate: expression '%s' failed for %s", #exp, unit->GetDebugInfo().c_str());\
+        else\
+            TC_LOG_ERROR("misc.movesplineinitargs", "MoveSplineInitArgs::Validate: expression '%s' failed for cyclic spline continuation", #exp); \
         return false;\
     }
     CHECK(path.size() > 1);
-    CHECK(velocity >= 0.01f);
+    CHECK(velocity >= 0.001f);
     CHECK(time_perc >= 0.f && time_perc <= 1.f);
     //CHECK(_checkPathBounds());
     return true;
@@ -242,6 +245,8 @@ walk(false), HasVelocity(false), TransformForTransport(true)
     path.reserve(path_capacity);
 }
 
+MoveSplineInitArgs::MoveSplineInitArgs(MoveSplineInitArgs && args) = default;
+
 MoveSplineInitArgs::~MoveSplineInitArgs() = default;
 
 /// ============================================================================================
@@ -275,6 +280,41 @@ MoveSpline::UpdateResult MoveSpline::_updateState(int32& ms_time_diff)
                 point_Idx = spline.first();
                 time_passed = time_passed % Duration();
                 result = Result_NextCycle;
+
+                // Remove first point from the path after one full cycle.
+                // That point was the position of the unit prior to entering the cycle and it shouldn't be repeated with continuous cycles.
+                if (splineflags.enter_cycle)
+                {
+                    splineflags.enter_cycle = false;
+
+                    MoveSplineInitArgs args{ (size_t)spline.getPointCount() };
+                    args.path.assign(spline.getPoints().begin() + spline.first() + 1, spline.getPoints().begin() + spline.last());
+                    args.facing = facing;
+                    args.flags = splineflags;
+                    args.path_Idx_offset = point_Idx_offset;
+                    // MoveSplineFlag::Parabolic | MoveSplineFlag::Animation not supported currently
+                        //args.parabolic_amplitude = ?;
+                        //args.time_perc = ?;
+                    args.splineId = m_Id;
+                    args.initialOrientation = initialOrientation;
+                    args.velocity = 1.0f; // Calculated below
+                    args.HasVelocity = true;
+                    args.TransformForTransport = onTransport;
+                    if (args.Validate(nullptr))
+                    {
+                        // New cycle should preserve previous cycle's duration for some weird reason, even though
+                        // the path is really different now. Blizzard is weird. Or this was just a simple oversight.
+                        // Since our splines precalculate length with velocity in mind, if we want to find the desired
+                        // velocity, we have to make a fake spline, calculate its duration and then compare it to the
+                        // desired duration, thus finding out how much the velocity has to be increased for them to match.
+                        MoveSpline tempSpline;
+                        tempSpline.Initialize(args);
+                        args.velocity = (float)tempSpline.Duration() / Duration();
+
+                        if (args.Validate(nullptr))
+                            init_spline(args);
+                    }
+                }
             }
             else
             {

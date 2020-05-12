@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -57,23 +56,22 @@ void GuardAI::EnterEvadeMode(EvadeReason /*why*/)
     {
         me->GetMotionMaster()->MoveIdle();
         me->CombatStop(true);
-        me->GetThreatManager().ClearAllThreat();
+        EngagementOver();
         return;
     }
 
-    TC_LOG_DEBUG("entities.unit", "Guard entry: %u enters evade mode.", me->GetEntry());
+    TC_LOG_TRACE("scripts.ai", "GuardAI::EnterEvadeMode: %s enters evade mode.", me->GetGUID().ToString().c_str());
 
     me->RemoveAllAuras();
-    me->GetThreatManager().ClearAllThreat();
     me->CombatStop(true);
+    EngagementOver();
 
-    // Remove ChaseMovementGenerator from MotionMaster stack list, and add HomeMovementGenerator instead
-    if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == CHASE_MOTION_TYPE)
-        me->GetMotionMaster()->MoveTargetedHome();
+    me->GetMotionMaster()->MoveTargetedHome();
 }
 
 void GuardAI::JustDied(Unit* killer)
 {
-    if (Player* player = killer->GetCharmerOrOwnerPlayerOrPlayerItself())
-        me->SendZoneUnderAttackMessage(player);
+    if (killer)
+        if (Player* player = killer->GetCharmerOrOwnerPlayerOrPlayerItself())
+            me->SendZoneUnderAttackMessage(player);
 }

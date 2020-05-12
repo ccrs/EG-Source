@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -176,7 +176,7 @@ float HordeOverrunWP[21][3]=//waypoints in the horde base used in the end in the
     {5429.91f, -2718.44f, 1493.42f}//20 end 2
 };
 
-hyjal_trashAI::hyjal_trashAI(Creature* creature) : npc_escortAI(creature)
+hyjal_trashAI::hyjal_trashAI(Creature* creature) : EscortAI(creature)
 {
     instance = creature->GetInstanceScript();
     IsEvent = false;
@@ -194,7 +194,7 @@ hyjal_trashAI::hyjal_trashAI(Creature* creature) : npc_escortAI(creature)
 
 void hyjal_trashAI::DamageTaken(Unit* done_by, uint32 &damage)
 {
-    if (done_by->GetTypeId() == TYPEID_PLAYER || done_by->IsPet())
+    if (!done_by || done_by->GetTypeId() == TYPEID_PLAYER || done_by->IsPet())
     {
         damageTaken += damage;
         instance->SetData(DATA_RAIDDAMAGE, damage);//store raid's damage
@@ -441,9 +441,9 @@ public:
             imol = false;
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (waypointId == 0 && !IsOverrun)
             {
@@ -498,7 +498,7 @@ public:
             if (!CanMove)return;
             hyjal_trashAI::UpdateAI(diff);
             if (IsEvent || IsOverrun)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             if (IsEvent)
             {
                 if (!go)
@@ -558,7 +558,7 @@ public:
             KnockDownTimer = 10000;
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (waypointId == 7 && !IsOverrun)
             {
@@ -584,13 +584,13 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void UpdateAI(uint32 diff) override
         {
             hyjal_trashAI::UpdateAI(diff);
             if (IsEvent || IsOverrun)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             if (IsEvent)
             {
                 if (!go)
@@ -656,7 +656,7 @@ public:
             RandomMove = false;
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (waypointId == 7 && !IsOverrun)
             {
@@ -683,13 +683,13 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void UpdateAI(uint32 diff) override
         {
             hyjal_trashAI::UpdateAI(diff);
             if (IsEvent || IsOverrun)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             if (IsEvent)
             {
                 if (!go)
@@ -766,7 +766,7 @@ public:
             summons.Despawn(summon);
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (waypointId == 7 && !IsOverrun)
             {
@@ -803,14 +803,14 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void UpdateAI(uint32 diff) override
         {
             hyjal_trashAI::UpdateAI(diff);
 
             if (IsEvent || IsOverrun)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
 
             if (IsEvent)
             {
@@ -879,7 +879,7 @@ public:
             ShellTimer = 50000 + rand32() % 10000;
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (waypointId == 7 && !IsOverrun)
             {
@@ -898,13 +898,13 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void UpdateAI(uint32 diff) override
         {
             hyjal_trashAI::UpdateAI(diff);
             if (IsEvent || IsOverrun)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             if (IsEvent)
             {
                 if (!go)
@@ -975,7 +975,7 @@ public:
             WebTimer = 20000 + rand32() % 5000;
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (waypointId == 7 && !IsOverrun)
             {
@@ -994,13 +994,13 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void UpdateAI(uint32 diff) override
         {
             hyjal_trashAI::UpdateAI(diff);
             if (IsEvent || IsOverrun)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             if (IsEvent)
             {
                 if (!go)
@@ -1061,7 +1061,7 @@ public:
             ManaBurnTimer = 9000 + rand32() % 5000;
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (waypointId == 7 && !IsOverrun)
             {
@@ -1080,13 +1080,13 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void UpdateAI(uint32 diff) override
         {
             hyjal_trashAI::UpdateAI(diff);
             if (IsEvent || IsOverrun)
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
             if (IsEvent)
             {
                 if (!go)
@@ -1155,7 +1155,7 @@ public:
             me->SetDisableGravity(true);
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (waypointId == 2 && !IsOverrun)
             {
@@ -1180,7 +1180,7 @@ public:
             me->UpdatePosition(x, y, z, 0);
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void UpdateAI(uint32 diff) override
         {
@@ -1188,8 +1188,8 @@ public:
 
             if (IsEvent || IsOverrun)
             {
-                ENSURE_AI(hyjal_trashAI, me->AI())->SetCanAttack(false);
-                npc_escortAI::UpdateAI(diff);
+                ENSURE_AI(hyjal_trashAI, me->AI())->SetActiveAttacker(false);
+                EscortAI::UpdateAI(diff);
             }
 
             if (IsEvent)
@@ -1280,7 +1280,7 @@ public:
             me->SetDisableGravity(true);
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (waypointId == 2 && !IsOverrun)
             {
@@ -1309,8 +1309,8 @@ public:
 
             if (IsEvent || IsOverrun)
             {
-                ENSURE_AI(hyjal_trashAI, me->AI())->SetCanAttack(false);
-                npc_escortAI::UpdateAI(diff);
+                ENSURE_AI(hyjal_trashAI, me->AI())->SetActiveAttacker(false);
+                EscortAI::UpdateAI(diff);
             }
 
             if (IsEvent)
@@ -1339,7 +1339,7 @@ public:
                 {
                     if (StrikeTimer <= diff)
                     {
-                        me->CastSpell(DummyTarget[0], DummyTarget[1], DummyTarget[2], SPELL_GARGOYLE_STRIKE, false);
+                        me->CastSpell({ DummyTarget[0], DummyTarget[1], DummyTarget[2] }, SPELL_GARGOYLE_STRIKE, false);
                         StrikeTimer = 2000 + rand32() % 1000;
                     } else StrikeTimer -= diff;
                     }
@@ -1350,9 +1350,9 @@ public:
 
             if (!me->IsWithinDist(me->GetVictim(), 20) || forcemove)
             {
-                forcemove = false;
                 if (forcemove)
                 {
+                    forcemove = false;
                     if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
                         me->Attack(target, false);
                 }
@@ -1436,7 +1436,7 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
         }
 
@@ -1452,8 +1452,9 @@ public:
                     EnterEvadeMode();
                     return;
                 }
-                int dmg = 500 + rand32() % 700;
-                me->CastCustomSpell(me->GetVictim(), SPELL_EXPLODING_SHOT, &dmg, 0, 0, false);
+                CastSpellExtraArgs args;
+                args.AddSpellMod(SPELLVALUE_BASE_POINT0, 500 + rand32() % 700);
+                me->CastSpell(me->GetVictim(), SPELL_EXPLODING_SHOT, args);
                 ExplodeTimer = 5000 + rand32() % 5000;
             } else ExplodeTimer -= diff;
             DoMeleeAttackIfReady();

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -122,7 +121,7 @@ public:
         InfernalPoint *point;
 
         void Reset() override { }
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
         void MoveInLineOfSight(Unit* /*who*/) override { }
 
 
@@ -168,7 +167,7 @@ public:
 
         void DamageTaken(Unit* done_by, uint32 &damage) override
         {
-            if (done_by->GetGUID() != malchezaar)
+            if (!done_by || done_by->GetGUID() != malchezaar)
                 damage = 0;
         }
 
@@ -272,7 +271,7 @@ public:
             instance->HandleGameObject(instance->GetGuidData(DATA_GO_NETHER_DOOR), true);
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
             Talk(SAY_AGGRO);
 
@@ -340,7 +339,10 @@ public:
                     enfeeble_targets[i] = target->GetGUID();
                     enfeeble_health[i] = target->GetHealth();
 
-                    target->CastSpell(target, SPELL_ENFEEBLE, true, 0, 0, me->GetGUID());
+                    CastSpellExtraArgs args;
+                    args.TriggerFlags = TRIGGERED_FULL_MASK;
+                    args.OriginalCaster = me->GetGUID();
+                    target->CastSpell(target, SPELL_ENFEEBLE, args);
                     target->SetHealth(1);
                 }
         }
@@ -491,8 +493,7 @@ public:
                             {
                                 if (axe->GetVictim())
                                     ResetThreat(axe->GetVictim(), axe);
-                                if (target)
-                                    AddThreat(target, 1000000.0f, axe);
+                                AddThreat(target, 1000000.0f, axe);
                             }
                         }
                     }

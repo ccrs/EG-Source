@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -30,8 +30,7 @@ enum Spells
     SPELL_DECREPIT_FEVER    = 29998, // 25-man: 55011
     SPELL_SPELL_DISRUPTION  = 29310,
     SPELL_PLAGUE_CLOUD      = 29350,
-    SPELL_TELEPORT_SELF     = 30211,
-    SPELL_ERUPTION          = 29371
+    SPELL_TELEPORT_SELF     = 30211
 };
 
 enum Yells
@@ -114,16 +113,16 @@ public:
             Talk(SAY_DEATH);
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* who) override
         {
-            _EnterCombat();
+            BossAI::JustEngagedWith(who);
             Talk(SAY_AGGRO);
 
             _safeSection = 0;
             events.ScheduleEvent(EVENT_DISRUPT, randtime(Seconds(15), Seconds(20)), 0, PHASE_FIGHT);
             events.ScheduleEvent(EVENT_FEVER, randtime(Seconds(10), Seconds(20)), 0, PHASE_FIGHT);
             events.ScheduleEvent(EVENT_DANCE, Minutes(1) + Seconds(30), 0, PHASE_FIGHT);
-            events.ScheduleEvent(EVENT_ERUPT, Seconds(15), 0, PHASE_FIGHT);
+            events.ScheduleEvent(EVENT_ERUPT, 15s);
 
             _safetyDance = true;
 
@@ -172,7 +171,7 @@ public:
                         DoCast(SPELL_TELEPORT_SELF);
                         DoCastAOE(SPELL_PLAGUE_CLOUD);
                         events.ScheduleEvent(EVENT_DANCE_END, Seconds(45), 0, PHASE_DANCE);
-                        events.ScheduleEvent(EVENT_ERUPT, Seconds(10));
+                        events.RescheduleEvent(EVENT_ERUPT, Seconds(10));
                         break;
                     case EVENT_DANCE_END:
                         events.SetPhase(PHASE_FIGHT);
@@ -181,7 +180,7 @@ public:
                         events.ScheduleEvent(EVENT_DISRUPT, randtime(Seconds(10), Seconds(25)), 0, PHASE_FIGHT);
                         events.ScheduleEvent(EVENT_FEVER, randtime(Seconds(15), Seconds(20)), 0, PHASE_FIGHT);
                         events.ScheduleEvent(EVENT_DANCE, Minutes(1) + Seconds(30), 0, PHASE_FIGHT);
-                        events.ScheduleEvent(EVENT_ERUPT, Seconds(15), 0, PHASE_FIGHT);
+                        events.RescheduleEvent(EVENT_ERUPT, Seconds(15));
                         me->CastStop();
                         me->SetReactState(REACT_AGGRESSIVE);
                         DoZoneInCombat();
@@ -194,7 +193,9 @@ public:
                                     if (GameObject* tile = ObjectAccessor::GetGameObject(*me, tileGUID))
                                     {
                                         tile->SendCustomAnim(0);
-                                        tile->CastSpell(nullptr, SPELL_ERUPTION);
+                                        CastSpellExtraArgs args;
+                                        args.OriginalCaster = me->GetGUID();
+                                        tile->CastSpell(tile, tile->GetGOInfo()->trap.spellId, args);
                                     }
 
                         if (_safeSection == 0)

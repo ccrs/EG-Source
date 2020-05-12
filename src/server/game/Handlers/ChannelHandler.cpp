@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -26,6 +25,7 @@
 #include <cctype>
 
 static size_t const MAX_CHANNEL_PASS_STR = 31;
+static size_t const MAX_CHANNEL_NAME_STR = 31;
 
 void WorldSession::HandleJoinChannel(WorldPacket& recvPacket)
 {
@@ -49,15 +49,47 @@ void WorldSession::HandleJoinChannel(WorldPacket& recvPacket)
             return;
     }
 
-    if (channelName.empty())
+    if (channelName.empty() || isdigit((unsigned char)channelName[0]))
+    {
+        WorldPacket data(SMSG_CHANNEL_NOTIFY, 1 + channelName.size());
+        data << uint8(CHAT_INVALID_NAME_NOTICE) << channelName;
+        SendPacket(&data);
         return;
+    }
 
-    if (isdigit(channelName[0]))
+    if (password.length() > MAX_CHANNEL_PASS_STR)
+    {
+        TC_LOG_ERROR("network", "Player %s tried to create a channel with a password more than " SZFMTD " characters long - blocked", GetPlayer()->GetGUID().ToString().c_str(), MAX_CHANNEL_PASS_STR);
+        return;
+    }
+
+    if (!DisallowHyperlinksAndMaybeKick(channelName))
         return;
 
     if (ChannelMgr* cMgr = ChannelMgr::forTeam(GetPlayer()->GetTeam()))
-        if (Channel* channel = cMgr->GetJoinChannel(channelId, channelName, zone))
-            channel->JoinChannel(GetPlayer(), password);
+    {
+        if (channelId)
+        { // system channel
+            if (Channel* channel = cMgr->GetSystemChannel(channelId, zone))
+                channel->JoinChannel(GetPlayer());
+        }
+        else
+        { // custom channel
+            if (channelName.length() > MAX_CHANNEL_NAME_STR)
+            {
+                TC_LOG_ERROR("network", "Player %s tried to create a channel with a name more than " SZFMTD " characters long - blocked", GetPlayer()->GetGUID().ToString().c_str(), MAX_CHANNEL_NAME_STR);
+                return;
+            }
+
+            if (Channel* channel = cMgr->GetCustomChannel(channelName))
+                channel->JoinChannel(GetPlayer(), password);
+            else if (Channel* channel = cMgr->CreateCustomChannel(channelName))
+            {
+                channel->SetPassword(password);
+                channel->JoinChannel(GetPlayer(), password);
+            }
+        }
+    }
 }
 
 void WorldSession::HandleLeaveChannel(WorldPacket& recvPacket)
@@ -90,8 +122,6 @@ void WorldSession::HandleLeaveChannel(WorldPacket& recvPacket)
 
         if (channelId)
             cMgr->LeftChannel(channelId, zone);
-        else
-            cMgr->LeftChannel(channelName);
     }
 }
 

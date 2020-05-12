@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -101,10 +101,7 @@ public:
         {
             Initialize();
             if (creature->IsSummon())
-            {
                 creature->SetHomePosition(HomePosition);
-                AttackPlayer();
-            }
 
             instance = creature->GetInstanceScript();
         }
@@ -129,6 +126,7 @@ public:
         void Reset() override
         {
             Initialize();
+            AttackPlayer();
         }
 
         void AttackPlayer()
@@ -223,16 +221,18 @@ class npc_morridune : public CreatureScript
 public:
     npc_morridune() : CreatureScript("npc_morridune") { }
 
-    struct npc_morriduneAI : public npc_escortAI
+    struct npc_morriduneAI : public EscortAI
     {
-        npc_morriduneAI(Creature* creature) : npc_escortAI(creature)
+        npc_morriduneAI(Creature* creature) : EscortAI(creature) { }
+
+        void Reset() override
         {
             Talk(SAY_MORRIDUNE_1);
             me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
             Start(false);
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {

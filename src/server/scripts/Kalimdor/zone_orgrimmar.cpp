@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -79,7 +78,7 @@ public:
             Initialize();
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void UpdateAI(uint32 diff) override
         {
@@ -170,6 +169,11 @@ enum ThrallWarchief
     SPELL_SHOCK                 = 16034
 };
 
+enum Sounds
+{
+    SOUND_AGGRO                 = 5880
+};
+
 /// @todo verify abilities/timers
 class npc_thrall_warchief : public CreatureScript
 {
@@ -197,7 +201,10 @@ public:
             Initialize();
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override
+        {
+            DoPlaySoundToSet(me, SOUND_AGGRO);
+        }
 
         void UpdateAI(uint32 diff) override
         {
@@ -773,7 +780,7 @@ public:
                         if (Creature* portal = ObjectAccessor::GetCreature(*me, stormwindPortalGUID))
                             portal->DespawnOrUnsummon();
 
-                        events.ScheduleEvent(EVENT_HERALD_RESET, 60000);
+                        events.ScheduleEvent(EVENT_HERALD_RESET, 1min);
                         break;
                     }
                     case EVENT_HERALD_RESET:

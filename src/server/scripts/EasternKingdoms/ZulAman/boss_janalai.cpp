@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -179,9 +178,9 @@ class boss_janalai : public CreatureScript
                 Talk(SAY_SLAY);
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* who) override
             {
-                _EnterCombat();
+                BossAI::JustEngagedWith(who);
 
                 Talk(SAY_AGGRO);
             }
@@ -451,7 +450,7 @@ class npc_janalai_firebomb : public CreatureScript
                     DoCast(me, SPELL_FIRE_BOMB_DUMMY, true);
             }
 
-            void EnterCombat(Unit* /*who*/) override { }
+            void JustEngagedWith(Unit* /*who*/) override { }
 
             void AttackStart(Unit* /*who*/) override { }
 
@@ -528,7 +527,7 @@ class npc_janalai_hatcher : public CreatureScript
                 return num == 0;   // if num == 0, no more templist
             }
 
-            void EnterCombat(Unit* /*who*/) override { }
+            void JustEngagedWith(Unit* /*who*/) override { }
             void AttackStart(Unit* /*who*/) override { }
             void MoveInLineOfSight(Unit* /*who*/) override { }
 
@@ -627,7 +626,7 @@ class npc_janalai_hatchling : public CreatureScript
                 me->SetDisableGravity(true);
             }
 
-            void EnterCombat(Unit* /*who*/) override {/*DoZoneInCombat();*/ }
+            void JustEngagedWith(Unit* /*who*/) override {/*DoZoneInCombat();*/ }
 
             void UpdateAI(uint32 diff) override
             {
@@ -692,4 +691,3 @@ void AddSC_boss_janalai()
     new npc_janalai_hatchling();
     new npc_janalai_egg();
 }
-

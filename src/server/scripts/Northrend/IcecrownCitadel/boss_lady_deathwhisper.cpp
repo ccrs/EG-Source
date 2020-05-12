@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,7 +22,7 @@
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
-#include "PoolMgr.h"
+#include "QuestPools.h"
 #include "ScriptedCreature.h"
 #include "SpellInfo.h"
 #include "SpellScript.h"
@@ -203,7 +203,7 @@ class boss_lady_deathwhisper : public CreatureScript
         struct boss_lady_deathwhisperAI : public BossAI
         {
             boss_lady_deathwhisperAI(Creature* creature) : BossAI(creature, DATA_LADY_DEATHWHISPER),
-                _dominateMindCount(RAID_MODE<uint8>(0, 1, 1, 3)), _introDone(false)
+                _dominateMindCount(RAID_MODE<uint8>(0, 1, 1, 3))
             {
                 Initialize();
             }
@@ -237,43 +237,39 @@ class boss_lady_deathwhisper : public CreatureScript
                 if (action != ACTION_START_INTRO)
                     return;
 
-                if (!_introDone)
+                Talk(SAY_INTRO_1);
+                _phase = PHASE_INTRO;
+                scheduler.Schedule(Seconds(10), GROUP_INTRO, [this](TaskContext context)
                 {
-                    _introDone = true;
-                    Talk(SAY_INTRO_1);
-                    _phase = PHASE_INTRO;
-                    scheduler.Schedule(Seconds(10), GROUP_INTRO, [this](TaskContext context)
+                    switch (context.GetRepeatCounter())
                     {
-                        switch (context.GetRepeatCounter())
-                        {
-                            case 0:
-                                Talk(SAY_INTRO_2);
-                                context.Repeat(Seconds(21));
-                                break;
-                            case 1:
-                                Talk(SAY_INTRO_3);
-                                context.Repeat(Seconds(11));
-                                break;
-                            case 2:
-                                Talk(SAY_INTRO_4);
-                                context.Repeat(Seconds(9));
-                                break;
-                            case 3:
-                                Talk(SAY_INTRO_5);
-                                context.Repeat(Seconds(21));
-                                break;
-                            case 4:
-                                Talk(SAY_INTRO_6);
-                                context.Repeat(Seconds(10));
-                                break;
-                            case 5:
-                                Talk(SAY_INTRO_7);
-                                return;
-                            default:
-                                break;
-                        }
-                    });
-                }
+                        case 0:
+                            Talk(SAY_INTRO_2);
+                            context.Repeat(Seconds(21));
+                            break;
+                        case 1:
+                            Talk(SAY_INTRO_3);
+                            context.Repeat(Seconds(11));
+                            break;
+                        case 2:
+                            Talk(SAY_INTRO_4);
+                            context.Repeat(Seconds(9));
+                            break;
+                        case 3:
+                            Talk(SAY_INTRO_5);
+                            context.Repeat(Seconds(21));
+                            break;
+                        case 4:
+                            Talk(SAY_INTRO_6);
+                            context.Repeat(Seconds(10));
+                            break;
+                        case 5:
+                            Talk(SAY_INTRO_7);
+                            return;
+                        default:
+                            break;
+                    }
+                });
             }
 
             void AttackStart(Unit* victim) override
@@ -285,7 +281,7 @@ class boss_lady_deathwhisper : public CreatureScript
                     me->GetMotionMaster()->MoveChase(victim);
             }
 
-            void EnterCombat(Unit* who) override
+            void JustEngagedWith(Unit* who) override
             {
                 if (!instance->CheckRequiredBosses(DATA_LADY_DEATHWHISPER, who->ToPlayer()))
                 {
@@ -294,10 +290,10 @@ class boss_lady_deathwhisper : public CreatureScript
                     return;
                 }
 
+                _phase = PHASE_ONE;
                 me->SetCombatPulseDelay(5);
                 me->setActive(true);
                 DoZoneInCombat();
-                _phase = PHASE_ONE;
                 scheduler.CancelGroup(GROUP_INTRO);
                 // phase-independent events
                 scheduler
@@ -372,6 +368,10 @@ class boss_lady_deathwhisper : public CreatureScript
                         darnavan->SetReactState(REACT_PASSIVE);
                         darnavan->m_Events.AddEvent(new DaranavanMoveEvent(*darnavan), darnavan->m_Events.CalculateTime(10000));
                         darnavan->AI()->Talk(SAY_DARNAVAN_RESCUED);
+
+                        if (!killer)
+                            return;
+
                         if (Player* owner = killer->GetCharmerOrOwnerPlayerOrPlayerItself())
                         {
                             if (Group* group = owner->GetGroup())
@@ -440,7 +440,9 @@ class boss_lady_deathwhisper : public CreatureScript
                         })
                         .Schedule(Seconds(12), GROUP_TWO, [this](TaskContext summonShade)
                         {
-                            me->CastCustomSpell(SPELL_SUMMON_SPIRITS, SPELLVALUE_MAX_TARGETS, Is25ManRaid() ? 2 : 1);
+                            CastSpellExtraArgs args;
+                            args.AddSpellMod(SPELLVALUE_MAX_TARGETS, Is25ManRaid() ? 2 : 1);
+                            me->CastSpell(nullptr, SPELL_SUMMON_SPIRITS, args);
                             summonShade.Repeat();
                         });
 
@@ -510,7 +512,7 @@ class boss_lady_deathwhisper : public CreatureScript
                 uint8 addIndexOther = uint8(addIndex ^ 1);
 
                 // Summon first add, replace it with Darnavan if weekly quest is active
-                if (_waveCounter || !sPoolMgr->IsSpawnedObject<Quest>(QUEST_DEPROGRAMMING))
+                if (_waveCounter || !sQuestPoolMgr->IsQuestActive(QUEST_DEPROGRAMMING))
                     Summon(SummonEntries[addIndex], SummonPositions[addIndex * 3]);
                 else
                     Summon(NPC_DARNAVAN, SummonPositions[addIndex * 3]);
@@ -585,7 +587,6 @@ class boss_lady_deathwhisper : public CreatureScript
             uint32 _waveCounter;
             uint8 const _dominateMindCount;
             uint8 _phase;
-            bool _introDone;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -823,7 +824,7 @@ class npc_vengeful_shade : public CreatureScript
                     });
             }
 
-            void SetGUID(ObjectGuid guid, int32 /*type*/) override
+            void SetGUID(ObjectGuid const& guid, int32 /*id*/) override
             {
                 _targetGUID = guid;
             }
@@ -883,16 +884,20 @@ class npc_darnavan : public CreatureScript
             void Reset() override
             {
                 _events.Reset();
-                _events.ScheduleEvent(EVENT_DARNAVAN_BLADESTORM, Seconds(10));
-                _events.ScheduleEvent(EVENT_DARNAVAN_INTIMIDATING_SHOUT, Seconds(20), Seconds(25));
-                _events.ScheduleEvent(EVENT_DARNAVAN_MORTAL_STRIKE, Seconds(25), Seconds(30));
-                _events.ScheduleEvent(EVENT_DARNAVAN_SUNDER_ARMOR, Seconds(5), Seconds(8));
+                _events.ScheduleEvent(EVENT_DARNAVAN_BLADESTORM, 10s);
+                _events.ScheduleEvent(EVENT_DARNAVAN_INTIMIDATING_SHOUT, 20s, 25s);
+                _events.ScheduleEvent(EVENT_DARNAVAN_MORTAL_STRIKE, 25s, 30s);
+                _events.ScheduleEvent(EVENT_DARNAVAN_SUNDER_ARMOR, 5s, 8s);
                 Initialize();
             }
 
             void JustDied(Unit* killer) override
             {
                 _events.Reset();
+
+                if (!killer)
+                    return;
+
                 if (Player* owner = killer->GetCharmerOrOwnerPlayerOrPlayerItself())
                 {
                     if (Group* group = owner->GetGroup())
@@ -915,7 +920,7 @@ class npc_darnavan : public CreatureScript
                 me->DespawnOrUnsummon();
             }
 
-            void EnterCombat(Unit* /*victim*/) override
+            void JustEngagedWith(Unit* /*victim*/) override
             {
                 Talk(SAY_DARNAVAN_AGGRO);
             }
@@ -934,7 +939,7 @@ class npc_darnavan : public CreatureScript
                 {
                     DoCastVictim(SPELL_SHATTERING_THROW);
                     _canShatter = false;
-                    _events.ScheduleEvent(EVENT_DARNAVAN_SHATTERING_THROW, Seconds(30));
+                    _events.ScheduleEvent(EVENT_DARNAVAN_SHATTERING_THROW, 30s);
                     return;
                 }
 
@@ -942,7 +947,7 @@ class npc_darnavan : public CreatureScript
                 {
                     DoCastVictim(SPELL_CHARGE);
                     _canCharge = false;
-                    _events.ScheduleEvent(EVENT_DARNAVAN_CHARGE, Seconds(20));
+                    _events.ScheduleEvent(EVENT_DARNAVAN_CHARGE, 20s);
                     return;
                 }
 
@@ -952,7 +957,7 @@ class npc_darnavan : public CreatureScript
                     {
                         case EVENT_DARNAVAN_BLADESTORM:
                             DoCast(SPELL_BLADESTORM);
-                            _events.ScheduleEvent(EVENT_DARNAVAN_BLADESTORM, Seconds(90), Seconds(100));
+                            _events.ScheduleEvent(EVENT_DARNAVAN_BLADESTORM, 90s, 100s);
                             break;
                         case EVENT_DARNAVAN_CHARGE:
                             _canCharge = true;
@@ -963,14 +968,14 @@ class npc_darnavan : public CreatureScript
                             break;
                         case EVENT_DARNAVAN_MORTAL_STRIKE:
                             DoCastVictim(SPELL_MORTAL_STRIKE);
-                            _events.ScheduleEvent(EVENT_DARNAVAN_MORTAL_STRIKE, Seconds(15), Seconds(30));
+                            _events.ScheduleEvent(EVENT_DARNAVAN_MORTAL_STRIKE, 15s, 30s);
                             break;
                         case EVENT_DARNAVAN_SHATTERING_THROW:
                             _canShatter = true;
                             break;
                         case EVENT_DARNAVAN_SUNDER_ARMOR:
                             DoCastVictim(SPELL_SUNDER_ARMOR);
-                            _events.ScheduleEvent(EVENT_DARNAVAN_SUNDER_ARMOR, Seconds(3), Seconds(7));
+                            _events.ScheduleEvent(EVENT_DARNAVAN_SUNDER_ARMOR, 3s, 7s);
                             break;
                     }
                 }
@@ -1022,12 +1027,12 @@ class spell_deathwhisper_mana_barrier : public SpellScriptLoader
         }
 };
 
-class at_lady_deathwhisper_entrance : public AreaTriggerScript
+class at_lady_deathwhisper_entrance : public OnlyOnceAreaTriggerScript
 {
     public:
-        at_lady_deathwhisper_entrance() : AreaTriggerScript("at_lady_deathwhisper_entrance") { }
+        at_lady_deathwhisper_entrance() : OnlyOnceAreaTriggerScript("at_lady_deathwhisper_entrance") { }
 
-        bool OnTrigger(Player* player, AreaTriggerEntry const* /*areaTrigger*/) override
+        bool _OnTrigger(Player* player, AreaTriggerEntry const* /*areaTrigger*/) override
         {
             if (InstanceScript* instance = player->GetInstanceScript())
                 if (instance->GetBossState(DATA_LADY_DEATHWHISPER) != DONE)

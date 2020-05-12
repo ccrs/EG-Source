@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -44,16 +43,22 @@ class TC_GAME_API MapManager
             Map const* m = const_cast<MapManager*>(this)->CreateBaseMap(mapid);
             return m->GetAreaId(x, y, z);
         }
+        uint32 GetAreaId(uint32 mapid, Position const& pos) const { return GetAreaId(mapid, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ()); }
+        uint32 GetAreaId(WorldLocation const& loc) const { return GetAreaId(loc.GetMapId(), loc); }
         uint32 GetZoneId(uint32 mapid, float x, float y, float z) const
         {
             Map const* m = const_cast<MapManager*>(this)->CreateBaseMap(mapid);
             return m->GetZoneId(x, y, z);
         }
-        void GetZoneAndAreaId(uint32& zoneid, uint32& areaid, uint32 mapid, float x, float y, float z)
+        uint32 GetZoneId(uint32 mapid, Position const& pos) const { return GetZoneId(mapid, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ()); }
+        uint32 GetZoneId(WorldLocation const& loc) const { return GetZoneId(loc.GetMapId(), loc); }
+        void GetZoneAndAreaId(uint32& zoneid, uint32& areaid, uint32 mapid, float x, float y, float z) const
         {
             Map const* m = const_cast<MapManager*>(this)->CreateBaseMap(mapid);
             m->GetZoneAndAreaId(zoneid, areaid, x, y, z);
         }
+        void GetZoneAndAreaId(uint32& zoneid, uint32& areaid, uint32 mapid, Position const& pos) const { GetZoneAndAreaId(zoneid, areaid, mapid, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ()); }
+        void GetZoneAndAreaId(uint32& zoneid, uint32& areaid, WorldLocation const& loc) const { GetZoneAndAreaId(zoneid, areaid, loc.GetMapId(), loc); }
 
         void Initialize(void);
         void Update(uint32);
@@ -96,9 +101,14 @@ class TC_GAME_API MapManager
             return IsValidMAP(mapid, false) && Trinity::IsValidMapCoord(x, y, z, o);
         }
 
+        static bool IsValidMapCoord(uint32 mapid, Position const& pos)
+        {
+            return IsValidMapCoord(mapid, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), pos.GetOrientation());
+        }
+
         static bool IsValidMapCoord(WorldLocation const& loc)
         {
-            return IsValidMapCoord(loc.GetMapId(), loc.GetPositionX(), loc.GetPositionY(), loc.GetPositionZ(), loc.GetOrientation());
+            return IsValidMapCoord(loc.GetMapId(), loc);
         }
 
         void DoDelayedMovesAndRemoves();

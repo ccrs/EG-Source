@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -110,8 +109,8 @@ void Warden::Update()
                 if (_clientResponseTimer > maxClientResponseDelay * IN_MILLISECONDS)
                 {
                     TC_LOG_WARN("warden", "%s (latency: %u, IP: %s) exceeded Warden module response delay for more than %s - disconnecting client",
-                                   _session->GetPlayerInfo().c_str(), _session->GetLatency(), _session->GetRemoteAddress().c_str(), secsToTimeString(maxClientResponseDelay, true).c_str());
-                    _session->KickPlayer();
+                                   _session->GetPlayerInfo().c_str(), _session->GetLatency(), _session->GetRemoteAddress().c_str(), secsToTimeString(maxClientResponseDelay, TimeFormat::ShortText).c_str());
+                    _session->KickPlayer("Warden::Update Warden module response delay exceeded");
                 }
                 else
                     _clientResponseTimer += diff;
@@ -196,7 +195,7 @@ std::string Warden::Penalty(WardenCheck* check /*= nullptr*/)
         return "None";
         break;
     case WARDEN_ACTION_KICK:
-        _session->KickPlayer();
+        _session->KickPlayer("Warden::Penalty");
         return "Kick";
         break;
     case WARDEN_ACTION_BAN:

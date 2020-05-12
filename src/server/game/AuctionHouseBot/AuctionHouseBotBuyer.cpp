@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,6 +16,7 @@
  */
 
 #include "AuctionHouseBotBuyer.h"
+#include "GameTime.h"
 #include "DatabaseEnv.h"
 #include "Item.h"
 #include "ItemTemplate.h"
@@ -97,7 +98,7 @@ bool AuctionBotBuyer::Update(AuctionHouseType houseType)
 uint32 AuctionBotBuyer::GetItemInformation(BuyerConfiguration& config)
 {
     config.SameItemInfo.clear();
-    time_t now = time(nullptr);
+    time_t now = GameTime::GetGameTime();
     uint32 count = 0;
 
     AuctionHouseObject* house = sAuctionMgr->GetAuctionsMap(config.GetHouseType());
@@ -237,7 +238,7 @@ bool AuctionBotBuyer::RollBidChance(BuyerItemInfo const* ahInfo, Item const* ite
 void AuctionBotBuyer::PrepareListOfEntry(BuyerConfiguration& config)
 {
     // now - 5 seconds to leave out all old entries but keep the ones just updated a moment ago
-    time_t now = time(nullptr) - 5;
+    time_t now = GameTime::GetGameTime() - 5;
 
     for (CheckEntryMap::iterator itr = config.EligibleItems.begin(); itr != config.EligibleItems.end();)
     {
@@ -253,7 +254,7 @@ void AuctionBotBuyer::PrepareListOfEntry(BuyerConfiguration& config)
 // Tries to bid and buy items based on their prices and chances set in configs
 void AuctionBotBuyer::BuyAndBidItems(BuyerConfiguration& config)
 {
-    time_t now = time(nullptr);
+    time_t now = GameTime::GetGameTime();
     AuctionHouseObject* auctionHouse = sAuctionMgr->GetAuctionsMap(config.GetHouseType());
     CheckEntryMap& items = config.EligibleItems;
 
@@ -390,7 +391,7 @@ void AuctionBotBuyer::BuyEntry(AuctionEntry* auction, AuctionHouseObject* auctio
 {
     TC_LOG_DEBUG("ahbot", "AHBot: Entry %u bought at %.2fg", auction->Id, float(auction->buyout) / GOLD);
 
-    SQLTransaction trans = CharacterDatabase.BeginTransaction();
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
 
     // Send mail to previous bidder if any
     if (auction->bidder && !sAuctionBotConfig->IsBotChar(auction->bidder))
@@ -421,7 +422,7 @@ void AuctionBotBuyer::PlaceBidToEntry(AuctionEntry* auction, uint32 bidPrice)
 {
     TC_LOG_DEBUG("ahbot", "AHBot: Bid placed to entry %u, %.2fg", auction->Id, float(bidPrice) / GOLD);
 
-    SQLTransaction trans = CharacterDatabase.BeginTransaction();
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
 
     // Send mail to previous bidder if any
     if (auction->bidder && !sAuctionBotConfig->IsBotChar(auction->bidder))
@@ -432,7 +433,7 @@ void AuctionBotBuyer::PlaceBidToEntry(AuctionEntry* auction, uint32 bidPrice)
     auction->bid = bidPrice;
 
     // Update auction to DB
-    PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_AUCTION_BID);
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_AUCTION_BID);
     stmt->setUInt32(0, auction->bidder);
     stmt->setUInt32(1, auction->bid);
     stmt->setUInt32(2, auction->Id);

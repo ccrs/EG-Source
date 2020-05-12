@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -316,7 +315,7 @@ float HordeFirePos[65][8]=//spawn points for the fire visuals (GO) in the horde 
     {5545.43f,    -2647.82f,    1483.05f,    5.38848f,    0,    0,    0.432578f,    -0.901596f}
 };
 
-hyjalAI::hyjalAI(Creature* creature) : npc_escortAI(creature), Summons(me)
+hyjalAI::hyjalAI(Creature* creature) : EscortAI(creature), Summons(me)
 {
     Initialize();
     instance = creature->GetInstanceScript();
@@ -384,6 +383,7 @@ void hyjalAI::SummonedCreatureDespawn(Creature* summoned)
 void hyjalAI::Reset()
 {
     me->setActive(true);
+    me->SetFarVisible(true);
 
     Initialize();
 
@@ -422,17 +422,18 @@ void hyjalAI::EnterEvadeMode(EvadeReason /*why*/)
 {
     if (me->GetEntry() != JAINA)
         me->RemoveAllAuras();
-    me->GetThreatManager().ClearAllThreat();
     me->CombatStop(true);
-    me->LoadCreaturesAddon();
 
+    EngagementOver();
+
+    me->LoadCreaturesAddon();
     if (me->IsAlive())
         me->GetMotionMaster()->MoveTargetedHome();
 
     me->SetLootRecipient(nullptr);
 }
 
-void hyjalAI::EnterCombat(Unit* /*who*/)
+void hyjalAI::JustEngagedWith(Unit* /*who*/)
 {
     if (IsDummy)return;
     for (uint8 i = 0; i < HYJAL_AI_MAX_SPELLS; ++i)
@@ -447,7 +448,7 @@ void hyjalAI::MoveInLineOfSight(Unit* who)
     if (IsDummy)
         return;
 
-    npc_escortAI::MoveInLineOfSight(who);
+    EscortAI::MoveInLineOfSight(who);
 }
 
 void hyjalAI::SummonCreature(uint32 entry, float Base[4][3])
@@ -504,6 +505,7 @@ void hyjalAI::SummonCreature(uint32 entry, float Base[4][3])
 
         creature->SetWalk(false);
         creature->setActive(true);
+        creature->SetFarVisible(true);
         switch (entry)
         {
             case NECROMANCER:
@@ -930,7 +932,7 @@ void hyjalAI::RespawnNearPos(float x, float y)
     Cell::VisitGridObjects(x, y, me->GetMap(), worker, me->GetGridActivationRange());
 }
 
-void hyjalAI::WaypointReached(uint32 waypointId)
+void hyjalAI::WaypointReached(uint32 waypointId, uint32 /*pathId*/)
 {
     if (waypointId == 1 || (waypointId == 0 && me->GetEntry() == THRALL))
     {
@@ -970,7 +972,7 @@ void hyjalAI::WaypointReached(uint32 waypointId)
                     (*itr)->GetMotionMaster()->Initialize();
                     float range = 10;
                     if (me->GetEntry() == THRALL)range = 20;
-                    me->GetNearPoint(me, x, y, z, range, 0, me->GetAngle((*itr)));
+                    me->GetNearPoint(nullptr, x, y, z, range, me->GetAbsoluteAngle((*itr)));
                     (*itr)->GetMotionMaster()->MovePoint(0, x+irand(-5, 5), y+irand(-5, 5), me->GetPositionZ());
                 }
             }
@@ -979,7 +981,7 @@ void hyjalAI::WaypointReached(uint32 waypointId)
 }
 void hyjalAI::DoOverrun(uint32 faction, const uint32 diff)
 {
-    npc_escortAI::UpdateAI(diff);
+    EscortAI::UpdateAI(diff);
     if (WaitForTeleport)
     {
         if (TeleportTimer <= diff)
@@ -1028,6 +1030,7 @@ void hyjalAI::DoOverrun(uint32 faction, const uint32 diff)
                     ENSURE_AI(hyjal_trashAI, unit->AI())->IsOverrun = true;
                     ENSURE_AI(hyjal_trashAI, unit->AI())->OverrunType = i;
                     unit->setActive(true);
+                    unit->SetFarVisible(true);
                 }
             }
             for (uint8 i = 0; i < 3; ++i)//summon 3 abominations
@@ -1040,6 +1043,7 @@ void hyjalAI::DoOverrun(uint32 faction, const uint32 diff)
                     ENSURE_AI(hyjal_trashAI, unit->AI())->IsOverrun = true;
                     ENSURE_AI(hyjal_trashAI, unit->AI())->OverrunType = i;
                     unit->setActive(true);
+                    unit->SetFarVisible(true);
                 }
             }
             for (uint8 i = 0; i < 5; ++i)//summon 5 gargoyles
@@ -1052,6 +1056,7 @@ void hyjalAI::DoOverrun(uint32 faction, const uint32 diff)
                     ENSURE_AI(hyjal_trashAI, unit->AI())->IsOverrun = true;
                     ENSURE_AI(hyjal_trashAI, unit->AI())->OverrunType = i;
                     unit->setActive(true);
+                    unit->SetFarVisible(true);
                 }
             }
             break;
@@ -1069,6 +1074,7 @@ void hyjalAI::DoOverrun(uint32 faction, const uint32 diff)
                     ENSURE_AI(hyjal_trashAI, unit->AI())->IsOverrun = true;
                     ENSURE_AI(hyjal_trashAI, unit->AI())->OverrunType = i;
                     unit->setActive(true);
+                    unit->SetFarVisible(true);
                 }
             }
             for (uint8 i = 0; i < 25; ++i)//summon 25 ghouls
@@ -1081,6 +1087,7 @@ void hyjalAI::DoOverrun(uint32 faction, const uint32 diff)
                     ENSURE_AI(hyjal_trashAI, unit->AI())->IsOverrun = true;
                     ENSURE_AI(hyjal_trashAI, unit->AI())->OverrunType = i;
                     unit->setActive(true);
+                    unit->SetFarVisible(true);
                 }
             }
             for (uint8 i = 0; i < 5; ++i)//summon 5 abominations
@@ -1093,6 +1100,7 @@ void hyjalAI::DoOverrun(uint32 faction, const uint32 diff)
                     ENSURE_AI(hyjal_trashAI, unit->AI())->IsOverrun = true;
                     ENSURE_AI(hyjal_trashAI, unit->AI())->OverrunType = i;
                     unit->setActive(true);
+                    unit->SetFarVisible(true);
                 }
             }
             break;

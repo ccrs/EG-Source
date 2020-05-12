@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -67,6 +66,21 @@ bool ReputationMgr::IsAtWar(FactionEntry const* factionEntry) const
     return false;
 }
 
+bool ReputationMgr::IsReputationAllowedForTeam(TeamId team, uint32 factionId) const
+{
+    // @hack some quests give reputation to Alliance-only AND Horde-only factions, but DBC data does not allow to identify faction-only reputations
+    if (team == TEAM_HORDE && (
+        factionId == 1037 || // Alliance Vanguard
+        factionId == 946))   // Honor Hold
+        return false;
+
+    if (team == TEAM_ALLIANCE &&
+        factionId == 947)    // Thrallmar
+        return false;
+
+    return true;
+}
+
 int32 ReputationMgr::GetReputation(uint32 faction_id) const
 {
     FactionEntry const* factionEntry = sFactionStore.LookupEntry(faction_id);
@@ -85,8 +99,8 @@ int32 ReputationMgr::GetBaseReputation(FactionEntry const* factionEntry) const
     if (!factionEntry)
         return 0;
 
-    uint32 raceMask = _player->getRaceMask();
-    uint32 classMask = _player->getClassMask();
+    uint32 raceMask = _player->GetRaceMask();
+    uint32 classMask = _player->GetClassMask();
     for (int i=0; i < 4; i++)
     {
         if ((factionEntry->BaseRepRaceMask[i] & raceMask  ||
@@ -139,8 +153,8 @@ uint32 ReputationMgr::GetDefaultStateFlags(FactionEntry const* factionEntry) con
     if (!factionEntry)
         return 0;
 
-    uint32 raceMask = _player->getRaceMask();
-    uint32 classMask = _player->getClassMask();
+    uint32 raceMask = _player->GetRaceMask();
+    uint32 classMask = _player->GetClassMask();
     for (int i=0; i < 4; i++)
     {
         if ((factionEntry->BaseRepRaceMask[i] & raceMask  ||
@@ -412,7 +426,7 @@ void ReputationMgr::SetVisible(FactionTemplateEntry const*factionTemplateEntry)
 
     if (FactionEntry const* factionEntry = sFactionStore.LookupEntry(factionTemplateEntry->faction))
         // Never show factions of the opposing team
-        if (!(factionEntry->BaseRepRaceMask[1] & _player->getRaceMask() && factionEntry->BaseRepValue[1] == Reputation_Bottom))
+        if (!(factionEntry->BaseRepRaceMask[1] & _player->GetRaceMask() && factionEntry->BaseRepValue[1] == Reputation_Bottom))
             SetVisible(factionEntry);
 }
 
@@ -463,8 +477,8 @@ void ReputationMgr::SetAtWar(RepListID repListID, bool on)
 
 void ReputationMgr::SetAtWar(FactionState* faction, bool atWar) const
 {
-    // not allow declare war to own faction
-    if (atWar && (faction->Flags & FACTION_FLAG_PEACE_FORCED))
+    // Do not allow to declare war to our own faction. But allow for rival factions (eg Aldor vs Scryer).
+    if (atWar && (faction->Flags & FACTION_FLAG_PEACE_FORCED) && !(faction->Flags & FACTION_FLAG_RIVAL) && ReputationToRank(faction->Standing) > REP_HATED)
         return;
 
     // already set
@@ -568,13 +582,13 @@ void ReputationMgr::LoadFromDB(PreparedQueryResult result)
     }
 }
 
-void ReputationMgr::SaveToDB(SQLTransaction& trans)
+void ReputationMgr::SaveToDB(CharacterDatabaseTransaction& trans)
 {
     for (FactionStateList::iterator itr = _factions.begin(); itr != _factions.end(); ++itr)
     {
         if (itr->second.needSave)
         {
-            PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CHAR_REPUTATION_BY_FACTION);
+            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CHAR_REPUTATION_BY_FACTION);
             stmt->setUInt32(0, _player->GetGUID().GetCounter());
             stmt->setUInt16(1, uint16(itr->second.ID));
             trans->Append(stmt);

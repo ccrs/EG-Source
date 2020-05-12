@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -23,6 +23,7 @@
 #include "Implementation/WorldDatabase.h"
 #include "Implementation/CharacterDatabase.h"
 #include "Log.h"
+#include "MySQLPreparedStatement.h"
 #include "PreparedStatement.h"
 #include "ProducerConsumerQueue.h"
 #include "QueryCallback.h"
@@ -30,10 +31,7 @@
 #include "QueryResult.h"
 #include "SQLOperation.h"
 #include "Transaction.h"
-#ifdef _WIN32 // hack for broken mysql.h not including the correct winsock header for SOCKET definition, fixed in 5.7
-#include <winsock2.h>
-#endif
-#include <mysql.h>
+#include "MySQLWorkaround.h"
 #include <mysqld_error.h>
 
 #define MIN_MYSQL_SERVER_VERSION 50100u
@@ -56,8 +54,8 @@ DatabaseWorkerPool<T>::DatabaseWorkerPool()
 {
     WPFatal(mysql_thread_safe(), "Used MySQL library isn't thread-safe.");
     WPFatal(mysql_get_client_version() >= MIN_MYSQL_CLIENT_VERSION, "TrinityCore does not support MySQL versions below 5.1");
-    WPFatal(mysql_get_client_version() == MYSQL_VERSION_ID, "Used MySQL library version (%s) does not match the version used to compile TrinityCore (%s). Search on forum for TCE00011.",
-        mysql_get_client_info(), MYSQL_SERVER_VERSION);
+    WPFatal(mysql_get_client_version() == MYSQL_VERSION_ID, "Used MySQL library version (%s id %lu) does not match the version id used to compile TrinityCore (id %u). Search on forum for TCE00011.",
+        mysql_get_client_info(), mysql_get_client_version(), MYSQL_VERSION_ID);
 }
 
 template <class T>
@@ -185,7 +183,7 @@ QueryResult DatabaseWorkerPool<T>::Query(char const* sql, T* connection /*= null
 }
 
 template <class T>
-PreparedQueryResult DatabaseWorkerPool<T>::Query(PreparedStatement* stmt)
+PreparedQueryResult DatabaseWorkerPool<T>::Query(PreparedStatement<T>* stmt)
 {
     auto connection = GetFreeConnection();
     PreparedResultSet* ret = connection->Query(stmt);
@@ -214,7 +212,7 @@ QueryCallback DatabaseWorkerPool<T>::AsyncQuery(char const* sql)
 }
 
 template <class T>
-QueryCallback DatabaseWorkerPool<T>::AsyncQuery(PreparedStatement* stmt)
+QueryCallback DatabaseWorkerPool<T>::AsyncQuery(PreparedStatement<T>* stmt)
 {
     PreparedStatementTask* task = new PreparedStatementTask(stmt, true);
     // Store future result before enqueueing - task might get already processed and deleted before returning from this method
@@ -224,7 +222,7 @@ QueryCallback DatabaseWorkerPool<T>::AsyncQuery(PreparedStatement* stmt)
 }
 
 template <class T>
-QueryResultHolderFuture DatabaseWorkerPool<T>::DelayQueryHolder(SQLQueryHolder* holder)
+QueryResultHolderFuture DatabaseWorkerPool<T>::DelayQueryHolder(SQLQueryHolder<T>* holder)
 {
     SQLQueryHolderTask* task = new SQLQueryHolderTask(holder);
     // Store future result before enqueueing - task might get already processed and deleted before returning from this method
@@ -234,13 +232,13 @@ QueryResultHolderFuture DatabaseWorkerPool<T>::DelayQueryHolder(SQLQueryHolder* 
 }
 
 template <class T>
-SQLTransaction DatabaseWorkerPool<T>::BeginTransaction()
+SQLTransaction<T> DatabaseWorkerPool<T>::BeginTransaction()
 {
-    return std::make_shared<Transaction>();
+    return std::make_shared<Transaction<T>>();
 }
 
 template <class T>
-void DatabaseWorkerPool<T>::CommitTransaction(SQLTransaction transaction)
+void DatabaseWorkerPool<T>::CommitTransaction(SQLTransaction<T> transaction)
 {
 #ifdef TRINITY_DEBUG
     //! Only analyze transaction weaknesses in Debug mode.
@@ -263,7 +261,7 @@ void DatabaseWorkerPool<T>::CommitTransaction(SQLTransaction transaction)
 }
 
 template <class T>
-void DatabaseWorkerPool<T>::DirectCommitTransaction(SQLTransaction& transaction)
+void DatabaseWorkerPool<T>::DirectCommitTransaction(SQLTransaction<T>& transaction)
 {
     T* connection = GetFreeConnection();
     int errorCode = connection->ExecuteTransaction(transaction);
@@ -277,6 +275,7 @@ void DatabaseWorkerPool<T>::DirectCommitTransaction(SQLTransaction& transaction)
     /// @todo More elegant way
     if (errorCode == ER_LOCK_DEADLOCK)
     {
+        //todo: handle multiple sync threads deadlocking in a similar way as async threads
         uint8 loopBreaker = 5;
         for (uint8 i = 0; i < loopBreaker; ++i)
         {
@@ -292,9 +291,9 @@ void DatabaseWorkerPool<T>::DirectCommitTransaction(SQLTransaction& transaction)
 }
 
 template <class T>
-PreparedStatement* DatabaseWorkerPool<T>::GetPreparedStatement(PreparedStatementIndex index)
+PreparedStatement<T>* DatabaseWorkerPool<T>::GetPreparedStatement(PreparedStatementIndex index)
 {
-    return new PreparedStatement(index, _preparedStatementSize[index]);
+    return new PreparedStatement<T>(index, _preparedStatementSize[index]);
 }
 
 template <class T>
@@ -354,7 +353,7 @@ uint32 DatabaseWorkerPool<T>::OpenConnections(InternalIndex type, uint8 numConne
             _connections[type].clear();
             return error;
         }
-        else if (mysql_get_server_version(connection->GetHandle()) < MIN_MYSQL_SERVER_VERSION)
+        else if (connection->GetServerVersion() < MIN_MYSQL_SERVER_VERSION)
         {
             TC_LOG_ERROR("sql.driver", "TrinityCore does not support MySQL versions below 5.1");
             return 1;
@@ -375,8 +374,7 @@ unsigned long DatabaseWorkerPool<T>::EscapeString(char* to, char const* from, un
     if (!to || !from || !length)
         return 0;
 
-    return mysql_real_escape_string(
-        _connections[IDX_SYNCH].front()->GetHandle(), to, from, length);
+    return _connections[IDX_SYNCH].front()->EscapeString(to, from, length);
 }
 
 template <class T>
@@ -420,7 +418,7 @@ void DatabaseWorkerPool<T>::Execute(char const* sql)
 }
 
 template <class T>
-void DatabaseWorkerPool<T>::Execute(PreparedStatement* stmt)
+void DatabaseWorkerPool<T>::Execute(PreparedStatement<T>* stmt)
 {
     PreparedStatementTask* task = new PreparedStatementTask(stmt);
     Enqueue(task);
@@ -438,7 +436,7 @@ void DatabaseWorkerPool<T>::DirectExecute(char const* sql)
 }
 
 template <class T>
-void DatabaseWorkerPool<T>::DirectExecute(PreparedStatement* stmt)
+void DatabaseWorkerPool<T>::DirectExecute(PreparedStatement<T>* stmt)
 {
     T* connection = GetFreeConnection();
     connection->Execute(stmt);
@@ -449,7 +447,7 @@ void DatabaseWorkerPool<T>::DirectExecute(PreparedStatement* stmt)
 }
 
 template <class T>
-void DatabaseWorkerPool<T>::ExecuteOrAppend(SQLTransaction& trans, char const* sql)
+void DatabaseWorkerPool<T>::ExecuteOrAppend(SQLTransaction<T>& trans, char const* sql)
 {
     if (!trans)
         Execute(sql);
@@ -458,7 +456,7 @@ void DatabaseWorkerPool<T>::ExecuteOrAppend(SQLTransaction& trans, char const* s
 }
 
 template <class T>
-void DatabaseWorkerPool<T>::ExecuteOrAppend(SQLTransaction& trans, PreparedStatement* stmt)
+void DatabaseWorkerPool<T>::ExecuteOrAppend(SQLTransaction<T>& trans, PreparedStatement<T>* stmt)
 {
     if (!trans)
         Execute(stmt);

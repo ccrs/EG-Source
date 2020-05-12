@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -472,12 +472,12 @@ class npc_sinclari_vh : public CreatureScript
                             task.Repeat(Seconds(5));
                             break;
                         case 8:
-                            me->SetVisible(false);
+                            _instance->SetData(DATA_MAIN_EVENT_STATE, IN_PROGRESS);
                             task.Repeat(Seconds(1));
                             break;
                         case 9:
-                            _instance->SetData(DATA_MAIN_EVENT_STATE, IN_PROGRESS);
-                            // [1] GUID: Full: 0xF1300077C202E6DD Type: Creature Entry: 30658 Low: 190173
+                            // We should teleport inside if event is in progress with GOSSIP_MENU_SEND_ME_IN
+                            me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                             break;
                         default:
                             break;
@@ -585,7 +585,7 @@ class npc_azure_saboteur : public CreatureScript
             {
                 if (type == EFFECT_MOTION_TYPE && pointId == POINT_INTRO)
                 {
-                    _scheduler.Schedule(Seconds(0), [this](TaskContext task)
+                    _scheduler.Schedule(0s, [this](TaskContext task)
                     {
                         me->CastSpell(me, SPELL_SHIELD_DISRUPTION, false);
 
@@ -644,7 +644,7 @@ struct npc_violet_hold_teleportation_portal_commonAI : public ScriptedAI
 
     void MoveInLineOfSight(Unit* /*who*/) override { }
 
-    void EnterCombat(Unit* /*who*/) override { }
+    void JustEngagedWith(Unit* /*who*/) override { }
 
     void JustSummoned(Creature* summon) override
     {
@@ -820,9 +820,9 @@ class npc_violet_hold_teleportation_portal_intro : public CreatureScript
         }
 };
 
-struct violet_hold_trashAI : public npc_escortAI
+struct violet_hold_trashAI : public EscortAI
 {
-    violet_hold_trashAI(Creature* creature) : npc_escortAI(creature)
+    violet_hold_trashAI(Creature* creature) : EscortAI(creature)
     {
         _instance = creature->GetInstanceScript();
 
@@ -898,15 +898,15 @@ struct violet_hold_trashAI : public npc_escortAI
         }
     }
 
-    void WaypointReached(uint32 waypointId) override
+    void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
     {
         if (waypointId == _lastWaypointId)
             CreatureStartAttackDoor();
     }
 
-    void EnterCombat(Unit* who) override
+    void JustEngagedWith(Unit* who) override
     {
-        npc_escortAI::EnterCombat(who);
+        EscortAI::JustEngagedWith(who);
         ScheduledTasks();
     }
 
@@ -919,7 +919,7 @@ struct violet_hold_trashAI : public npc_escortAI
             return;
 
         _scheduler.Update(diff,
-            std::bind(&npc_escortAI::DoMeleeAttackIfReady, this));
+            std::bind(&EscortAI::DoMeleeAttackIfReady, this));
     }
 
     virtual void ScheduledTasks() { }
@@ -1367,8 +1367,8 @@ class spell_violet_hold_portal_periodic : public SpellScriptLoader
             void PeriodicTick(AuraEffect const* aurEff)
             {
                 PreventDefaultAction();
-                if (GetTarget()->IsAIEnabled)
-                    GetTarget()->GetAI()->SetData(DATA_PORTAL_PERIODIC_TICK, aurEff->GetTickNumber());
+                if (UnitAI* targetAI = GetTarget()->GetAI())
+                    targetAI->SetData(DATA_PORTAL_PERIODIC_TICK, aurEff->GetTickNumber());
             }
 
             void Register() override

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -28,8 +27,6 @@
 #include "TotemAI.h"
 
 #include "MovementGenerator.h"
-#include "RandomMovementGenerator.h"
-#include "WaypointMovementGenerator.h"
 
 namespace AIRegistry
 {
@@ -42,8 +39,8 @@ namespace AIRegistry
         (new CreatureAIFactory<PassiveAI>("PassiveAI"))->RegisterSelf();
         (new CreatureAIFactory<CritterAI>("CritterAI"))->RegisterSelf();
         (new CreatureAIFactory<GuardAI>("GuardAI"))->RegisterSelf();
-        (new CreatureAIFactory<PetAI>("PetAI"))->RegisterSelf();
-        (new CreatureAIFactory<TotemAI>("TotemAI"))->RegisterSelf();
+        (new CreatureAIFactory<PetAI, false>("PetAI"))->RegisterSelf();
+        (new CreatureAIFactory<TotemAI, false>("TotemAI"))->RegisterSelf();
         (new CreatureAIFactory<CombatAI>("CombatAI"))->RegisterSelf();
         (new CreatureAIFactory<ArcherAI>("ArcherAI"))->RegisterSelf();
         (new CreatureAIFactory<TurretAI>("TurretAI"))->RegisterSelf();
@@ -55,8 +52,7 @@ namespace AIRegistry
         (new GameObjectAIFactory<SmartGameObjectAI>("SmartGameObjectAI"))->RegisterSelf();
 
         (new IdleMovementFactory())->RegisterSelf();
-        (new MovementGeneratorFactory<RandomMovementGenerator<Creature>>(RANDOM_MOTION_TYPE))->RegisterSelf();
-        (new MovementGeneratorFactory<WaypointMovementGenerator<Creature>>(WAYPOINT_MOTION_TYPE))->RegisterSelf();
+        (new RandomMovementFactory())->RegisterSelf();
+        (new WaypointMovementFactory())->RegisterSelf();
     }
 }
-

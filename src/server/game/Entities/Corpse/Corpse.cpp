@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,6 +18,8 @@
 #include "CharacterCache.h"
 #include "Common.h"
 #include "Corpse.h"
+#include "DBCStores.h"
+#include "GameTime.h"
 #include "Log.h"
 #include "Map.h"
 #include "Player.h"
@@ -37,7 +38,7 @@ Corpse::Corpse(CorpseType type) : WorldObject(type != CORPSE_BONES), m_type(type
 
     m_valuesCount = CORPSE_END;
 
-    m_time = time(nullptr);
+    m_time = GameTime::GetGameTime();
 
     lootRecipient = nullptr;
 }
@@ -94,11 +95,11 @@ bool Corpse::Create(ObjectGuid::LowType guidlow, Player* owner)
 void Corpse::SaveToDB()
 {
     // prevent DB data inconsistence problems and duplicates
-    SQLTransaction trans = CharacterDatabase.BeginTransaction();
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
     DeleteFromDB(trans);
 
     uint16 index = 0;
-    PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_CORPSE);
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_CORPSE);
     stmt->setUInt32(index++, GetOwnerGUID().GetCounter());                            // guid
     stmt->setFloat (index++, GetPositionX());                                         // posX
     stmt->setFloat (index++, GetPositionY());                                         // posY
@@ -121,16 +122,30 @@ void Corpse::SaveToDB()
     CharacterDatabase.CommitTransaction(trans);
 }
 
-void Corpse::DeleteFromDB(SQLTransaction& trans)
+void Corpse::DeleteFromDB(CharacterDatabaseTransaction& trans)
 {
     DeleteFromDB(GetOwnerGUID(), trans);
 }
 
-void Corpse::DeleteFromDB(ObjectGuid const& ownerGuid, SQLTransaction& trans)
+void Corpse::DeleteFromDB(ObjectGuid const& ownerGuid, CharacterDatabaseTransaction& trans)
 {
-    PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CORPSE);
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CORPSE);
     stmt->setUInt32(0, ownerGuid.GetCounter());
     CharacterDatabase.ExecuteOrAppend(trans, stmt);
+}
+
+uint32 Corpse::GetFaction() const
+{
+    // inherit faction from player race
+    uint32 const race = GetByteValue(CORPSE_FIELD_BYTES_1, 1);
+
+    ChrRacesEntry const* rEntry = sChrRacesStore.LookupEntry(race);
+    return rEntry ? rEntry->FactionID : 0;
+}
+
+void Corpse::ResetGhostTime()
+{
+    m_time = GameTime::GetGameTime();
 }
 
 bool Corpse::LoadCorpseFromDB(ObjectGuid::LowType guid, Field* fields)

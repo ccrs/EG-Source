@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -94,9 +94,9 @@ public:
         return GetGnomereganAI<npc_blastmaster_emi_shortfuseAI>(creature);
     }
 
-    struct npc_blastmaster_emi_shortfuseAI : public npc_escortAI
+    struct npc_blastmaster_emi_shortfuseAI : public EscortAI
     {
-        npc_blastmaster_emi_shortfuseAI(Creature* creature) : npc_escortAI(creature)
+        npc_blastmaster_emi_shortfuseAI(Creature* creature) : EscortAI(creature)
         {
             instance = creature->GetInstanceScript();
             creature->RestoreFaction();
@@ -219,7 +219,7 @@ public:
             }
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             //just in case
             if (GetPlayerForEscort())
@@ -276,10 +276,10 @@ public:
                     switch (uiValue)
                     {
                         case 1:
-                            instance->SetData(TYPE_EVENT, IN_PROGRESS);
+                            instance->SetBossState(DATA_BLASTMASTER_EVENT, IN_PROGRESS);
                             break;
                         case 2:
-                            instance->SetData(TYPE_EVENT, DONE);
+                            instance->SetBossState(DATA_BLASTMASTER_EVENT, DONE);
                             NextStep(5000, false, 22);
                             break;
                     }
@@ -518,7 +518,7 @@ public:
             if (!me->IsSummon())
                 return;
 
-            if (Unit* summon = me->ToTempSummon()->GetSummoner())
+            if (Unit* summon = me->ToTempSummon()->GetSummonerUnit())
                 if (Creature* creature = summon->ToCreature())
                     creature->AI()->SetData(2, 1);
         }
@@ -536,7 +536,7 @@ public:
             if (!me->IsSummon())
                 return;
 
-            if (Unit* summoner = me->ToTempSummon()->GetSummoner())
+            if (Unit* summoner = me->ToTempSummon()->GetSummonerUnit())
                 if (Creature* creature = summoner->ToCreature())
                     creature->AI()->SetData(2, 2);
         }

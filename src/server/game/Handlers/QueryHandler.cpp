@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,6 +20,7 @@
 #include "Common.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
+#include "GameTime.h"
 #include "Log.h"
 #include "MapManager.h"
 #include "NPCHandler.h"
@@ -83,8 +83,8 @@ void WorldSession::HandleQueryTimeOpcode(WorldPacket & /*recvData*/)
 void WorldSession::SendQueryTimeResponse()
 {
     WorldPacket data(SMSG_QUERY_TIME_RESPONSE, 4+4);
-    data << uint32(time(nullptr));
-    data << uint32(sWorld->GetNextDailyQuestsResetTime() - time(nullptr));
+    data << uint32(GameTime::GetGameTime());
+    data << uint32(sWorld->GetNextDailyQuestsResetTime() - GameTime::GetGameTime());
     SendPacket(&data);
 }
 

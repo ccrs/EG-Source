@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,7 +24,6 @@
 #include "Language.h"
 #include "LFG.h"
 #include "Map.h"
-#include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "RBAC.h"
@@ -142,13 +141,9 @@ public:
 
             // stop flight if need
             if (player->IsInFlight())
-            {
-                player->GetMotionMaster()->MovementExpired();
-                player->CleanupAfterTaxiFlight();
-            }
-            // save only in non-flight case
+                player->FinishTaxiFlight();
             else
-                player->SaveRecallPosition();
+                player->SaveRecallPosition(); // save only in non-flight case
 
             // before GM
             float x, y, z;
@@ -185,7 +180,7 @@ public:
         return true;
     }
 
-    static bool GroupFlagCommand(ChatHandler* handler, char const* args, GroupMemberFlags flag, const char* what)
+    static bool GroupFlagCommand(ChatHandler* handler, char const* args, GroupMemberFlags flag, char const* what)
     {
         Player* player = nullptr;
         Group* group = nullptr;
@@ -366,7 +361,7 @@ public:
         // If not, we extract it from the SQL.
         if (!groupTarget)
         {
-            PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_GROUP_MEMBER);
+            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_GROUP_MEMBER);
             stmt->setUInt32(0, guidTarget.GetCounter());
             PreparedQueryResult resultGroup = CharacterDatabase.Query(stmt);
             if (resultGroup)

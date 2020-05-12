@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -85,7 +85,7 @@ public:
                 instance->SetData(DATA_ANETHERONEVENT, NOT_STARTED);
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
             if (IsEvent)
                 instance->SetData(DATA_ANETHERONEVENT, IN_PROGRESS);
@@ -99,7 +99,7 @@ public:
                 Talk(SAY_ONSLAY);
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (waypointId == 7)
             {
@@ -121,8 +121,8 @@ public:
         {
             if (IsEvent)
             {
-                //Must update npc_escortAI
-                npc_escortAI::UpdateAI(diff);
+                //Must update EscortAI
+                EscortAI::UpdateAI(diff);
                 if (!go)
                 {
                     go = true;
@@ -212,7 +212,7 @@ public:
             CheckTimer = 5000;
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
         }
 
@@ -284,8 +284,10 @@ class spell_anetheron_vampiric_aura : public SpellScriptLoader
                 if (!damageInfo || !damageInfo->GetDamage())
                     return;
 
-                int32 bp = damageInfo->GetDamage() * 3;
-                eventInfo.GetActor()->CastCustomSpell(SPELL_VAMPIRIC_AURA_HEAL, SPELLVALUE_BASE_POINT0, bp, eventInfo.GetActor(), true, nullptr, aurEff);
+                Unit* actor = eventInfo.GetActor();
+                CastSpellExtraArgs args(aurEff);
+                args.AddSpellMod(SPELLVALUE_BASE_POINT0, damageInfo->GetDamage() * 3);
+                actor->CastSpell(actor, SPELL_VAMPIRIC_AURA_HEAL, args);
             }
 
             void Register() override

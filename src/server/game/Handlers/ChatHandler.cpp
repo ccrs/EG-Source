@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -23,8 +22,10 @@
 #include "Channel.h"
 #include "ChannelMgr.h"
 #include "Chat.h"
+#include "ChatPackets.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
+#include "GameTime.h"
 #include "GridNotifiersImpl.h"
 #include "Group.h"
 #include "Guild.h"
@@ -40,6 +41,16 @@
 #include "Util.h"
 #include "World.h"
 #include "WorldPacket.h"
+#include <algorithm>
+
+inline bool isNasty(uint8 c)
+{
+    if (c == '\t')
+        return false;
+    if (c <= '\037') // ASCII control block
+        return true;
+    return false;
+}
 
 void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
 {
@@ -116,8 +127,8 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
                 }
                 break;
             default:
-                TC_LOG_ERROR("network", "Player %s (GUID: %u) sent a chatmessage with an invalid language/message type combination",
-                                                     GetPlayer()->GetName().c_str(), GetPlayer()->GetGUID().GetCounter());
+                TC_LOG_ERROR("network", "Player %s%s sent a chatmessage with an invalid language/message type combination",
+                                                     GetPlayer()->GetName().c_str(), GetPlayer()->GetGUID().ToString().c_str());
 
                 recvData.rfinish();
                 return;
@@ -126,7 +137,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
     // LANG_ADDON should not be changed nor be affected by flood control
     else
     {
-        // send in universal language if player in .gmon mode (ignore spell effects)
+        // send in universal language if player in .gm on mode (ignore spell effects)
         if (sender->IsGameMaster())
             lang = LANG_UNIVERSAL;
         else
@@ -159,9 +170,9 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
             }
         }
 
-        if (!sender->CanSpeak())
+        if (!CanSpeak())
         {
-            std::string timeStr = secsToTimeString(m_muteTime - time(nullptr));
+            std::string timeStr = secsToTimeString(m_muteTime - GameTime::GetGameTime());
             SendNotification(GetTrinityString(LANG_WAIT_BEFORE_SPEAKING), timeStr.c_str());
             recvData.rfinish(); // Prevent warnings
             return;
@@ -179,7 +190,6 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
     }
 
     std::string to, channel, msg;
-    bool ignoreChecks = false;
     switch (type)
     {
         case CHAT_MSG_SAY:
@@ -194,48 +204,70 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
         case CHAT_MSG_RAID_WARNING:
         case CHAT_MSG_BATTLEGROUND:
         case CHAT_MSG_BATTLEGROUND_LEADER:
-            recvData >> msg;
+        case CHAT_MSG_AFK:
+        case CHAT_MSG_DND:
+            msg = recvData.ReadCString(lang != LANG_ADDON);
             break;
         case CHAT_MSG_WHISPER:
             recvData >> to;
-            recvData >> msg;
+            msg = recvData.ReadCString(lang != LANG_ADDON);
             break;
         case CHAT_MSG_CHANNEL:
             recvData >> channel;
-            recvData >> msg;
-            break;
-        case CHAT_MSG_AFK:
-        case CHAT_MSG_DND:
-            recvData >> msg;
-            ignoreChecks = true;
+            msg = recvData.ReadCString(lang != LANG_ADDON);
             break;
     }
 
-    if (!ignoreChecks)
+    if (msg.size() > 255)
+        return;
+
+
+    // no chat commands in AFK/DND autoreply, and it can be empty
+    if (!(type == CHAT_MSG_AFK || type == CHAT_MSG_DND))
     {
         if (msg.empty())
             return;
-
-        if (ChatHandler(this).ParseCommands(msg.c_str()))
-            return;
-
-        if (lang != LANG_ADDON)
+        if (lang == LANG_ADDON)
         {
-            // Strip invisible characters for non-addon messages
-            if (sWorld->getBoolConfig(CONFIG_CHAT_FAKE_MESSAGE_PREVENTING))
-                stripLineInvisibleChars(msg);
+            if (AddonChannelCommandHandler(this).ParseCommands(msg.c_str()))
+                return;
+        }
+        else
+        {
+            if (ChatHandler(this).ParseCommands(msg.c_str()))
+                return;
+        }
+    }
 
-            if (sWorld->getIntConfig(CONFIG_CHAT_STRICT_LINK_CHECKING_SEVERITY) && !ChatHandler(this).isValidChatMessage(msg.c_str()))
+    // do message validity checks
+    if (lang != LANG_ADDON)
+    {
+        // cut at the first newline or carriage return
+        std::string::size_type pos = msg.find_first_of("\n\r");
+        if (pos == 0)
+            return;
+        else if (pos != std::string::npos)
+            msg.erase(pos);
+
+        // abort on any sort of nasty character
+        for (uint8 c : msg)
+            if (isNasty(c))
             {
-                TC_LOG_ERROR("network", "Player %s (GUID: %u) sent a chatmessage with an invalid link: %s", GetPlayer()->GetName().c_str(),
-                    GetPlayer()->GetGUID().GetCounter(), msg.c_str());
-
-                if (sWorld->getIntConfig(CONFIG_CHAT_STRICT_LINK_CHECKING_KICK))
-                    KickPlayer();
-
+                TC_LOG_ERROR("network", "Player %s %s sent a message containing invalid character %u - blocked", GetPlayer()->GetName().c_str(),
+                    GetPlayer()->GetGUID().ToString().c_str(), uint8(c));
                 return;
             }
+
+        // collapse multiple spaces into one
+        if (sWorld->getBoolConfig(CONFIG_CHAT_FAKE_MESSAGE_PREVENTING))
+        {
+            auto end = std::unique(msg.begin(), msg.end(), [](char c1, char c2) { return (c1 == ' ') && (c2 == ' '); });
+            msg.erase(end, msg.end());
         }
+
+        // validate hyperlinks
+        if (!ValidateHyperlinksAndMaybeKick(msg))
+            return;
     }
 
     switch (type)
@@ -246,7 +278,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
             if (!sender->IsAlive())
                 return;
 
-            if (sender->getLevel() < sWorld->getIntConfig(CONFIG_CHAT_SAY_LEVEL_REQ))
+            if (sender->GetLevel() < sWorld->getIntConfig(CONFIG_CHAT_SAY_LEVEL_REQ))
             {
                 SendNotification(GetTrinityString(LANG_SAY_REQ), sWorld->getIntConfig(CONFIG_CHAT_SAY_LEVEL_REQ));
                 return;
@@ -261,7 +293,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
             if (!sender->IsAlive())
                 return;
 
-            if (sender->getLevel() < sWorld->getIntConfig(CONFIG_CHAT_EMOTE_LEVEL_REQ))
+            if (sender->GetLevel() < sWorld->getIntConfig(CONFIG_CHAT_EMOTE_LEVEL_REQ))
             {
                 SendNotification(GetTrinityString(LANG_SAY_REQ), sWorld->getIntConfig(CONFIG_CHAT_EMOTE_LEVEL_REQ));
                 return;
@@ -276,7 +308,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
             if (!sender->IsAlive())
                 return;
 
-            if (sender->getLevel() < sWorld->getIntConfig(CONFIG_CHAT_YELL_LEVEL_REQ))
+            if (sender->GetLevel() < sWorld->getIntConfig(CONFIG_CHAT_YELL_LEVEL_REQ))
             {
                 SendNotification(GetTrinityString(LANG_SAY_REQ), sWorld->getIntConfig(CONFIG_CHAT_YELL_LEVEL_REQ));
                 return;
@@ -299,16 +331,21 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
                 SendPlayerNotFoundNotice(to);
                 return;
             }
-            if (!sender->IsGameMaster() && sender->getLevel() < sWorld->getIntConfig(CONFIG_CHAT_WHISPER_LEVEL_REQ) && !receiver->IsInWhisperWhiteList(sender->GetGUID()))
-            {
-                SendNotification(GetTrinityString(LANG_WHISPER_REQ), sWorld->getIntConfig(CONFIG_CHAT_WHISPER_LEVEL_REQ));
-                return;
-            }
 
-            if (GetPlayer()->GetTeam() != receiver->GetTeam() && !HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHAT) && !receiver->IsInWhisperWhiteList(sender->GetGUID()))
+            // Apply checks only if receiver is not already in whitelist and if receiver is not a GM with ".whisper on"
+            if (!receiver->IsInWhisperWhiteList(sender->GetGUID()) && !receiver->IsGameMasterAcceptingWhispers())
             {
-                SendWrongFactionNotice();
-                return;
+                if (!sender->IsGameMaster() && sender->GetLevel() < sWorld->getIntConfig(CONFIG_CHAT_WHISPER_LEVEL_REQ))
+                {
+                    SendNotification(GetTrinityString(LANG_WHISPER_REQ), sWorld->getIntConfig(CONFIG_CHAT_WHISPER_LEVEL_REQ));
+                    return;
+                }
+
+                if (GetPlayer()->GetTeam() != receiver->GetTeam() && !HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHAT))
+                {
+                    SendWrongFactionNotice();
+                    return;
+                }
             }
 
             if (GetPlayer()->HasAura(1852) && !receiver->IsGameMaster())
@@ -319,7 +356,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
 
             // If player is a Gamemaster and doesn't accept whisper, we auto-whitelist every player that the Gamemaster is talking to
             // We also do that if a player is under the required level for whispers.
-            if (receiver->getLevel() < sWorld->getIntConfig(CONFIG_CHAT_WHISPER_LEVEL_REQ) ||
+            if (receiver->GetLevel() < sWorld->getIntConfig(CONFIG_CHAT_WHISPER_LEVEL_REQ) ||
                 (HasPermission(rbac::RBAC_PERM_CAN_FILTER_WHISPERS) && !sender->isAcceptWhispers() && !sender->IsInWhisperWhiteList(receiver->GetGUID())))
                 sender->AddWhisperWhiteList(receiver->GetGUID());
 
@@ -456,7 +493,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
         {
             if (!HasPermission(rbac::RBAC_PERM_SKIP_CHECK_CHAT_CHANNEL_REQ))
             {
-                if (sender->getLevel() < sWorld->getIntConfig(CONFIG_CHAT_CHANNEL_LEVEL_REQ))
+                if (sender->GetLevel() < sWorld->getIntConfig(CONFIG_CHAT_CHANNEL_LEVEL_REQ))
                 {
                     SendNotification(GetTrinityString(LANG_CHANNEL_REQ), sWorld->getIntConfig(CONFIG_CHAT_CHANNEL_LEVEL_REQ));
                     return;
@@ -466,7 +503,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
             if (Channel* chn = ChannelMgr::GetChannelForPlayerByNamePart(channel, sender))
             {
                 sScriptMgr->OnPlayerChat(sender, type, lang, msg, chn);
-                chn->Say(sender->GetGUID(), msg.c_str(), lang);
+                chn->Say(sender->GetGUID(), msg, lang);
             }
             break;
         }
@@ -523,15 +560,19 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
     }
 }
 
-void WorldSession::HandleEmoteOpcode(WorldPacket& recvData)
+void WorldSession::HandleEmoteOpcode(WorldPackets::Chat::EmoteClient& packet)
 {
-    if (!GetPlayer()->IsAlive() || GetPlayer()->HasUnitState(UNIT_STATE_DIED))
+    uint32 emoteId = packet.EmoteID;
+
+    // restrict to the only emotes hardcoded in client
+    if (emoteId != EMOTE_ONESHOT_NONE && emoteId != EMOTE_ONESHOT_WAVE)
         return;
 
-    uint32 emote;
-    recvData >> emote;
-    sScriptMgr->OnPlayerEmote(GetPlayer(), emote);
-    GetPlayer()->HandleEmoteCommand(emote);
+    if (!_player->IsAlive() || _player->HasUnitState(UNIT_STATE_DIED))
+        return;
+
+    sScriptMgr->OnPlayerEmote(_player, emoteId);
+    _player->HandleEmoteCommand(emoteId);
 }
 
 namespace Trinity
@@ -571,9 +612,9 @@ void WorldSession::HandleTextEmoteOpcode(WorldPacket& recvData)
     if (!GetPlayer()->IsAlive())
         return;
 
-    if (!GetPlayer()->CanSpeak())
+    if (!CanSpeak())
     {
-        std::string timeStr = secsToTimeString(m_muteTime - time(nullptr));
+        std::string timeStr = secsToTimeString(m_muteTime - GameTime::GetGameTime());
         SendNotification(GetTrinityString(LANG_WAIT_BEFORE_SPEAKING), timeStr.c_str());
         return;
     }

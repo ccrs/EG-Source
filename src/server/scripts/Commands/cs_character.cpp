@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -102,7 +102,7 @@ public:
     static bool GetDeletedCharacterInfoList(DeletedInfoList& foundList, std::string searchString)
     {
         PreparedQueryResult result;
-        PreparedStatement* stmt;
+        CharacterDatabasePreparedStatement* stmt;
         if (!searchString.empty())
         {
             // search by GUID
@@ -221,7 +221,7 @@ public:
             return;
         }
 
-        PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_RESTORE_DELETE_INFO);
+        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_RESTORE_DELETE_INFO);
         stmt->setString(0, delInfo.name);
         stmt->setUInt32(1, delInfo.accountId);
         stmt->setUInt32(2, delInfo.guid.GetCounter());
@@ -239,7 +239,7 @@ public:
         {
             player->GiveLevel(newLevel);
             player->InitTalentForLevel();
-            player->SetUInt32Value(PLAYER_XP, 0);
+            player->SetXP(0);
 
             if (handler->needReportToTarget(player))
             {
@@ -254,7 +254,7 @@ public:
         else
         {
             // Update level and reset XP, everything else will be updated at login
-            PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_LEVEL);
+            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_LEVEL);
             stmt->setUInt8(0, uint8(newLevel));
             stmt->setUInt32(1, playerGuid.GetCounter());
             CharacterDatabase.Execute(stmt);
@@ -281,7 +281,7 @@ public:
 
             if (titleInfo && target->HasTitle(titleInfo))
             {
-                std::string name = target->getGender() == GENDER_MALE ? titleInfo->nameMale[loc] : titleInfo->nameFemale[loc];
+                std::string name = target->GetNativeGender() == GENDER_MALE ? titleInfo->nameMale[loc] : titleInfo->nameFemale[loc];
                 if (name.empty())
                     continue;
 
@@ -360,7 +360,7 @@ public:
                 }
             }
 
-            PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHECK_NAME);
+            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHECK_NAME);
             stmt->setString(0, newName);
             PreparedQueryResult result = CharacterDatabase.Query(stmt);
             if (result)
@@ -380,7 +380,7 @@ public:
                 target->SetName(newName);
 
                 if (WorldSession* session = target->GetSession())
-                    session->KickPlayer();
+                    session->KickPlayer("HandleCharacterRenameCommand GM Command renaming character");
             }
             else
             {
@@ -422,7 +422,7 @@ public:
                 std::string oldNameLink = handler->playerLink(targetName);
                 handler->PSendSysMessage(LANG_RENAME_PLAYER_GUID, oldNameLink.c_str(), targetGuid.GetCounter());
 
-                PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ADD_AT_LOGIN_FLAG);
+                CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ADD_AT_LOGIN_FLAG);
                 stmt->setUInt16(0, uint16(AT_LOGIN_RENAME));
                 stmt->setUInt32(1, targetGuid.GetCounter());
                 CharacterDatabase.Execute(stmt);
@@ -453,7 +453,7 @@ public:
         if (!handler->extractPlayerTarget(nameStr, &target, &targetGuid, &targetName))
             return false;
 
-        int32 oldlevel = target ? target->getLevel() : sCharacterCache->GetCharacterLevelByGuid(targetGuid);
+        int32 oldlevel = target ? target->GetLevel() : sCharacterCache->GetCharacterLevelByGuid(targetGuid);
         int32 newlevel = levelStr ? atoi(levelStr) : oldlevel;
 
         if (newlevel < 1)
@@ -481,7 +481,7 @@ public:
         if (!handler->extractPlayerTarget((char*)args, &target, &targetGuid, &targetName))
             return false;
 
-        PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ADD_AT_LOGIN_FLAG);
+        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ADD_AT_LOGIN_FLAG);
         stmt->setUInt16(0, uint16(AT_LOGIN_CUSTOMIZE));
         if (target)
         {
@@ -509,7 +509,7 @@ public:
         if (!handler->extractPlayerTarget((char*)args, &target, &targetGuid, &targetName))
             return false;
 
-        PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ADD_AT_LOGIN_FLAG);
+        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ADD_AT_LOGIN_FLAG);
         stmt->setUInt16(0, uint16(AT_LOGIN_CHANGE_FACTION));
         if (target)
         {
@@ -536,7 +536,7 @@ public:
         if (!handler->extractPlayerTarget((char*)args, &target, &targetGuid, &targetName))
             return false;
 
-        PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ADD_AT_LOGIN_FLAG);
+        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ADD_AT_LOGIN_FLAG);
         stmt->setUInt16(0, uint16(AT_LOGIN_CHANGE_RACE));
         if (target)
         {
@@ -589,7 +589,7 @@ public:
             return false;
         }
 
-        PreparedStatement* stmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ACCOUNT_ID_BY_NAME);
+        LoginDatabasePreparedStatement* stmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ACCOUNT_ID_BY_NAME);
         stmt->setString(0, accountName);
         if (PreparedQueryResult result = LoginDatabase.Query(stmt))
             newAccountId = (*result)[0].GetUInt32();
@@ -614,10 +614,10 @@ public:
             }
         }
 
-        stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ACCOUNT_BY_GUID);
-        stmt->setUInt32(0, newAccountId);
-        stmt->setUInt32(1, targetGuid.GetCounter());
-        CharacterDatabase.DirectExecute(stmt);
+        CharacterDatabasePreparedStatement* charStmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ACCOUNT_BY_GUID);
+        charStmt->setUInt32(0, newAccountId);
+        charStmt->setUInt32(1, targetGuid.GetCounter());
+        CharacterDatabase.DirectExecute(charStmt);
 
         sWorld->UpdateRealmCharCount(oldAccountId);
         sWorld->UpdateRealmCharCount(newAccountId);
@@ -865,7 +865,7 @@ public:
         {
             characterGuid = player->GetGUID();
             accountId = player->GetSession()->GetAccountId();
-            player->GetSession()->KickPlayer();
+            player->GetSession()->KickPlayer("HandleCharacterEraseCommand GM Command deleting character");
         }
         else
         {
@@ -907,7 +907,7 @@ public:
         if (!handler->extractPlayerTarget(nameStr, &target, &targetGuid, &targetName))
             return false;
 
-        int32 oldlevel = target ? target->getLevel() : sCharacterCache->GetCharacterLevelByGuid(targetGuid);
+        int32 oldlevel = target ? target->GetLevel() : sCharacterCache->GetCharacterLevelByGuid(targetGuid);
         int32 addlevel = levelStr ? atoi(levelStr) : 1;
         int32 newlevel = oldlevel + addlevel;
 

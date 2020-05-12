@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -85,10 +84,10 @@ bool Transport::Create(ObjectGuid::LowType guidlow, uint32 entry, uint32 mapid, 
     _triggeredArrivalEvent = false;
     _triggeredDepartureEvent = false;
 
-    if (m_goTemplateAddon)
+    if (GameObjectOverride const* goOverride = GetGameObjectOverride())
     {
-        SetFaction(m_goTemplateAddon->faction);
-        SetUInt32Value(GAMEOBJECT_FLAGS, m_goTemplateAddon->flags);
+        SetFaction(goOverride->Faction);
+        SetUInt32Value(GAMEOBJECT_FLAGS, goOverride->Flags);
     }
 
     m_goValue.Transport.PathProgress = 0;
@@ -100,7 +99,7 @@ bool Transport::Create(ObjectGuid::LowType guidlow, uint32 entry, uint32 mapid, 
     SetGoType(GAMEOBJECT_TYPE_MO_TRANSPORT);
     SetGoAnimProgress(animprogress);
     SetName(goinfo->name);
-    SetWorldRotation(0.0f, 0.0f, 0.0f, 1.0f);
+    SetLocalRotation(0.0f, 0.0f, 0.0f, 1.0f);
     SetParentRotation(QuaternionData());
 
     m_model = CreateModel();
@@ -300,18 +299,19 @@ void Transport::RemovePassenger(WorldObject* passenger)
 Creature* Transport::CreateNPCPassenger(ObjectGuid::LowType guid, CreatureData const* data)
 {
     Map* map = GetMap();
+    if (map->GetCreatureRespawnTime(guid))
+        return nullptr;
+
     Creature* creature = new Creature();
 
-    if (!creature->LoadCreatureFromDB(guid, map, false))
+    if (!creature->LoadFromDB(guid, map, false, false))
     {
         delete creature;
         return nullptr;
     }
 
-    float x = data->posX;
-    float y = data->posY;
-    float z = data->posZ;
-    float o = data->orientation;
+    float x, y, z, o;
+    data->spawnPoint.GetPosition(x, y, z, o);
 
     creature->SetTransport(this);
     creature->AddUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
@@ -328,7 +328,7 @@ Creature* Transport::CreateNPCPassenger(ObjectGuid::LowType guid, CreatureData c
 
     if (!creature->IsPositionValid())
     {
-        TC_LOG_ERROR("entities.transport", "Creature (guidlow %d, entry %d) not created. Suggested coordinates aren't valid (X: %f Y: %f)",creature->GetGUID().GetCounter(),creature->GetEntry(),creature->GetPositionX(),creature->GetPositionY());
+        TC_LOG_ERROR("entities.transport", "Creature %s not created. Suggested coordinates aren't valid (X: %f Y: %f)", creature->GetGUID().ToString().c_str(), creature->GetPositionX(), creature->GetPositionY());
         delete creature;
         return nullptr;
     }
@@ -347,9 +347,12 @@ Creature* Transport::CreateNPCPassenger(ObjectGuid::LowType guid, CreatureData c
 GameObject* Transport::CreateGOPassenger(ObjectGuid::LowType guid, GameObjectData const* data)
 {
     Map* map = GetMap();
+    if (map->GetGORespawnTime(guid))
+        return nullptr;
+
     GameObject* go = new GameObject();
 
-    if (!go->LoadGameObjectFromDB(guid, map, false))
+    if (!go->LoadFromDB(guid, map, false))
     {
         delete go;
         return nullptr;
@@ -357,10 +360,8 @@ GameObject* Transport::CreateGOPassenger(ObjectGuid::LowType guid, GameObjectDat
 
     ASSERT(data);
 
-    float x = data->posX;
-    float y = data->posY;
-    float z = data->posZ;
-    float o = data->orientation;
+    float x, y, z, o;
+    data->spawnPoint.GetPosition(x, y, z, o);
 
     go->SetTransport(this);
     go->m_movementInfo.transport.guid = GetGUID();
@@ -371,7 +372,7 @@ GameObject* Transport::CreateGOPassenger(ObjectGuid::LowType guid, GameObjectDat
 
     if (!go->IsPositionValid())
     {
-        TC_LOG_ERROR("entities.transport", "GameObject (guidlow %d, entry %d) not created. Suggested coordinates aren't valid (X: %f Y: %f)", go->GetGUID().GetCounter(), go->GetEntry(), go->GetPositionX(), go->GetPositionY());
+        TC_LOG_ERROR("entities.transport", "GameObject %s not created. Suggested coordinates aren't valid (X: %f Y: %f)", go->GetGUID().ToString().c_str(), go->GetPositionX(), go->GetPositionY());
         delete go;
         return nullptr;
     }
@@ -468,7 +469,7 @@ TempSummon* Transport::SummonPassenger(uint32 entry, Position const& pos, TempSu
     pos.GetPosition(x, y, z, o);
     CalculatePassengerPosition(x, y, z, &o);
 
-    if (!summon->Create(map->GenerateLowGuid<HighGuid::Unit>(), map, phase, entry, x, y, z, o, nullptr, vehId))
+    if (!summon->Create(map->GenerateLowGuid<HighGuid::Unit>(), map, phase, entry, { x, y, z, o }, nullptr, vehId))
     {
         delete summon;
         return nullptr;
@@ -545,7 +546,7 @@ void Transport::LoadStaticPassengers()
             // GameObjects on transport
             guidEnd = cellItr->second.gameobjects.end();
             for (CellGuidSet::const_iterator guidItr = cellItr->second.gameobjects.begin(); guidItr != guidEnd; ++guidItr)
-                CreateGOPassenger(*guidItr, sObjectMgr->GetGOData(*guidItr));
+                CreateGOPassenger(*guidItr, sObjectMgr->GetGameObjectData(*guidItr));
         }
     }
 }
@@ -764,4 +765,11 @@ void Transport::BuildUpdate(UpdateDataMapType& data_map)
         BuildFieldsUpdate(itr->GetSource(), data_map);
 
     ClearUpdateMask(true);
+}
+
+std::string Transport::GetDebugInfo() const
+{
+    std::stringstream sstr;
+    sstr << GameObject::GetDebugInfo();
+    return sstr.str();
 }

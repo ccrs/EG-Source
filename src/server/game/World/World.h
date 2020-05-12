@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -71,7 +70,6 @@ enum WorldTimers
 {
     WUPDATE_AUCTIONS,
     WUPDATE_AUCTIONS_PENDING,
-    WUPDATE_WEATHERS,
     WUPDATE_UPTIME,
     WUPDATE_CORPSES,
     WUPDATE_EVENTS,
@@ -83,6 +81,7 @@ enum WorldTimers
     WUPDATE_PINGDB,
     WUPDATE_CHECK_FILECHANGES,
     WUPDATE_WHO_LIST,
+    WUPDATE_CHANNEL_SAVE,
     WUPDATE_COUNT
 };
 
@@ -109,7 +108,6 @@ enum WorldBoolConfigs
     CONFIG_GM_LOWER_SECURITY,
     CONFIG_SKILL_PROSPECTING,
     CONFIG_SKILL_MILLING,
-    CONFIG_SAVE_RESPAWN_TIME_IMMEDIATELY,
     CONFIG_WEATHER,
     CONFIG_ALWAYS_MAX_SKILL_FOR_LEVEL,
     CONFIG_QUEST_IGNORE_RAID,
@@ -202,7 +200,6 @@ enum WorldFloatConfigs
     CONFIG_ARENA_WIN_RATING_MODIFIER_2,
     CONFIG_ARENA_LOSE_RATING_MODIFIER,
     CONFIG_ARENA_MATCHMAKER_RATING_MODIFIER,
-    CONFIG_RESPAWN_DYNAMICRADIUS,
     CONFIG_RESPAWN_DYNAMICRATE_CREATURE,
     CONFIG_RESPAWN_DYNAMICRATE_GAMEOBJECT,
     FLOAT_CONFIG_VALUE_COUNT
@@ -249,8 +246,12 @@ enum WorldIntConfigs
     CONFIG_INSTANCE_RESET_TIME_HOUR,
     CONFIG_INSTANCE_UNLOAD_DELAY,
     CONFIG_DAILY_QUEST_RESET_TIME_HOUR,
+    CONFIG_WEEKLY_QUEST_RESET_TIME_WDAY,
     CONFIG_MAX_PRIMARY_TRADE_SKILL,
     CONFIG_MIN_PETITION_SIGNS,
+    CONFIG_MIN_QUEST_SCALED_XP_RATIO,
+    CONFIG_MIN_CREATURE_SCALED_XP_RATIO,
+    CONFIG_MIN_DISCOVERED_SCALED_XP_RATIO,
     CONFIG_GM_LOGIN_STATE,
     CONFIG_GM_VISIBLE_STATE,
     CONFIG_GM_ACCEPT_TICKETS,
@@ -263,6 +264,7 @@ enum WorldIntConfigs
     CONFIG_FORCE_SHUTDOWN_THRESHOLD,
     CONFIG_GROUP_VISIBILITY,
     CONFIG_MAIL_DELIVERY_DELAY,
+    CONFIG_CLEAN_OLD_MAIL_TIME,
     CONFIG_UPTIME_UPDATE,
     CONFIG_SKILL_CHANCE_ORANGE,
     CONFIG_SKILL_CHANCE_YELLOW,
@@ -310,6 +312,7 @@ enum WorldIntConfigs
     CONFIG_BATTLEGROUND_REPORT_AFK,
     CONFIG_ARENA_MAX_RATING_DIFFERENCE,
     CONFIG_ARENA_RATING_DISCARD_TIMER,
+    CONFIG_ARENA_PREV_OPPONENTS_DISCARD_TIMER,
     CONFIG_ARENA_RATED_UPDATE_TIMER,
     CONFIG_ARENA_AUTO_DISTRIBUTE_INTERVAL_DAYS,
     CONFIG_ARENA_SEASON_ID,
@@ -331,6 +334,7 @@ enum WorldIntConfigs
     CONFIG_GUILD_BANK_EVENT_LOG_COUNT,
     CONFIG_MIN_LEVEL_STAT_SAVE,
     CONFIG_RANDOM_BG_RESET_HOUR,
+    CONFIG_CALENDAR_DELETE_OLD_EVENTS_HOUR,
     CONFIG_GUILD_RESET_HOUR,
     CONFIG_CHARDELETE_KEEP_DAYS,
     CONFIG_CHARDELETE_METHOD,
@@ -341,9 +345,11 @@ enum WorldIntConfigs
     CONFIG_MAX_RESULTS_LOOKUP_COMMANDS,
     CONFIG_DB_PING_INTERVAL,
     CONFIG_PRESERVE_CUSTOM_CHANNEL_DURATION,
+    CONFIG_PRESERVE_CUSTOM_CHANNEL_INTERVAL,
     CONFIG_PERSISTENT_CHARACTER_CLEAN_FLAGS,
     CONFIG_LFG_OPTIONSMASK,
     CONFIG_MAX_INSTANCES_PER_HOUR,
+    CONFIG_XP_BOOST_DAYMASK,
     CONFIG_WARDEN_CLIENT_RESPONSE_DELAY,
     CONFIG_WARDEN_CLIENT_CHECK_HOLDOFF,
     CONFIG_WARDEN_CLIENT_FAIL_ACTION,
@@ -379,13 +385,11 @@ enum WorldIntConfigs
     CONFIG_AUCTION_GETALL_DELAY,
     CONFIG_AUCTION_SEARCH_DELAY,
     CONFIG_TALENTS_INSPECTING,
-    CONFIG_RESPAWN_MINCELLCHECKMS,
+    CONFIG_RESPAWN_MINCHECKINTERVALMS,
     CONFIG_RESPAWN_DYNAMICMODE,
     CONFIG_RESPAWN_GUIDWARNLEVEL,
     CONFIG_RESPAWN_GUIDALERTLEVEL,
     CONFIG_RESPAWN_RESTARTQUIETTIME,
-    CONFIG_RESPAWN_ACTIVITYSCOPECREATURE,
-    CONFIG_RESPAWN_ACTIVITYSCOPEGAMEOBJECT,
     CONFIG_RESPAWN_DYNAMICMINIMUM_CREATURE,
     CONFIG_RESPAWN_DYNAMICMINIMUM_GAMEOBJECT,
     CONFIG_RESPAWN_GUIDWARNING_FREQUENCY,
@@ -452,13 +456,13 @@ enum Rates
     RATE_TALENT,
     RATE_CORPSE_DECAY_LOOTED,
     RATE_INSTANCE_RESET_TIME,
-    RATE_TARGET_POS_RECALCULATION_RANGE,
     RATE_DURABILITY_LOSS_ON_DEATH,
     RATE_DURABILITY_LOSS_DAMAGE,
     RATE_DURABILITY_LOSS_PARRY,
     RATE_DURABILITY_LOSS_ABSORB,
     RATE_DURABILITY_LOSS_BLOCK,
     RATE_MOVESPEED,
+    RATE_XP_BOOST,
     RATE_MONEY_QUEST,
     RATE_MONEY_MAX_LEVEL_QUEST,
     MAX_RATES
@@ -523,11 +527,13 @@ enum RealmZone
 enum WorldStates
 {
     WS_ARENA_DISTRIBUTION_TIME  = 20001,                     // Next arena distribution time
-    WS_WEEKLY_QUEST_RESET_TIME  = 20002,                     // Next weekly reset time
+    WS_WEEKLY_QUEST_RESET_TIME  = 20002,                     // Next weekly quest reset time
     WS_BG_DAILY_RESET_TIME      = 20003,                     // Next daily BG reset time
     WS_CLEANING_FLAGS           = 20004,                     // Cleaning Flags
     WS_GUILD_DAILY_RESET_TIME   = 20006,                     // Next guild cap reset time
-    WS_MONTHLY_QUEST_RESET_TIME = 20007,                     // Next monthly reset time
+    WS_MONTHLY_QUEST_RESET_TIME = 20007,                     // Next monthly quest reset time
+    WS_DAILY_QUEST_RESET_TIME   = 20008,                     // Next daily quest reset time
+    WS_DAILY_CALENDAR_DELETION_OLD_EVENTS_TIME = 20009,      // Next daily calendar deletions of old events time
 };
 
 /// Storage class for commands issued for delayed execution
@@ -654,9 +660,9 @@ class TC_GAME_API World
         void SendGlobalText(char const* text, WorldSession* self);
         void SendGMText(uint32 string_id, ...);
         void SendServerMessage(ServerMessageType type, const char *text = "", Player* player = nullptr);
-        void SendGlobalMessage(WorldPacket* packet, WorldSession* self = nullptr, uint32 team = 0);
-        void SendGlobalGMMessage(WorldPacket* packet, WorldSession* self = nullptr, uint32 team = 0);
-        bool SendZoneMessage(uint32 zone, WorldPacket* packet, WorldSession* self = nullptr, uint32 team = 0);
+        void SendGlobalMessage(WorldPacket const* packet, WorldSession* self = nullptr, uint32 team = 0);
+        void SendGlobalGMMessage(WorldPacket const* packet, WorldSession* self = nullptr, uint32 team = 0);
+        bool SendZoneMessage(uint32 zone, WorldPacket const* packet, WorldSession* self = nullptr, uint32 team = 0);
         void SendZoneText(uint32 zone, const char *text, WorldSession* self = nullptr, uint32 team = 0);
 
         /// Are we in the middle of a shutdown?
@@ -759,12 +765,16 @@ class TC_GAME_API World
         void UpdateAreaDependentAuras();
 
         uint32 GetCleaningFlags() const { return m_CleaningFlags; }
-        void   SetCleaningFlags(uint32 flags) { m_CleaningFlags = flags; }
-        void   ResetEventSeasonalQuests(uint16 event_id);
+        void SetCleaningFlags(uint32 flags) { m_CleaningFlags = flags; }
+        void ResetEventSeasonalQuests(uint16 event_id);
 
         void ReloadRBAC();
 
         void RemoveOldCorpses();
+        void TriggerGuidWarning();
+        void TriggerGuidAlert();
+        bool IsGuidWarning() { return _guidWarn; }
+        bool IsGuidAlert() { return _guidAlert; }
 
     protected:
         void _UpdateGameTime();
@@ -772,15 +782,17 @@ class TC_GAME_API World
         // callback for UpdateRealmCharacters
         void _UpdateRealmCharCount(PreparedQueryResult resultCharCount);
 
-        void InitDailyQuestResetTime(bool loading = true);
-        void InitWeeklyQuestResetTime();
-        void InitMonthlyQuestResetTime();
-        void InitRandomBGResetTime();
-        void InitGuildResetTime();
+        void InitQuestResetTimes();
+        void CheckQuestResetTimes();
         void ResetDailyQuests();
         void ResetWeeklyQuests();
         void ResetMonthlyQuests();
+
+        void InitRandomBGResetTime();
+        void InitCalendarOldEventsDeletionTime();
+        void InitGuildResetTime();
         void ResetRandomBG();
+        void CalendarDeleteOldEvents();
         void ResetGuildCap();
     private:
         World();
@@ -840,6 +852,7 @@ class TC_GAME_API World
         time_t m_NextWeeklyQuestReset;
         time_t m_NextMonthlyQuestReset;
         time_t m_NextRandomBGReset;
+        time_t m_NextCalendarOldEventsDeletionTime;
         time_t m_NextGuildReset;
 
         //Player Queue
@@ -859,7 +872,23 @@ class TC_GAME_API World
         AutobroadcastsWeightMap m_AutobroadcastsWeights;
 
         void ProcessQueryCallbacks();
+
+        void SendGuidWarning();
+        void DoGuidWarningRestart();
+        void DoGuidAlertRestart();
         QueryCallbackProcessor _queryProcessor;
+
+        std::string _guidWarningMsg;
+        std::string _alertRestartReason;
+
+        std::mutex _guidAlertLock;
+
+        bool _guidWarn;
+        bool _guidAlert;
+        uint32 _warnDiff;
+        time_t _warnShutdownTime;
+
+    friend class debug_commandscript;
 };
 
 TC_GAME_API extern Realm realm;

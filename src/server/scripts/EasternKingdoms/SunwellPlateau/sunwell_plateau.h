@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -111,7 +111,8 @@ enum SWPGameObjectIds
     GO_BOSS_COLLISION_2                      = 188524,
     GO_FIRE_BARRIER                          = 188075,
     GO_MURUS_GATE_1                          = 187990,
-    GO_MURUS_GATE_2                          = 188118
+    GO_MURUS_GATE_2                          = 188118,
+    GO_SPECTRAL_RIFT                         = 187055
 };
 
 template <class AI, class T>
@@ -119,5 +120,7 @@ AI* GetSunwellPlateauAI(T* obj)
 {
     return GetInstanceAI<AI>(obj, SunwellPlateauScriptName);
 }
+
+#define RegisterSunwellPlateauCreatureAI(ai_name) RegisterCreatureAIWithFactory(ai_name, GetSunwellPlateauAI)
 
 #endif // SUNWELL_PLATEAU_H

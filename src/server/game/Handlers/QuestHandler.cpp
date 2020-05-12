@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -53,14 +52,14 @@ void WorldSession::HandleQuestgiverStatusQueryOpcode(WorldPacket& recvData)
     {
         case TYPEID_UNIT:
         {
-            TC_LOG_DEBUG("network", "WORLD: Received CMSG_QUESTGIVER_STATUS_QUERY for npc, guid = %u", questGiver->GetGUID().GetCounter());
+            TC_LOG_DEBUG("network", "WORLD: Received CMSG_QUESTGIVER_STATUS_QUERY for npc %s", questGiver->GetGUID().ToString().c_str());
             if (!questGiver->ToCreature()->IsHostileTo(_player)) // do not show quest status to enemies
                 questStatus = _player->GetQuestDialogStatus(questGiver);
             break;
         }
         case TYPEID_GAMEOBJECT:
         {
-            TC_LOG_DEBUG("network", "WORLD: Received CMSG_QUESTGIVER_STATUS_QUERY for GameObject guid = %u", questGiver->GetGUID().GetCounter());
+            TC_LOG_DEBUG("network", "WORLD: Received CMSG_QUESTGIVER_STATUS_QUERY for GameObject %s", questGiver->GetGUID().ToString().c_str());
             questStatus = _player->GetQuestDialogStatus(questGiver);
             break;
         }
@@ -91,8 +90,10 @@ void WorldSession::HandleQuestgiverHelloOpcode(WorldPacket& recvData)
     // remove fake death
     if (GetPlayer()->HasUnitState(UNIT_STATE_DIED))
         GetPlayer()->RemoveAurasByType(SPELL_AURA_FEIGN_DEATH);
+
     // Stop the npc if moving
-    creature->StopMoving();
+    creature->PauseMovement(sWorld->getIntConfig(CONFIG_CREATURE_STOP_FOR_PLAYER));
+    creature->SetHomePosition(creature->GetPosition());
 
     _player->PlayerTalkClass->ClearMenus();
     if (creature->AI()->GossipHello(_player))
@@ -270,7 +271,7 @@ void WorldSession::HandleQuestgiverChooseRewardOpcode(WorldPacket& recvData)
 
     if (reward >= QUEST_REWARD_CHOICES_COUNT)
     {
-        TC_LOG_ERROR("entities.player.cheat", "Error in CMSG_QUESTGIVER_CHOOSE_REWARD: player %s (guid %d) tried to get invalid reward (%u) (possible packet-hacking detected)", _player->GetName().c_str(), _player->GetGUID().GetCounter(), reward);
+        TC_LOG_ERROR("entities.player.cheat", "Error in CMSG_QUESTGIVER_CHOOSE_REWARD: player %s %s tried to get invalid reward (%u) (possible packet-hacking detected)", _player->GetName().c_str(), _player->GetGUID().ToString().c_str(), reward);
         return;
     }
 
@@ -289,58 +290,61 @@ void WorldSession::HandleQuestgiverChooseRewardOpcode(WorldPacket& recvData)
         if ((!_player->CanSeeStartQuest(quest) &&  _player->GetQuestStatus(questId) == QUEST_STATUS_NONE) ||
             (_player->GetQuestStatus(questId) != QUEST_STATUS_COMPLETE && !quest->IsAutoComplete()))
         {
-            TC_LOG_ERROR("entities.player.cheat", "Error in QUEST_STATUS_COMPLETE: player %s (guid %u) tried to complete quest %u, but is not allowed to do so (possible packet-hacking or high latency)",
-                           _player->GetName().c_str(), _player->GetGUID().GetCounter(), questId);
+            TC_LOG_ERROR("entities.player.cheat", "Error in QUEST_STATUS_COMPLETE: player %s %s tried to complete quest %u, but is not allowed to do so (possible packet-hacking or high latency)",
+                           _player->GetName().c_str(), _player->GetGUID().ToString().c_str(), questId);
             return;
         }
-        if (_player->CanRewardQuest(quest, reward, true))
+        if (_player->CanRewardQuest(quest, true)) // First, check if player is allowed to turn the quest in (all objectives completed). If not, we send players to the offer reward screen
         {
-            _player->RewardQuest(quest, reward, object);
-
-            switch (object->GetTypeId())
+            if (_player->CanRewardQuest(quest, reward, true)) // Then check if player can receive the reward item (if inventory is not full, if player doesn't have too many unique items, and so on). If not, the client will close the gossip window
             {
-                case TYPEID_UNIT:
+                _player->RewardQuest(quest, reward, object);
+
+                switch (object->GetTypeId())
                 {
-                    Creature* questgiver = object->ToCreature();
-                    // Send next quest
-                    if (Quest const* nextQuest = _player->GetNextQuest(guid, quest))
+                    case TYPEID_UNIT:
                     {
-                        // Only send the quest to the player if the conditions are met
-                        if (_player->CanTakeQuest(nextQuest, false))
+                        Creature* questgiver = object->ToCreature();
+                        // Send next quest
+                        if (Quest const* nextQuest = _player->GetNextQuest(guid, quest))
                         {
-                            if (nextQuest->IsAutoAccept() && _player->CanAddQuest(nextQuest, true))
-                                _player->AddQuestAndCheckCompletion(nextQuest, object);
+                            // Only send the quest to the player if the conditions are met
+                            if (_player->CanTakeQuest(nextQuest, false))
+                            {
+                                if (nextQuest->IsAutoAccept() && _player->CanAddQuest(nextQuest, true))
+                                    _player->AddQuestAndCheckCompletion(nextQuest, object);
 
-                            _player->PlayerTalkClass->SendQuestGiverQuestDetails(nextQuest, guid, true);
+                                _player->PlayerTalkClass->SendQuestGiverQuestDetails(nextQuest, guid, true);
+                            }
                         }
-                    }
 
-                    _player->PlayerTalkClass->ClearMenus();
-                    questgiver->AI()->QuestReward(_player, quest, reward);
-                    break;
-                }
-                case TYPEID_GAMEOBJECT:
-                {
-                    GameObject* questGiver = object->ToGameObject();
-                    // Send next quest
-                    if (Quest const* nextQuest = _player->GetNextQuest(guid, quest))
+                        _player->PlayerTalkClass->ClearMenus();
+                        questgiver->AI()->QuestReward(_player, quest, reward);
+                        break;
+                    }
+                    case TYPEID_GAMEOBJECT:
                     {
-                        // Only send the quest to the player if the conditions are met
-                        if (_player->CanTakeQuest(nextQuest, false))
+                        GameObject* questGiver = object->ToGameObject();
+                        // Send next quest
+                        if (Quest const* nextQuest = _player->GetNextQuest(guid, quest))
                         {
-                            if (nextQuest->IsAutoAccept() && _player->CanAddQuest(nextQuest, true))
-                                _player->AddQuestAndCheckCompletion(nextQuest, object);
+                            // Only send the quest to the player if the conditions are met
+                            if (_player->CanTakeQuest(nextQuest, false))
+                            {
+                                if (nextQuest->IsAutoAccept() && _player->CanAddQuest(nextQuest, true))
+                                    _player->AddQuestAndCheckCompletion(nextQuest, object);
 
-                            _player->PlayerTalkClass->SendQuestGiverQuestDetails(nextQuest, guid, true);
+                                _player->PlayerTalkClass->SendQuestGiverQuestDetails(nextQuest, guid, true);
+                            }
                         }
-                    }
 
-                    _player->PlayerTalkClass->ClearMenus();
-                    questGiver->AI()->QuestReward(_player, quest, reward);
-                    break;
+                        _player->PlayerTalkClass->ClearMenus();
+                        questGiver->AI()->QuestReward(_player, quest, reward);
+                        break;
+                    }
+                    default:
+                        break;
                 }
-                default:
-                    break;
             }
         }
         else
@@ -425,12 +429,12 @@ void WorldSession::HandleQuestLogRemoveQuest(WorldPacket& recvData)
             _player->RemoveActiveQuest(questId);
             _player->RemoveTimedAchievement(ACHIEVEMENT_TIMED_TYPE_QUEST, questId);
 
-            TC_LOG_INFO("network", "Player %u abandoned quest %u", _player->GetGUID().GetCounter(), questId);
+            TC_LOG_INFO("network", "Player %s abandoned quest %u", _player->GetGUID().ToString().c_str(), questId);
 
             if (sWorld->getBoolConfig(CONFIG_QUEST_ENABLE_QUEST_TRACKER)) // check if Quest Tracker is enabled
             {
                 // prepare Quest Tracker datas
-                PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_QUEST_TRACK_ABANDON_TIME);
+                CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_QUEST_TRACK_ABANDON_TIME);
                 stmt->setUInt32(0, questId);
                 stmt->setUInt32(1, _player->GetGUID().GetCounter());
 
@@ -507,8 +511,8 @@ void WorldSession::HandleQuestgiverCompleteQuest(WorldPacket& recvData)
 
     if (!_player->CanSeeStartQuest(quest) && _player->GetQuestStatus(questId) == QUEST_STATUS_NONE)
     {
-        TC_LOG_ERROR("entities.player.cheat", "Possible hacking attempt: Player %s [guid: %u] tried to complete quest [entry: %u] without being in possession of the quest!",
-                      _player->GetName().c_str(), _player->GetGUID().GetCounter(), questId);
+        TC_LOG_ERROR("entities.player.cheat", "Possible hacking attempt: Player %s %s tried to complete quest [entry: %u] without being in possession of the quest!",
+                      _player->GetName().c_str(), _player->GetGUID().ToString().c_str(), questId);
         return;
     }
 

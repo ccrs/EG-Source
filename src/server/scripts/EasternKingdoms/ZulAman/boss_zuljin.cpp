@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -203,9 +202,9 @@ class boss_zuljin : public CreatureScript
                 //me->SetByteValue(UNIT_FIELD_BYTES_2, 0, SHEATH_STATE_MELEE);
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* who) override
             {
-                _EnterCombat();
+                BossAI::JustEngagedWith(who);
 
                 Talk(YELL_INTRO);
                 SpawnAdds();
@@ -581,7 +580,7 @@ class npc_zuljin_vortex : public CreatureScript
 
             void Reset() override { }
 
-            void EnterCombat(Unit* /*target*/) override { }
+            void JustEngagedWith(Unit* /*target*/) override { }
 
             void SpellHit(Unit* caster, SpellInfo const* spell) override
             {
@@ -608,4 +607,3 @@ void AddSC_boss_zuljin()
     new boss_zuljin();
     new npc_zuljin_vortex();
 }
-

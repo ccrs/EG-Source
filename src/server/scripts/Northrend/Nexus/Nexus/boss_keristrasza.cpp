@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,7 +34,7 @@ enum Spells
     SPELL_CRYSTAL_CHAINS                          = 50997,
     SPELL_ENRAGE                                  = 8599,
     SPELL_CRYSTALFIRE_BREATH                      = 48096,
-    SPELL_CRYSTALIZE                              = 48179,
+    SPELL_CRYSTALLIZE                             = 48179,
     SPELL_INTENSE_COLD                            = 48094,
     SPELL_INTENSE_COLD_TRIGGERED                  = 48095
 };
@@ -42,7 +42,7 @@ enum Spells
 enum Events
 {
     EVENT_CRYSTAL_FIRE_BREATH                     = 1,
-    EVENT_CRYSTAL_CHAINS_CRYSTALIZE,
+    EVENT_CRYSTAL_CHAINS_CRYSTALLIZE,
     EVENT_TAIL_SWEEP
 };
 
@@ -92,15 +92,15 @@ class boss_keristrasza : public CreatureScript
                 _Reset();
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* who) override
             {
                 Talk(SAY_AGGRO);
                 DoCastAOE(SPELL_INTENSE_COLD);
-                _EnterCombat();
+                BossAI::JustEngagedWith(who);
 
-                events.ScheduleEvent(EVENT_CRYSTAL_FIRE_BREATH, 14000);
-                events.ScheduleEvent(EVENT_CRYSTAL_CHAINS_CRYSTALIZE, DUNGEON_MODE(30000, 11000));
-                events.ScheduleEvent(EVENT_TAIL_SWEEP, 5000);
+                events.ScheduleEvent(EVENT_CRYSTAL_FIRE_BREATH, 14s);
+                events.ScheduleEvent(EVENT_CRYSTAL_CHAINS_CRYSTALLIZE, DUNGEON_MODE(30000, 11000));
+                events.ScheduleEvent(EVENT_TAIL_SWEEP, 5s);
             }
 
             void JustDied(Unit* /*killer*/) override
@@ -117,9 +117,9 @@ class boss_keristrasza : public CreatureScript
 
             bool CheckContainmentSpheres(bool remove_prison = false)
             {
-                ContainmentSphereGUIDs[0] = instance->GetGuidData(ANOMALUS_CONTAINMET_SPHERE);
-                ContainmentSphereGUIDs[1] = instance->GetGuidData(ORMOROKS_CONTAINMET_SPHERE);
-                ContainmentSphereGUIDs[2] = instance->GetGuidData(TELESTRAS_CONTAINMET_SPHERE);
+                ContainmentSphereGUIDs[0] = instance->GetGuidData(ANOMALUS_CONTAINMENT_SPHERE);
+                ContainmentSphereGUIDs[1] = instance->GetGuidData(ORMOROKS_CONTAINMENT_SPHERE);
+                ContainmentSphereGUIDs[2] = instance->GetGuidData(TELESTRAS_CONTAINMENT_SPHERE);
 
                 for (uint8 i = 0; i < DATA_CONTAINMENT_SPHERES; ++i)
                 {
@@ -151,7 +151,7 @@ class boss_keristrasza : public CreatureScript
                 }
             }
 
-            void SetGUID(ObjectGuid guid, int32 id/* = 0 */) override
+            void SetGUID(ObjectGuid const& guid, int32 id) override
             {
                 if (id == DATA_INTENSE_COLD)
                     _intenseColdList.push_back(guid);
@@ -184,16 +184,16 @@ class boss_keristrasza : public CreatureScript
                     {
                         case EVENT_CRYSTAL_FIRE_BREATH:
                             DoCastVictim(SPELL_CRYSTALFIRE_BREATH);
-                            events.ScheduleEvent(EVENT_CRYSTAL_FIRE_BREATH, 14000);
+                            events.ScheduleEvent(EVENT_CRYSTAL_FIRE_BREATH, 14s);
                             break;
-                        case EVENT_CRYSTAL_CHAINS_CRYSTALIZE:
+                        case EVENT_CRYSTAL_CHAINS_CRYSTALLIZE:
                             DoCast(me, SPELL_TAIL_SWEEP);
-                            events.ScheduleEvent(EVENT_CRYSTAL_CHAINS_CRYSTALIZE, 5000);
+                            events.ScheduleEvent(EVENT_CRYSTAL_CHAINS_CRYSTALLIZE, 5s);
                             break;
                         case EVENT_TAIL_SWEEP:
                             Talk(SAY_CRYSTAL_NOVA);
                             if (IsHeroic())
-                                DoCast(me, SPELL_CRYSTALIZE);
+                                DoCast(me, SPELL_CRYSTALLIZE);
                             else if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100.0f, true))
                                 DoCast(target, SPELL_CRYSTAL_CHAINS);
                             events.ScheduleEvent(EVENT_TAIL_SWEEP, DUNGEON_MODE(30000, 11000));

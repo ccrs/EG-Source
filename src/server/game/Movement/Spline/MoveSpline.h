@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -69,6 +68,7 @@ namespace Movement
         int32           effect_start_time;
         int32           point_Idx;
         int32           point_Idx_offset;
+        float           velocity;
 
         void init_spline(MoveSplineInitArgs const& args);
 
@@ -87,6 +87,7 @@ namespace Movement
         int32 Duration() const { return spline.length(); }
         MySpline const& _Spline() const { return spline; }
         int32 _currentSplineIdx() const { return point_Idx; }
+        float Velocity() const { return velocity; }
         void _Finalize();
         void _Interrupt() { splineflags.done = true; }
 
@@ -124,6 +125,10 @@ namespace Movement
 
         bool onTransport;
         std::string ToString() const;
+        bool HasStarted() const
+        {
+            return time_passed > 0;
+        }
     };
 }
 #endif // TRINITYSERVER_MOVEPLINE_H

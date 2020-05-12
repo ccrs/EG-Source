@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -97,7 +96,7 @@ enum ClintarSpirit
 {
     ASPECT_RAVEN                        = 22915,
 
-    // Texts for EnterCombat, the event and the end of the event are missing
+    // Texts for JustEngagedWith, the event and the end of the event are missing
     CLINTAR_SPIRIT_SAY_START            = 0,
 };
 
@@ -111,10 +110,10 @@ public:
         return new npc_clintar_spiritAI(creature);
     }
 
-    struct npc_clintar_spiritAI : public npc_escortAI
+    struct npc_clintar_spiritAI : public EscortAI
     {
     public:
-        npc_clintar_spiritAI(Creature* creature) : npc_escortAI(creature)
+        npc_clintar_spiritAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
             PlayerGUID.Clear();
@@ -145,7 +144,7 @@ public:
                 Initialize();
         }
 
-        void IsSummonedBy(Unit* /*summoner*/) override
+        void IsSummonedBy(WorldObject* /*summoner*/) override
         {
             std::list<Player*> playerOnQuestList;
             Trinity::AnyPlayerInObjectRangeCheck checker(me, 5.0f);
@@ -189,7 +188,7 @@ public:
                 AttackStart(player->getAttackerForHelper());
                 return;
             }
-            npc_escortAI::EnterEvadeMode(why);
+            EscortAI::EnterEvadeMode(why);
         }
 
         void StartEvent(Player* player)
@@ -198,7 +197,7 @@ public:
             {
                 for (uint8 i = 0; i < 41; ++i)
                 {
-                    AddWaypoint(i, Clintar_spirit_WP[i][0], Clintar_spirit_WP[i][1], Clintar_spirit_WP[i][2], (uint32)Clintar_spirit_WP[i][4]);
+                    AddWaypoint(i, Clintar_spirit_WP[i][0], Clintar_spirit_WP[i][1], Clintar_spirit_WP[i][2], Clintar_spirit_WP[i][3], (uint32)Clintar_spirit_WP[i][4]);
                 }
                 PlayerGUID = player->GetGUID();
                 Start(true, false, PlayerGUID);
@@ -210,7 +209,7 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (!PlayerGUID)
             {
@@ -370,7 +369,7 @@ public:
             } else if (EventOnWait) EventTimer -= diff;
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             CurrWP = waypointId;
             EventTimer = 0;
@@ -431,11 +430,11 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*attacker*/) override
+        void JustEngagedWith(Unit* /*attacker*/) override
         {
             events.Reset();
-            events.ScheduleEvent(EVENT_CAST_CLEAVE, urand(3000, 5000));
-            events.ScheduleEvent(EVENT_CAST_STARFALL, urand(8000, 10000));
+            events.ScheduleEvent(EVENT_CAST_CLEAVE, 3s, 5s);
+            events.ScheduleEvent(EVENT_CAST_STARFALL, 8s, 10s);
         }
 
         void JustDied(Unit* /*killer*/) override
@@ -465,12 +464,12 @@ public:
             {
                 case EVENT_CAST_CLEAVE:
                     DoCastVictim(SPELL_OMEN_CLEAVE);
-                    events.ScheduleEvent(EVENT_CAST_CLEAVE, urand(8000, 10000));
+                    events.ScheduleEvent(EVENT_CAST_CLEAVE, 8s, 10s);
                     break;
                 case EVENT_CAST_STARFALL:
                     if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
                         DoCast(target, SPELL_OMEN_STARFALL);
-                    events.ScheduleEvent(EVENT_CAST_STARFALL, urand(14000, 16000));
+                    events.ScheduleEvent(EVENT_CAST_STARFALL, 14s, 16s);
                     break;
             }
 

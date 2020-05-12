@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,7 +23,6 @@ SDCategory: Thousand Needles
 EndScriptData */
 
 /* ContentData
-npc_kanati
 npc_lakota_windsong
 npc_swiftmountain
 npc_enraged_panther
@@ -37,69 +35,6 @@ EndContentData */
 #include "Player.h"
 #include "ScriptedEscortAI.h"
 #include "ScriptedGossip.h"
-
-/*#####
-# npc_kanati
-######*/
-
-enum Kanati
-{
-    SAY_KAN_START        = 0,
-    QUEST_PROTECT_KANATI = 4966,
-    NPC_GALAK_ASS        = 10720
-};
-
-Position const GalakLoc = {-4867.387695f, -1357.353760f, -48.226f, 0.0f};
-
-class npc_kanati : public CreatureScript
-{
-public:
-    npc_kanati() : CreatureScript("npc_kanati") { }
-
-    struct npc_kanatiAI : public npc_escortAI
-    {
-        npc_kanatiAI(Creature* creature) : npc_escortAI(creature) { }
-
-        void Reset() override { }
-
-        void WaypointReached(uint32 waypointId) override
-        {
-            switch (waypointId)
-            {
-                case 0:
-                    Talk(SAY_KAN_START);
-                    DoSpawnGalak();
-                    break;
-                case 1:
-                    if (Player* player = GetPlayerForEscort())
-                        player->GroupEventHappens(QUEST_PROTECT_KANATI, me);
-                    break;
-            }
-        }
-
-        void DoSpawnGalak()
-        {
-            for (int i = 0; i < 3; ++i)
-                me->SummonCreature(NPC_GALAK_ASS, GalakLoc, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 25000);
-        }
-
-        void JustSummoned(Creature* summoned) override
-        {
-            summoned->AI()->AttackStart(me);
-        }
-
-        void QuestAccept(Player* player, Quest const* quest) override
-        {
-            if (quest->GetQuestId() == QUEST_PROTECT_KANATI)
-                Start(false, false, player->GetGUID(), quest, true);
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_kanatiAI(creature);
-    }
-};
 
 /*######
 # npc_lakota_windsong
@@ -136,13 +71,13 @@ class npc_lakota_windsong : public CreatureScript
 public:
     npc_lakota_windsong() : CreatureScript("npc_lakota_windsong") { }
 
-    struct npc_lakota_windsongAI : public npc_escortAI
+    struct npc_lakota_windsongAI : public EscortAI
     {
-        npc_lakota_windsongAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_lakota_windsongAI(Creature* creature) : EscortAI(creature) { }
 
         void Reset() override { }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {
@@ -216,13 +151,13 @@ class npc_paoka_swiftmountain : public CreatureScript
 public:
     npc_paoka_swiftmountain() : CreatureScript("npc_paoka_swiftmountain") { }
 
-    struct npc_paoka_swiftmountainAI : public npc_escortAI
+    struct npc_paoka_swiftmountainAI : public EscortAI
     {
-        npc_paoka_swiftmountainAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_paoka_swiftmountainAI(Creature* creature) : EscortAI(creature) { }
 
         void Reset() override { }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {
@@ -335,7 +270,6 @@ public:
 
 void AddSC_thousand_needles()
 {
-    new npc_kanati();
     new npc_lakota_windsong();
     new npc_paoka_swiftmountain();
     new npc_enraged_panther();

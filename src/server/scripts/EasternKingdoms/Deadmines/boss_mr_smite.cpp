@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -33,8 +33,7 @@ enum Spells
 {
     SPELL_TRASH             = 3391,
     SPELL_SMITE_STOMP       = 6432,
-    SPELL_SMITE_SLAM        = 6435,
-    SPELL_NIMBLE_REFLEXES   = 6264
+    SPELL_SMITE_SLAM        = 6435
 };
 
 enum Equips
@@ -72,7 +71,6 @@ public:
         {
             uiTrashTimer = urand(5000, 9000);
             uiSlamTimer = 9000;
-            uiNimbleReflexesTimer = urand(15500, 31600);
 
             uiHealth = 0;
 
@@ -86,7 +84,6 @@ public:
 
         uint32 uiTrashTimer;
         uint32 uiSlamTimer;
-        uint32 uiNimbleReflexesTimer;
 
         uint8 uiHealth;
 
@@ -102,9 +99,10 @@ public:
             SetEquipmentSlots(false, EQUIP_SWORD, EQUIP_UNEQUIP, EQUIP_NO_CHANGE);
             me->SetStandState(UNIT_STAND_STATE_STAND);
             me->SetReactState(REACT_AGGRESSIVE);
+            me->SetNoCallAssistance(true);
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
         }
 
@@ -140,13 +138,6 @@ public:
                 }
                 else uiSlamTimer -= uiDiff;
 
-                if (uiNimbleReflexesTimer <= uiDiff)
-                {
-                    if (bCheckChances())
-                        DoCast(me, SPELL_NIMBLE_REFLEXES);
-                    uiNimbleReflexesTimer = urand(27300, 60100);
-                }
-                else uiNimbleReflexesTimer -= uiDiff;
             }
 
             if ((uiHealth == 0 && !HealthAbovePct(66)) || (uiHealth == 1 && !HealthAbovePct(33)))

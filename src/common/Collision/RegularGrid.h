@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -18,8 +18,8 @@
 #ifndef _REGULAR_GRID_H
 #define _REGULAR_GRID_H
 
-#include "Containers.h"
 #include "Errors.h"
+#include "IteratorPair.h"
 #include <G3D/Ray.h>
 #include <G3D/BoundsTrait.h>
 #include <G3D/PositionTrait.h>

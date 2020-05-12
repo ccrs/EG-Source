@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -23,6 +23,8 @@
 #include "Player.h"
 #include "ScriptedEscortAI.h"
 #include "ScriptedGossip.h"
+#include "SpellInfo.h"
+#include "SpellScript.h"
 #include "TemporarySummon.h"
 
 #define LESS_MOB // if you do not have a good server and do not want it to be laggy as hell
@@ -274,9 +276,9 @@ class npc_highlord_darion_mograine : public CreatureScript
 public:
     npc_highlord_darion_mograine() : CreatureScript("npc_highlord_darion_mograine") { }
 
-    struct npc_highlord_darion_mograineAI : public npc_escortAI
+    struct npc_highlord_darion_mograineAI : public EscortAI
     {
-        npc_highlord_darion_mograineAI(Creature* creature) : npc_escortAI(creature)
+        npc_highlord_darion_mograineAI(Creature* creature) : EscortAI(creature)
         {
             Reset();
         }
@@ -453,7 +455,7 @@ public:
             SetEscortPaused(bOnHold);
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {
@@ -571,12 +573,12 @@ public:
         void EnterEvadeMode(EvadeReason why) override
         {
             if (!bIsBattle)//do not reset self if we are in battle
-                npc_escortAI::EnterEvadeMode(why);
+                EscortAI::EnterEvadeMode(why);
         }
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (!bIsBattle)
             {
@@ -1384,10 +1386,11 @@ public:
                     if (me->HasAura(SPELL_THE_MIGHT_OF_MOGRAINE))
                         me->RemoveAurasDueToSpell(SPELL_THE_MIGHT_OF_MOGRAINE);
                     me->RemoveAllAuras();
-                    me->GetThreatManager().ClearAllThreat();
                     me->CombatStop(true);
                     me->InterruptNonMeleeSpells(false);
                     me->SetWalk(false);
+
+                    EngagementOver();
 
                     for (uint8 i = 0; i < ENCOUNTER_DEFENDER_NUMBER; ++i)
                         DespawnNPC(uiDefenderGUID[i]);
@@ -1404,8 +1407,8 @@ public:
 
                     if (Creature* temp = ObjectAccessor::GetCreature(*me, uiKorfaxGUID))
                     {
+                        temp->AI()->EnterEvadeMode();
                         temp->RemoveAllAuras();
-                        temp->GetThreatManager().ClearAllThreat();
                         temp->CombatStop(true);
                         temp->AttackStop();
                         temp->SetFaction(me->GetFaction());
@@ -1416,7 +1419,6 @@ public:
                     if (Creature* temp = ObjectAccessor::GetCreature(*me, uiMaxwellGUID))
                     {
                         temp->RemoveAllAuras();
-                        temp->GetThreatManager().ClearAllThreat();
                         temp->CombatStop(true);
                         temp->AttackStop();
                         temp->SetFaction(me->GetFaction());
@@ -1426,8 +1428,8 @@ public:
 
                     if (Creature* temp = ObjectAccessor::GetCreature(*me, uiEligorGUID))
                     {
+                        temp->AI()->EnterEvadeMode();
                         temp->RemoveAllAuras();
-                        temp->GetThreatManager().ClearAllThreat();
                         temp->CombatStop(true);
                         temp->AttackStop();
                         temp->SetFaction(me->GetFaction());
@@ -1438,8 +1440,8 @@ public:
 
                     if (Creature* temp = ObjectAccessor::GetCreature(*me, uiKoltiraGUID))
                     {
+                        temp->AI()->EnterEvadeMode();
                         temp->RemoveAllAuras();
-                        temp->GetThreatManager().ClearAllThreat();
                         temp->CombatStop(true);
                         temp->AttackStop();
                         temp->SetFaction(me->GetFaction());
@@ -1453,8 +1455,8 @@ public:
 
                     if (Creature* temp = ObjectAccessor::GetCreature(*me, uiThassarianGUID))
                     {
+                        temp->AI()->EnterEvadeMode();
                         temp->RemoveAllAuras();
-                        temp->GetThreatManager().ClearAllThreat();
                         temp->CombatStop(true);
                         temp->AttackStop();
                         temp->SetFaction(me->GetFaction());
@@ -1614,7 +1616,7 @@ public:
                 case GOSSIP_ACTION_INFO_DEF + 1:
                     CloseGossipMenuFor(player);
                     uiStep = 1;
-                    Start(true, false, player->GetGUID());
+                    Start(true, true, player->GetGUID());
                     break;
             }
             return true;
@@ -1664,8 +1666,34 @@ public:
 
 };
 
+// 58418 - Portal to Orgrimmar
+// 58420 - Portal to Stormwind
+class spell_teleport_leaders_blessing : public SpellScript
+{
+    PrepareSpellScript(spell_teleport_leaders_blessing);
+
+    void HandleScriptEffect(SpellEffIndex /* effIndex */)
+    {
+        Player* target = GetHitPlayer();
+        if (!target)
+            return;
+
+        uint32 spellID = GetSpellInfo()->Effects[EFFECT_0].CalcValue();
+        uint32 questID = GetSpellInfo()->Effects[EFFECT_1].CalcValue();
+
+        if (target->GetQuestStatus(questID) == QUEST_STATUS_COMPLETE)
+            target->CastSpell(target, spellID, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_teleport_leaders_blessing::HandleScriptEffect, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
 void AddSC_the_scarlet_enclave_c5()
 {
     new npc_highlord_darion_mograine();
     new npc_the_lich_king_tirion_dawn();
+    RegisterSpellScript(spell_teleport_leaders_blessing);
 }

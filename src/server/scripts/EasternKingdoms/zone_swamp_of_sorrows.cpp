@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -43,9 +42,9 @@ class npc_galen_goodward : public CreatureScript
 public:
     npc_galen_goodward() : CreatureScript("npc_galen_goodward") { }
 
-    struct npc_galen_goodwardAI : public npc_escortAI
+    struct npc_galen_goodwardAI : public EscortAI
     {
-        npc_galen_goodwardAI(Creature* creature) : npc_escortAI(creature)
+        npc_galen_goodwardAI(Creature* creature) : EscortAI(creature)
         {
             galensCageGUID.Clear();
             Reset();
@@ -56,7 +55,7 @@ public:
             periodicSay = 6000;
         }
 
-        void EnterCombat(Unit* who) override
+        void JustEngagedWith(Unit* who) override
         {
             if (HasEscortState(STATE_ESCORT_ESCORTING))
                 Talk(SAY_ATTACKED, who);
@@ -67,11 +66,11 @@ public:
             if (quest->GetQuestId() == QUEST_GALENS_ESCAPE)
             {
                 Talk(SAY_QUEST_ACCEPTED, player);
-                npc_escortAI::Start(false, false, player->GetGUID(), quest);
+                EscortAI::Start(false, false, player->GetGUID(), quest);
             }
         }
 
-        void WaypointStart(uint32 uiPointId) override
+        void WaypointStarted(uint32 uiPointId, uint32 /*pathId*/) override
         {
             switch (uiPointId)
             {
@@ -95,7 +94,7 @@ public:
             }
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {
@@ -118,7 +117,7 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (HasEscortState(STATE_ESCORT_NONE))
                 return;

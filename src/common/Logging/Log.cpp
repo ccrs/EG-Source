@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2008 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,18 +18,18 @@
 #include "Log.h"
 #include "AppenderConsole.h"
 #include "AppenderFile.h"
-#include "AsioHacksImpl.h"
 #include "Common.h"
 #include "Config.h"
 #include "Errors.h"
 #include "Logger.h"
 #include "LogMessage.h"
 #include "LogOperation.h"
+#include "Strand.h"
 #include "Util.h"
 #include <chrono>
 #include <sstream>
 
-Log::Log() : AppenderId(0), lowestLogLevel(LOG_LEVEL_FATAL), _ioService(nullptr), _strand(nullptr)
+Log::Log() : AppenderId(0), lowestLogLevel(LOG_LEVEL_FATAL), _ioContext(nullptr), _strand(nullptr)
 {
     m_logsTimestamp = "_" + GetTimestampStr();
     RegisterAppender<AppenderConsole>();
@@ -65,7 +64,7 @@ void Log::CreateAppenderFromConfig(std::string const& appenderName)
     // Format = type, level, flags, optional1, optional2
     // if type = File. optional1 = file and option2 = mode
     // if type = Console. optional1 = Color
-    std::string options = sConfigMgr->GetStringDefault(appenderName.c_str(), "");
+    std::string options = sConfigMgr->GetStringDefault(appenderName, "");
 
     Tokenizer tokens(options, ',');
     auto iter = tokens.begin();
@@ -118,7 +117,7 @@ void Log::CreateLoggerFromConfig(std::string const& appenderName)
     LogLevel level = LOG_LEVEL_DISABLED;
     uint8 type = uint8(-1);
 
-    std::string options = sConfigMgr->GetStringDefault(appenderName.c_str(), "");
+    std::string options = sConfigMgr->GetStringDefault(appenderName, "");
     std::string name = appenderName.substr(7);
 
     if (options.empty())
@@ -228,11 +227,10 @@ void Log::write(std::unique_ptr<LogMessage>&& msg) const
 {
     Logger const* logger = GetLoggerByType(msg->type);
 
-    if (_ioService)
+    if (_ioContext)
     {
-        auto logOperation = std::make_shared<LogOperation>(logger, std::move(msg));
-
-        _ioService->post(_strand->wrap([logOperation](){ logOperation->call(); }));
+        std::shared_ptr<LogOperation> logOperation = std::make_shared<LogOperation>(logger, std::move(msg));
+        Trinity::Asio::post(*_ioContext, Trinity::Asio::bind_executor(*_strand, [logOperation]() { logOperation->call(); }));
     }
     else
         logger->write(msg.get());
@@ -324,8 +322,8 @@ void Log::outCharDump(char const* str, uint32 accountId, uint64 guid, char const
 
 void Log::SetRealmId(uint32 id)
 {
-    for (auto it = appenders.begin(); it != appenders.end(); ++it)
-        it->second->setRealmId(id);
+    for (std::pair<uint8 const, std::unique_ptr<Appender>>& appender : appenders)
+        appender.second->setRealmId(id);
 }
 
 void Log::Close()
@@ -358,12 +356,12 @@ Log* Log::instance()
     return &instance;
 }
 
-void Log::Initialize(boost::asio::io_service* ioService)
+void Log::Initialize(Trinity::Asio::IoContext* ioContext)
 {
-    if (ioService)
+    if (ioContext)
     {
-        _ioService = ioService;
-        _strand = new Trinity::AsioStrand(*ioService);
+        _ioContext = ioContext;
+        _strand = new Trinity::Asio::Strand(*ioContext);
     }
 
     LoadFromConfig();
@@ -373,7 +371,7 @@ void Log::SetSynchronous()
 {
     delete _strand;
     _strand = nullptr;
-    _ioService = nullptr;
+    _ioContext = nullptr;
 }
 
 void Log::LoadFromConfig()

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -30,20 +29,18 @@ public:
     {
         trigger_periodicAI(Creature* creature) : NullCreatureAI(creature)
         {
-            spell = me->m_spells[0] ? sSpellMgr->GetSpellInfo(me->m_spells[0]) : nullptr;
             interval = me->GetAttackTime(BASE_ATTACK);
             timer = interval;
         }
 
         uint32 timer, interval;
-        SpellInfo const* spell;
 
         void UpdateAI(uint32 diff) override
         {
             if (timer <= diff)
             {
-                if (spell)
-                    me->CastSpell(me, spell, true);
+                if (uint32 spell = me->m_spells[0])
+                    me->CastSpell(me, spell, TRIGGERED_FULL_MASK);
                 timer = interval;
             }
             else

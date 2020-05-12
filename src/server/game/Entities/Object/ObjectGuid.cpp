@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -96,6 +95,14 @@ void ObjectGuidGeneratorBase::HandleCounterOverflow(HighGuid high)
 {
     TC_LOG_ERROR("misc", "%s guid overflow!! Can't continue, shutting down server. ", ObjectGuid::GetTypeName(high));
     World::StopNow(ERROR_EXIT_CODE);
+}
+
+void ObjectGuidGeneratorBase::CheckGuidTrigger(ObjectGuid::LowType guidlow)
+{
+    if (!sWorld->IsGuidAlert() && guidlow > sWorld->getIntConfig(CONFIG_RESPAWN_GUIDALERTLEVEL))
+        sWorld->TriggerGuidAlert();
+    else if (!sWorld->IsGuidWarning() && guidlow > sWorld->getIntConfig(CONFIG_RESPAWN_GUIDWARNLEVEL))
+        sWorld->TriggerGuidWarning();
 }
 
 #define GUID_TRAIT_INSTANTIATE_GUID( HIGH_GUID ) \

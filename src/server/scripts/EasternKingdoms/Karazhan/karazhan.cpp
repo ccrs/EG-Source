@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -131,9 +130,9 @@ class npc_barnes : public CreatureScript
 public:
     npc_barnes() : CreatureScript("npc_barnes") { }
 
-    struct npc_barnesAI : public npc_escortAI
+    struct npc_barnesAI : public EscortAI
     {
-        npc_barnesAI(Creature* creature) : npc_escortAI(creature)
+        npc_barnesAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
             RaidWiped = false;
@@ -182,9 +181,9 @@ public:
             Start(false, false);
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             switch (waypointId)
             {
@@ -288,7 +287,7 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
 
             if (HasEscortState(STATE_ESCORT_PAUSED))
             {
@@ -354,6 +353,7 @@ public:
                     break;
                 case GOSSIP_ACTION_INFO_DEF + 2:
                     CloseGossipMenuFor(player);
+                    m_uiEventId = urand(EVENT_OZ, EVENT_RAJ);
                     StartEvent();
                     break;
                 case GOSSIP_ACTION_INFO_DEF + 3:
@@ -481,7 +481,7 @@ public:
                 me->DespawnOrUnsummon();
             }
         }
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void MovementInform(uint32 type, uint32 id) override
         {
@@ -559,6 +559,7 @@ public:
                 {
                     arca->GetMotionMaster()->MovePoint(0, -11010.82f, -1761.18f, 156.47f);
                     arca->setActive(true);
+                    arca->SetFarVisible(true);
                     arca->InterruptNonMeleeSpells(true);
                     arca->SetSpeedRate(MOVE_FLIGHT, 2.0f);
                 }
@@ -584,7 +585,7 @@ public:
             }
             case 15:
                 if (Creature* arca = ObjectAccessor::GetCreature(*me, ArcanagosGUID))
-                    arca->DealDamage(arca, arca->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
+                    arca->KillSelf();
                 return 5000;
             default:
                 return 9999999;

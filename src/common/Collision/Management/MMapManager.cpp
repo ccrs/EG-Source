@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -30,8 +29,8 @@ namespace MMAP
     // ######################## MMapManager ########################
     MMapManager::~MMapManager()
     {
-        for (MMapDataSet::iterator i = loadedMMaps.begin(); i != loadedMMaps.end(); ++i)
-            delete i->second;
+        for (std::pair<uint32 const, MMapData*>& loadedMMap : loadedMMaps)
+            delete loadedMMap.second;
 
         // by now we should not have maps loaded
         // if we had, tiles in MMapData->mmapLoadedTiles, their actual data is lost!

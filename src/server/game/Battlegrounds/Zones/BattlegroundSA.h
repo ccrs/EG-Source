@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -482,6 +481,15 @@ float const BG_SA_GYOrientation[BG_SA_MAX_GY] =
     6.148f, // defender last GY
 };
 
+enum BG_SA_BroadcastTexts
+{
+    BG_SA_TEXT_ALLIANCE_CAPTURED_TITAN_PORTAL   = 28944,
+    BG_SA_TEXT_HORDE_CAPTURED_TITAN_PORTAL      = 28945,
+
+    BG_SA_TEXT_ROUND_TWO_START_ONE_MINUTE       = 29448,
+    BG_SA_TEXT_ROUND_TWO_START_HALF_MINUTE      = 29449
+};
+
 struct GateInfo
 {
     uint8 GateId;
@@ -564,7 +572,7 @@ class BattlegroundSA : public Battleground
         bool SetupBattleground() override;
         void Reset() override;
         /// Called for generate packet contain worldstate data
-        void FillInitialWorldStates(WorldPacket& data) override;
+        void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
         /// Called when a player kill a unit in bg
         void HandleKillUnit(Creature* creature, Player* killer) override;
         /// Return the nearest graveyard where player can respawn
@@ -691,6 +699,6 @@ class BattlegroundSA : public Battleground
         bool _gateDestroyed;
 
         // Achievement: Not Even a Scratch
-        bool _allVehiclesAlive[BG_TEAMS_COUNT];
+        bool _allVehiclesAlive[PVP_TEAMS_COUNT];
 };
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -89,7 +89,8 @@ private:
     static void Apply(DatabaseWorkerPool<T>& pool, std::string const& query);
     static void ApplyFile(DatabaseWorkerPool<T>& pool, Path const& path);
     static void ApplyFile(DatabaseWorkerPool<T>& pool, std::string const& host, std::string const& user,
-        std::string const& password, std::string const& port_or_socket, std::string const& database, Path const& path);
+        std::string const& password, std::string const& port_or_socket, std::string const& database, std::string const& ssl,
+        Path const& path);
 };
 
 #endif // DBUpdater_h__

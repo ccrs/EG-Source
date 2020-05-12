@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -90,8 +90,8 @@ void LFGPlayerScript::OnMapChanged(Player* player)
             sLFGMgr->LeaveLfg(player->GetGUID());
             player->RemoveAurasDueToSpell(LFG_SPELL_LUCK_OF_THE_DRAW);
             player->TeleportTo(player->m_homebindMapId, player->m_homebindX, player->m_homebindY, player->m_homebindZ, 0.0f);
-            TC_LOG_ERROR("lfg", "LFGPlayerScript::OnMapChanged, Player %s (%u) is in LFG dungeon map but does not have a valid group! "
-                "Teleporting to homebind.", player->GetName().c_str(), player->GetGUID().GetCounter());
+            TC_LOG_ERROR("lfg", "LFGPlayerScript::OnMapChanged, Player %s %s is in LFG dungeon map but does not have a valid group! "
+                "Teleporting to homebind.", player->GetName().c_str(), player->GetGUID().ToString().c_str());
             return;
         }
 
@@ -189,6 +189,8 @@ void LFGGroupScript::OnRemoveMember(Group* group, ObjectGuid guid, RemoveMethod 
         if (method == GROUP_REMOVEMETHOD_LEAVE && state == LFG_STATE_DUNGEON &&
             players >= LFG_GROUP_KICK_VOTES_NEEDED)
             player->CastSpell(player, LFG_SPELL_DUNGEON_DESERTER, true);
+        else if (method == GROUP_REMOVEMETHOD_KICK_LFG)
+            player->RemoveAurasDueToSpell(LFG_SPELL_DUNGEON_COOLDOWN);
         //else if (state == LFG_STATE_BOOT)
             // Update internal kick cooldown of kicked
 

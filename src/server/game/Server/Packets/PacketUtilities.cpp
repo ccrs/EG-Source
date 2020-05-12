@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,9 +16,48 @@
  */
 
 #include "PacketUtilities.h"
+#include "Hyperlinks.h"
 #include "Errors.h"
+#include <utf8.h>
 #include <sstream>
 #include <array>
+
+WorldPackets::InvalidStringValueException::InvalidStringValueException(std::string const& value) : ByteBufferInvalidValueException("string", value.c_str())
+{
+}
+
+WorldPackets::InvalidUtf8ValueException::InvalidUtf8ValueException(std::string const& value) : InvalidStringValueException(value)
+{
+}
+
+WorldPackets::InvalidHyperlinkException::InvalidHyperlinkException(std::string const& value) : InvalidStringValueException(value)
+{
+}
+
+WorldPackets::IllegalHyperlinkException::IllegalHyperlinkException(std::string const& value) : InvalidStringValueException(value)
+{
+}
+
+bool WorldPackets::Strings::Utf8::Validate(std::string const& value)
+{
+    if (!utf8::is_valid(value.begin(), value.end()))
+        throw InvalidUtf8ValueException(value);
+    return true;
+}
+
+bool WorldPackets::Strings::Hyperlinks::Validate(std::string const& value)
+{
+    if (!Trinity::Hyperlinks::CheckAllLinks(value))
+        throw InvalidHyperlinkException(value);
+    return true;
+}
+
+bool WorldPackets::Strings::NoHyperlinks::Validate(std::string const& value)
+{
+    if (value.find('|') != std::string::npos)
+        throw IllegalHyperlinkException(value);
+    return true;
+}
 
 WorldPackets::PacketArrayMaxCapacityException::PacketArrayMaxCapacityException(std::size_t requestedSize, std::size_t sizeLimit)
 {

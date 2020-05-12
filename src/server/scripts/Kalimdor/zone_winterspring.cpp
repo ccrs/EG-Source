@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,12 +18,11 @@
 /* ScriptData
 SDName: Winterspring
 SD%Complete: Almost Completely Emptied
-SDComment: Vendor Rivern Frostwind. Quest Support 4901
+SDComment: Quest Support 4901
 SDCategory: Winterspring
 EndScriptData */
 
 /* ContentData
-npc_rivern_frostwind
 npc_ranshalla
 go_elune_fire
 EndContentData */
@@ -36,51 +34,8 @@ EndContentData */
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptedEscortAI.h"
-#include "ScriptedGossip.h"
 #include "TemporarySummon.h"
 #include "WorldSession.h"
-
-/*######
-## npc_rivern_frostwind
-######*/
-
-class npc_rivern_frostwind : public CreatureScript
-{
-public:
-    npc_rivern_frostwind() : CreatureScript("npc_rivern_frostwind") { }
-
-    struct npc_rivern_frostwindAI : public ScriptedAI
-    {
-        npc_rivern_frostwindAI(Creature* creature) : ScriptedAI(creature) { }
-
-        bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
-        {
-            uint32 const action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
-            ClearGossipMenuFor(player);
-            if (action == GOSSIP_ACTION_TRADE)
-                player->GetSession()->SendListInventory(me->GetGUID());
-
-            return true;
-        }
-
-        bool GossipHello(Player* player) override
-        {
-            if (me->IsQuestGiver())
-                player->PrepareQuestMenu(me->GetGUID());
-
-            if (me->IsVendor() && player->GetReputationRank(589) == REP_EXALTED)
-                AddGossipItemFor(player, GOSSIP_ICON_VENDOR, GOSSIP_TEXT_BROWSE_GOODS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
-
-            SendGossipMenuFor(player, player->GetGossipTextId(me), me->GetGUID());
-            return true;
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_rivern_frostwindAI(creature);
-    }
-};
 
 enum Says
 {
@@ -307,9 +262,9 @@ class npc_ranshalla : public CreatureScript
 public:
     npc_ranshalla() : CreatureScript("npc_ranshalla") { }
 
-    struct npc_ranshallaAI : public npc_escortAI, private DialogueHelper
+    struct npc_ranshallaAI : public EscortAI, private DialogueHelper
     {
-        npc_ranshallaAI(Creature* creature) : npc_escortAI(creature), DialogueHelper(introDialogue)
+        npc_ranshallaAI(Creature* creature) : EscortAI(creature), DialogueHelper(introDialogue)
         {
             Initialize();
         }
@@ -393,7 +348,7 @@ public:
             StartNextDialogueText(SAY_PRIESTESS_ALTAR_3);
         }
 
-        void WaypointReached(uint32 pointId) override
+        void WaypointReached(uint32 pointId, uint32 /*pathId*/) override
         {
             switch (pointId)
             {
@@ -434,7 +389,7 @@ public:
                     SetEscortPaused(true);
                     DoSummonPriestess();
                     Talk(SAY_RANSHALLA_ALTAR_2);
-                    events.ScheduleEvent(EVENT_RESUME, 2000);
+                    events.ScheduleEvent(EVENT_RESUME, 2s);
                     break;
                 case 44:
                     // Stop the escort and turn towards the altar
@@ -580,7 +535,7 @@ public:
             if (events.ExecuteEvent() == EVENT_RESUME)
                 StartNextDialogueText(SAY_PRIESTESS_ALTAR_3);
 
-            npc_escortAI::UpdateEscortAI(diff);
+            EscortAI::UpdateEscortAI(diff);
         }
 
         void QuestAccept(Player* player, Quest const* quest) override
@@ -643,7 +598,6 @@ public:
 
 void AddSC_winterspring()
 {
-    new npc_rivern_frostwind();
     new npc_ranshalla();
     new go_elune_fire();
 }

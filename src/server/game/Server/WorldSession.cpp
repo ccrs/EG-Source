@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,13 +23,16 @@
 #include "AccountMgr.h"
 #include "AddonMgr.h"
 #include "BattlegroundMgr.h"
+#include "CharacterPackets.h"
 #include "Config.h"
 #include "Common.h"
 #include "DatabaseEnv.h"
 #include "DBCStructure.h"
+#include "GameTime.h"
 #include "Group.h"
 #include "Guild.h"
 #include "GuildMgr.h"
+#include "Hyperlinks.h"
 #include "Log.h"
 #include "Map.h"
 #include "Metric.h"
@@ -123,14 +125,19 @@ WorldSession::WorldSession(uint32 id, std::string&& name, std::shared_ptr<WorldS
     m_sessionDbcLocale(sWorld->GetAvailableDbcLocale(locale)),
     m_sessionDbLocaleIndex(locale),
     m_latency(0),
-    m_clientTimeDelay(0),
     m_TutorialsChanged(TUTORIALS_FLAG_NONE),
     recruiterId(recruiter),
     isRecruiter(isARecruiter),
     _RBACData(nullptr),
     expireTime(60000), // 1 min after socket loss, session is deleted
     forceExit(false),
-    m_currentBankerGUID()
+    m_currentBankerGUID(),
+    _timeSyncClockDeltaQueue(6),
+    _timeSyncClockDelta(0),
+    _pendingTimeSyncRequests(),
+    _timeSyncNextCounter(0),
+    _timeSyncTimer(0),
+    _calendarEventCreationCooldown(0)
 {
     memset(m_Tutorials, 0, sizeof(m_Tutorials));
 
@@ -267,13 +274,10 @@ void WorldSession::LogUnprocessedTail(WorldPacket* packet)
 /// Update the WorldSession (triggered by World update)
 bool WorldSession::Update(uint32 diff, PacketFilter& updater)
 {
-    /// Update Timeout timer.
-    UpdateTimeOutTime(diff);
-
     ///- Before we process anything:
     /// If necessary, kick the player because the client didn't send anything for too long
     /// (or they've been idling in character select)
-    if (IsConnectionIdle())
+    if (IsConnectionIdle() && !HasPermission(rbac::RBAC_PERM_IGNORE_IDLE_CONNECTION))
         m_Socket->CloseSocket();
 
     ///- Retrieve packets from the receive queue and call the appropriate handlers
@@ -283,7 +287,7 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
     bool deletePacket = true;
     std::vector<WorldPacket*> requeuePackets;
     uint32 processedPackets = 0;
-    time_t currentTime = time(nullptr);
+    time_t currentTime = GameTime::GetGameTime();
 
     while (m_Socket && _recvQueue.next(packet, updater))
     {
@@ -368,6 +372,22 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
                     break;
             }
         }
+        catch (WorldPackets::InvalidHyperlinkException const& ihe)
+        {
+            TC_LOG_ERROR("network", "%s sent %s with an invalid link:\n%s", GetPlayerInfo().c_str(),
+                GetOpcodeNameForLogging(static_cast<OpcodeClient>(packet->GetOpcode())).c_str(), ihe.GetInvalidValue().c_str());
+
+            if (sWorld->getIntConfig(CONFIG_CHAT_STRICT_LINK_CHECKING_KICK))
+                KickPlayer("WorldSession::Update Invalid chat link");
+        }
+        catch (WorldPackets::IllegalHyperlinkException const& ihe)
+        {
+            TC_LOG_ERROR("network", "%s sent %s which illegally contained a hyperlink:\n%s", GetPlayerInfo().c_str(),
+                GetOpcodeNameForLogging(static_cast<OpcodeClient>(packet->GetOpcode())).c_str(), ihe.GetInvalidValue().c_str());
+
+            if (sWorld->getIntConfig(CONFIG_CHAT_STRICT_LINK_CHECKING_KICK))
+                KickPlayer("WorldSession::Update Illegal chat link");
+        }
         catch (WorldPackets::PacketArrayMaxCapacityException const& pamce)
         {
             TC_LOG_ERROR("network", "PacketArrayMaxCapacityException: %s while parsing %s from %s.",
@@ -401,15 +421,26 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
     if (m_Socket && m_Socket->IsOpen() && _warden)
         _warden->Update();
 
+    if (!updater.ProcessUnsafe()) // <=> updater is of type MapSessionFilter
+    {
+        // Send time sync packet every 10s.
+        if (_timeSyncTimer > 0)
+        {
+            if (diff >= _timeSyncTimer)
+                SendTimeSync();
+            else
+                _timeSyncTimer -= diff;
+        }
+    }
+
     ProcessQueryCallbacks();
 
     //check if we are safe to proceed with logout
     //logout procedure should happen only in World::UpdateSessions() method!!!
-    if (updater.ProcessLogout())
+    if (updater.ProcessUnsafe())
     {
-        time_t currTime = time(nullptr);
         ///- If necessary, log the player out
-        if (ShouldLogOut(currTime) && !m_playerLoading)
+        if (ShouldLogOut(currentTime) && !m_playerLoading)
             LogoutPlayer(true);
 
         if (m_Socket && GetPlayer() && _warden)
@@ -450,7 +481,7 @@ void WorldSession::LogoutPlayer(bool save)
         ///- If the player just died before logging out, make him appear as a ghost
         if (_player->GetDeathTimer())
         {
-            _player->getHostileRefManager().deleteReferences();
+            _player->CombatStop();
             _player->BuildPlayerRepop();
             _player->RepopAtGraveyard();
         }
@@ -485,7 +516,7 @@ void WorldSession::LogoutPlayer(bool save)
                 // track if player logs out after invited to join BG
                 if (_player->IsInvitedForBattlegroundQueueType(bgQueueTypeId) && sWorld->getBoolConfig(CONFIG_BATTLEGROUND_TRACK_DESERTERS))
                 {
-                    PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_DESERTER_TRACK);
+                    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_DESERTER_TRACK);
                     stmt->setUInt32(0, _player->GetGUID().GetCounter());
                     stmt->setUInt8(1, BG_DESERTION_TYPE_INVITE_LOGOUT);
                     CharacterDatabase.Execute(stmt);
@@ -533,16 +564,13 @@ void WorldSession::LogoutPlayer(bool save)
         ///- If the player is in a group (or invited), remove him. If the group if then only 1 person, disband the group.
         _player->UninviteFromGroup();
 
-        // remove player from the group if he is:
-        // a) in group; b) not in raid group; c) logging out normally (not being kicked or disconnected)
-        if (_player->GetGroup() && !_player->GetGroup()->isRaidGroup() && m_Socket)
-            _player->RemoveFromGroup();
-
         //! Send update to group and reset stored max enchanting level
-        if (_player->GetGroup())
+        if (Group* group = _player->GetGroup())
         {
-            _player->GetGroup()->SendUpdate();
-            _player->GetGroup()->ResetMaxEnchantingLevel();
+            group->SendUpdate();
+            group->ResetMaxEnchantingLevel();
+            if (group->GetLeaderGUID() == _player->GetGUID())
+                group->StartLeaderOfflineTimer();
         }
 
         //! Broadcast a logout message to the player's friends
@@ -559,8 +587,8 @@ void WorldSession::LogoutPlayer(bool save)
         // e.g if he got disconnected during a transfer to another map
         // calls to GetMap in this case may cause crashes
         _player->CleanupsBeforeDelete();
-        TC_LOG_INFO("entities.player.character", "Account: %d (IP: %s) Logout Character:[%s] (GUID: %u) Level: %d",
-            GetAccountId(), GetRemoteAddress().c_str(), _player->GetName().c_str(), _player->GetGUID().GetCounter(), _player->getLevel());
+        TC_LOG_INFO("entities.player.character", "Account: %d (IP: %s) Logout Character:[%s] %s Level: %d",
+            GetAccountId(), GetRemoteAddress().c_str(), _player->GetName().c_str(), _player->GetGUID().ToString().c_str(), _player->GetLevel());
         if (Map* _map = _player->FindMap())
             _map->RemovePlayerFromMap(_player, true);
 
@@ -568,12 +596,11 @@ void WorldSession::LogoutPlayer(bool save)
 
         //! Send the 'logout complete' packet to the client
         //! Client will respond by sending 3x CMSG_CANCEL_TRADE, which we currently dont handle
-        WorldPacket data(SMSG_LOGOUT_COMPLETE, 0);
-        SendPacket(&data);
+        SendPacket(WorldPackets::Character::LogoutComplete().Write());
         TC_LOG_DEBUG("network", "SESSION: Sent SMSG_LOGOUT_COMPLETE Message");
 
         //! Since each account can only have one online character at any given time, ensure all characters for active account are marked as offline
-        PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ACCOUNT_ONLINE);
+        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ACCOUNT_ONLINE);
         stmt->setUInt32(0, GetAccountId());
         CharacterDatabase.Execute(stmt);
     }
@@ -581,17 +608,48 @@ void WorldSession::LogoutPlayer(bool save)
     m_playerLogout = false;
     m_playerSave = false;
     m_playerRecentlyLogout = true;
-    LogoutRequest(0);
+    SetLogoutStartTime(0);
 }
 
 /// Kick a player out of the World
-void WorldSession::KickPlayer()
+void WorldSession::KickPlayer(std::string const& reason)
 {
     if (m_Socket)
     {
+        TC_LOG_INFO("network.kick", "Account: %u Character: '%s' %s kicked with reason: %s", GetAccountId(), _player ? _player->GetName().c_str() : "<none>",
+            _player ? _player->GetGUID().ToString().c_str() : "", reason.c_str());
+
         m_Socket->CloseSocket();
         forceExit = true;
     }
+}
+
+bool WorldSession::ValidateHyperlinksAndMaybeKick(std::string const& str)
+{
+    if (Trinity::Hyperlinks::CheckAllLinks(str))
+        return true;
+
+    TC_LOG_ERROR("network", "Player %s%s sent a message with an invalid link:\n%s", GetPlayer()->GetName().c_str(),
+        GetPlayer()->GetGUID().ToString().c_str(), str.c_str());
+
+    if (sWorld->getIntConfig(CONFIG_CHAT_STRICT_LINK_CHECKING_KICK))
+        KickPlayer("WorldSession::ValidateHyperlinksAndMaybeKick Invalid chat link");
+
+    return false;
+}
+
+bool WorldSession::DisallowHyperlinksAndMaybeKick(std::string const& str)
+{
+    if (str.find('|') == std::string::npos)
+        return true;
+
+    TC_LOG_ERROR("network", "Player %s %s sent a message which illegally contained a hyperlink:\n%s", GetPlayer()->GetName().c_str(),
+                 GetPlayer()->GetGUID().ToString().c_str(), str.c_str());
+
+    if (sWorld->getIntConfig(CONFIG_CHAT_STRICT_LINK_CHECKING_KICK))
+        KickPlayer("WorldSession::DisallowHyperlinksAndMaybeKick Illegal chat link");
+
+    return false;
 }
 
 void WorldSession::SendNotification(const char *format, ...)
@@ -629,6 +687,11 @@ void WorldSession::SendNotification(uint32 string_id, ...)
     }
 }
 
+bool WorldSession::CanSpeak() const
+{
+    return m_muteTime <= GameTime::GetGameTime();
+}
+
 char const* WorldSession::GetTrinityString(uint32 entry) const
 {
     return sObjectMgr->GetTrinityString(entry, GetSessionDbLocaleIndex());
@@ -637,9 +700,14 @@ char const* WorldSession::GetTrinityString(uint32 entry) const
 void WorldSession::ResetTimeOutTime(bool onlyActive)
 {
     if (GetPlayer())
-        m_timeOutTime = int32(sWorld->getIntConfig(CONFIG_SOCKET_TIMEOUTTIME_ACTIVE));
+        m_timeOutTime = GameTime::GetGameTime() + time_t(sWorld->getIntConfig(CONFIG_SOCKET_TIMEOUTTIME_ACTIVE));
     else if (!onlyActive)
-        m_timeOutTime = int32(sWorld->getIntConfig(CONFIG_SOCKET_TIMEOUTTIME));
+        m_timeOutTime = GameTime::GetGameTime() + time_t(sWorld->getIntConfig(CONFIG_SOCKET_TIMEOUTTIME));
+}
+
+bool WorldSession::IsConnectionIdle() const
+{
+    return m_timeOutTime < GameTime::GetGameTime() && !m_inQueue;
 }
 
 void WorldSession::Handle_NULL(WorldPacket& null)
@@ -705,7 +773,7 @@ void WorldSession::LoadAccountData(PreparedQueryResult result, uint32 mask)
 
         if ((mask & (1 << type)) == 0)
         {
-            TC_LOG_ERROR("misc", "Table `%s` have non appropriate for table  account data type (%u), ignore.",
+            TC_LOG_ERROR("misc", "Table `%s` have non appropriate for table account data type (%u), ignore.",
                 mask == GLOBAL_CACHE_MASK ? "account_data" : "character_account_data", type);
             continue;
         }
@@ -735,7 +803,7 @@ void WorldSession::SetAccountData(AccountDataType type, time_t tm, std::string c
         index = CHAR_REP_PLAYER_ACCOUNT_DATA;
     }
 
-    PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(index);
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(index);
     stmt->setUInt32(0, id);
     stmt->setUInt8 (1, type);
     stmt->setUInt32(2, uint32(tm));
@@ -749,7 +817,7 @@ void WorldSession::SetAccountData(AccountDataType type, time_t tm, std::string c
 void WorldSession::SendAccountDataTimes(uint32 mask)
 {
     WorldPacket data(SMSG_ACCOUNT_DATA_TIMES, 4 + 1 + 4 + NUM_ACCOUNT_DATA_TYPES * 4);
-    data << uint32(time(nullptr));                             // Server time
+    data << uint32(GameTime::GetGameTime());                             // Server time
     data << uint8(1);
     data << uint32(mask);                                   // type mask
     for (uint32 i = 0; i < NUM_ACCOUNT_DATA_TYPES; ++i)
@@ -780,13 +848,13 @@ void WorldSession::SendTutorialsData()
     SendPacket(&data);
 }
 
-void WorldSession::SaveTutorialsData(SQLTransaction &trans)
+void WorldSession::SaveTutorialsData(CharacterDatabaseTransaction &trans)
 {
     if (!(m_TutorialsChanged & TUTORIALS_FLAG_CHANGED))
         return;
 
     bool const hasTutorialsInDB = (m_TutorialsChanged & TUTORIALS_FLAG_LOADED_FROM_DB) != 0;
-    PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(hasTutorialsInDB ? CHAR_UPD_TUTORIALS : CHAR_INS_TUTORIALS);
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(hasTutorialsInDB ? CHAR_UPD_TUTORIALS : CHAR_INS_TUTORIALS);
     for (uint8 i = 0; i < MAX_ACCOUNT_TUTORIAL_VALUES; ++i)
         stmt->setUInt32(i, m_Tutorials[i]);
     stmt->setUInt32(MAX_ACCOUNT_TUTORIAL_VALUES, GetAccountId());
@@ -841,8 +909,8 @@ void WorldSession::ReadMovementInfo(WorldPacket &data, MovementInfo* mi)
         if (check) \
         { \
             TC_LOG_DEBUG("entities.unit", "WorldSession::ReadMovementInfo: Violation of MovementFlags found (%s). " \
-                "MovementFlags: %u, MovementFlags2: %u for player GUID: %u. Mask %u will be removed.", \
-                STRINGIZE(check), mi->GetMovementFlags(), mi->GetExtraMovementFlags(), GetPlayer()->GetGUID().GetCounter(), maskToRemove); \
+                "MovementFlags: %u, MovementFlags2: %u for player %s. Mask %u will be removed.", \
+                STRINGIZE(check), mi->GetMovementFlags(), mi->GetExtraMovementFlags(), GetPlayer()->GetGUID().ToString().c_str(), maskToRemove); \
             mi->RemoveMovementFlag((maskToRemove)); \
         } \
     }
@@ -903,8 +971,8 @@ void WorldSession::ReadMovementInfo(WorldPacket &data, MovementInfo* mi)
     */
 
     REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_FLYING | MOVEMENTFLAG_CAN_FLY) && GetSecurity() == SEC_PLAYER &&
-        !GetPlayer()->m_unitMovedByMe->HasAuraType(SPELL_AURA_FLY) &&
-        !GetPlayer()->m_unitMovedByMe->HasAuraType(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED),
+        !GetPlayer()->GetUnitBeingMoved()->HasAuraType(SPELL_AURA_FLY) &&
+        !GetPlayer()->GetUnitBeingMoved()->HasAuraType(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED),
         MOVEMENTFLAG_FLYING | MOVEMENTFLAG_CAN_FLY);
 
     //! Cannot fly and fall at the same time
@@ -979,48 +1047,60 @@ void WorldSession::ReadAddonsInfo(ByteBuffer &data)
 
     if (uncompress(addonInfo.contents(), &uSize, data.contents() + pos, data.size() - pos) == Z_OK)
     {
-        uint32 addonsCount;
-        addonInfo >> addonsCount;                         // addons count
-
-        for (uint32 i = 0; i < addonsCount; ++i)
+        try
         {
-            std::string addonName;
-            uint8 enabled;
-            uint32 crc, unk1;
+            uint32 addonsCount = addonInfo.read<uint32>();
+            if (addonsCount > Addons::MaxSecureAddons)
+                addonsCount = Addons::MaxSecureAddons;
 
-            // check next addon data format correctness
-            if (addonInfo.rpos() + 1 > addonInfo.size())
-                return;
+            _addons.SecureAddons.resize(addonsCount);
 
-            addonInfo >> addonName;
-
-            addonInfo >> enabled >> crc >> unk1;
-
-            TC_LOG_DEBUG("addon", "AddOn: %s (CRC: 0x%x) - enabled: 0x%x - Unknown2: 0x%x", addonName.c_str(), crc, enabled, unk1);
-
-            AddonInfo addon(addonName, enabled, crc, 2, true);
-
-            SavedAddon const* savedAddon = AddonMgr::GetAddonInfo(addonName);
-            if (savedAddon)
+            for (uint32 i = 0; i < addonsCount; ++i)
             {
-                if (addon.CRC != savedAddon->CRC)
-                    TC_LOG_WARN("addon", " Addon: %s: modified (CRC: 0x%x) - accountID %d)", addon.Name.c_str(), savedAddon->CRC, GetAccountId());
+                Addons::SecureAddonInfo& addon = _addons.SecureAddons[i];
+                uint32 publicKeyCrc, urlCrc;
+
+                addonInfo >> addon.Name >> addon.HasKey;
+                addonInfo >> publicKeyCrc >> urlCrc;
+
+                TC_LOG_DEBUG("addon", "AddOn: %s (CRC: 0x%x) - has key: 0x%x - URL CRC: 0x%x", addon.Name.c_str(), publicKeyCrc, addon.HasKey, urlCrc);
+
+                SavedAddon const* savedAddon = AddonMgr::GetAddonInfo(addon.Name);
+                if (savedAddon)
+                {
+                    if (publicKeyCrc != savedAddon->CRC)
+                    {
+                        if (addon.HasKey)
+                        {
+                            addon.Status = Addons::SecureAddonInfo::BANNED;
+                            TC_LOG_WARN("addon", " Addon: %s: modified (CRC: 0x%x) - accountID %d)", addon.Name.c_str(), savedAddon->CRC, GetAccountId());
+                        }
+                        else
+                            addon.Status = Addons::SecureAddonInfo::SECURE_HIDDEN;
+                    }
+                    else
+                    {
+                        addon.Status = Addons::SecureAddonInfo::SECURE_HIDDEN;
+                        TC_LOG_DEBUG("addon", "Addon: %s: validated (CRC: 0x%x) - accountID %d", addon.Name.c_str(), savedAddon->CRC, GetAccountId());
+                    }
+                }
                 else
-                    TC_LOG_DEBUG("addon", "Addon: %s: validated (CRC: 0x%x) - accountID %d", addon.Name.c_str(), savedAddon->CRC, GetAccountId());
-            }
-            else
-            {
-                AddonMgr::SaveAddon(addon);
-                TC_LOG_WARN("addon", "Addon: %s: unknown (CRC: 0x%x) - accountId %d (storing addon name and checksum to database)", addon.Name.c_str(), addon.CRC, GetAccountId());
+                {
+                    addon.Status = Addons::SecureAddonInfo::BANNED;
+                    TC_LOG_WARN("addon", "Addon: %s: not registered as known secure addon - accountId %d", addon.Name.c_str(), GetAccountId());
+                }
             }
 
-            /// @todo Find out when to not use CRC/pubkey, and other possible states.
-            m_addonsList.push_back(addon);
+            addonInfo.rpos(addonInfo.size() - 4);
+
+            uint32 lastBannedAddOnTimestamp;
+            addonInfo >> lastBannedAddOnTimestamp;
+            TC_LOG_DEBUG("addon", "AddOn: Newest banned addon timestamp: %u", lastBannedAddOnTimestamp);
         }
-
-        uint32 currentTime;
-        addonInfo >> currentTime;
-        TC_LOG_DEBUG("addon", "AddOn: CurrentTime: %u", currentTime);
+        catch (ByteBufferException const& e)
+        {
+            TC_LOG_DEBUG("addon", "AddOn: Addon packet read error! %s", e.what());
+        }
     }
     else
         TC_LOG_DEBUG("addon", "AddOn: Addon packet uncompress error!");
@@ -1028,7 +1108,7 @@ void WorldSession::ReadAddonsInfo(ByteBuffer &data)
 
 void WorldSession::SendAddonsInfo()
 {
-    uint8 addonPublicKey[256] =
+    uint8 constexpr addonPublicKey[256] =
     {
         0xC3, 0x5B, 0x50, 0x84, 0xB9, 0x3E, 0x32, 0x42, 0x8C, 0xD0, 0xC7, 0x48, 0xFA, 0x0E, 0x5D, 0x54,
         0x5A, 0xA3, 0x0E, 0x14, 0xBA, 0x9E, 0x0D, 0xB9, 0x5D, 0x8B, 0xEE, 0xB6, 0x84, 0x93, 0x45, 0x75,
@@ -1050,37 +1130,45 @@ void WorldSession::SendAddonsInfo()
 
     WorldPacket data(SMSG_ADDON_INFO, 4);
 
-    for (AddonsList::iterator itr = m_addonsList.begin(); itr != m_addonsList.end(); ++itr)
+    for (Addons::SecureAddonInfo const& addonInfo : _addons.SecureAddons)
     {
-        data << uint8(itr->State);
+        // fresh install, not yet created Interface\Addons\addon_name\addon_name.pub files
+        uint8 infoProvided = addonInfo.Status != Addons::SecureAddonInfo::BANNED || addonInfo.HasKey;
 
-        uint8 crcpub = itr->UsePublicKeyOrCRC;
-        data << uint8(crcpub);
-        if (crcpub)
+        data << uint8(addonInfo.Status);                            // Status
+        data << uint8(infoProvided);                                // InfoProvided
+        if (infoProvided)
         {
-            uint8 usepk = (itr->CRC != STANDARD_ADDON_CRC); // If addon is Standard addon CRC
-            data << uint8(usepk);
-            if (usepk)                                      // if CRC is wrong, add public key (client need it)
+            data << uint8(!addonInfo.HasKey);                       // KeyProvided
+            if (!addonInfo.HasKey)                                  // if CRC is wrong, add public key (client need it)
             {
-                TC_LOG_DEBUG("addon", "AddOn: %s: CRC checksum mismatch: got 0x%x - expected 0x%x - sending pubkey to accountID %d",
-                    itr->Name.c_str(), itr->CRC, STANDARD_ADDON_CRC, GetAccountId());
+                TC_LOG_DEBUG("addon", "AddOn: %s: key missing: sending pubkey to accountID %d", addonInfo.Name.c_str(), GetAccountId());
 
                 data.append(addonPublicKey, sizeof(addonPublicKey));
             }
 
-            data << uint32(0);                              /// @todo Find out the meaning of this.
+            data << uint32(0);                                      // Revision (from .toc), can be used by SECURE_VISIBLE to display "update available" in client addon controls
         }
 
-        data << uint8(0);       // uses URL
+        data << uint8(0);                                           // UrlProvided
         //if (usesURL)
-        //    data << uint8(0); // URL
+        //    data << uint8(0);                                     // URL, client will create internet shortcut with this destination in Interface\Addons\addon_name\addon_name.url
     }
 
-    m_addonsList.clear();
-
+    // Send new uncached banned addons
     AddonMgr::BannedAddonList const* bannedAddons = AddonMgr::GetBannedAddons();
-    data << uint32(bannedAddons->size());
-    for (AddonMgr::BannedAddonList::const_iterator itr = bannedAddons->begin(); itr != bannedAddons->end(); ++itr)
+    uint32 lastBannedAddOnTimestamp = _addons.LastBannedAddOnTimestamp;
+    if (!bannedAddons->empty() && bannedAddons->back().Timestamp < lastBannedAddOnTimestamp) // cheating attempt OR connecting to a realm with different configured banned addons, send everything
+        lastBannedAddOnTimestamp = 0;
+
+    std::size_t sizePos = data.wpos();
+    uint32 bannedAddonCount = 0;
+    data << uint32(0);
+    auto itr = std::lower_bound(bannedAddons->begin(), bannedAddons->end(), _addons.LastBannedAddOnTimestamp, [](BannedAddon const& bannedAddon, uint32 timestamp)
+    {
+        return bannedAddon.Timestamp < timestamp;
+    });
+    for (; itr != bannedAddons->end(); ++itr)
     {
         data << uint32(itr->Id);
         data.append(itr->NameMD5, sizeof(itr->NameMD5));
@@ -1088,6 +1176,8 @@ void WorldSession::SendAddonsInfo()
         data << uint32(itr->Timestamp);
         data << uint32(1);  // IsBanned
     }
+
+    data.put<uint32>(sizePos, bannedAddonCount);
 
     SendPacket(&data);
 }
@@ -1106,7 +1196,7 @@ void WorldSession::ProcessQueryCallbacks()
     _queryProcessor.ProcessReadyQueries();
 
     if (_realmAccountLoginCallback.valid() && _realmAccountLoginCallback.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
-        InitializeSessionCallback(_realmAccountLoginCallback.get());
+        InitializeSessionCallback(static_cast<CharacterDatabaseQueryHolder*>(_realmAccountLoginCallback.get()));
 
     //! HandlePlayerLoginOpcode
     if (_charLoginCallback.valid() && _charLoginCallback.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
@@ -1149,7 +1239,7 @@ QueryCallback WorldSession::LoadPermissionsAsync()
     return _RBACData->LoadFromDBAsync();
 }
 
-class AccountInfoQueryHolderPerRealm : public SQLQueryHolder
+class AccountInfoQueryHolderPerRealm : public CharacterDatabaseQueryHolder
 {
 public:
     enum
@@ -1166,7 +1256,7 @@ public:
     {
         bool ok = true;
 
-        PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_ACCOUNT_DATA);
+        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_ACCOUNT_DATA);
         stmt->setUInt32(0, accountId);
         ok = SetPreparedQuery(GLOBAL_ACCOUNT_DATA, stmt) && ok;
 
@@ -1191,7 +1281,7 @@ void WorldSession::InitializeSession()
     _realmAccountLoginCallback = CharacterDatabase.DelayQueryHolder(realmHolder);
 }
 
-void WorldSession::InitializeSessionCallback(SQLQueryHolder* realmHolder)
+void WorldSession::InitializeSessionCallback(CharacterDatabaseQueryHolder* realmHolder)
 {
     LoadAccountData(realmHolder->GetPreparedResult(AccountInfoQueryHolderPerRealm::GLOBAL_ACCOUNT_DATA), GLOBAL_CACHE_MASK);
     LoadTutorialsData(realmHolder->GetPreparedResult(AccountInfoQueryHolderPerRealm::TUTORIALS));
@@ -1266,7 +1356,7 @@ bool WorldSession::DosProtection::EvaluateOpcode(WorldPacket& p, time_t time) co
         case POLICY_KICK:
         {
             TC_LOG_WARN("network", "AntiDOS: Player kicked!");
-            Session->KickPlayer();
+            Session->KickPlayer("WorldSession::DosProtection::EvaluateOpcode AntiDOS");
             return false;
         }
         case POLICY_BAN:
@@ -1282,7 +1372,7 @@ bool WorldSession::DosProtection::EvaluateOpcode(WorldPacket& p, time_t time) co
             }
             sWorld->BanAccount(bm, nameOrIp, duration, "DOS (Packet Flooding/Spoofing", "Server: AutoDOS");
             TC_LOG_WARN("network", "AntiDOS: Player automatically banned for %u seconds.", duration);
-            Session->KickPlayer();
+            Session->KickPlayer("WorldSession::DosProtection::EvaluateOpcode AntiDOS");
             return false;
         }
         default: // invalid policy
@@ -1302,13 +1392,13 @@ uint32 WorldSession::DosProtection::GetMaxPacketCounterAllowed(uint16 opcode) co
         case CMSG_NAME_QUERY:                           //   0               1
         case CMSG_PET_NAME_QUERY:                       //   0               1
         case CMSG_NPC_TEXT_QUERY:                       //   0               1
-        case CMSG_ATTACKSTOP:                           //   0               1
+        case CMSG_ATTACK_STOP:                          //   0               1
         case CMSG_QUERY_QUESTS_COMPLETED:               //   0               1
         case CMSG_QUERY_TIME:                           //   0               1
         case CMSG_CORPSE_MAP_POSITION_QUERY:            //   0               1
         case CMSG_MOVE_TIME_SKIPPED:                    //   0               1
         case MSG_QUERY_NEXT_MAIL_TIME:                  //   0               1
-        case CMSG_SETSHEATHED:                          //   0               1
+        case CMSG_SET_SHEATHED:                         //   0               1
         case MSG_RAID_TARGET_UPDATE:                    //   0               1
         case CMSG_PLAYER_LOGOUT:                        //   0               1
         case CMSG_LOGOUT_REQUEST:                       //   0               1
@@ -1378,6 +1468,14 @@ uint32 WorldSession::DosProtection::GetMaxPacketCounterAllowed(uint16 opcode) co
         case CMSG_TIME_SYNC_RESP:                       // not profiled
         case CMSG_TRAINER_BUY_SPELL:                    // not profiled
         case CMSG_FORCE_RUN_SPEED_CHANGE_ACK:           // not profiled
+        case CMSG_FORCE_SWIM_SPEED_CHANGE_ACK:          // not profiled
+        case CMSG_FORCE_SWIM_BACK_SPEED_CHANGE_ACK:     // not profiled
+        case CMSG_FORCE_RUN_BACK_SPEED_CHANGE_ACK:      // not profiled
+        case CMSG_FORCE_FLIGHT_SPEED_CHANGE_ACK:        // not profiled
+        case CMSG_FORCE_FLIGHT_BACK_SPEED_CHANGE_ACK:   // not profiled
+        case CMSG_FORCE_WALK_SPEED_CHANGE_ACK:          // not profiled
+        case CMSG_FORCE_TURN_RATE_CHANGE_ACK:           // not profiled
+        case CMSG_FORCE_PITCH_RATE_CHANGE_ACK:          // not profiled
         {
             // "0" is a magic number meaning there's no limit for the opcode.
             // All the opcodes above must cause little CPU usage and no sync/async database queries at all
@@ -1446,7 +1544,6 @@ uint32 WorldSession::DosProtection::GetMaxPacketCounterAllowed(uint16 opcode) co
         case CMSG_GROUP_SET_LEADER:                     //   1               2         1 async db query
         case CMSG_GROUP_RAID_CONVERT:                   //   1               5         1 async db query
         case CMSG_GROUP_ASSISTANT_LEADER:               //   1               2         1 async db query
-        case CMSG_CALENDAR_ADD_EVENT:                   //  21              10         2 async db query
         case CMSG_PETITION_BUY:                         // not profiled                1 sync 1 async db queries
         case CMSG_CHANGE_SEATS_ON_CONTROLLED_VEHICLE:   // not profiled
         case CMSG_REQUEST_VEHICLE_PREV_SEAT:            // not profiled
@@ -1469,6 +1566,7 @@ uint32 WorldSession::DosProtection::GetMaxPacketCounterAllowed(uint16 opcode) co
         case CMSG_GMTICKET_UPDATETEXT:                  //   0              15         1 async db query
         case CMSG_GMTICKET_DELETETICKET:                //   1              25         1 async db query
         case CMSG_GMRESPONSE_RESOLVE:                   //   1              25         1 async db query
+        case CMSG_CALENDAR_ADD_EVENT:                   //  21              10         2 async db query
         case CMSG_CALENDAR_UPDATE_EVENT:                // not profiled
         case CMSG_CALENDAR_REMOVE_EVENT:                // not profiled
         case CMSG_CALENDAR_COPY_EVENT:                  // not profiled
@@ -1530,4 +1628,23 @@ uint32 WorldSession::DosProtection::GetMaxPacketCounterAllowed(uint16 opcode) co
 
 WorldSession::DosProtection::DosProtection(WorldSession* s) : Session(s), _policy((Policy)sWorld->getIntConfig(CONFIG_PACKET_SPOOF_POLICY))
 {
+}
+
+void WorldSession::ResetTimeSync()
+{
+    _timeSyncNextCounter = 0;
+    _pendingTimeSyncRequests.clear();
+}
+
+void WorldSession::SendTimeSync()
+{
+    WorldPacket data(SMSG_TIME_SYNC_REQ, 4);
+    data << uint32(_timeSyncNextCounter);
+    SendPacket(&data);
+
+    _pendingTimeSyncRequests[_timeSyncNextCounter] = getMSTime();
+
+    // Schedule next sync in 10 sec (except for the 2 first packets, which are spaced by only 5s)
+    _timeSyncTimer = _timeSyncNextCounter == 0 ? 5000 : 10000;
+    _timeSyncNextCounter++;
 }

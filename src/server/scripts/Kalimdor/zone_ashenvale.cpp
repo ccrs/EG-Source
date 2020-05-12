@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -46,8 +45,12 @@ enum RuulSnowhoof
     NPC_THISTLEFUR_TOTEMIC      = 3922,
     NPC_THISTLEFUR_PATHFINDER   = 3926,
     QUEST_FREEDOM_TO_RUUL       = 6482,
-    GO_CAGE                     = 178147
+    GO_CAGE                     = 178147,
+    RUUL_SHAPECHANGE            = 20514,
+    SAY_FINISH                  = 0
 };
+
+
 
 Position const RuulSnowhoofSummonsCoord[6] =
 {
@@ -64,9 +67,9 @@ class npc_ruul_snowhoof : public CreatureScript
 public:
     npc_ruul_snowhoof() : CreatureScript("npc_ruul_snowhoof") { }
 
-    struct npc_ruul_snowhoofAI : public npc_escortAI
+    struct npc_ruul_snowhoofAI : public EscortAI
     {
-        npc_ruul_snowhoofAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_ruul_snowhoofAI(Creature* creature) : EscortAI(creature) { }
 
         void Reset() override
         {
@@ -74,7 +77,7 @@ public:
                 Cage->SetGoState(GO_STATE_READY);
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void JustSummoned(Creature* summoned) override
         {
@@ -86,11 +89,11 @@ public:
             if (quest->GetQuestId() == QUEST_FREEDOM_TO_RUUL)
             {
                 me->SetFaction(FACTION_ESCORTEE_N_NEUTRAL_PASSIVE);
-                npc_escortAI::Start(true, false, player->GetGUID());
+                EscortAI::Start(true, false, player->GetGUID());
             }
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             Player* player = GetPlayerForEscort();
             if (!player)
@@ -113,7 +116,10 @@ public:
                     me->SummonCreature(NPC_THISTLEFUR_URSA, RuulSnowhoofSummonsCoord[4], TEMPSUMMON_DEAD_DESPAWN, 60000);
                     me->SummonCreature(NPC_THISTLEFUR_PATHFINDER, RuulSnowhoofSummonsCoord[5], TEMPSUMMON_DEAD_DESPAWN, 60000);
                     break;
-                case 21:
+                case 27:
+                    me->SetFaction(me->GetCreatureTemplate()->faction);
+                    me->RemoveAurasDueToSpell(RUUL_SHAPECHANGE);
+                    Talk(SAY_FINISH, player);
                     player->GroupEventHappens(QUEST_FREEDOM_TO_RUUL, me);
                     break;
             }
@@ -121,7 +127,14 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
+        }
+
+        void EnterEvadeMode(EvadeReason why) override
+        {
+            if (!me->HasAura(RUUL_SHAPECHANGE))
+                me->AddAura(RUUL_SHAPECHANGE, me);
+            ScriptedAI::EnterEvadeMode(why);
         }
     };
 
@@ -181,9 +194,9 @@ class npc_muglash : public CreatureScript
 public:
     npc_muglash() : CreatureScript("npc_muglash") { }
 
-    struct npc_muglashAI : public npc_escortAI
+    struct npc_muglashAI : public EscortAI
     {
-        npc_muglashAI(Creature* creature) : npc_escortAI(creature)
+        npc_muglashAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
         }
@@ -200,7 +213,7 @@ public:
             Initialize();
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
             if (Player* player = GetPlayerForEscort())
                 if (HasEscortState(STATE_ESCORT_PAUSED))
@@ -229,11 +242,11 @@ public:
             {
                 Talk(SAY_MUG_START1);
                 me->SetFaction(FACTION_ESCORTEE_N_NEUTRAL_PASSIVE);
-                npc_escortAI::Start(true, false, player->GetGUID());
+                EscortAI::Start(true, false, player->GetGUID());
             }
         }
 
-            void WaypointReached(uint32 waypointId) override
+            void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
             {
                 if (Player* player = GetPlayerForEscort())
                 {
@@ -291,7 +304,7 @@ public:
 
             void UpdateAI(uint32 diff) override
             {
-                npc_escortAI::UpdateAI(diff);
+                EscortAI::UpdateAI(diff);
 
                 if (!me->GetVictim())
                 {

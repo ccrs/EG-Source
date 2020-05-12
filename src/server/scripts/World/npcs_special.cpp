@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -43,57 +42,53 @@
 # npc_air_force_bots
 #########*/
 
-enum SpawnType
+enum AirForceBots
 {
-    SPAWNTYPE_TRIPWIRE_ROOFTOP,                             // no warning, summon Creature at smaller range
-    SPAWNTYPE_ALARMBOT,                                     // cast guards mark and summon npc - if player shows up with that buff duration < 5 seconds attack
+    TRIPWIRE, // do not attack flying players, smaller range
+    ALARMBOT, // attack flying players, casts guard's mark
+
+    SPELL_GUARDS_MARK = 38067
 };
 
-struct SpawnAssociation
+float constexpr RANGE_TRIPWIRE =  15.0f;
+float constexpr RANGE_ALARMBOT = 100.0f;
+
+struct AirForceSpawn
 {
-    uint32 thisCreatureEntry;
-    uint32 spawnedCreatureEntry;
-    SpawnType spawnType;
+    uint32 myEntry;
+    uint32 otherEntry;
+    AirForceBots type;
 };
 
-enum AirFoceBots
+AirForceSpawn constexpr airforceSpawns[] =
 {
-    SPELL_GUARDS_MARK               = 38067,
-    AURA_DURATION_TIME_LEFT         = 5000
-};
-
-float const RANGE_TRIPWIRE          = 15.0f;
-float const RANGE_GUARDS_MARK       = 50.0f;
-
-SpawnAssociation spawnAssociations[] =
-{
-    {2614,  15241, SPAWNTYPE_ALARMBOT},                     //Air Force Alarm Bot (Alliance)
-    {2615,  15242, SPAWNTYPE_ALARMBOT},                     //Air Force Alarm Bot (Horde)
-    {21974, 21976, SPAWNTYPE_ALARMBOT},                     //Air Force Alarm Bot (Area 52)
-    {21993, 15242, SPAWNTYPE_ALARMBOT},                     //Air Force Guard Post (Horde - Bat Rider)
-    {21996, 15241, SPAWNTYPE_ALARMBOT},                     //Air Force Guard Post (Alliance - Gryphon)
-    {21997, 21976, SPAWNTYPE_ALARMBOT},                     //Air Force Guard Post (Goblin - Area 52 - Zeppelin)
-    {21999, 15241, SPAWNTYPE_TRIPWIRE_ROOFTOP},             //Air Force Trip Wire - Rooftop (Alliance)
-    {22001, 15242, SPAWNTYPE_TRIPWIRE_ROOFTOP},             //Air Force Trip Wire - Rooftop (Horde)
-    {22002, 15242, SPAWNTYPE_TRIPWIRE_ROOFTOP},             //Air Force Trip Wire - Ground (Horde)
-    {22003, 15241, SPAWNTYPE_TRIPWIRE_ROOFTOP},             //Air Force Trip Wire - Ground (Alliance)
-    {22063, 21976, SPAWNTYPE_TRIPWIRE_ROOFTOP},             //Air Force Trip Wire - Rooftop (Goblin - Area 52)
-    {22065, 22064, SPAWNTYPE_ALARMBOT},                     //Air Force Guard Post (Ethereal - Stormspire)
-    {22066, 22067, SPAWNTYPE_ALARMBOT},                     //Air Force Guard Post (Scryer - Dragonhawk)
-    {22068, 22064, SPAWNTYPE_TRIPWIRE_ROOFTOP},             //Air Force Trip Wire - Rooftop (Ethereal - Stormspire)
-    {22069, 22064, SPAWNTYPE_ALARMBOT},                     //Air Force Alarm Bot (Stormspire)
-    {22070, 22067, SPAWNTYPE_TRIPWIRE_ROOFTOP},             //Air Force Trip Wire - Rooftop (Scryer)
-    {22071, 22067, SPAWNTYPE_ALARMBOT},                     //Air Force Alarm Bot (Scryer)
-    {22078, 22077, SPAWNTYPE_ALARMBOT},                     //Air Force Alarm Bot (Aldor)
-    {22079, 22077, SPAWNTYPE_ALARMBOT},                     //Air Force Guard Post (Aldor - Gryphon)
-    {22080, 22077, SPAWNTYPE_TRIPWIRE_ROOFTOP},             //Air Force Trip Wire - Rooftop (Aldor)
-    {22086, 22085, SPAWNTYPE_ALARMBOT},                     //Air Force Alarm Bot (Sporeggar)
-    {22087, 22085, SPAWNTYPE_ALARMBOT},                     //Air Force Guard Post (Sporeggar - Spore Bat)
-    {22088, 22085, SPAWNTYPE_TRIPWIRE_ROOFTOP},             //Air Force Trip Wire - Rooftop (Sporeggar)
-    {22090, 22089, SPAWNTYPE_ALARMBOT},                     //Air Force Guard Post (Toshley's Station - Flying Machine)
-    {22124, 22122, SPAWNTYPE_ALARMBOT},                     //Air Force Alarm Bot (Cenarion)
-    {22125, 22122, SPAWNTYPE_ALARMBOT},                     //Air Force Guard Post (Cenarion - Stormcrow)
-    {22126, 22122, SPAWNTYPE_ALARMBOT}                      //Air Force Trip Wire - Rooftop (Cenarion Expedition)
+    {2614,  15241, ALARMBOT}, // Air Force Alarm Bot (Alliance)
+    {2615,  15242, ALARMBOT}, // Air Force Alarm Bot (Horde)
+    {21974, 21976, ALARMBOT}, // Air Force Alarm Bot (Area 52)
+    {21993, 15242, ALARMBOT}, // Air Force Guard Post (Horde - Bat Rider)
+    {21996, 15241, ALARMBOT}, // Air Force Guard Post (Alliance - Gryphon)
+    {21997, 21976, ALARMBOT}, // Air Force Guard Post (Goblin - Area 52 - Zeppelin)
+    {21999, 15241, TRIPWIRE}, // Air Force Trip Wire - Rooftop (Alliance)
+    {22001, 15242, TRIPWIRE}, // Air Force Trip Wire - Rooftop (Horde)
+    {22002, 15242, TRIPWIRE}, // Air Force Trip Wire - Ground (Horde)
+    {22003, 15241, TRIPWIRE}, // Air Force Trip Wire - Ground (Alliance)
+    {22063, 21976, TRIPWIRE}, // Air Force Trip Wire - Rooftop (Goblin - Area 52)
+    {22065, 22064, ALARMBOT}, // Air Force Guard Post (Ethereal - Stormspire)
+    {22066, 22067, ALARMBOT}, // Air Force Guard Post (Scryer - Dragonhawk)
+    {22068, 22064, TRIPWIRE}, // Air Force Trip Wire - Rooftop (Ethereal - Stormspire)
+    {22069, 22064, ALARMBOT}, // Air Force Alarm Bot (Stormspire)
+    {22070, 22067, TRIPWIRE}, // Air Force Trip Wire - Rooftop (Scryer)
+    {22071, 22067, ALARMBOT}, // Air Force Alarm Bot (Scryer)
+    {22078, 22077, ALARMBOT}, // Air Force Alarm Bot (Aldor)
+    {22079, 22077, ALARMBOT}, // Air Force Guard Post (Aldor - Gryphon)
+    {22080, 22077, TRIPWIRE}, // Air Force Trip Wire - Rooftop (Aldor)
+    {22086, 22085, ALARMBOT}, // Air Force Alarm Bot (Sporeggar)
+    {22087, 22085, ALARMBOT}, // Air Force Guard Post (Sporeggar - Spore Bat)
+    {22088, 22085, TRIPWIRE}, // Air Force Trip Wire - Rooftop (Sporeggar)
+    {22090, 22089, ALARMBOT}, // Air Force Guard Post (Toshley's Station - Flying Machine)
+    {22124, 22122, ALARMBOT}, // Air Force Alarm Bot (Cenarion)
+    {22125, 22122, ALARMBOT}, // Air Force Guard Post (Cenarion - Stormcrow)
+    {22126, 22122, ALARMBOT}  // Air Force Trip Wire - Rooftop (Cenarion Expedition)
 };
 
 class npc_air_force_bots : public CreatureScript
@@ -101,144 +96,95 @@ class npc_air_force_bots : public CreatureScript
 public:
     npc_air_force_bots() : CreatureScript("npc_air_force_bots") { }
 
-    struct npc_air_force_botsAI : public ScriptedAI
+    struct npc_air_force_botsAI : public NullCreatureAI
     {
-        npc_air_force_botsAI(Creature* creature) : ScriptedAI(creature)
+        static AirForceSpawn const& FindSpawnFor(uint32 entry)
         {
-            SpawnAssoc = nullptr;
-            SpawnedGUID.Clear();
-
-            // find the correct spawnhandling
-            static uint8 constexpr const EntryCount = uint8(std::extent<decltype(spawnAssociations)>::value);
-
-            for (uint8 i = 0; i < EntryCount; ++i)
+            for (AirForceSpawn const& spawn : airforceSpawns)
             {
-                if (spawnAssociations[i].thisCreatureEntry == creature->GetEntry())
+                if (spawn.myEntry == entry)
                 {
-                    SpawnAssoc = &spawnAssociations[i];
-                    break;
+                    ASSERT_NODEBUGINFO(sObjectMgr->GetCreatureTemplate(spawn.otherEntry), "Invalid creature entry %u in 'npc_air_force_bots' script", spawn.otherEntry);
+                    return spawn;
                 }
             }
-
-            if (!SpawnAssoc)
-                TC_LOG_ERROR("sql.sql", "TCSR: Creature template entry %u has ScriptName npc_air_force_bots, but it's not handled by that script", creature->GetEntry());
-            else
-            {
-                CreatureTemplate const* spawnedTemplate = sObjectMgr->GetCreatureTemplate(SpawnAssoc->spawnedCreatureEntry);
-
-                if (!spawnedTemplate)
-                {
-                    TC_LOG_ERROR("sql.sql", "TCSR: Creature template entry %u does not exist in DB, which is required by npc_air_force_bots", SpawnAssoc->spawnedCreatureEntry);
-                    SpawnAssoc = nullptr;
-                    return;
-                }
-            }
+            ASSERT_NODEBUGINFO(false, "Unhandled creature with entry %u is assigned 'npc_air_force_bots' script", entry);
         }
 
-        SpawnAssociation* SpawnAssoc;
-        ObjectGuid SpawnedGUID;
+        npc_air_force_botsAI(Creature* creature) : NullCreatureAI(creature), _spawn(FindSpawnFor(creature->GetEntry())) {}
 
-        void Reset() override { }
-
-        Creature* SummonGuard()
+        Creature* GetOrSummonGuard()
         {
-            Creature* summoned = me->SummonCreature(SpawnAssoc->spawnedCreatureEntry, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 300000);
+            Creature* guard = ObjectAccessor::GetCreature(*me, _myGuard);
 
-            if (summoned)
-                SpawnedGUID = summoned->GetGUID();
-            else
-            {
-                TC_LOG_ERROR("sql.sql", "TCSR: npc_air_force_bots: wasn't able to spawn Creature %u", SpawnAssoc->spawnedCreatureEntry);
-                SpawnAssoc = nullptr;
-            }
+            if (!guard && (guard = me->SummonCreature(_spawn.otherEntry, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 300000)))
+                _myGuard = guard->GetGUID();
 
-            return summoned;
+            return guard;
         }
 
-        Creature* GetSummonedGuard()
+        void UpdateAI(uint32 /*diff*/) override
         {
-            Creature* creature = ObjectAccessor::GetCreature(*me, SpawnedGUID);
+            if (_toAttack.empty())
+                return;
 
-            if (creature && creature->IsAlive())
-                return creature;
+            Creature* guard = GetOrSummonGuard();
+            if (!guard)
+                return;
 
-            return nullptr;
+            // Keep the list of targets for later on when the guards will be alive
+            if (!guard->IsAlive())
+                return;
+
+            for (ObjectGuid guid : _toAttack)
+            {
+                Unit* target = ObjectAccessor::GetUnit(*me, guid);
+                if (!target)
+                    continue;
+                if (guard->IsEngagedBy(target))
+                    continue;
+
+                guard->EngageWithTarget(target);
+                if (_spawn.type == ALARMBOT)
+                    guard->CastSpell(target, SPELL_GUARDS_MARK, true);
+            }
+
+            _toAttack.clear();
         }
 
         void MoveInLineOfSight(Unit* who) override
         {
-            if (!SpawnAssoc)
+            // guards are only spawned against players
+            if (who->GetTypeId() != TYPEID_PLAYER)
                 return;
 
-            if (me->IsValidAttackTarget(who))
-            {
-                Player* playerTarget = who->ToPlayer();
+            // we're already scheduled to attack this player on our next tick, don't bother checking
+            if (_toAttack.find(who->GetGUID()) != _toAttack.end())
+                return;
 
-                // airforce guards only spawn for players
-                if (!playerTarget)
-                    return;
+            // check if they're in range
+            if (!who->IsWithinDistInMap(me, (_spawn.type == ALARMBOT) ? RANGE_ALARMBOT : RANGE_TRIPWIRE))
+                return;
 
-                Creature* lastSpawnedGuard = SpawnedGUID.IsEmpty() ? nullptr : GetSummonedGuard();
+            // check if they're hostile
+            if (!(me->IsHostileTo(who) || who->IsHostileTo(me)))
+                return;
 
-                // prevent calling Unit::GetUnit at next MoveInLineOfSight call - speedup
-                if (!lastSpawnedGuard)
-                    SpawnedGUID.Clear();
+            // check if they're a valid attack target
+            if (!me->IsValidAttackTarget(who))
+                return;
 
-                switch (SpawnAssoc->spawnType)
-                {
-                    case SPAWNTYPE_ALARMBOT:
-                    {
-                        if (!who->IsWithinDistInMap(me, RANGE_GUARDS_MARK))
-                            return;
+            if ((_spawn.type == TRIPWIRE) && who->IsFlying())
+                return;
 
-                        Aura* markAura = who->GetAura(SPELL_GUARDS_MARK);
-                        if (markAura)
-                        {
-                            // the target wasn't able to move out of our range within 25 seconds
-                            if (!lastSpawnedGuard)
-                            {
-                                lastSpawnedGuard = SummonGuard();
-
-                                if (!lastSpawnedGuard)
-                                    return;
-                            }
-
-                            if (markAura->GetDuration() < AURA_DURATION_TIME_LEFT)
-                                if (!lastSpawnedGuard->GetVictim())
-                                    lastSpawnedGuard->AI()->AttackStart(who);
-                        }
-                        else
-                        {
-                            if (!lastSpawnedGuard)
-                                lastSpawnedGuard = SummonGuard();
-
-                            if (!lastSpawnedGuard)
-                                return;
-
-                            lastSpawnedGuard->CastSpell(who, SPELL_GUARDS_MARK, true);
-                        }
-                        break;
-                    }
-                    case SPAWNTYPE_TRIPWIRE_ROOFTOP:
-                    {
-                        if (!who->IsWithinDistInMap(me, RANGE_TRIPWIRE))
-                            return;
-
-                        if (!lastSpawnedGuard)
-                            lastSpawnedGuard = SummonGuard();
-
-                        if (!lastSpawnedGuard)
-                            return;
-
-                        // ROOFTOP only triggers if the player is on the ground
-                        if (!playerTarget->IsFlying() && !lastSpawnedGuard->GetVictim())
-                            lastSpawnedGuard->AI()->AttackStart(who);
-
-                        break;
-                    }
-                }
-            }
+            _toAttack.insert(who->GetGUID());
         }
+
+        private:
+            AirForceSpawn const& _spawn;
+            ObjectGuid _myGuard;
+            std::unordered_set<ObjectGuid> _toAttack;
+
     };
 
     CreatureAI* GetAI(Creature* creature) const override
@@ -286,7 +232,7 @@ public:
             me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void UpdateAI(uint32 diff) override
         {
@@ -410,7 +356,7 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void ReceiveEmote(Player* player, uint32 emote) override
         {
@@ -457,8 +403,7 @@ public:
 
 enum TorchTossingTarget
 {
-    NPC_TORCH_TOSSING_TARGET_BUNNY      = 25535,
-    SPELL_TARGET_INDICATOR              = 45723
+    SPELL_TORCH_TARGET_PICKER      = 45907
 };
 
 class npc_torch_tossing_target_bunny_controller : public CreatureScript
@@ -468,42 +413,28 @@ public:
 
     struct npc_torch_tossing_target_bunny_controllerAI : public ScriptedAI
     {
-        npc_torch_tossing_target_bunny_controllerAI(Creature* creature) : ScriptedAI(creature)
-        {
-            _targetTimer = 3000;
-        }
+        npc_torch_tossing_target_bunny_controllerAI(Creature* creature) : ScriptedAI(creature) { }
 
-        ObjectGuid DoSearchForTargets(ObjectGuid lastTargetGUID)
+        void Reset() override
         {
-            std::list<Creature*> targets;
-            me->GetCreatureListWithEntryInGrid(targets, NPC_TORCH_TOSSING_TARGET_BUNNY, 60.0f);
-            targets.remove_if([lastTargetGUID](Creature* creature) { return creature->GetGUID() == lastTargetGUID; });
-
-            if (!targets.empty())
+            _scheduler.Schedule(Seconds(2), [this](TaskContext context)
             {
-                _lastTargetGUID = Trinity::Containers::SelectRandomContainerElement(targets)->GetGUID();
-
-                return _lastTargetGUID;
-            }
-            return ObjectGuid::Empty;
+                me->CastSpell(nullptr, SPELL_TORCH_TARGET_PICKER);
+                _scheduler.Schedule(Seconds(3), [this](TaskContext /*context*/)
+                {
+                    me->CastSpell(nullptr, SPELL_TORCH_TARGET_PICKER);
+                });
+                context.Repeat(Seconds(5));
+            });
         }
 
         void UpdateAI(uint32 diff) override
         {
-            if (_targetTimer < diff)
-            {
-                if (Unit* target = ObjectAccessor::GetUnit(*me, DoSearchForTargets(_lastTargetGUID)))
-                    target->CastSpell(target, SPELL_TARGET_INDICATOR, true);
-
-                _targetTimer = 3000;
-            }
-            else
-                _targetTimer -= diff;
+            _scheduler.Update(diff);
         }
 
     private:
-        uint32 _targetTimer;
-        ObjectGuid _lastTargetGUID;
+        TaskScheduler _scheduler;
     };
 
     CreatureAI* GetAI(Creature* creature) const override
@@ -590,7 +521,7 @@ public:
                 if (GameObject* go = me->FindNearestGameObject(GO_RIBBON_POLE, 10.0f))
                     me->CastSpell(go, SPELL_RED_FIRE_RING, true);
 
-                events.ScheduleEvent(EVENT_CAST_BLUE_FIRE_RING, Seconds(5));
+                events.ScheduleEvent(EVENT_CAST_BLUE_FIRE_RING, 5s);
             }
             break;
             case EVENT_CAST_BLUE_FIRE_RING:
@@ -604,7 +535,7 @@ public:
                 if (GameObject* go = me->FindNearestGameObject(GO_RIBBON_POLE, 10.0f))
                     me->CastSpell(go, SPELL_BLUE_FIRE_RING, true);
 
-                events.ScheduleEvent(EVENT_CAST_RED_FIRE_RING, Seconds(5));
+                events.ScheduleEvent(EVENT_CAST_RED_FIRE_RING, 5s);
             }
             break;
             }
@@ -813,7 +744,7 @@ public:
 
         void UpdateAI(uint32 diff) override;
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void QuestAccept(Player* player, Quest const* quest) override
         {
@@ -885,7 +816,7 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void SpellHit(Unit* caster, SpellInfo const* spell) override
         {
@@ -989,7 +920,7 @@ void npc_doctor::npc_doctorAI::UpdateAI(uint32 diff)
             if (Creature* Patient = me->SummonCreature(patientEntry, **point, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000))
             {
                 //303, this flag appear to be required for client side item->spell to work (TARGET_SINGLE_FRIEND)
-                Patient->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
+                Patient->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
 
                 Patients.push_back(Patient->GetGUID());
                 ENSURE_AI(npc_injured_patient::npc_injured_patientAI, Patient->AI())->DoctorGUID = me->GetGUID();
@@ -1040,9 +971,9 @@ class npc_garments_of_quests : public CreatureScript
 public:
     npc_garments_of_quests() : CreatureScript("npc_garments_of_quests") { }
 
-    struct npc_garments_of_questsAI : public npc_escortAI
+    struct npc_garments_of_questsAI : public EscortAI
     {
-        npc_garments_of_questsAI(Creature* creature) : npc_escortAI(creature)
+        npc_garments_of_questsAI(Creature* creature) : EscortAI(creature)
         {
             switch (me->GetEntry())
             {
@@ -1091,7 +1022,7 @@ public:
             me->SetHealth(me->CountPctFromMaxHealth(70));
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void SpellHit(Unit* caster, SpellInfo const* spell) override
         {
@@ -1130,11 +1061,6 @@ public:
             }
         }
 
-        void WaypointReached(uint32 /*waypointId*/) override
-        {
-
-        }
-
         void UpdateAI(uint32 diff) override
         {
             if (CanRun && !me->IsInCombat())
@@ -1165,7 +1091,7 @@ public:
                     RunAwayTimer -= diff;
             }
 
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
         }
     };
 
@@ -1198,7 +1124,7 @@ public:
             me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
         }
 
@@ -1411,7 +1337,7 @@ public:
         npc_steam_tonkAI(Creature* creature) : ScriptedAI(creature) { }
 
         void Reset() override { }
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void OnPossess(bool apply)
         {
@@ -1464,7 +1390,7 @@ public:
             Initialize();
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
         void AttackStart(Unit* /*who*/) override { }
         void MoveInLineOfSight(Unit* /*who*/) override { }
 
@@ -1711,11 +1637,11 @@ class npc_tournament_mount : public CreatureScript
                     case NPC_ARGENT_WARHORSE:
                     {
                         if (player->HasAchieved(ACHIEVEMENT_CHAMPION_ALLIANCE) || player->HasAchieved(ACHIEVEMENT_CHAMPION_HORDE))
-                            return player->getClass() == CLASS_DEATH_KNIGHT ? SPELL_PENNANT_EBON_BLADE_CHAMPION : SPELL_PENNANT_ARGENT_CRUSADE_CHAMPION;
+                            return player->GetClass() == CLASS_DEATH_KNIGHT ? SPELL_PENNANT_EBON_BLADE_CHAMPION : SPELL_PENNANT_ARGENT_CRUSADE_CHAMPION;
                         else if (player->HasAchieved(ACHIEVEMENT_ARGENT_VALOR))
-                            return player->getClass() == CLASS_DEATH_KNIGHT ? SPELL_PENNANT_EBON_BLADE_VALIANT : SPELL_PENNANT_ARGENT_CRUSADE_VALIANT;
+                            return player->GetClass() == CLASS_DEATH_KNIGHT ? SPELL_PENNANT_EBON_BLADE_VALIANT : SPELL_PENNANT_ARGENT_CRUSADE_VALIANT;
                         else
-                            return player->getClass() == CLASS_DEATH_KNIGHT ? SPELL_PENNANT_EBON_BLADE_ASPIRANT : SPELL_PENNANT_ARGENT_CRUSADE_ASPIRANT;
+                            return player->GetClass() == CLASS_DEATH_KNIGHT ? SPELL_PENNANT_EBON_BLADE_ASPIRANT : SPELL_PENNANT_ARGENT_CRUSADE_ASPIRANT;
                     }
                     default:
                         return 0;
@@ -1766,10 +1692,7 @@ class npc_brewfest_reveler : public CreatureScript
 enum TrainingDummy
 {
     NPC_ADVANCED_TARGET_DUMMY                  = 2674,
-    NPC_TARGET_DUMMY                           = 2673,
-
-    EVENT_TD_CHECK_COMBAT                      = 1,
-    EVENT_TD_DESPAWN                           = 2
+    NPC_TARGET_DUMMY                           = 2673
 };
 
 class npc_training_dummy : public CreatureScript
@@ -1777,27 +1700,21 @@ class npc_training_dummy : public CreatureScript
 public:
     npc_training_dummy() : CreatureScript("npc_training_dummy") { }
 
-    struct npc_training_dummyAI : ScriptedAI
+    struct npc_training_dummyAI : PassiveAI
     {
-        npc_training_dummyAI(Creature* creature) : ScriptedAI(creature)
+        npc_training_dummyAI(Creature* creature) : PassiveAI(creature), _combatCheckTimer(500)
         {
-            SetCombatMovement(false);
+            uint32 const entry = me->GetEntry();
+            if (entry == NPC_TARGET_DUMMY || entry == NPC_ADVANCED_TARGET_DUMMY)
+            {
+                _combatCheckTimer = 0;
+                me->DespawnOrUnsummon(16s);
+            }
         }
-
-        EventMap _events;
-        std::unordered_map<ObjectGuid, time_t> _damageTimes;
 
         void Reset() override
         {
-            // TODO: solve this in a different way! setting them as stunned prevents dummies from parrying
-            me->SetControlled(true, UNIT_STATE_STUNNED);//disable rotate
-
-            _events.Reset();
             _damageTimes.clear();
-            if (me->GetEntry() != NPC_ADVANCED_TARGET_DUMMY && me->GetEntry() != NPC_TARGET_DUMMY)
-                _events.ScheduleEvent(EVENT_TD_CHECK_COMBAT, 1000);
-            else
-                _events.ScheduleEvent(EVENT_TD_DESPAWN, 15000);
         }
 
         void EnterEvadeMode(EvadeReason why) override
@@ -1810,54 +1727,48 @@ public:
 
         void DamageTaken(Unit* doneBy, uint32& damage) override
         {
-            AddThreat(doneBy, float(damage));    // just to create threat reference
-            _damageTimes[doneBy->GetGUID()] = time(nullptr);
+            if (doneBy)
+                _damageTimes[doneBy->GetGUID()] = GameTime::GetGameTime();
             damage = 0;
         }
 
         void UpdateAI(uint32 diff) override
         {
-            if (!me->IsInCombat())
+            if (!_combatCheckTimer || !me->IsInCombat())
                 return;
 
-            if (!me->HasUnitState(UNIT_STATE_STUNNED))
-                me->SetControlled(true, UNIT_STATE_STUNNED);//disable rotate
-
-            _events.Update(diff);
-
-            if (uint32 eventId = _events.ExecuteEvent())
+            if (diff < _combatCheckTimer)
             {
-                switch (eventId)
-                {
-                    case EVENT_TD_CHECK_COMBAT:
-                    {
-                        time_t now = time(nullptr);
-                        for (std::unordered_map<ObjectGuid, time_t>::iterator itr = _damageTimes.begin(); itr != _damageTimes.end();)
-                        {
-                            // If unit has not dealt damage to training dummy for 5 seconds, remove him from combat
-                            if (itr->second < now - 5)
-                            {
-                                if (Unit* unit = ObjectAccessor::GetUnit(*me, itr->first))
-                                    unit->getHostileRefManager().deleteReference(me);
-
-                                itr = _damageTimes.erase(itr);
-                            }
-                            else
-                                ++itr;
-                        }
-                        _events.ScheduleEvent(EVENT_TD_CHECK_COMBAT, 1000);
-                        break;
-                    }
-                    case EVENT_TD_DESPAWN:
-                        me->DespawnOrUnsummon(1);
-                        break;
-                    default:
-                        break;
-                }
+                _combatCheckTimer -= diff;
+                return;
             }
+
+            _combatCheckTimer = 500;
+
+            time_t const now = GameTime::GetGameTime();
+            auto const& pveRefs = me->GetCombatManager().GetPvECombatRefs();
+            for (auto itr = _damageTimes.begin(); itr != _damageTimes.end();)
+            {
+                // If unit has not dealt damage to training dummy for 5 seconds, remove him from combat
+                if (itr->second < now - 5)
+                {
+                    auto it = pveRefs.find(itr->first);
+                    if (it != pveRefs.end())
+                        it->second->EndCombat();
+
+                    itr = _damageTimes.erase(itr);
+                }
+                else
+                    ++itr;
+            }
+
+            for (auto const& pair : pveRefs)
+                if (_damageTimes.find(pair.first) == _damageTimes.end())
+                    _damageTimes[pair.first] = now;
         }
 
-        void MoveInLineOfSight(Unit* /*who*/) override { }
+        std::unordered_map<ObjectGuid, time_t> _damageTimes;
+        uint32 _combatCheckTimer;
     };
 
     CreatureAI* GetAI(Creature* creature) const override
@@ -2345,7 +2256,7 @@ public:
             }
             else
                 //me->CastSpell(me, GetFireworkSpell(me->GetEntry()), true);
-                me->CastSpell(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), GetFireworkSpell(me->GetEntry()), true);
+                me->CastSpell(me->GetPosition(), GetFireworkSpell(me->GetEntry()), true);
         }
     };
 
@@ -2408,7 +2319,7 @@ public:
                 me->GetMotionMaster()->MoveFollow(owner, PET_FOLLOW_DIST, PET_FOLLOW_ANGLE);
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void DoAction(int32 /*param*/) override
         {
@@ -2477,12 +2388,12 @@ public:
             summonerGUID.Clear();
         }
 
-        void IsSummonedBy(Unit* summoner) override
+        void IsSummonedBy(WorldObject* summoner) override
         {
             if (summoner->GetTypeId() == TYPEID_PLAYER)
             {
                 summonerGUID = summoner->GetGUID();
-                events.ScheduleEvent(EVENT_TALK, 3000);
+                events.ScheduleEvent(EVENT_TALK, 3s);
             }
         }
 
@@ -2621,7 +2532,7 @@ class npc_train_wrecker : public CreatureScript
                             _isSearching = false;
                             _target = target->GetGUID();
                             me->SetWalk(true);
-                            me->GetMotionMaster()->MovePoint(MOVEID_CHASE, target->GetNearPosition(3.0f, target->GetAngle(me)));
+                            me->GetMotionMaster()->MovePoint(MOVEID_CHASE, target->GetNearPosition(3.0f, target->GetAbsoluteAngle(me)));
                         }
                         else
                             _timer = 3 * IN_MILLISECONDS;
@@ -2898,7 +2809,7 @@ class CastFoodSpell : public BasicEvent
         bool Execute(uint64 /*execTime*/, uint32 /*diff*/) override
         {
             _owner->CastSpell(_owner, _spellId, true);
-            return false;
+            return true;
         }
 
     private:
@@ -2960,7 +2871,7 @@ public:
             init.DisableTransportPathTransformations();
             init.MoveTo(x, y, z, false);
             init.SetFacing(o);
-            init.Launch();
+            who->GetMotionMaster()->LaunchMoveSpline(std::move(init), EVENT_VEHICLE_BOARD, MOTION_PRIORITY_HIGHEST);
             who->m_Events.AddEvent(new CastFoodSpell(who, _chairSpells.at(who->GetEntry())), who->m_Events.CalculateTime(1000));
             if (who->GetTypeId() == TYPEID_UNIT)
                 who->SetDisplayId(who->ToCreature()->GetCreatureTemplate()->Modelid1);

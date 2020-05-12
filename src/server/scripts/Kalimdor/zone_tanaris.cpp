@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,7 +23,6 @@ SDCategory: Tanaris
 EndScriptData */
 
 /* ContentData
-npc_aquementas
 npc_custodian_of_time
 npc_OOX17
 npc_tooga
@@ -38,127 +36,6 @@ EndContentData */
 #include "ScriptedFollowerAI.h"
 #include "ScriptedGossip.h"
 #include "WorldSession.h"
-
-/*######
-## npc_aquementas
-######*/
-
-enum Aquementas
-{
-    AGGRO_YELL_AQUE     = 0,
-
-    SPELL_AQUA_JET      = 13586,
-    SPELL_FROST_SHOCK   = 15089,
-
-    ITEM_BOOK_OF_AQUOR  = 11169,
-    ITEM_SILVERY_CLAWS  = 11172,
-    ITEM_IRONTREE_HEART = 11173,
-    ITEM_SILVER_TOTEM   = 11522
-};
-
-class npc_aquementas : public CreatureScript
-{
-public:
-    npc_aquementas() : CreatureScript("npc_aquementas") { }
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_aquementasAI(creature);
-    }
-
-    struct npc_aquementasAI : public ScriptedAI
-    {
-        npc_aquementasAI(Creature* creature) : ScriptedAI(creature)
-        {
-            Initialize();
-        }
-
-        void Initialize()
-        {
-            SendItemTimer = 0;
-            SwitchFactionTimer = 10000;
-
-            isFriendly = true;
-
-            AquaJetTimer = 5000;
-            FrostShockTimer = 1000;
-        }
-
-        uint32 SendItemTimer;
-        uint32 SwitchFactionTimer;
-        bool isFriendly;
-
-        uint32 FrostShockTimer;
-        uint32 AquaJetTimer;
-
-        void Reset() override
-        {
-            Initialize();
-            me->SetFaction(FACTION_FRIENDLY);
-        }
-
-        void SendItem(Unit* receiver)
-        {
-            Player* player = receiver->ToPlayer();
-
-            if (player && player->HasItemCount(ITEM_BOOK_OF_AQUOR, 1, false) &&
-                player->HasItemCount(ITEM_SILVERY_CLAWS, 11, false) &&
-                player->HasItemCount(ITEM_IRONTREE_HEART, 1, false) &&
-                !player->HasItemCount(ITEM_SILVER_TOTEM, 1, true))
-            {
-                ItemPosCountVec dest;
-                uint8 msg = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 11522, 1, nullptr);
-                if (msg == EQUIP_ERR_OK)
-                    player->StoreNewItem(dest, ITEM_SILVER_TOTEM, true);
-            }
-        }
-
-        void EnterCombat(Unit* who) override
-        {
-            Talk(AGGRO_YELL_AQUE, who);
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            if (isFriendly)
-            {
-                if (SwitchFactionTimer <= diff)
-                {
-                    me->SetFaction(FACTION_ELEMENTAL);
-                    isFriendly = false;
-                } else SwitchFactionTimer -= diff;
-            }
-
-            if (!UpdateVictim())
-                return;
-
-            if (!isFriendly)
-            {
-                if (SendItemTimer <= diff)
-                {
-                    if (me->GetVictim() && me->EnsureVictim()->GetTypeId() == TYPEID_PLAYER)
-                        SendItem(me->GetVictim());
-                    SendItemTimer = 5000;
-                } else SendItemTimer -= diff;
-            }
-
-            if (FrostShockTimer <= diff)
-            {
-                DoCastVictim(SPELL_FROST_SHOCK);
-                FrostShockTimer = 15000;
-            } else FrostShockTimer -= diff;
-
-            if (AquaJetTimer <= diff)
-            {
-                DoCast(me, SPELL_AQUA_JET);
-                AquaJetTimer = 15000;
-            } else AquaJetTimer -= diff;
-
-            DoMeleeAttackIfReady();
-        }
-    };
-
-};
 
 /*######
 ## npc_custodian_of_time
@@ -195,11 +72,11 @@ public:
         return new npc_custodian_of_timeAI(creature);
     }
 
-    struct npc_custodian_of_timeAI : public npc_escortAI
+    struct npc_custodian_of_timeAI : public EscortAI
     {
-        npc_custodian_of_timeAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_custodian_of_timeAI(Creature* creature) : EscortAI(creature) { }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (Player* player = GetPlayerForEscort())
             {
@@ -285,12 +162,12 @@ public:
             }
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
         void Reset() override { }
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
         }
     };
 
@@ -319,11 +196,11 @@ class npc_OOX17 : public CreatureScript
 public:
     npc_OOX17() : CreatureScript("npc_OOX17") { }
 
-    struct npc_OOX17AI : public npc_escortAI
+    struct npc_OOX17AI : public EscortAI
     {
-        npc_OOX17AI(Creature* creature) : npc_escortAI(creature) { }
+        npc_OOX17AI(Creature* creature) : EscortAI(creature) { }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (Player* player = GetPlayerForEscort())
             {
@@ -353,7 +230,7 @@ public:
 
         void Reset() override { }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
             Talk(SAY_OOX_AGGRO);
         }
@@ -401,8 +278,7 @@ enum Tooga
     QUEST_TOOGA                 = 1560,
     NPC_TORTA                   = 6015,
 
-    POINT_ID_TO_WATER           = 1,
-    FACTION_TOOG_ESCORTEE       = 113
+    POINT_ID_TO_WATER           = 1
 };
 
 Position const ToWaterLoc = {-7032.664551f, -4906.199219f, -1.606446f, 0.0f};
@@ -449,7 +325,7 @@ public:
                 if (me->IsWithinDistInMap(who, INTERACTION_DISTANCE))
                 {
                     Player* player = GetLeaderForFollower();
-                    if (player && player->GetQuestStatus(QUEST_TOOGA) == QUEST_STATUS_INCOMPLETE)
+                    if (player)
                         player->GroupEventHappens(QUEST_TOOGA, me);
 
                     TortaGUID = who->GetGUID();
@@ -462,10 +338,7 @@ public:
         {
             FollowerAI::MovementInform(MotionType, PointId);
 
-            if (MotionType != POINT_MOTION_TYPE)
-                return;
-
-            if (PointId == POINT_ID_TO_WATER)
+            if ((MotionType == POINT_MOTION_TYPE) && (PointId == POINT_ID_TO_WATER))
                 SetFollowComplete();
         }
 
@@ -539,7 +412,7 @@ public:
         void QuestAccept(Player* player, Quest const* quest) override
         {
             if (quest->GetQuestId() == QUEST_TOOGA)
-                StartFollow(player, FACTION_TOOG_ESCORTEE, quest);
+                StartFollow(player, FACTION_ESCORTEE_N_NEUTRAL_PASSIVE, QUEST_TOOGA);
         }
     };
 
@@ -551,7 +424,6 @@ public:
 
 void AddSC_tanaris()
 {
-    new npc_aquementas();
     new npc_custodian_of_time();
     new npc_OOX17();
     new npc_tooga();

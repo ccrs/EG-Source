@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -27,6 +26,7 @@ EndScriptData */
 #include "hellfire_ramparts.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
+#include "Player.h"
 #include "ScriptedCreature.h"
 #include "SpellInfo.h"
 #include "TemporarySummon.h"
@@ -92,9 +92,9 @@ class boss_nazan : public CreatureScript
                 _Reset();
             }
 
-            void EnterCombat(Unit* /*who*/) override { }
+            void JustEngagedWith(Unit* /*who*/) override { }
 
-            void IsSummonedBy(Unit* summoner) override
+            void IsSummonedBy(WorldObject* summoner) override
             {
                 if (summoner->GetEntry() == NPC_VAZRUDEN_HERALD)
                     VazrudenGUID = summoner->GetGUID();
@@ -104,7 +104,7 @@ class boss_nazan : public CreatureScript
             {
                 if (summoned && summoned->GetEntry() == NPC_LIQUID_FIRE)
                 {
-                    summoned->SetLevel(me->getLevel());
+                    summoned->SetLevel(me->GetLevel());
                     summoned->SetFaction(me->GetFaction());
                     summoned->CastSpell(summoned, DUNGEON_MODE(SPELL_SUMMON_LIQUID_FIRE, SPELL_SUMMON_LIQUID_FIRE_H), true);
                     summoned->CastSpell(summoned, SPELL_FIRE_NOVA_VISUAL, true);
@@ -228,10 +228,10 @@ class boss_vazruden : public CreatureScript
                 _Reset();
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* who) override
             {
                 Talk(SAY_AGGRO);
-                _EnterCombat();
+                BossAI::JustEngagedWith(who);
             }
 
             void KilledUnit(Unit* who) override
@@ -350,14 +350,18 @@ class boss_vazruden_the_herald : public CreatureScript
                     if (Creature* Vazruden = me->SummonCreature(NPC_VAZRUDEN, VazrudenMiddle[0], VazrudenMiddle[1], VazrudenMiddle[2], 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 6000000))
                         VazrudenGUID = Vazruden->GetGUID();
                     if (Creature* Nazan = me->SummonCreature(NPC_NAZAN, VazrudenMiddle[0], VazrudenMiddle[1], VazrudenMiddle[2], 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 6000000))
+                    {
                         NazanGUID = Nazan->GetGUID();
+                        if (Player* player = Nazan->SelectNearestPlayer(60.0f))
+                            Nazan->AI()->AttackStart(player);
+                    }
                     summoned = true;
                     me->SetVisible(false);
                     me->AddUnitState(UNIT_STATE_ROOT);
                 }
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* /*who*/) override
             {
                 if (phase == 0)
                 {
@@ -437,6 +441,10 @@ class boss_vazruden_the_herald : public CreatureScript
                                 return;
                             }
                         }
+                        if (!(Nazan && Nazan->IsAlive()) && !(Vazruden && Vazruden->IsAlive()))
+                        {
+                            me->DisappearAndDie();
+                        }
                         check = 2000;
                     }
                     else
@@ -483,10 +491,13 @@ class npc_hellfire_sentry : public CreatureScript
                 Initialize();
             }
 
-            void EnterCombat(Unit* /*who*/) override { }
+            void JustEngagedWith(Unit* /*who*/) override { }
 
             void JustDied(Unit* killer) override
             {
+                if (!killer)
+                    return;
+
                 if (Creature* herald = me->FindNearestCreature(NPC_VAZRUDEN_HERALD, 150))
                     ENSURE_AI(boss_vazruden_the_herald::boss_vazruden_the_heraldAI, herald->AI())->SentryDownBy(killer);
             }
@@ -524,4 +535,3 @@ void AddSC_boss_vazruden_the_herald()
     new boss_nazan();
     new npc_hellfire_sentry();
 }
-

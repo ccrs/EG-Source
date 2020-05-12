@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -57,9 +56,9 @@ class npc_ame : public CreatureScript
 public:
     npc_ame() : CreatureScript("npc_ame") { }
 
-    struct npc_ameAI : public npc_escortAI
+    struct npc_ameAI : public EscortAI
     {
-        npc_ameAI(Creature* creature) : npc_escortAI(creature)
+        npc_ameAI(Creature* creature) : EscortAI(creature)
         {
             Initialize();
         }
@@ -71,7 +70,7 @@ public:
 
         uint32 DemoralizingShoutTimer;
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (Player* player = GetPlayerForEscort())
             {
@@ -118,7 +117,7 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            npc_escortAI::UpdateAI(diff);
+            EscortAI::UpdateAI(diff);
             if (!UpdateVictim())
                 return;
 
@@ -171,8 +170,7 @@ enum Ringo
 
     SPELL_REVIVE_RINGO          = 15591,
     QUEST_A_LITTLE_HELP         = 4491,
-    NPC_SPRAGGLE                = 9997,
-    FACTION_ESCORTEE            = 113
+    NPC_SPRAGGLE                = 9997
 };
 
 class npc_ringo : public CreatureScript
@@ -341,7 +339,7 @@ public:
             if (quest->GetQuestId() == QUEST_A_LITTLE_HELP)
             {
                 me->SetStandState(UNIT_STAND_STATE_STAND);
-                StartFollow(player, FACTION_ESCORTEE, quest);
+                StartFollow(player, FACTION_ESCORTEE_N_NEUTRAL_PASSIVE, QUEST_A_LITTLE_HELP);
             }
         }
     };
