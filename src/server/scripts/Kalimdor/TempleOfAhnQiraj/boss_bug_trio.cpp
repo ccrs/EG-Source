@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -54,12 +53,11 @@ public:
         return GetAQ40AI<boss_kriAI>(creature);
     }
 
-    struct boss_kriAI : public ScriptedAI
+    struct boss_kriAI : public BossAI
     {
-        boss_kriAI(Creature* creature) : ScriptedAI(creature)
+        boss_kriAI(Creature* creature) : BossAI(creature, DATA_BUG_TRIO)
         {
             Initialize();
-            instance = creature->GetInstanceScript();
         }
 
         void Initialize()
@@ -72,8 +70,6 @@ public:
             Death = false;
         }
 
-        InstanceScript* instance;
-
         uint32 Cleave_Timer;
         uint32 ToxicVolley_Timer;
         uint32 Check_Timer;
@@ -84,16 +80,13 @@ public:
         void Reset() override
         {
             Initialize();
-        }
-
-        void EnterCombat(Unit* /*who*/) override
-        {
+            _Reset();
         }
 
         void JustDied(Unit* /*killer*/) override
         {
             if (instance->GetData(DATA_BUG_TRIO_DEATH) < 2)// Unlootable if death
-                me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
+                me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
 
             instance->SetData(DATA_BUG_TRIO_DEATH, 1);
         }
@@ -153,12 +146,11 @@ public:
         return GetAQ40AI<boss_vemAI>(creature);
     }
 
-    struct boss_vemAI : public ScriptedAI
+    struct boss_vemAI : public BossAI
     {
-        boss_vemAI(Creature* creature) : ScriptedAI(creature)
+        boss_vemAI(Creature* creature) : BossAI(creature, DATA_BUG_TRIO)
         {
             Initialize();
-            instance = creature->GetInstanceScript();
         }
 
         void Initialize()
@@ -170,8 +162,6 @@ public:
             Enraged = false;
         }
 
-        InstanceScript* instance;
-
         uint32 Charge_Timer;
         uint32 KnockBack_Timer;
         uint32 Enrage_Timer;
@@ -181,18 +171,15 @@ public:
         void Reset() override
         {
             Initialize();
+            _Reset();
         }
 
         void JustDied(Unit* /*killer*/) override
         {
             instance->SetData(DATA_VEM_DEATH, 0);
             if (instance->GetData(DATA_BUG_TRIO_DEATH) < 2)// Unlootable if death
-                me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
+                me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
             instance->SetData(DATA_BUG_TRIO_DEATH, 1);
-        }
-
-        void EnterCombat(Unit* /*who*/) override
-        {
         }
 
         void UpdateAI(uint32 diff) override
@@ -204,9 +191,7 @@ public:
             //Charge_Timer
             if (Charge_Timer <= diff)
             {
-                Unit* target = nullptr;
-                target = SelectTarget(SELECT_TARGET_RANDOM, 0);
-                if (target)
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
                 {
                     DoCast(target, SPELL_CHARGE);
                     //me->SendMonsterMove(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), 0, true, 1);
@@ -220,8 +205,8 @@ public:
             if (KnockBack_Timer <= diff)
             {
                 DoCastVictim(SPELL_KNOCKBACK);
-                if (DoGetThreat(me->GetVictim()))
-                    DoModifyThreatPercent(me->GetVictim(), -80);
+                if (GetThreat(me->GetVictim()))
+                    ModifyThreatByPercent(me->GetVictim(), -80);
                 KnockBack_Timer = urand(15000, 25000);
             } else KnockBack_Timer -= diff;
 
@@ -248,12 +233,11 @@ public:
         return GetAQ40AI<boss_yaujAI>(creature);
     }
 
-    struct boss_yaujAI : public ScriptedAI
+    struct boss_yaujAI : public BossAI
     {
-        boss_yaujAI(Creature* creature) : ScriptedAI(creature)
+        boss_yaujAI(Creature* creature) : BossAI(creature, DATA_BUG_TRIO)
         {
             Initialize();
-            instance = creature->GetInstanceScript();
         }
 
         void Initialize()
@@ -264,8 +248,6 @@ public:
 
             VemDead = false;
         }
-
-        InstanceScript* instance;
 
         uint32 Heal_Timer;
         uint32 Fear_Timer;
@@ -281,21 +263,17 @@ public:
         void JustDied(Unit* /*killer*/) override
         {
             if (instance->GetData(DATA_BUG_TRIO_DEATH) < 2)// Unlootable if death
-                me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
+                me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
             instance->SetData(DATA_BUG_TRIO_DEATH, 1);
 
             for (uint8 i = 0; i < 10; ++i)
             {
-                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
                 {
-                    if (Creature* Summoned = me->SummonCreature(15621, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 90000))
+                    if (Creature* Summoned = me->SummonCreature(15621, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 90s))
                         Summoned->AI()->AttackStart(target);
                 }
             }
-        }
-
-        void EnterCombat(Unit* /*who*/) override
-        {
         }
 
         void UpdateAI(uint32 diff) override
@@ -308,7 +286,7 @@ public:
             if (Fear_Timer <= diff)
             {
                 DoCastVictim(SPELL_FEAR);
-                DoResetThreat();
+                ResetThreatList();
                 Fear_Timer = 20000;
             } else Fear_Timer -= diff;
 
@@ -318,11 +296,11 @@ public:
                 switch (urand(0, 2))
                 {
                     case 0:
-                        if (Creature* kri = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_KRI)))
+                        if (Creature* kri = instance->GetCreature(DATA_KRI))
                             DoCast(kri, SPELL_HEAL);
                         break;
                     case 1:
-                        if (Creature* vem = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VEM)))
+                        if (Creature* vem = instance->GetCreature(DATA_VEM))
                             DoCast(vem, SPELL_HEAL);
                         break;
                     case 2:

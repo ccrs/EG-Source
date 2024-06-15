@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+# This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
 #
 # This file is free software; as a special exception the author gives
 # unlimited permission to copy and/or distribute it, with or without
@@ -12,13 +12,13 @@ CollectSourceFiles(
   ${CMAKE_CURRENT_SOURCE_DIR}
   PRIVATE_SOURCES)
 
-if (WIN32)
-  list(APPEND PRIVATE_SOURCES ${sources_windows})
-endif()
+list(APPEND PRIVATE_SOURCES ${sources_windows})
 
 add_executable(mmaps_generator ${PRIVATE_SOURCES})
 
 target_link_libraries(mmaps_generator
+  PRIVATE
+    trinity-core-interface
   PUBLIC
     common
     Recast
@@ -40,8 +40,8 @@ set_target_properties(mmaps_generator
       FOLDER
         "tools")
 
-if( UNIX )
+if(UNIX)
   install(TARGETS mmaps_generator DESTINATION bin)
-elseif( WIN32 )
+elseif(WIN32)
   install(TARGETS mmaps_generator DESTINATION "${CMAKE_INSTALL_PREFIX}")
 endif()

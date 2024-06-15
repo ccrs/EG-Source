@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -17,6 +16,7 @@
  */
 
 #include "MoveSplineInit.h"
+#include "Creature.h"
 #include "MoveSpline.h"
 #include "MovementPacketBuilder.h"
 #include "Unit.h"
@@ -89,10 +89,16 @@ namespace Movement
         // corrent first vertex
         args.path[0] = real_position;
         args.initialOrientation = real_position.orientation;
+        args.flags.enter_cycle = args.flags.cyclic;
         move_spline.onTransport = transport;
 
         uint32 moveFlags = unit->m_movementInfo.GetMovementFlags();
-        moveFlags |= (MOVEMENTFLAG_SPLINE_ENABLED|MOVEMENTFLAG_FORWARD);
+        moveFlags |= MOVEMENTFLAG_SPLINE_ENABLED;
+
+        if (!args.flags.backward)
+            moveFlags = (moveFlags & ~(MOVEMENTFLAG_BACKWARD)) | MOVEMENTFLAG_FORWARD;
+        else
+            moveFlags = (moveFlags & ~(MOVEMENTFLAG_FORWARD)) | MOVEMENTFLAG_BACKWARD;
 
         if (moveFlags & MOVEMENTFLAG_ROOT)
             moveFlags &= ~MOVEMENTFLAG_MASK_MOVING;
@@ -102,13 +108,19 @@ namespace Movement
             // If spline is initialized with SetWalk method it only means we need to select
             // walk move speed for it but not add walk flag to unit
             uint32 moveFlagsForSpeed = moveFlags;
-            if (args.flags.walkmode)
+            if (args.walk)
                 moveFlagsForSpeed |= MOVEMENTFLAG_WALKING;
             else
                 moveFlagsForSpeed &= ~MOVEMENTFLAG_WALKING;
 
             args.velocity = unit->GetSpeed(SelectSpeedType(moveFlagsForSpeed));
+            if (Creature* creature = unit->ToCreature())
+                if (creature->HasSearchedAssistance())
+                    args.velocity *= 0.66f;
         }
+
+        // limit the speed in the same way the client does
+        args.velocity = std::min(args.velocity, args.flags.catmullrom || args.flags.flying ? 50.0f : std::max(28.0f, unit->GetSpeed(MOVE_RUN) * 4.0f));
 
         if (!args.Validate(unit))
             return 0;
@@ -181,8 +193,9 @@ namespace Movement
         // Elevators also use MOVEMENTFLAG_ONTRANSPORT but we do not keep track of their position changes
         args.TransformForTransport = unit->HasUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT) && unit->GetTransGUID();
         // mix existing state into new
-        args.flags.walkmode = unit->m_movementInfo.HasMovementFlag(MOVEMENTFLAG_WALKING);
-        args.flags.flying = unit->m_movementInfo.HasMovementFlag((MovementFlags)(MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_DISABLE_GRAVITY));
+        args.flags.canswim = unit->CanSwim();
+        args.walk = unit->HasUnitMovementFlag(MOVEMENTFLAG_WALKING);
+        args.flags.flying = unit->m_movementInfo.HasMovementFlag(MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_DISABLE_GRAVITY);
     }
 
     MoveSplineInit::~MoveSplineInit() = default;
@@ -199,8 +212,13 @@ namespace Movement
 
     void MoveSplineInit::SetFacing(Unit const* target)
     {
+        SetFacing(target->GetGUID());
+    }
+
+    void MoveSplineInit::SetFacing(ObjectGuid const& target)
+    {
         args.flags.EnableFacingTarget();
-        args.facing.target = target->GetGUID().GetRawValue();
+        args.facing.target = target.GetRawValue();
     }
 
     void MoveSplineInit::SetFacing(float angle)

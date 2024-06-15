@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,6 +16,7 @@
  */
 
 #include "ScriptMgr.h"
+#include "AreaBoundary.h"
 #include "InstanceScript.h"
 #include "Log.h"
 #include "Map.h"
@@ -60,6 +61,11 @@ ObjectData const creatureData[] =
     { 0,                          0                         } // END
 };
 
+BossBoundaryData const boundaries =
+{
+    { DATA_KALECGOS, new BoundaryUnionBoundary(new CircleBoundary(Position(1704.9f, 928.4f), 34.0), new RectangleBoundary(1689.2f, 1713.3f, 762.2f, 1074.8f)) }
+};
+
 class instance_sunwell_plateau : public InstanceMapScript
 {
     public:
@@ -67,12 +73,13 @@ class instance_sunwell_plateau : public InstanceMapScript
 
         struct instance_sunwell_plateau_InstanceMapScript : public InstanceScript
         {
-            instance_sunwell_plateau_InstanceMapScript(Map* map) : InstanceScript(map)
+            instance_sunwell_plateau_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
             {
                 SetHeaders(DataHeader);
                 SetBossNumber(EncounterCount);
                 LoadDoorData(doorData);
                 LoadObjectData(creatureData, nullptr);
+                LoadBossBoundaries(boundaries);
             }
 
             Player const* GetPlayerInMap() const

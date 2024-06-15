@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,8 +15,8 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SC_GOSSIP_H
-#define SC_GOSSIP_H
+#ifndef TRINITY_SCRIPTEDGOSSIP_H
+#define TRINITY_SCRIPTEDGOSSIP_H
 
 #include "GossipDef.h"
 #include "QuestDef.h"
@@ -81,12 +80,15 @@ enum eTradeskill
 };
 
 class Creature;
+
+uint32 TC_GAME_API GetGossipSenderFor(Player* player, uint32 menuId);
 uint32 TC_GAME_API GetGossipActionFor(Player* player, uint32 gossipListId);
+void TC_GAME_API InitGossipMenuFor(Player* player, uint32 menuId);
 void TC_GAME_API ClearGossipMenuFor(Player* player);
 // Using provided text, not from DB
-void TC_GAME_API AddGossipItemFor(Player* player, uint32 icon, std::string const& text, uint32 sender, uint32 action);
+void TC_GAME_API AddGossipItemFor(Player* player, GossipOptionIcon icon, std::string const& text, uint32 sender, uint32 action);
 // Using provided texts, not from DB
-void TC_GAME_API AddGossipItemFor(Player* player, uint32 icon, std::string const& text, uint32 sender, uint32 action, std::string const& popupText, uint32 popupMoney, bool coded);
+void TC_GAME_API AddGossipItemFor(Player* player, GossipOptionIcon icon, std::string const& text, uint32 sender, uint32 action, std::string const& popupText, uint32 popupMoney, bool coded);
 // Uses gossip item info from DB
 void TC_GAME_API AddGossipItemFor(Player* player, uint32 gossipMenuID, uint32 gossipMenuItemID, uint32 sender, uint32 action);
 void TC_GAME_API SendGossipMenuFor(Player* player, uint32 npcTextID, ObjectGuid const& guid);

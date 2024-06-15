@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -89,7 +88,7 @@ bool DynamicObject::CreateDynamicObject(ObjectGuid::LowType guidlow, Unit* caste
     Relocate(pos);
     if (!IsPositionValid())
     {
-        TC_LOG_ERROR("misc", "DynamicObject (spell %u) not created. Suggested coordinates isn't valid (X: %f Y: %f)", spellId, GetPositionX(), GetPositionY());
+        TC_LOG_ERROR("misc", "DynamicObject (spell {}) not created. Suggested coordinates isn't valid (X: {} Y: {})", spellId, GetPositionX(), GetPositionY());
         return false;
     }
 
@@ -109,7 +108,7 @@ bool DynamicObject::CreateDynamicObject(ObjectGuid::LowType guidlow, Unit* caste
     SetFloatValue(DYNAMICOBJECT_RADIUS, radius);
     SetUInt32Value(DYNAMICOBJECT_CASTTIME, GameTime::GetGameTimeMS());
 
-    if (IsWorldObject())
+    if (IsStoredInWorldObjectGridContainer())
         setActive(true);    //must before add to map to be put in world container
 
     Transport* transport = caster->GetTransport();
@@ -228,6 +227,12 @@ void DynamicObject::RemoveCasterViewpoint()
         caster->SetViewpoint(this, false);
         _isViewpoint = false;
     }
+}
+
+uint32 DynamicObject::GetFaction() const
+{
+    ASSERT(_caster);
+    return _caster->GetFaction();
 }
 
 void DynamicObject::BindToCaster()

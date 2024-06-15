@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,6 +19,7 @@
 #define TrinityCore_Hash_h__
 
 #include <functional>
+#include <string_view>
 #include <utility>
 
 namespace Trinity
@@ -27,6 +28,17 @@ namespace Trinity
     inline void hash_combine(std::size_t& seed, T const& val)
     {
         seed ^= std::hash<T>()(val) + 0x9E3779B9 + (seed << 6) + (seed >> 2);
+    }
+
+    inline std::uint32_t HashFnv1a(std::string_view data)
+    {
+        std::uint32_t hash = 0x811C9DC5u;
+        for (char c : data)
+        {
+            hash ^= c;
+            hash *= 0x1000193u;
+        }
+        return hash;
     }
 }
 

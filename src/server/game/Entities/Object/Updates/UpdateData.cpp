@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -36,12 +35,6 @@ void UpdateData::AddOutOfRangeGUID(ObjectGuid guid)
     m_outOfRangeGUIDs.insert(guid);
 }
 
-void UpdateData::AddUpdateBlock(ByteBuffer const& block)
-{
-    m_data.append(block);
-    ++m_blockCount;
-}
-
 void UpdateData::Compress(void* dst, uint32 *dst_size, void* src, int src_size)
 {
     z_stream c_stream;
@@ -54,7 +47,7 @@ void UpdateData::Compress(void* dst, uint32 *dst_size, void* src, int src_size)
     int z_res = deflateInit(&c_stream, sWorld->getIntConfig(CONFIG_COMPRESSION));
     if (z_res != Z_OK)
     {
-        TC_LOG_ERROR("misc", "Can't compress update packet (zlib: deflateInit) Error code: %i (%s)", z_res, zError(z_res));
+        TC_LOG_ERROR("misc", "Can't compress update packet (zlib: deflateInit) Error code: {} ({})", z_res, zError(z_res));
         *dst_size = 0;
         return;
     }
@@ -67,7 +60,7 @@ void UpdateData::Compress(void* dst, uint32 *dst_size, void* src, int src_size)
     z_res = deflate(&c_stream, Z_NO_FLUSH);
     if (z_res != Z_OK)
     {
-        TC_LOG_ERROR("misc", "Can't compress update packet (zlib: deflate) Error code: %i (%s)", z_res, zError(z_res));
+        TC_LOG_ERROR("misc", "Can't compress update packet (zlib: deflate) Error code: {} ({})", z_res, zError(z_res));
         *dst_size = 0;
         return;
     }
@@ -82,7 +75,7 @@ void UpdateData::Compress(void* dst, uint32 *dst_size, void* src, int src_size)
     z_res = deflate(&c_stream, Z_FINISH);
     if (z_res != Z_STREAM_END)
     {
-        TC_LOG_ERROR("misc", "Can't compress update packet (zlib: deflate should report Z_STREAM_END instead %i (%s)", z_res, zError(z_res));
+        TC_LOG_ERROR("misc", "Can't compress update packet (zlib: deflate should report Z_STREAM_END instead {} ({})", z_res, zError(z_res));
         *dst_size = 0;
         return;
     }
@@ -90,7 +83,7 @@ void UpdateData::Compress(void* dst, uint32 *dst_size, void* src, int src_size)
     z_res = deflateEnd(&c_stream);
     if (z_res != Z_OK)
     {
-        TC_LOG_ERROR("misc", "Can't compress update packet (zlib: deflateEnd) Error code: %i (%s)", z_res, zError(z_res));
+        TC_LOG_ERROR("misc", "Can't compress update packet (zlib: deflateEnd) Error code: {} ({})", z_res, zError(z_res));
         *dst_size = 0;
         return;
     }
@@ -147,4 +140,3 @@ void UpdateData::Clear()
     m_outOfRangeGUIDs.clear();
     m_blockCount = 0;
 }
-

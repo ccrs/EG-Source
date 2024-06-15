@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,6 +16,7 @@
  */
 
 #include "ScriptMgr.h"
+#include "Containers.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
@@ -516,7 +517,7 @@ class npc_high_oracle_soo_roo : public CreatureScript
                             break;
                         case 2:
                             orphan->SetFacingToObject(me);
-                            Talk(TEXT_SOO_ROO_1);
+                            Talk(TEXT_SOO_ROO_1, player);
                             timer = 6000;
                             break;
                         case 3:
@@ -676,7 +677,7 @@ class npc_the_etymidian : public CreatureScript
                 Initialize();
             }
 
-            void QuestReward(Player* /*player*/, Quest const* quest, uint32 /*opt*/) override
+            void OnQuestReward(Player* /*player*/, Quest const* quest, uint32 /*opt*/) override
             {
                 if (quest->GetQuestId() != QUEST_THE_ACTIVATION_RUNE)
                     return;
@@ -684,6 +685,8 @@ class npc_the_etymidian : public CreatureScript
                 Talk(SAY_ACTIVATION);
             }
 
+            // doesn't trigger if creature is stunned. Restore aura 25900 when it will be possible or
+            // find another way to start event(from orphan script)
             void MoveInLineOfSight(Unit* who) override
             {
                 if (!phase && who && who->GetDistance2d(me) < 10.0f)
@@ -862,7 +865,7 @@ class npc_alexstraza_the_lifebinder : public CreatureScript
                             timer = 5000;
                             break;
                         case 4:
-                            Talk(TEXT_ALEXSTRASZA_2);
+                            Talk(TEXT_ALEXSTRASZA_2, orphan);
                             me->SetStandState(UNIT_STAND_STATE_KNEEL);
                             me->SetFacingToObject(orphan);
                             timer = 5000;
@@ -897,7 +900,7 @@ class npc_alexstraza_the_lifebinder : public CreatureScript
                             break;
                         case 10:
                             orphan->SetFacingToObject(me);
-                            Talk(TEXT_ALEXSTRASZA_2);
+                            Talk(TEXT_ALEXSTRASZA_2, orphan);
                             timer = 5000;
                             break;
                         case 11:
@@ -947,7 +950,7 @@ class at_bring_your_orphan_to : public AreaTriggerScript
             uint32 questId = 0;
             uint32 orphanId = 0;
 
-            switch (trigger->id)
+            switch (trigger->ID)
             {
                 case AT_DOWN_AT_THE_DOCKS:
                     questId = QUEST_DOWN_AT_THE_DOCKS;
@@ -1046,26 +1049,15 @@ class npc_cw_area_trigger : public CreatureScript
                                         if (player->GetQuestStatus(QUEST_NOW_WHEN_I_GROW_UP) == QUEST_STATUS_COMPLETE)
                                             if (Creature* samuro = me->FindNearestCreature(25151, 20.0f))
                                             {
-                                                uint32 emote = 0;
-                                                switch (urand(1, 5))
-                                                {
-                                                    case 1:
-                                                        emote = EMOTE_ONESHOT_WAVE;
-                                                        break;
-                                                    case 2:
-                                                        emote = EMOTE_ONESHOT_ROAR;
-                                                        break;
-                                                    case 3:
-                                                        emote = EMOTE_ONESHOT_FLEX;
-                                                        break;
-                                                    case 4:
-                                                        emote = EMOTE_ONESHOT_SALUTE;
-                                                        break;
-                                                    case 5:
-                                                        emote = EMOTE_ONESHOT_DANCE;
-                                                        break;
-                                                }
-                                                samuro->HandleEmoteCommand(emote);
+                                                Emote const emotes[] =
+                                                    {
+                                                        EMOTE_ONESHOT_WAVE,
+                                                        EMOTE_ONESHOT_ROAR,
+                                                        EMOTE_ONESHOT_FLEX,
+                                                        EMOTE_ONESHOT_SALUTE,
+                                                        EMOTE_ONESHOT_DANCE
+                                                    };
+                                                samuro->HandleEmoteCommand(Trinity::Containers::SelectRandomContainerElement(emotes));
                                             }
                                     }
                                     break;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -36,10 +36,10 @@ void Motd::SetMotd(std::string motd)
 
     WorldPacket data(SMSG_MOTD);                     // new in 2.0.1
 
-    Tokenizer motdTokens(motd, '@');
+    std::vector<std::string_view> motdTokens = Trinity::Tokenize(motd, '@', true);
     data << uint32(motdTokens.size()); // line count
 
-    for (Tokenizer::const_reference token : motdTokens)
+    for (std::string_view token : motdTokens)
         data << token;
 
     MotdPacket = data;
@@ -48,7 +48,7 @@ void Motd::SetMotd(std::string motd)
         return;
 
     std::ostringstream oss;
-    std::copy(motdTokens.begin(), motdTokens.end() - 1, std::ostream_iterator<char const*>(oss, "\n"));
+    std::copy(motdTokens.begin(), motdTokens.end() - 1, std::ostream_iterator<std::string_view>(oss, "\n"));
     oss << *(motdTokens.end() - 1); // copy back element
     FormattedMotd = oss.str();
 }

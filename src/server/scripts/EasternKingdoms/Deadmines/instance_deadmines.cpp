@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2008 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -45,18 +44,26 @@ enum Misc
     DATA_SMITE_ALARM_DELAY_TIMER                           = 5000
 };
 
+DoorData const doorData[] =
+{
+    { GO_FACTORY_DOOR,      BOSS_RHAHKZOR,   DOOR_TYPE_PASSAGE },
+    { GO_MAST_ROOM_DOOR,    BOSS_SNEED,      DOOR_TYPE_PASSAGE },
+    { GO_FOUNDRY_DOOR,      BOSS_GILNID,     DOOR_TYPE_PASSAGE },
+    { 0,                    0,               DOOR_TYPE_ROOM    } // END
+};
+
 class instance_deadmines : public InstanceMapScript
 {
     public:
-        instance_deadmines() : InstanceMapScript(DMScriptName, 36)
-        {
-        }
+        instance_deadmines() : InstanceMapScript(DMScriptName, 36) { }
 
         struct instance_deadmines_InstanceMapScript : public InstanceScript
         {
-            instance_deadmines_InstanceMapScript(Map* map) : InstanceScript(map)
+            instance_deadmines_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
             {
                 SetHeaders(DataHeader);
+                SetBossNumber(EncounterCount);
+                LoadDoorData(doorData);
 
                 State = CANNON_NOT_USED;
                 CannonBlast_Timer = 0;
@@ -64,13 +71,11 @@ class instance_deadmines : public InstanceMapScript
                 SmiteAlarmDelay_Timer = 0;
             }
 
-            ObjectGuid FactoryDoorGUID;
             ObjectGuid IronCladDoorGUID;
             ObjectGuid DefiasCannonGUID;
             ObjectGuid DoorLeverGUID;
             ObjectGuid DefiasPirate1GUID;
             ObjectGuid DefiasPirate2GUID;
-            ObjectGuid DefiasCompanionGUID;
             ObjectGuid MrSmiteGUID;
 
             uint32 State;
@@ -131,30 +136,26 @@ class instance_deadmines : public InstanceMapScript
             {
                 if (GameObject* pIronCladDoor = instance->GetGameObject(IronCladDoorGUID))
                 {
-                    Creature* DefiasPirate1 = pIronCladDoor->SummonCreature(657, pIronCladDoor->GetPositionX() - 2, pIronCladDoor->GetPositionY()-7, pIronCladDoor->GetPositionZ(), 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);
-                    Creature* DefiasPirate2 = pIronCladDoor->SummonCreature(657, pIronCladDoor->GetPositionX() + 3, pIronCladDoor->GetPositionY()-6, pIronCladDoor->GetPositionZ(), 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);
-                    Creature* DefiasCompanion = pIronCladDoor->SummonCreature(3450, pIronCladDoor->GetPositionX() + 2, pIronCladDoor->GetPositionY()-6, pIronCladDoor->GetPositionZ(), 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3000);
+                    Creature* DefiasPirate1 = pIronCladDoor->SummonCreature(657, pIronCladDoor->GetPositionX() - 2, pIronCladDoor->GetPositionY()-7, pIronCladDoor->GetPositionZ(), 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s);
+                    Creature* DefiasPirate2 = pIronCladDoor->SummonCreature(657, pIronCladDoor->GetPositionX() + 3, pIronCladDoor->GetPositionY()-6, pIronCladDoor->GetPositionZ(), 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s);
 
                     DefiasPirate1GUID = DefiasPirate1->GetGUID();
                     DefiasPirate2GUID = DefiasPirate2->GetGUID();
-                    DefiasCompanionGUID = DefiasCompanion->GetGUID();
                 }
             }
 
             void MoveCreaturesInside()
             {
-                if (!DefiasPirate1GUID || !DefiasPirate2GUID || !DefiasCompanionGUID)
+                if (!DefiasPirate1GUID || !DefiasPirate2GUID)
                     return;
 
                 Creature* pDefiasPirate1 = instance->GetCreature(DefiasPirate1GUID);
                 Creature* pDefiasPirate2 = instance->GetCreature(DefiasPirate2GUID);
-                Creature* pDefiasCompanion = instance->GetCreature(DefiasCompanionGUID);
-                if (!pDefiasPirate1 || !pDefiasPirate2 || !pDefiasCompanion)
+                if (!pDefiasPirate1 || !pDefiasPirate2)
                     return;
 
                 MoveCreatureInside(pDefiasPirate1);
                 MoveCreatureInside(pDefiasPirate2);
-                MoveCreatureInside(pDefiasCompanion);
             }
 
             void MoveCreatureInside(Creature* creature)
@@ -176,7 +177,7 @@ class instance_deadmines : public InstanceMapScript
             {
                 if (GameObject* pIronCladDoor = instance->GetGameObject(IronCladDoorGUID))
                 {
-                    pIronCladDoor->SetGoState(GO_STATE_ACTIVE_ALTERNATIVE);
+                    pIronCladDoor->SetGoState(GO_STATE_DESTROYED);
                     pIronCladDoor->PlayDirectSound(SOUND_DESTROYDOOR);
                 }
             }
@@ -184,11 +185,13 @@ class instance_deadmines : public InstanceMapScript
             void LeverStucked()
             {
                 if (GameObject* pDoorLever = instance->GetGameObject(DoorLeverGUID))
-                    pDoorLever->SetUInt32Value(GAMEOBJECT_FLAGS, 4);
+                    pDoorLever->SetFlag(GO_FLAG_INTERACT_COND);
             }
 
             void OnCreatureCreate(Creature* creature) override
             {
+                InstanceScript::OnCreatureCreate(creature);
+
                 switch (creature->GetEntry())
                 {
                     case NPC_MR_SMITE:
@@ -201,13 +204,54 @@ class instance_deadmines : public InstanceMapScript
 
             void OnGameObjectCreate(GameObject* go) override
             {
+                InstanceScript::OnGameObjectCreate(go);
+
                 switch (go->GetEntry())
                 {
-                    case GO_FACTORY_DOOR:   FactoryDoorGUID = go->GetGUID(); break;
-                    case GO_IRONCLAD_DOOR:  IronCladDoorGUID = go->GetGUID();  break;
-                    case GO_DEFIAS_CANNON:  DefiasCannonGUID = go->GetGUID();  break;
-                    case GO_DOOR_LEVER:     DoorLeverGUID = go->GetGUID();     break;
-                    case GO_MR_SMITE_CHEST: uiSmiteChestGUID = go->GetGUID();  break;
+                    case GO_IRONCLAD_DOOR:
+                        IronCladDoorGUID = go->GetGUID();
+                        break;
+                    case GO_DEFIAS_CANNON:
+                        DefiasCannonGUID = go->GetGUID();
+                        break;
+                    case GO_DOOR_LEVER:
+                        DoorLeverGUID = go->GetGUID();
+                        break;
+                    case GO_MR_SMITE_CHEST:
+                        uiSmiteChestGUID = go->GetGUID();
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            void OnUnitDeath(Unit* unit) override
+            {
+                if (Creature* creature = unit->ToCreature())
+                {
+                    switch (creature->GetEntry())
+                    {
+                        case NPC_RHAHKZOR:
+                            SetBossState(BOSS_RHAHKZOR, DONE);
+                            break;
+                        case NPC_SNEED:
+                            SetBossState(BOSS_SNEED, DONE);
+                            break;
+                        case NPC_GILNID:
+                            SetBossState(BOSS_GILNID, DONE);
+                            break;
+                        case NPC_MR_SMITE:
+                            SetBossState(BOSS_MR_SMITE, DONE);
+                            break;
+                        case NPC_GREENSKIN:
+                            SetBossState(BOSS_GREENSKIN, DONE);
+                            break;
+                        case NPC_COOKIE:
+                            SetBossState(BOSS_COOKIE, DONE);
+                            break;
+                        default:
+                            break;
+                    }
                 }
             }
 
@@ -218,11 +262,6 @@ class instance_deadmines : public InstanceMapScript
                     case EVENT_STATE:
                         if (DefiasCannonGUID && IronCladDoorGUID)
                             State = data;
-                        break;
-                    case EVENT_RHAHKZOR:
-                        if (data == DONE)
-                            if (GameObject* go = instance->GetGameObject(FactoryDoorGUID))
-                                go->SetGoState(GO_STATE_ACTIVE);
                         break;
                 }
             }

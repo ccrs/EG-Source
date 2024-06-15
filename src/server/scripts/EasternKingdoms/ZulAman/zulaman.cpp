@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,7 +23,6 @@ SDCategory: Zul'Aman
 EndScriptData */
 
 /* ContentData
-npc_forest_frog
 EndContentData */
 
 #include "ScriptMgr.h"
@@ -39,100 +37,28 @@ EndContentData */
 #include "zulaman.h"
 
 /*######
-## npc_forest_frog
-######*/
-
-enum ForestFrog
-{
-    // Spells
-    SPELL_REMOVE_AMANI_CURSE   = 43732,
-    SPELL_PUSH_MOJO            = 43923,
-
-    // Creatures
-    NPC_FOREST_FROG             = 24396
-
-};
-
-class npc_forest_frog : public CreatureScript
-{
-    public:
-
-        npc_forest_frog() : CreatureScript("npc_forest_frog") { }
-
-        struct npc_forest_frogAI : public ScriptedAI
-        {
-            npc_forest_frogAI(Creature* creature) : ScriptedAI(creature)
-            {
-                instance = creature->GetInstanceScript();
-            }
-
-            InstanceScript* instance;
-
-            void Reset() override { }
-
-            void EnterCombat(Unit* /*who*/) override { }
-
-            void DoSpawnRandom() const
-            {
-                uint32 cEntry = RAND(
-                    24397,     //Mannuth
-                    24403,     //Deez
-                    24404,     //Galathryn
-                    24405,     //Adarrah
-                    24406,     //Fudgerick
-                    24407,     //Darwen
-                    24445,     //Mitzi
-                    24448,     //Christian
-                    24453,     //Brennan
-                    24455);    //Hollee
-
-                if (!instance->GetData(TYPE_RAND_VENDOR_1))
-                {
-                    if (roll_chance_i(10))
-                    {
-                        cEntry = 24408;      //Gunter
-                        instance->SetData(TYPE_RAND_VENDOR_1, DONE);
-                    }
-                }
-                else if (!instance->GetData(TYPE_RAND_VENDOR_2))
-                {
-                    if (roll_chance_i(10))
-                    {
-                        cEntry = 24409;      //Kyren
-                        instance->SetData(TYPE_RAND_VENDOR_2, DONE);
-                    }
-                }
-
-                me->UpdateEntry(cEntry);
-            }
-
-            void SpellHit(Unit* caster, SpellInfo const* spell) override
-            {
-                if (spell->Id == SPELL_REMOVE_AMANI_CURSE && caster->GetTypeId() == TYPEID_PLAYER && me->GetEntry() == NPC_FOREST_FROG)
-                {
-                    //increase or decrease chance of mojo?
-                    if (roll_chance_i(1))
-                        DoCast(caster, SPELL_PUSH_MOJO, true);
-                    else
-                        DoSpawnRandom();
-                }
-            }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return GetZulAmanAI<npc_forest_frogAI>(creature);
-        }
-};
-
-/*######
 ## npc_zulaman_hostage
 ######*/
 
-#define GOSSIP_HOSTAGE1        "I am glad to help you."
-
 static uint32 const HostageEntry[] = {23790, 23999, 24024, 24001};
 static uint32 const ChestEntry[] = {186648, 187021, 186672, 186667};
+
+enum Npcs
+{
+    NPC_TANZAR                = 23790,
+    NPC_HARKOR                = 23999,
+    NPC_ASHLI                 = 24001,
+    NPC_KRAZ                  = 24024
+};
+
+enum Gossips
+{
+    GOSSIP_MENU_TANZAR        = 8799,
+    GOSSIP_MENU_HARKOR        = 8874,
+    GOSSIP_MENU_ASHLI         = 8927,
+    GOSSIP_MENU_KRAZ          = 8881,
+    GOSSIP_OPTION_HOSTAGE     = 0
+};
 
 class npc_zulaman_hostage : public CreatureScript
 {
@@ -145,14 +71,32 @@ class npc_zulaman_hostage : public CreatureScript
 
             InstanceScript* instance;
 
-            bool GossipHello(Player* player) override
+            bool OnGossipHello(Player* player) override
             {
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_HOSTAGE1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+                switch (me->GetEntry())
+                {
+                    case NPC_TANZAR:
+                        InitGossipMenuFor(player, GOSSIP_MENU_TANZAR);
+                        AddGossipItemFor(player, GOSSIP_MENU_TANZAR, GOSSIP_OPTION_HOSTAGE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+                        break;
+                    case NPC_HARKOR:
+                        InitGossipMenuFor(player, GOSSIP_MENU_HARKOR);
+                        AddGossipItemFor(player, GOSSIP_MENU_HARKOR, GOSSIP_OPTION_HOSTAGE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+                        break;
+                    case NPC_ASHLI:
+                        InitGossipMenuFor(player, GOSSIP_MENU_ASHLI);
+                        AddGossipItemFor(player, GOSSIP_MENU_ASHLI, GOSSIP_OPTION_HOSTAGE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+                        break;
+                    case NPC_KRAZ:
+                        InitGossipMenuFor(player, GOSSIP_MENU_KRAZ);
+                        AddGossipItemFor(player, GOSSIP_MENU_KRAZ, GOSSIP_OPTION_HOSTAGE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+                        break;
+                }
                 SendGossipMenuFor(player, player->GetGossipTextId(me), me->GetGUID());
                 return true;
             }
 
-            bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
+            bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
             {
                 uint32 const action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
                 ClearGossipMenuFor(player);
@@ -160,10 +104,10 @@ class npc_zulaman_hostage : public CreatureScript
                 if (action == GOSSIP_ACTION_INFO_DEF + 1)
                     CloseGossipMenuFor(player);
 
-                if (!me->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP))
+                if (!me->HasNpcFlag(UNIT_NPC_FLAG_GOSSIP))
                     return true;
 
-                me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
 
                 //uint8 progress = instance->GetData(DATA_CHESTLOOTED);
                 instance->SetData(DATA_CHESTLOOTED, 0);
@@ -174,7 +118,7 @@ class npc_zulaman_hostage : public CreatureScript
                 {
                     if (HostageEntry[i] == entry)
                     {
-                        me->SummonGameObject(ChestEntry[i], Position(x - 2, y, z, 0.f), QuaternionData(), 0);
+                        me->SummonGameObject(ChestEntry[i], Position(x - 2, y, z, 0.f), QuaternionData(), 0s);
                         break;
                     }
                 }
@@ -279,15 +223,15 @@ class npc_harrison_jones : public CreatureScript
                 Initialize();
             }
 
-            void EnterCombat(Unit* /*who*/) override { }
+            void JustEngagedWith(Unit* /*who*/) override { }
 
-            bool GossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
+            bool OnGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
             {
                if (me->GetCreatureTemplate()->GossipMenuId == menuId && !gossipListId)
                {
                     CloseGossipMenuFor(player);
                     me->SetFacingToObject(player);
-                    me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                    me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                     Talk(SAY_HARRISON_0);
                     _gongEvent = GONG_EVENT_1;
                     _gongTimer = 4000;
@@ -295,16 +239,16 @@ class npc_harrison_jones : public CreatureScript
                return false;
             }
 
-            void SpellHit(Unit*, SpellInfo const* spell) override
+            void SpellHit(WorldObject* /*caster*/, SpellInfo const* spellInfo) override
             {
-                if (spell->Id == SPELL_COSMETIC_SPEAR_THROW)
+                if (spellInfo->Id == SPELL_COSMETIC_SPEAR_THROW)
                 {
                     me->RemoveAllAuras();
                     me->SetEntry(NPC_HARRISON_JONES_2);
                     me->SetDisplayId(MODEL_HARRISON_JONES_2);
                     me->SetTarget(ObjectGuid::Empty);
-                    me->SetByteValue(UNIT_FIELD_BYTES_1, 0, UNIT_STAND_STATE_DEAD);
-                    me->SetFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
+                    me->SetStandState(UNIT_STAND_STATE_DEAD);
+                    me->SetDynamicFlag(UNIT_DYNFLAG_DEAD);
                     instance->SetData(DATA_GONGEVENT, DONE);
                 }
             }
@@ -326,21 +270,21 @@ class npc_harrison_jones : public CreatureScript
                                 me->SetFacingTo(6.235659f);
                                 Talk(SAY_HARRISON_1);
                                 DoCast(me, SPELL_BANGING_THE_GONG);
-                                me->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, uint32(WEAPON_MACE));
+                                me->SetVirtualItem(0, uint32(WEAPON_MACE));
                                 me->SetSheath(SHEATH_STATE_MELEE);
                                 _gongEvent = GONG_EVENT_3;
                                 _gongTimer = 4000;
                                 break;
                             case GONG_EVENT_3:
                                 if (GameObject* gong = instance->GetGameObject(GO_STRANGE_GONG))
-                                    gong->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                                    gong->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                                 _gongEvent = GONG_EVENT_4;
                                 _gongTimer = 105000;
                                 break;
                             case GONG_EVENT_4:
                                 me->RemoveAura(SPELL_BANGING_THE_GONG);
                                 if (GameObject* gong = instance->GetGameObject(GO_STRANGE_GONG))
-                                    gong->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                                    gong->SetFlag(GO_FLAG_NOT_SELECTABLE);
 
                                 // trigger or gong will need to be scripted to set IN_PROGRESS after enough hits.
                                 // This is temp workaround.
@@ -367,7 +311,7 @@ class npc_harrison_jones : public CreatureScript
                                 _gongEvent = GONG_EVENT_6;
                                 break;
                             case GONG_EVENT_6:
-                                me->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_USE_STANDING);
+                                me->SetEmoteState(EMOTE_STATE_USE_STANDING);
                                 Talk(SAY_HARRISON_3);
                                 _gongTimer = 7000;
                                 _gongEvent = GONG_EVENT_7;
@@ -380,14 +324,14 @@ class npc_harrison_jones : public CreatureScript
                                 {
                                     if (target->GetPositionX() > 120)
                                     {
-                                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, uint32(WEAPON_SPEAR));
-                                        target->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                                        target->SetVirtualItem(0, uint32(WEAPON_SPEAR));
+                                        target->SetImmuneToPC(true);
                                         target->SetReactState(REACT_PASSIVE);
                                         target->AI()->SetData(0, 1);
                                     }
                                     else
                                     {
-                                        target->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                                        target->SetImmuneToPC(true);
                                         target->SetReactState(REACT_PASSIVE);
                                         target->AI()->SetData(0, 2);
                                     }
@@ -401,8 +345,8 @@ class npc_harrison_jones : public CreatureScript
                             }
                             case GONG_EVENT_8:
                                 DoCast(me, SPELL_STEALTH);
-                                me->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, uint32(0));
-                                me->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_ONESHOT_NONE);
+                                me->SetVirtualItem(0, uint32(0));
+                                me->SetEmoteState(EMOTE_ONESHOT_NONE);
                                 me->GetMotionMaster()->MovePath(HARRISON_MOVE_3, false);
                                 _gongTimer = 1000;
                                 _gongEvent = 0;
@@ -418,7 +362,7 @@ class npc_harrison_jones : public CreatureScript
                                 _gongTimer = 6000;
                                 break;
                             case GONG_EVENT_11:
-                                me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                                me->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
 
                                 instance->SetData(DATA_GONGEVENT, NOT_STARTED);
                                 _gongEvent = 0;
@@ -438,38 +382,8 @@ class npc_harrison_jones : public CreatureScript
         }
 };
 
-class spell_banging_the_gong : public SpellScriptLoader
-{
-    public:
-        spell_banging_the_gong() : SpellScriptLoader("spell_banging_the_gong") { }
-
-        class spell_banging_the_gong_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_banging_the_gong_SpellScript);
-
-            void Activate(SpellEffIndex index)
-            {
-                PreventHitDefaultEffect(index);
-                GetHitGObj()->SendCustomAnim(0);
-            }
-
-            void Register() override
-            {
-                OnEffectHitTarget += SpellEffectFn(spell_banging_the_gong_SpellScript::Activate, EFFECT_1, SPELL_EFFECT_ACTIVATE_OBJECT);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_banging_the_gong_SpellScript();
-        }
-};
-
-
 void AddSC_zulaman()
 {
-    new npc_forest_frog();
     new npc_zulaman_hostage();
     new npc_harrison_jones();
-    new spell_banging_the_gong();
 }

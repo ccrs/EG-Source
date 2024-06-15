@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,7 +19,6 @@
 #include "Creature.h"
 #include "gruuls_lair.h"
 #include "InstanceScript.h"
-#include "Map.h"
 
 DoorData const doorData[] =
 {
@@ -34,7 +33,8 @@ MinionData const minionData[] =
     { NPC_KROSH_FIREHAND,       DATA_MAULGAR },
     { NPC_OLM_THE_SUMMONER,     DATA_MAULGAR },
     { NPC_KIGGLER_THE_CRAZED,   DATA_MAULGAR },
-    { NPC_BLINDEYE_THE_SEER,    DATA_MAULGAR }
+    { NPC_BLINDEYE_THE_SEER,    DATA_MAULGAR },
+    { 0, 0 }
 };
 
 class instance_gruuls_lair : public InstanceMapScript
@@ -44,7 +44,7 @@ class instance_gruuls_lair : public InstanceMapScript
 
         struct instance_gruuls_lair_InstanceMapScript : public InstanceScript
         {
-            instance_gruuls_lair_InstanceMapScript(Map* map) : InstanceScript(map)
+            instance_gruuls_lair_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
             {
                 SetHeaders(DataHeader);
                 SetBossNumber(EncounterCount);

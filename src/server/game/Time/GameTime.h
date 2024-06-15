@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,7 +19,9 @@
 #define __GAMETIME_H
 
 #include "Define.h"
-#include <chrono>
+#include "Duration.h"
+
+class WowTime;
 
 namespace GameTime
 {
@@ -33,13 +35,17 @@ namespace GameTime
     TC_GAME_API uint32 GetGameTimeMS();
 
     /// Current chrono system_clock time point
-    TC_GAME_API std::chrono::system_clock::time_point GetGameTimeSystemPoint();
+    TC_GAME_API SystemTimePoint GetSystemTime();
 
     /// Current chrono steady_clock time point
-    TC_GAME_API std::chrono::steady_clock::time_point GetGameTimeSteadyPoint();
+    TC_GAME_API TimePoint Now();
 
     /// Uptime (in secs)
     TC_GAME_API uint32 GetUptime();
+
+    TC_GAME_API WowTime const* GetUtcWowTime();
+
+    TC_GAME_API WowTime const* GetWowTime();
 
     void UpdateGameTimers();
 }

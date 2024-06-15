@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2008 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,6 +23,7 @@ SDCategory: Karazhan
 EndScriptData */
 
 #include "ScriptMgr.h"
+#include "Containers.h"
 #include "karazhan.h"
 #include "InstanceScript.h"
 #include "ObjectAccessor.h"
@@ -156,7 +156,7 @@ public:
             DoZoneInCombat();
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
             StartEvent();
 
@@ -200,7 +200,7 @@ public:
                 {
                     uint32 entry = *itr;
 
-                    if (Creature* creature = me->SummonCreature(entry, Locations[i], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000))
+                    if (Creature* creature = me->SummonCreature(entry, Locations[i], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10s))
                     {
                         AddGUID[i] = creature->GetGUID();
                         AddId[i] = entry;
@@ -211,7 +211,7 @@ public:
             {
                 for (uint8 i = 0; i < 4; ++i)
                 {
-                    if (Creature* creature = me->SummonCreature(AddId[i], Locations[i], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000))
+                    if (Creature* creature = me->SummonCreature(AddId[i], Locations[i], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10s))
                         AddGUID[i] = creature->GetGUID();
                 }
             }
@@ -300,14 +300,8 @@ public:
 
                 if (Blind_Timer <= diff)
                 {
-                    std::list<Unit*> targets;
-                    SelectTargetList(targets, 5, SELECT_TARGET_RANDOM, me->GetCombatReach()*5, true);
-                    for (std::list<Unit*>::const_iterator i = targets.begin(); i != targets.end(); ++i)
-                        if (!me->IsWithinMeleeRange(*i))
-                        {
-                            DoCast(*i, SPELL_BLIND);
-                            break;
-                        }
+                    if (Unit* target = SelectTarget(SelectTargetMethod::MinDistance, 0, 0.0f, true, false))
+                      DoCast(target, SPELL_BLIND);
                     Blind_Timer = 40000;
                 } else Blind_Timer -= diff;
             }
@@ -318,7 +312,7 @@ public:
                 {
                     Talk(SAY_SPECIAL);
 
-                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true))
                         target->CastSpell(target, SPELL_GARROTE, true);
 
                     InVanish = false;
@@ -430,15 +424,15 @@ public:
 
             if (ManaBurn_Timer <= diff)
             {
-                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
-                    if (target->getPowerType() == POWER_MANA)
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true))
+                    if (target->GetPowerType() == POWER_MANA)
                         DoCast(target, SPELL_MANABURN);
                 ManaBurn_Timer = 5000;                          // 3 sec cast
             } else ManaBurn_Timer -= diff;
 
             if (ShadowWordPain_Timer <= diff)
             {
-                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true))
                 {
                     DoCast(target, SPELL_SWPAIN);
                     ShadowWordPain_Timer = 7000;
@@ -582,7 +576,7 @@ public:
 
             if (DispelMagic_Timer <= diff)
             {
-                if (Unit* target = RAND(SelectGuestTarget(), SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true)))
+                if (Unit* target = RAND(SelectGuestTarget(), SelectTarget(SelectTargetMethod::Random, 0, 100, true)))
                     DoCast(target, SPELL_DISPELMAGIC);
 
                 DispelMagic_Timer = 25000;

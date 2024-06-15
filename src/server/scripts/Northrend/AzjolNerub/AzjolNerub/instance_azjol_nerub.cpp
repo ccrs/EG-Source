@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,7 +21,6 @@
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "InstanceScript.h"
-#include "Map.h"
 
 DoorData const doorData[] =
 {
@@ -64,21 +63,27 @@ class instance_azjol_nerub : public InstanceMapScript
 
         struct instance_azjol_nerub_InstanceScript : public InstanceScript
         {
-            instance_azjol_nerub_InstanceScript(Map* map) : InstanceScript(map)
+            instance_azjol_nerub_InstanceScript(InstanceMap* map) : InstanceScript(map)
             {
                 SetHeaders(DataHeader);
                 SetBossNumber(EncounterCount);
                 LoadBossBoundaries(boundaries);
                 LoadDoorData(doorData);
                 LoadObjectData(creatureData, gameobjectData);
+                GateWatcherGreet = 0;
             }
 
             void OnUnitDeath(Unit* who) override
             {
                 InstanceScript::OnUnitDeath(who);
-                Creature* creature = who->ToCreature();
-                if (!creature || creature->IsCritter() || creature->IsControlledByPlayer())
+
+                if (who->GetTypeId() != TYPEID_UNIT || GetBossState(DATA_KRIKTHIR) == DONE)
                     return;
+
+                Creature* creature = who->ToCreature();
+                if (creature->IsCritter() || creature->IsCharmedOwnedByPlayerOrPlayer())
+                    return;
+
                 if (Creature* gatewatcher = GetCreature(DATA_KRIKTHIR))
                     gatewatcher->AI()->DoAction(-ACTION_GATEWATCHER_GREET);
             }
@@ -93,6 +98,32 @@ class instance_azjol_nerub : public InstanceMapScript
 
                 return true;
             }
+
+            uint32 GetData(uint32 type) const override
+            {
+                switch (type)
+                {
+                    case DATA_GATEWATCHER_GREET:
+                        return GateWatcherGreet;
+                    default:
+                        return 0;
+                }
+            }
+
+            void SetData(uint32 type, uint32 data) override
+            {
+                switch (type)
+                {
+                    case DATA_GATEWATCHER_GREET:
+                        GateWatcherGreet = data;
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+        protected:
+            uint8 GateWatcherGreet;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override

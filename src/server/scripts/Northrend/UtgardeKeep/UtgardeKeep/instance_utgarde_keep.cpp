@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,7 +19,6 @@
 #include "Creature.h"
 #include "GameObject.h"
 #include "InstanceScript.h"
-#include "Map.h"
 #include "utgarde_keep.h"
 
 DoorData const doorData[] =
@@ -32,7 +31,8 @@ DoorData const doorData[] =
 MinionData const minionData[] =
 {
     { NPC_SKARVALD,     DATA_SKARVALD_DALRONN },
-    { NPC_DALRONN,      DATA_SKARVALD_DALRONN }
+    { NPC_DALRONN,      DATA_SKARVALD_DALRONN },
+    { 0,                0 }
 };
 
 class instance_utgarde_keep : public InstanceMapScript
@@ -42,7 +42,7 @@ class instance_utgarde_keep : public InstanceMapScript
 
         struct instance_utgarde_keep_InstanceMapScript : public InstanceScript
         {
-            instance_utgarde_keep_InstanceMapScript(Map* map) : InstanceScript(map)
+            instance_utgarde_keep_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
             {
                 SetHeaders(DataHeader);
                 SetBossNumber(EncounterCount);

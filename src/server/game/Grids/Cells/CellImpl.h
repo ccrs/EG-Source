@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -25,25 +24,12 @@
 #include "Map.h"
 #include "Object.h"
 
-inline Cell::Cell(CellCoord const& p)
+inline Cell::Cell(CellCoord const& p) : data()
 {
     data.Part.grid_x = p.x_coord / MAX_NUMBER_OF_CELLS;
     data.Part.grid_y = p.y_coord / MAX_NUMBER_OF_CELLS;
     data.Part.cell_x = p.x_coord % MAX_NUMBER_OF_CELLS;
     data.Part.cell_y = p.y_coord % MAX_NUMBER_OF_CELLS;
-    data.Part.nocreate = 0;
-    data.Part.reserved = 0;
-}
-
-inline Cell::Cell(float x, float y)
-{
-    CellCoord p = Trinity::ComputeCellCoord(x, y);
-    data.Part.grid_x = p.x_coord / MAX_NUMBER_OF_CELLS;
-    data.Part.grid_y = p.y_coord / MAX_NUMBER_OF_CELLS;
-    data.Part.cell_x = p.x_coord % MAX_NUMBER_OF_CELLS;
-    data.Part.cell_y = p.y_coord % MAX_NUMBER_OF_CELLS;
-    data.Part.nocreate = 0;
-    data.Part.reserved = 0;
 }
 
 inline CellArea Cell::CalculateCellArea(float x, float y, float radius)
@@ -255,4 +241,3 @@ inline void Cell::VisitAllObjects(float x, float y, Map* map, T& visitor, float 
 }
 
 #endif
-

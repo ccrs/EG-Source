@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,6 +21,7 @@
 #include "Chat.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
+#include "GameTime.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "Language.h"
@@ -30,12 +30,14 @@
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "SocialMgr.h"
+#include "StringConvert.h"
 #include "World.h"
 
 Channel::Channel(uint32 channelId, uint32 team /*= 0*/, AreaTableEntry const* zoneEntry /*= nullptr*/) :
+    _isDirty(false),
+    _nextActivityUpdateTime(0),
     _announceEnabled(false),                                        // no join/leave announces
     _ownershipEnabled(false),                                       // no ownership handout
-    _persistentChannel(false),
     _isOwnerInvisible(false),
     _channelFlags(CHANNEL_FLAG_GENERAL),                            // for all built-in channels
     _channelId(channelId),
@@ -46,22 +48,23 @@ Channel::Channel(uint32 channelId, uint32 team /*= 0*/, AreaTableEntry const* zo
     _zoneEntry(zoneEntry)
 {
     ChatChannelsEntry const* channelEntry = sChatChannelsStore.AssertEntry(channelId);
-    if (channelEntry->flags & CHANNEL_DBC_FLAG_TRADE)              // for trade channel
+    if (channelEntry->Flags & CHANNEL_DBC_FLAG_TRADE)              // for trade channel
         _channelFlags |= CHANNEL_FLAG_TRADE;
 
-    if (channelEntry->flags & CHANNEL_DBC_FLAG_CITY_ONLY2)         // for city only channels
+    if (channelEntry->Flags & CHANNEL_DBC_FLAG_CITY_ONLY2)         // for city only channels
         _channelFlags |= CHANNEL_FLAG_CITY;
 
-    if (channelEntry->flags & CHANNEL_DBC_FLAG_LFG)                // for LFG channel
+    if (channelEntry->Flags & CHANNEL_DBC_FLAG_LFG)                // for LFG channel
         _channelFlags |= CHANNEL_FLAG_LFG;
     else                                                            // for all other channels
         _channelFlags |= CHANNEL_FLAG_NOT_LFG;
 }
 
-Channel::Channel(std::string const& name, uint32 team /*= 0*/) :
+Channel::Channel(std::string const& name, uint32 team /*= 0*/, std::string const& banList) :
+    _isDirty(false),
+    _nextActivityUpdateTime(0),
     _announceEnabled(true),
     _ownershipEnabled(true),
-    _persistentChannel(false),
     _isOwnerInvisible(false),
     _channelFlags(CHANNEL_FLAG_CUSTOM),
     _channelId(0),
@@ -71,45 +74,14 @@ Channel::Channel(std::string const& name, uint32 team /*= 0*/) :
     _channelPassword(),
     _zoneEntry(nullptr)
 {
-    // If storing custom channels in the db is enabled either load or save the channel
-    if (sWorld->getBoolConfig(CONFIG_PRESERVE_CUSTOM_CHANNELS))
+    for (std::string_view guid : Trinity::Tokenize(banList, ' ', false))
     {
-        PreparedStatement *stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHANNEL);
-        stmt->setString(0, name);
-        stmt->setUInt32(1, _channelTeam);
-        if (PreparedQueryResult result = CharacterDatabase.Query(stmt)) // load
-        {
-            Field* fields = result->Fetch();
-            _channelName = fields[0].GetString(); // re-get channel name. MySQL table collation is case insensitive
-            _announceEnabled = fields[1].GetBool();
-            _ownershipEnabled = fields[2].GetBool();
-            _channelPassword = fields[3].GetString();
-            std::string db_BannedList = fields[4].GetString();
+        ObjectGuid banned(Trinity::StringTo<uint64>(guid).value_or(0));
+        if (!banned)
+            continue;
 
-            if (!db_BannedList.empty())
-            {
-                Tokenizer tokens(db_BannedList, ' ');
-                for (auto const& token : tokens)
-                {
-                    ObjectGuid banned_guid(uint64(atoull(token)));
-                    if (banned_guid)
-                    {
-                        TC_LOG_DEBUG("chat.system", "Channel(%s) loaded player %s into bannedStore", name.c_str(), banned_guid.ToString().c_str());
-                        _bannedStore.insert(banned_guid);
-                    }
-                }
-            }
-        }
-        else // save
-        {
-            stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_CHANNEL);
-            stmt->setString(0, name);
-            stmt->setUInt32(1, _channelTeam);
-            CharacterDatabase.Execute(stmt);
-            TC_LOG_DEBUG("chat.system", "Channel(%s) saved in database", name.c_str());
-        }
-
-        _persistentChannel = true;
+        TC_LOG_DEBUG("chat.system", "Channel({}) loaded player {} into bannedStore", name, banned.ToString());
+        _bannedStore.insert(banned);
     }
 }
 
@@ -118,15 +90,15 @@ void Channel::GetChannelName(std::string& channelName, uint32 channelId, LocaleC
     if (channelId)
     {
         ChatChannelsEntry const* channelEntry = sChatChannelsStore.AssertEntry(channelId);
-        if (!(channelEntry->flags & CHANNEL_DBC_FLAG_GLOBAL))
+        if (!(channelEntry->Flags & CHANNEL_DBC_FLAG_GLOBAL))
         {
-            if (channelEntry->flags & CHANNEL_DBC_FLAG_CITY_ONLY)
-                channelName = Trinity::StringFormat(channelEntry->pattern[locale], sObjectMgr->GetTrinityString(LANG_CHANNEL_CITY, locale));
+            if (channelEntry->Flags & CHANNEL_DBC_FLAG_CITY_ONLY)
+                channelName = fmt::sprintf(channelEntry->Name[locale], sObjectMgr->GetTrinityString(LANG_CHANNEL_CITY, locale));
             else
-                channelName = Trinity::StringFormat(channelEntry->pattern[locale], ASSERT_NOTNULL(zoneEntry)->area_name[locale]);
+                channelName = fmt::sprintf(channelEntry->Name[locale], ASSERT_NOTNULL(zoneEntry)->AreaName[locale]);
         }
         else
-            channelName = channelEntry->pattern[locale];
+            channelName = channelEntry->Name[locale];
     }
 }
 
@@ -138,9 +110,10 @@ std::string Channel::GetName(LocaleConstant locale /*= DEFAULT_LOCALE*/) const
     return result;
 }
 
-void Channel::UpdateChannelInDB() const
+void Channel::UpdateChannelInDB()
 {
-    if (_persistentChannel)
+    time_t const now = GameTime::GetGameTime();
+    if (_isDirty)
     {
         std::ostringstream banlist;
         for (BannedContainer::const_iterator iter = _bannedStore.begin(); iter != _bannedStore.end(); ++iter)
@@ -148,37 +121,30 @@ void Channel::UpdateChannelInDB() const
 
         std::string banListStr = banlist.str();
 
-        PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_CHANNEL);
-        stmt->setBool(0, _announceEnabled);
-        stmt->setBool(1, _ownershipEnabled);
-        stmt->setString(2, _channelPassword);
-        stmt->setString(3, banListStr);
-        stmt->setString(4, _channelName);
-        stmt->setUInt32(5, _channelTeam);
+        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_CHANNEL);
+        stmt->setString(0, _channelName);
+        stmt->setUInt32(1, _channelTeam);
+        stmt->setBool(2, _announceEnabled);
+        stmt->setBool(3, _ownershipEnabled);
+        stmt->setString(4, _channelPassword);
+        stmt->setString(5, banListStr);
         CharacterDatabase.Execute(stmt);
-
-        TC_LOG_DEBUG("chat.system", "Channel(%s) updated in database", _channelName.c_str());
     }
-}
-
-void Channel::UpdateChannelUseageInDB() const
-{
-    PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_CHANNEL_USAGE);
-    stmt->setString(0, _channelName);
-    stmt->setUInt32(1, _channelTeam);
-    CharacterDatabase.Execute(stmt);
-}
-
-void Channel::CleanOldChannelsInDB()
-{
-    if (sWorld->getIntConfig(CONFIG_PRESERVE_CUSTOM_CHANNEL_DURATION) > 0)
+    else if (_nextActivityUpdateTime <= now)
     {
-        PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_OLD_CHANNELS);
-        stmt->setUInt32(0, sWorld->getIntConfig(CONFIG_PRESERVE_CUSTOM_CHANNEL_DURATION) * DAY);
-        CharacterDatabase.Execute(stmt);
-
-        TC_LOG_DEBUG("chat.system", "Cleaned out unused custom chat channels.");
+        if (!_playersStore.empty())
+        {
+            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_CHANNEL_USAGE);
+            stmt->setString(0, _channelName);
+            stmt->setUInt32(1, _channelTeam);
+            CharacterDatabase.Execute(stmt);
+        }
     }
+    else
+        return;
+
+    _isDirty = false;
+    _nextActivityUpdateTime = now + urand(1 * MINUTE, 6 * MINUTE) * std::max(1u, sWorld->getIntConfig(CONFIG_PRESERVE_CUSTOM_CHANNEL_INTERVAL));
 }
 
 void Channel::JoinChannel(Player* player, std::string const& pass)
@@ -204,7 +170,7 @@ void Channel::JoinChannel(Player* player, std::string const& pass)
         return;
     }
 
-    if (!_channelPassword.empty() && pass != _channelPassword)
+    if (!CheckPassword(pass))
     {
         WrongPasswordAppend appender;
         ChannelNameBuilder<WrongPasswordAppend> builder(this, appender);
@@ -233,6 +199,8 @@ void Channel::JoinChannel(Player* player, std::string const& pass)
     }
 
     bool newChannel = _playersStore.empty();
+    if (newChannel)
+        _nextActivityUpdateTime = 0; // force activity update on next channel tick
 
     PlayerInfo& pinfo = _playersStore[guid];
     pinfo.flags = MEMBER_FLAG_NONE;
@@ -247,9 +215,6 @@ void Channel::JoinChannel(Player* player, std::string const& pass)
     // Custom channel handling
     if (!IsConstant())
     {
-        // Update last_used timestamp in db
-        UpdateChannelUseageInDB();
-
         // If the channel has no owner yet and ownership is allowed, set the new owner.
         // or if the owner was a GM with .gm visible off
         // don't do this if the new player is, too, an invis GM, unless the channel was empty
@@ -301,9 +266,6 @@ void Channel::LeaveChannel(Player* player, bool send)
 
     if (!IsConstant())
     {
-        // Update last_used timestamp in db
-        UpdateChannelUseageInDB();
-
         // If the channel owner left and there are players still inside, pick a new owner
         // do not pick invisible gm owner unless there are only invisible gms in that channel (rare)
         if (changeowner && _ownershipEnabled && !_playersStore.empty())
@@ -353,7 +315,7 @@ void Channel::KickOrBan(Player const* player, std::string const& badname, bool b
 
     Player* bad = ObjectAccessor::FindConnectedPlayerByName(badname);
     ObjectGuid victim = bad ? bad->GetGUID() : ObjectGuid::Empty;
-    if (!victim || !IsOn(victim))
+    if (!bad || !victim || !IsOn(victim))
     {
         PlayerNotFoundAppend appender(badname);
         ChannelNameBuilder<PlayerNotFoundAppend> builder(this, appender);
@@ -374,7 +336,7 @@ void Channel::KickOrBan(Player const* player, std::string const& badname, bool b
     if (ban && !IsBanned(victim))
     {
         _bannedStore.insert(victim);
-        UpdateChannelInDB();
+        _isDirty = true;
 
         if (!player->GetSession()->HasPermission(rbac::RBAC_PERM_SILENTLY_JOIN_CHANNEL))
         {
@@ -439,7 +401,7 @@ void Channel::UnBan(Player const* player, std::string const& badname)
     ChannelNameBuilder<PlayerUnbannedAppend> builder(this, appender);
     SendToAll(builder);
 
-    UpdateChannelInDB();
+    _isDirty = true;
 }
 
 void Channel::Password(Player const* player, std::string const& pass)
@@ -470,7 +432,7 @@ void Channel::Password(Player const* player, std::string const& pass)
     ChannelNameBuilder<PasswordChangedAppend> builder(this, appender);
     SendToAll(builder);
 
-    UpdateChannelInDB();
+    _isDirty = true;
 }
 
 void Channel::SetMode(Player const* player, std::string const& p2n, bool mod, bool set)
@@ -500,7 +462,7 @@ void Channel::SetMode(Player const* player, std::string const& p2n, bool mod, bo
     Player* newp = ObjectAccessor::FindConnectedPlayerByName(p2n);
     ObjectGuid victim = newp ? newp->GetGUID() : ObjectGuid::Empty;
 
-    if (!victim || !IsOn(victim) ||
+    if (!newp || !victim || !IsOn(victim) ||
         (player->GetTeam() != newp->GetTeam() &&
         (!player->GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHANNEL) ||
         !newp->GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHANNEL))))
@@ -595,7 +557,7 @@ void Channel::SetOwner(Player const* player, std::string const& newname)
     Player* newp = ObjectAccessor::FindConnectedPlayerByName(newname);
     ObjectGuid victim = newp ? newp->GetGUID() : ObjectGuid::Empty;
 
-    if (!victim || !IsOn(victim) ||
+    if (!newp || !victim || !IsOn(victim) ||
         (player->GetTeam() != newp->GetTeam() &&
         (!player->GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHANNEL) ||
         !newp->GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHANNEL))))
@@ -640,8 +602,8 @@ void Channel::List(Player const* player) const
     }
 
     std::string channelName = GetName(player->GetSession()->GetSessionDbcLocale());
-    TC_LOG_DEBUG("chat.system", "SMSG_CHANNEL_LIST %s Channel: %s",
-        player->GetSession()->GetPlayerInfo().c_str(), channelName.c_str());
+    TC_LOG_DEBUG("chat.system", "SMSG_CHANNEL_LIST {} Channel: {}",
+        player->GetSession()->GetPlayerInfo(), channelName);
 
     WorldPacket data(SMSG_CHANNEL_LIST, 1 + (channelName.size() + 1) + 1 + 4 + _playersStore.size() * (8 + 1));
     data << uint8(1);                                   // channel type?
@@ -711,7 +673,7 @@ void Channel::Announce(Player const* player)
         SendToAll(builder);
     }
 
-    UpdateChannelInDB();
+    _isDirty = true;
 }
 
 void Channel::Say(ObjectGuid guid, std::string const& what, uint32 lang) const
@@ -838,12 +800,12 @@ void Channel::SetOwner(ObjectGuid guid, bool exclaim)
 
         if (exclaim)
         {
-            OwnerChangedAppend appender(_ownerGuid);
-            ChannelNameBuilder<OwnerChangedAppend> builder(this, appender);
-            SendToAll(builder);
+            OwnerChangedAppend ownerAppender(_ownerGuid);
+            ChannelNameBuilder<OwnerChangedAppend> ownerBuilder(this, ownerAppender);
+            SendToAll(ownerBuilder);
         }
 
-        UpdateChannelInDB();
+        _isDirty = true;
     }
 }
 

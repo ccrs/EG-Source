@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,16 +15,16 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "MapManager.h"
-#include "ScriptMgr.h"
 #include "OutdoorPvPZM.h"
+#include "Creature.h"
+#include "GossipDef.h"
+#include "MapManager.h"
+#include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "OutdoorPvPMgr.h"
 #include "Player.h"
-#include "Creature.h"
-#include "ObjectAccessor.h"
-#include "WorldPacket.h"
-#include "GossipDef.h"
+#include "ScriptMgr.h"
+#include "WorldStatePackets.h"
 
 uint8 const OutdoorPvPZMBuffZonesNum = 5;
 
@@ -36,7 +36,6 @@ uint32 const ZM_GRAVEYARD_ZONE = 3521;
 
 // linked when the central tower is controlled
 uint32 const ZM_GRAVEYARD_ID = 969;
-
 
 // banners 182527, 182528, 182529, gotta check them ingame
 go_type const ZM_Banner_A = { 182527, 530, { 253.54f, 7083.81f, 36.7728f, -0.017453f }, { 0.0f, 0.0f, 0.008727f, -0.999962f } };
@@ -85,20 +84,19 @@ go_type const ZMCapturePoints[ZM_NUM_BEACONS] =
     { 182522, 530, { 336.466f, 7340.26f, 41.4984f, -1.58825f }, { 0.0f, 0.0f, 0.71325f, -0.700909f } }
 };
 
-OPvPCapturePointZM_Beacon::OPvPCapturePointZM_Beacon(OutdoorPvP* pvp, ZM_BeaconType type)
-: OPvPCapturePoint(pvp), m_TowerType(type), m_TowerState(ZM_TOWERSTATE_N)
+OPvPCapturePointZM_Beacon::OPvPCapturePointZM_Beacon(OutdoorPvP* pvp, ZM_BeaconType type) : OPvPCapturePoint(pvp), m_TowerType(type), m_TowerState(ZM_TOWERSTATE_N)
 {
     SetCapturePointData(ZMCapturePoints[type].entry, ZMCapturePoints[type].map, ZMCapturePoints[type].pos, ZMCapturePoints[type].rot);
 }
 
-void OPvPCapturePointZM_Beacon::FillInitialWorldStates(WorldPacket &data)
+void OPvPCapturePointZM_Beacon::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
 {
-    data << uint32(ZMBeaconInfo[m_TowerType].ui_tower_n) << uint32((m_TowerState & ZM_TOWERSTATE_N) != 0);
-    data << uint32(ZMBeaconInfo[m_TowerType].map_tower_n) << uint32((m_TowerState & ZM_TOWERSTATE_N) != 0);
-    data << uint32(ZMBeaconInfo[m_TowerType].ui_tower_a) << uint32((m_TowerState & ZM_TOWERSTATE_A) != 0);
-    data << uint32(ZMBeaconInfo[m_TowerType].map_tower_a) << uint32((m_TowerState & ZM_TOWERSTATE_A) != 0);
-    data << uint32(ZMBeaconInfo[m_TowerType].ui_tower_h) << uint32((m_TowerState & ZM_TOWERSTATE_H) != 0);
-    data << uint32(ZMBeaconInfo[m_TowerType].map_tower_h) << uint32((m_TowerState & ZM_TOWERSTATE_H) != 0);
+    packet.Worldstates.emplace_back(ZMBeaconInfo[m_TowerType].ui_tower_n, (m_TowerState & ZM_TOWERSTATE_N) != 0 ? 1 : 0);
+    packet.Worldstates.emplace_back(ZMBeaconInfo[m_TowerType].map_tower_n, (m_TowerState & ZM_TOWERSTATE_N) != 0 ? 1 : 0);
+    packet.Worldstates.emplace_back(ZMBeaconInfo[m_TowerType].ui_tower_a, (m_TowerState & ZM_TOWERSTATE_A) != 0 ? 1 : 0);
+    packet.Worldstates.emplace_back(ZMBeaconInfo[m_TowerType].map_tower_a, (m_TowerState & ZM_TOWERSTATE_A) != 0 ? 1 : 0);
+    packet.Worldstates.emplace_back(ZMBeaconInfo[m_TowerType].ui_tower_h, (m_TowerState & ZM_TOWERSTATE_H) != 0 ? 1 : 0);
+    packet.Worldstates.emplace_back(ZMBeaconInfo[m_TowerType].map_tower_h, (m_TowerState & ZM_TOWERSTATE_H) != 0 ? 1 : 0);
 }
 
 void OPvPCapturePointZM_Beacon::UpdateTowerState()
@@ -275,8 +273,7 @@ int32 OPvPCapturePointZM_Graveyard::HandleOpenGo(Player* player, GameObject* go)
     return retval;
 }
 
-OPvPCapturePointZM_Graveyard::OPvPCapturePointZM_Graveyard(OutdoorPvP* pvp)
-: OPvPCapturePoint(pvp)
+OPvPCapturePointZM_Graveyard::OPvPCapturePointZM_Graveyard(OutdoorPvP* pvp) : OPvPCapturePoint(pvp)
 {
     m_BothControllingFaction = 0;
     m_GraveyardState = ZM_GRAVEYARD_N;
@@ -300,16 +297,15 @@ void OPvPCapturePointZM_Graveyard::UpdateTowerState()
     m_PvP->SendUpdateWorldState(ZM_MAP_HORDE_FLAG_NOT_READY, uint32(m_BothControllingFaction != HORDE));
 }
 
-void OPvPCapturePointZM_Graveyard::FillInitialWorldStates(WorldPacket &data)
+void OPvPCapturePointZM_Graveyard::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
 {
-    data << ZM_MAP_GRAVEYARD_N << uint32((m_GraveyardState & ZM_GRAVEYARD_N) != 0);
-    data << ZM_MAP_GRAVEYARD_H << uint32((m_GraveyardState & ZM_GRAVEYARD_H) != 0);
-    data << ZM_MAP_GRAVEYARD_A << uint32((m_GraveyardState & ZM_GRAVEYARD_A) != 0);
-
-    data << ZM_MAP_ALLIANCE_FLAG_READY  << uint32(m_BothControllingFaction == ALLIANCE);
-    data << ZM_MAP_ALLIANCE_FLAG_NOT_READY  << uint32(m_BothControllingFaction != ALLIANCE);
-    data << ZM_MAP_HORDE_FLAG_READY  << uint32(m_BothControllingFaction == HORDE);
-    data << ZM_MAP_HORDE_FLAG_NOT_READY  << uint32(m_BothControllingFaction != HORDE);
+    packet.Worldstates.emplace_back(ZM_MAP_GRAVEYARD_N, (m_GraveyardState & ZM_GRAVEYARD_N) != 0 ? 1 : 0);
+    packet.Worldstates.emplace_back(ZM_MAP_GRAVEYARD_H, (m_GraveyardState & ZM_GRAVEYARD_H) != 0 ? 1 : 0);
+    packet.Worldstates.emplace_back(ZM_MAP_GRAVEYARD_A, (m_GraveyardState & ZM_GRAVEYARD_A) != 0 ? 1 : 0);
+    packet.Worldstates.emplace_back(ZM_MAP_ALLIANCE_FLAG_READY, m_BothControllingFaction == ALLIANCE ? 1 : 0);
+    packet.Worldstates.emplace_back(ZM_MAP_ALLIANCE_FLAG_NOT_READY, m_BothControllingFaction != ALLIANCE ? 1 : 0);
+    packet.Worldstates.emplace_back(ZM_MAP_HORDE_FLAG_READY, m_BothControllingFaction == HORDE ? 1 : 0);
+    packet.Worldstates.emplace_back(ZM_MAP_HORDE_FLAG_NOT_READY, m_BothControllingFaction != HORDE ? 1 : 0);
 }
 
 void OPvPCapturePointZM_Graveyard::SetBeaconState(uint32 controlling_faction)
@@ -436,12 +432,12 @@ void OutdoorPvPZM::SetHordeTowersControlled(uint32 count)
     m_HordeTowersControlled = count;
 }
 
-void OutdoorPvPZM::FillInitialWorldStates(WorldPacket &data)
+void OutdoorPvPZM::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
 {
-    data << ZM_WORLDSTATE_UNK_1 << uint32(1);
+    packet.Worldstates.emplace_back(ZM_WORLDSTATE_UNK_1, 1);
 
     for (OPvPCapturePointMap::iterator itr = m_capturePoints.begin(); itr != m_capturePoints.end(); ++itr)
-        itr->second->FillInitialWorldStates(data);
+        itr->second->FillInitialWorldStates(packet);
 }
 
 void OutdoorPvPZM::SendRemoveWorldStates(Player* player)

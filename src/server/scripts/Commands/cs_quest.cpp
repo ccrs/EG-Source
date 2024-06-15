@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -26,11 +26,16 @@ EndScriptData */
 #include "Chat.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
+#include "DisableMgr.h"
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "RBAC.h"
 #include "ReputationMgr.h"
 #include "World.h"
+
+#if TRINITY_COMPILER == TRINITY_COMPILER_GNU
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 
 class quest_commandscript : public CommandScript
 {
@@ -53,7 +58,7 @@ public:
         return commandTable;
     }
 
-    static bool HandleQuestAdd(ChatHandler* handler, char const* args)
+    static bool HandleQuestAdd(ChatHandler* handler, Quest const* quest)
     {
         Player* player = handler->getSelectedPlayerOrSelf();
         if (!player)
@@ -63,36 +68,29 @@ public:
             return false;
         }
 
-        // .addquest #entry'
-        // number or [name] Shift-click form |color|Hquest:quest_id:quest_level|h[name]|h|r
-        char* cId = handler->extractKeyFromLink((char*)args, "Hquest");
-        if (!cId)
-            return false;
-
-        uint32 entry = atoul(cId);
-
-        Quest const* quest = sObjectMgr->GetQuestTemplate(entry);
-
-        if (!quest)
+        if (DisableMgr::IsDisabledFor(DISABLE_TYPE_QUEST, quest->GetQuestId(), nullptr))
         {
-            handler->PSendSysMessage(LANG_COMMAND_QUEST_NOTFOUND, entry);
+            handler->PSendSysMessage(LANG_COMMAND_QUEST_NOTFOUND, quest->GetQuestId());
             handler->SetSentErrorMessage(true);
             return false;
         }
 
         // check item starting quest (it can work incorrectly if added without item in inventory)
-        ItemTemplateContainer const* itc = sObjectMgr->GetItemTemplateStore();
-        ItemTemplateContainer::const_iterator result = std::find_if(itc->begin(), itc->end(), [quest](ItemTemplateContainer::value_type const& value)
+        ItemTemplateContainer const& itc = sObjectMgr->GetItemTemplateStore();
+        auto itr = std::find_if(std::begin(itc), std::end(itc), [quest](ItemTemplateContainer::value_type const& value)
         {
             return value.second.StartQuest == quest->GetQuestId();
         });
 
-        if (result != itc->end())
+        if (itr != std::end(itc))
         {
-            handler->PSendSysMessage(LANG_COMMAND_QUEST_STARTFROMITEM, entry, result->second.ItemId);
+            handler->PSendSysMessage(LANG_COMMAND_QUEST_STARTFROMITEM, quest->GetQuestId(), itr->first);
             handler->SetSentErrorMessage(true);
             return false;
         }
+
+        if (player->IsActiveQuest(quest->GetQuestId()))
+            return false;
 
         // ok, normal (creature/GO starting) quest
         if (player->CanAddQuest(quest, true))
@@ -101,7 +99,7 @@ public:
         return true;
     }
 
-    static bool HandleQuestRemove(ChatHandler* handler, char const* args)
+    static bool HandleQuestRemove(ChatHandler* handler, Quest const* quest)
     {
         Player* player = handler->getSelectedPlayer();
         if (!player)
@@ -111,52 +109,50 @@ public:
             return false;
         }
 
-        // .removequest #entry'
-        // number or [name] Shift-click form |color|Hquest:quest_id:quest_level|h[name]|h|r
-        char* cId = handler->extractKeyFromLink((char*)args, "Hquest");
-        if (!cId)
-            return false;
-
-        uint32 entry = atoul(cId);
-
-        Quest const* quest = sObjectMgr->GetQuestTemplate(entry);
-
         if (!quest)
         {
-            handler->PSendSysMessage(LANG_COMMAND_QUEST_NOTFOUND, entry);
+            handler->PSendSysMessage(LANG_COMMAND_QUEST_NOTFOUND, quest->GetQuestId());
             handler->SetSentErrorMessage(true);
             return false;
         }
 
-        // remove all quest entries for 'entry' from quest log
-        for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
+        if (player->GetQuestStatus(quest->GetQuestId()) != QUEST_STATUS_NONE)
         {
-            uint32 logQuest = player->GetQuestSlotQuestId(slot);
-            if (logQuest == entry)
+            // remove all quest entries for 'entry' from quest log
+            for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
             {
-                player->SetQuestSlot(slot, 0);
-
-                // we ignore unequippable quest items in this case, its' still be equipped
-                player->TakeQuestSourceItem(logQuest, false);
-
-                if (quest->HasFlag(QUEST_FLAGS_FLAGS_PVP))
+                uint32 logQuest = player->GetQuestSlotQuestId(slot);
+                if (logQuest == quest->GetQuestId())
                 {
-                    player->pvpInfo.IsHostile = player->pvpInfo.IsInHostileArea || player->HasPvPForcingQuest();
-                    player->UpdatePvPState();
+                    player->SetQuestSlot(slot, 0);
+
+                    // we ignore unequippable quest items in this case, its' still be equipped
+                    player->TakeQuestSourceItem(logQuest, false);
+
+                    if (quest->HasFlag(QUEST_FLAGS_FLAGS_PVP))
+                    {
+                        player->pvpInfo.IsHostile = player->pvpInfo.IsInHostileArea || player->HasPvPForcingQuest();
+                        player->UpdatePvPState();
+                    }
                 }
             }
+            player->RemoveActiveQuest(quest->GetQuestId(), false);
+            player->RemoveRewardedQuest(quest->GetQuestId());
+
+            sScriptMgr->OnQuestStatusChange(player, quest->GetQuestId());
+
+            handler->SendSysMessage(LANG_COMMAND_QUEST_REMOVED);
+            return true;
         }
-
-        player->RemoveActiveQuest(entry, false);
-        player->RemoveRewardedQuest(entry);
-
-        sScriptMgr->OnQuestStatusChange(player, entry);
-
-        handler->SendSysMessage(LANG_COMMAND_QUEST_REMOVED);
-        return true;
+        else
+        {
+            handler->PSendSysMessage(LANG_COMMAND_QUEST_NOTFOUND, quest->GetQuestId());
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
     }
 
-    static bool HandleQuestComplete(ChatHandler* handler, char const* args)
+    static bool HandleQuestComplete(ChatHandler* handler, Quest const* quest)
     {
         Player* player = handler->getSelectedPlayerOrSelf();
         if (!player)
@@ -166,20 +162,11 @@ public:
             return false;
         }
 
-        // .quest complete #entry
-        // number or [name] Shift-click form |color|Hquest:quest_id:quest_level|h[name]|h|r
-        char* cId = handler->extractKeyFromLink((char*)args, "Hquest");
-        if (!cId)
-            return false;
-
-        uint32 entry = atoul(cId);
-
-        Quest const* quest = sObjectMgr->GetQuestTemplate(entry);
-
         // If player doesn't have the quest
-        if (!quest || player->GetQuestStatus(entry) == QUEST_STATUS_NONE)
+        if (player->GetQuestStatus(quest->GetQuestId()) == QUEST_STATUS_NONE
+            || DisableMgr::IsDisabledFor(DISABLE_TYPE_QUEST, quest->GetQuestId(), nullptr))
         {
-            handler->PSendSysMessage(LANG_COMMAND_QUEST_NOTFOUND, entry);
+            handler->PSendSysMessage(LANG_COMMAND_QUEST_NOTFOUND, quest->GetQuestId());
             handler->SetSentErrorMessage(true);
             return false;
         }
@@ -220,6 +207,11 @@ public:
                     player->KillCreditGO(creature);
         }
 
+        // player kills
+        if (quest->HasSpecialFlag(QUEST_SPECIAL_FLAGS_PLAYER_KILL))
+            if (uint32 reqPlayers = quest->GetPlayersSlain())
+                player->KilledPlayerCreditForQuest(reqPlayers, quest);
+
         // If the quest requires reputation to complete
         if (uint32 repFaction = quest->GetRepObjectiveFaction())
         {
@@ -241,14 +233,14 @@ public:
         }
 
         // If the quest requires money
-        int32 ReqOrRewMoney = quest->GetRewOrReqMoney();
+        int32 ReqOrRewMoney = quest->GetRewOrReqMoney(player);
         if (ReqOrRewMoney < 0)
             player->ModifyMoney(-ReqOrRewMoney);
 
         if (sWorld->getBoolConfig(CONFIG_QUEST_ENABLE_QUEST_TRACKER)) // check if Quest Tracker is enabled
         {
             // prepare Quest Tracker datas
-            PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_QUEST_TRACK_GM_COMPLETE);
+            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_QUEST_TRACK_GM_COMPLETE);
             stmt->setUInt32(0, quest->GetQuestId());
             stmt->setUInt32(1, player->GetGUID().GetCounter());
 
@@ -256,11 +248,11 @@ public:
             CharacterDatabase.Execute(stmt);
         }
 
-        player->CompleteQuest(entry);
+        player->CompleteQuest(quest->GetQuestId());
         return true;
     }
 
-    static bool HandleQuestReward(ChatHandler* handler, char const* args)
+    static bool HandleQuestReward(ChatHandler* handler, Quest const* quest)
     {
         Player* player = handler->getSelectedPlayer();
         if (!player)
@@ -270,20 +262,11 @@ public:
             return false;
         }
 
-        // .quest reward #entry
-        // number or [name] Shift-click form |color|Hquest:quest_id:quest_level|h[name]|h|r
-        char* cId = handler->extractKeyFromLink((char*)args, "Hquest");
-        if (!cId)
-            return false;
-
-        uint32 entry = atoul(cId);
-
-        Quest const* quest = sObjectMgr->GetQuestTemplate(entry);
-
         // If player doesn't have the quest
-        if (!quest || player->GetQuestStatus(entry) != QUEST_STATUS_COMPLETE)
+        if (player->GetQuestStatus(quest->GetQuestId()) != QUEST_STATUS_COMPLETE
+            || DisableMgr::IsDisabledFor(DISABLE_TYPE_QUEST, quest->GetQuestId(), nullptr))
         {
-            handler->PSendSysMessage(LANG_COMMAND_QUEST_NOTFOUND, entry);
+            handler->PSendSysMessage(LANG_COMMAND_QUEST_NOTFOUND, quest->GetQuestId());
             handler->SetSentErrorMessage(true);
             return false;
         }

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -28,6 +27,7 @@ EndScriptData */
 #include "ScriptMgr.h"
 #include "CellImpl.h"
 #include "GridNotifiersImpl.h"
+#include "MiscPackets.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "ScriptedCreature.h"
@@ -113,16 +113,16 @@ class boss_akilzon : public CreatureScript
                 SetWeather(WEATHER_STATE_FINE, 0.0f);
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* who) override
             {
-                _EnterCombat();
+                BossAI::JustEngagedWith(who);
 
-                events.ScheduleEvent(EVENT_STATIC_DISRUPTION, urand(10000, 20000)); // 10 to 20 seconds (bosskillers)
-                events.ScheduleEvent(EVENT_GUST_OF_WIND, urand(20000, 30000));      // 20 to 30 seconds(bosskillers)
-                events.ScheduleEvent(EVENT_CALL_LIGHTNING, urand(10000, 20000));    // totaly random timer. can't find any info on this
-                events.ScheduleEvent(EVENT_ELECTRICAL_STORM, 60000);                // 60 seconds(bosskillers)
-                events.ScheduleEvent(EVENT_RAIN, urand(47000, 52000));
-                events.ScheduleEvent(EVENT_ENRAGE, 10*MINUTE*IN_MILLISECONDS);      // 10 minutes till enrage(bosskillers)
+                events.ScheduleEvent(EVENT_STATIC_DISRUPTION, 10s, 20s); // 10 to 20 seconds (bosskillers)
+                events.ScheduleEvent(EVENT_GUST_OF_WIND, 20s, 30s);      // 20 to 30 seconds(bosskillers)
+                events.ScheduleEvent(EVENT_CALL_LIGHTNING, 10s, 20s);    // totaly random timer. can't find any info on this
+                events.ScheduleEvent(EVENT_ELECTRICAL_STORM, 1min);                // 60 seconds(bosskillers)
+                events.ScheduleEvent(EVENT_RAIN, 47s, 52s);
+                events.ScheduleEvent(EVENT_ENRAGE, 10min);      // 10 minutes till enrage(bosskillers)
 
                 Talk(SAY_AGGRO);
             }
@@ -139,16 +139,13 @@ class boss_akilzon : public CreatureScript
                     Talk(SAY_KILL);
             }
 
-            void SetWeather(uint32 weather, float grade)
+            void SetWeather(WeatherState weather, float grade)
             {
                 Map* map = me->GetMap();
                 if (!map->IsDungeon())
                     return;
 
-                WorldPacket data(SMSG_WEATHER, (4+4+4));
-                data << uint32(weather) << float(grade) << uint8(0);
-
-                map->SendToPlayers(&data);
+                map->SendToPlayers(WorldPackets::Misc::Weather(weather, grade).Write());
             }
 
             void HandleStormSequence(Unit* Cloud) // 1: begin, 2-9: tick, 10: end
@@ -171,7 +168,13 @@ class boss_akilzon : public CreatureScript
                         if (Unit* target = (*i))
                         {
                             if (Cloud && !Cloud->IsWithinDist(target, 6, false))
-                                Cloud->CastCustomSpell(target, SPELL_ZAP, &bp0, nullptr, nullptr, true, 0, 0, me->GetGUID());
+                            {
+                                CastSpellExtraArgs args;
+                                args.TriggerFlags = TRIGGERED_FULL_MASK;
+                                args.OriginalCaster = me->GetGUID();
+                                args.AddSpellMod(SPELLVALUE_BASE_POINT0, bp0);
+                                Cloud->CastSpell(target, SPELL_ZAP, args);
+                            }
                         }
                     }
 
@@ -183,14 +186,20 @@ class boss_akilzon : public CreatureScript
                     {
                         x = 343.0f + rand32() % 60;
                         y = 1380.0f + rand32() % 60;
-                        if (Unit* trigger = me->SummonTrigger(x, y, z, 0, 2000))
+                        if (Unit* trigger = me->SummonTrigger(x, y, z, 0, 2s))
                         {
                             trigger->SetFaction(FACTION_FRIENDLY);
                             trigger->SetMaxHealth(100000);
                             trigger->SetHealth(100000);
-                            trigger->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                            trigger->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                             if (Cloud)
-                                Cloud->CastCustomSpell(trigger, /*43661*/SPELL_ZAP, &bp0, nullptr, nullptr, true, 0, 0, Cloud->GetGUID());
+                            {
+                                CastSpellExtraArgs args;
+                                args.TriggerFlags = TRIGGERED_FULL_MASK;
+                                args.OriginalCaster = Cloud->GetGUID();
+                                args.AddSpellMod(SPELLVALUE_BASE_POINT0, bp0);
+                                Cloud->CastSpell(trigger, SPELL_ZAP, args);
+                            }
                         }
                     }
                 }
@@ -200,15 +209,15 @@ class boss_akilzon : public CreatureScript
                 if (StormCount > 10)
                 {
                     StormCount = 0; // finish
-                    events.ScheduleEvent(EVENT_SUMMON_EAGLES, 5000);
+                    events.ScheduleEvent(EVENT_SUMMON_EAGLES, 5s);
                     me->InterruptNonMeleeSpells(false);
                     CloudGUID.Clear();
                     if (Cloud)
-                        Cloud->DealDamage(Cloud, Cloud->GetHealth(), nullptr, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, nullptr, false);
+                        Cloud->KillSelf();
                     SetWeather(WEATHER_STATE_FINE, 0.0f);
                     isRaining = false;
                 }
-                events.ScheduleEvent(EVENT_STORM_SEQUENCE, 1000);
+                events.ScheduleEvent(EVENT_STORM_SEQUENCE, 1s);
             }
 
             void UpdateAI(uint32 diff) override
@@ -224,7 +233,7 @@ class boss_akilzon : public CreatureScript
                     {
                         case EVENT_STATIC_DISRUPTION:
                             {
-                            Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 1);
+                            Unit* target = SelectTarget(SelectTargetMethod::Random, 1);
                             if (!target)
                                 target = me->GetVictim();
                             if (target)
@@ -234,26 +243,26 @@ class boss_akilzon : public CreatureScript
                             }
                             /*if (float dist = me->IsWithinDist3d(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), 5.0f) dist = 5.0f;
                             SDisruptAOEVisual_Timer = 1000 + floor(dist / 30 * 1000.0f);*/
-                            events.ScheduleEvent(EVENT_STATIC_DISRUPTION, urand(10000, 18000));
+                            events.ScheduleEvent(EVENT_STATIC_DISRUPTION, 10s, 18s);
                             break;
                             }
                         case EVENT_GUST_OF_WIND:
                             {
-                                Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 1);
+                                Unit* target = SelectTarget(SelectTargetMethod::Random, 1);
                                 if (!target)
                                     target = me->GetVictim();
                                 if (target)
                                     DoCast(target, SPELL_GUST_OF_WIND);
-                                events.ScheduleEvent(EVENT_GUST_OF_WIND, urand(20000, 30000));
+                                events.ScheduleEvent(EVENT_GUST_OF_WIND, 20s, 30s);
                                 break;
                             }
                         case EVENT_CALL_LIGHTNING:
                             DoCastVictim(SPELL_CALL_LIGHTNING);
-                            events.ScheduleEvent(EVENT_CALL_LIGHTNING, urand(12000, 17000)); // totaly random timer. can't find any info on this
+                            events.ScheduleEvent(EVENT_CALL_LIGHTNING, 12s, 17s); // totaly random timer. can't find any info on this
                             break;
                         case EVENT_ELECTRICAL_STORM:
                             {
-                                Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 50, true);
+                                Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 50, true);
                                 if (!target)
                                 {
                                     EnterEvadeMode();
@@ -272,7 +281,7 @@ class boss_akilzon : public CreatureScript
                                 }
                                 */
 
-                                Unit* Cloud = me->SummonTrigger(x, y, me->GetPositionZ()+16, 0, 15000);
+                                Unit* Cloud = me->SummonTrigger(x, y, me->GetPositionZ()+16, 0, 15s);
                                 if (Cloud)
                                     {
                                         CloudGUID = Cloud->GetGUID();
@@ -282,11 +291,11 @@ class boss_akilzon : public CreatureScript
                                         Cloud->SetFaction(FACTION_FRIENDLY);
                                         Cloud->SetMaxHealth(9999999);
                                         Cloud->SetHealth(9999999);
-                                        Cloud->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                                        Cloud->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                                     }
                                 StormCount = 1;
-                                events.ScheduleEvent(EVENT_ELECTRICAL_STORM, 60000); // 60 seconds(bosskillers)
-                                events.ScheduleEvent(EVENT_RAIN, urand(47000, 52000));
+                                events.ScheduleEvent(EVENT_ELECTRICAL_STORM, 1min); // 60 seconds(bosskillers)
+                                events.ScheduleEvent(EVENT_RAIN, 47s, 52s);
                                 break;
                             }
                         case EVENT_RAIN:
@@ -296,7 +305,7 @@ class boss_akilzon : public CreatureScript
                                 isRaining = true;
                             }
                             else
-                                events.ScheduleEvent(EVENT_RAIN, 1000);
+                                events.ScheduleEvent(EVENT_RAIN, 1s);
                             break;
                         case EVENT_STORM_SEQUENCE:
                             {
@@ -322,7 +331,7 @@ class boss_akilzon : public CreatureScript
                                 Unit* bird = ObjectAccessor::GetUnit(*me, BirdGUIDs[i]);
                                 if (!bird) //they despawned on die
                                 {
-                                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
+                                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
                                     {
                                         x = target->GetPositionX() + irand(-10, 10);
                                         y = target->GetPositionY() + irand(-10, 10);
@@ -330,10 +339,10 @@ class boss_akilzon : public CreatureScript
                                         if (z > 95)
                                             z = 95.0f - urand(0, 5);
                                     }
-                                    Creature* creature = me->SummonCreature(NPC_SOARING_EAGLE, x, y, z, 0, TEMPSUMMON_CORPSE_DESPAWN, 0);
+                                    Creature* creature = me->SummonCreature(NPC_SOARING_EAGLE, x, y, z, 0, TEMPSUMMON_CORPSE_DESPAWN);
                                     if (creature)
                                     {
-                                        creature->AddThreat(me->GetVictim(), 1.0f);
+                                        AddThreat(me->GetVictim(), 1.0f, creature);
                                         creature->AI()->AttackStart(me->GetVictim());
                                         BirdGUIDs[i] = creature->GetGUID();
                                     }
@@ -343,7 +352,7 @@ class boss_akilzon : public CreatureScript
                         case EVENT_ENRAGE:
                              Talk(SAY_ENRAGE);
                              DoCast(me, SPELL_BERSERK, true);
-                            events.ScheduleEvent(EVENT_ENRAGE, 600000);
+                            events.ScheduleEvent(EVENT_ENRAGE, 10min);
                             break;
                         default:
                             break;
@@ -397,13 +406,12 @@ class npc_akilzon_eagle : public CreatureScript
                 me->SetDisableGravity(true);
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* /*who*/) override
             {
                 DoZoneInCombat();
             }
 
             void MoveInLineOfSight(Unit* /*who*/) override { }
-
 
             void MovementInform(uint32, uint32) override
             {
@@ -427,7 +435,7 @@ class npc_akilzon_eagle : public CreatureScript
 
                 if (arrived)
                 {
-                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
                     {
                         float x, y, z;
                         if (EagleSwoop_Timer)
@@ -463,4 +471,3 @@ void AddSC_boss_akilzon()
     new boss_akilzon();
     new npc_akilzon_eagle();
 }
-

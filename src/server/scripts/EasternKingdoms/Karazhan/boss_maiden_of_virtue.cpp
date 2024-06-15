@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -65,16 +65,16 @@ public:
             _JustDied();
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* who) override
         {
-            _EnterCombat();
+            BossAI::JustEngagedWith(who);
             Talk(SAY_AGGRO);
 
             DoCastSelf(SPELL_HOLYGROUND, true);
-            events.ScheduleEvent(EVENT_REPENTANCE, Seconds(33), Seconds(45));
-            events.ScheduleEvent(EVENT_HOLYFIRE, Seconds(8));
-            events.ScheduleEvent(EVENT_HOLYWRATH, Seconds(15), Seconds(25));
-            events.ScheduleEvent(EVENT_ENRAGE, Minutes(10));
+            events.ScheduleEvent(EVENT_REPENTANCE, 33s, 45s);
+            events.ScheduleEvent(EVENT_HOLYFIRE, 8s);
+            events.ScheduleEvent(EVENT_HOLYWRATH, 15s, 25s);
+            events.ScheduleEvent(EVENT_ENRAGE, 10min);
         }
 
         void UpdateAI(uint32 diff) override
@@ -97,12 +97,12 @@ public:
                         events.Repeat(Seconds(35));
                         break;
                     case EVENT_HOLYFIRE:
-                        if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 50, true))
+                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 50, true))
                             DoCast(target, SPELL_HOLYFIRE);
                         events.Repeat(Seconds(8), Seconds(19));
                         break;
                     case EVENT_HOLYWRATH:
-                        if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 80, true))
+                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 80, true))
                             DoCast(target, SPELL_HOLYWRATH);
                         events.Repeat(Seconds(15), Seconds(25));
                         break;

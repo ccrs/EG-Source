@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,14 +18,13 @@
 /* ScriptData
 SDName: Darkshore
 SD%Complete: 100
-SDComment: Quest support: 731, 2078, 5321
+SDComment: Quest support: 731, 5321
 SDCategory: Darkshore
 EndScriptData */
 
 /* ContentData
 npc_kerlonian
 npc_prospector_remtravel
-npc_threshwackonator
 EndContentData */
 
 #include "ScriptMgr.h"
@@ -53,8 +51,7 @@ enum Kerlonian
     SPELL_SLEEP_VISUAL          = 25148,
     SPELL_AWAKEN                = 17536,
     QUEST_SLEEPER_AWAKENED      = 5321,
-    NPC_LILADRIS                = 11219,                    //attackers entries unknown
-    FACTION_KER_ESCORTEE        = 113
+    NPC_LILADRIS                = 11219                    //attackers entries unknown
 };
 
 /// @todo make concept similar as "ringo" -escort. Find a way to run the scripted attacks, _if_ player are choosing road.
@@ -104,9 +101,9 @@ public:
             }
         }
 
-        void SpellHit(Unit* /*pCaster*/, SpellInfo const* pSpell) override
+        void SpellHit(WorldObject* /*caster*/, SpellInfo const* spellInfo) override
         {
-            if (HasFollowState(STATE_FOLLOW_INPROGRESS | STATE_FOLLOW_PAUSED) && pSpell->Id == SPELL_AWAKEN)
+            if (HasFollowState(STATE_FOLLOW_INPROGRESS | STATE_FOLLOW_PAUSED) && spellInfo->Id == SPELL_AWAKEN)
                 ClearSleeping();
         }
 
@@ -156,13 +153,13 @@ public:
             DoMeleeAttackIfReady();
         }
 
-        void QuestAccept(Player* player, Quest const* quest) override
+        void OnQuestAccept(Player* player, Quest const* quest) override
         {
             if (quest->GetQuestId() == QUEST_SLEEPER_AWAKENED)
             {
                 me->SetStandState(UNIT_STAND_STATE_STAND);
                 Talk(SAY_KER_START, player);
-                StartFollow(player, FACTION_KER_ESCORTEE, quest);
+                StartFollow(player, FACTION_ESCORTEE_N_NEUTRAL_PASSIVE, QUEST_SLEEPER_AWAKENED);
             }
         }
     };
@@ -204,13 +201,13 @@ class npc_prospector_remtravel : public CreatureScript
 public:
     npc_prospector_remtravel() : CreatureScript("npc_prospector_remtravel") { }
 
-    struct npc_prospector_remtravelAI : public npc_escortAI
+    struct npc_prospector_remtravelAI : public EscortAI
     {
-        npc_prospector_remtravelAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_prospector_remtravelAI(Creature* creature) : EscortAI(creature) { }
 
         void Reset() override { }
 
-        void EnterCombat(Unit* who) override
+        void JustEngagedWith(Unit* who) override
         {
             if (urand(0, 1))
                 Talk(SAY_REM_AGGRO, who);
@@ -222,7 +219,7 @@ public:
             //pSummoned->AI()->AttackStart(me);
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (Player* player = GetPlayerForEscort())
             {
@@ -235,8 +232,8 @@ public:
                         Talk(SAY_REM_RAMP1_1, player);
                         break;
                     case 6:
-                        DoSpawnCreature(NPC_GRAVEL_SCOUT, -10.0f, 5.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
-                        DoSpawnCreature(NPC_GRAVEL_BONE, -10.0f, 7.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
+                        DoSpawnCreature(NPC_GRAVEL_SCOUT, -10.0f, 5.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30s);
+                        DoSpawnCreature(NPC_GRAVEL_BONE, -10.0f, 7.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30s);
                         break;
                     case 9:
                         Talk(SAY_REM_RAMP1_2, player);
@@ -249,8 +246,8 @@ public:
                         Talk(SAY_REM_TENT1_1, player);
                         break;
                     case 16:
-                        DoSpawnCreature(NPC_GRAVEL_SCOUT, -10.0f, 5.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
-                        DoSpawnCreature(NPC_GRAVEL_BONE, -10.0f, 7.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
+                        DoSpawnCreature(NPC_GRAVEL_SCOUT, -10.0f, 5.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30s);
+                        DoSpawnCreature(NPC_GRAVEL_BONE, -10.0f, 7.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30s);
                         break;
                     case 17:
                         Talk(SAY_REM_TENT1_2, player);
@@ -265,9 +262,9 @@ public:
                         Talk(SAY_REM_MOSS_PROGRESS, player);
                         break;
                     case 29:
-                        DoSpawnCreature(NPC_GRAVEL_SCOUT, -15.0f, 3.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
-                        DoSpawnCreature(NPC_GRAVEL_BONE, -15.0f, 5.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
-                        DoSpawnCreature(NPC_GRAVEL_GEO, -15.0f, 7.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30000);
+                        DoSpawnCreature(NPC_GRAVEL_SCOUT, -15.0f, 3.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30s);
+                        DoSpawnCreature(NPC_GRAVEL_BONE, -15.0f, 5.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30s);
+                        DoSpawnCreature(NPC_GRAVEL_GEO, -15.0f, 7.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 30s);
                         break;
                     case 31:
                         Talk(SAY_REM_PROGRESS, player);
@@ -283,13 +280,19 @@ public:
             }
         }
 
-        void QuestAccept(Player* player, Quest const* quest) override
+        void OnQuestAccept(Player* player, Quest const* quest) override
         {
             if (quest->GetQuestId() == QUEST_ABSENT_MINDED_PT2)
             {
                 Start(false, false, player->GetGUID());
                 me->SetFaction(FACTION_ESCORTEE_A_NEUTRAL_PASSIVE);
             }
+        }
+
+        void JustDied(Unit* /*killer*/) override
+        {
+            if (Player* player = GetPlayerForEscort())
+                player->FailQuest(QUEST_ABSENT_MINDED_PT2);
         }
     };
 
@@ -299,90 +302,8 @@ public:
     }
 };
 
-/*####
-# npc_threshwackonator
-####*/
-
-enum Threshwackonator
-{
-    EMOTE_START             = 0,
-    SAY_AT_CLOSE            = 0,
-    QUEST_GYROMAST_REV      = 2078,
-    NPC_GELKAK              = 6667
-};
-
-#define GOSSIP_ITEM_INSERT_KEY  "[PH] Insert key"
-
-class npc_threshwackonator : public CreatureScript
-{
-public:
-    npc_threshwackonator() : CreatureScript("npc_threshwackonator") { }
-
-    struct npc_threshwackonatorAI : public FollowerAI
-    {
-        npc_threshwackonatorAI(Creature* creature) : FollowerAI(creature) { }
-
-        void Reset() override { }
-
-        void MoveInLineOfSight(Unit* who) override
-
-        {
-            FollowerAI::MoveInLineOfSight(who);
-
-            if (!me->GetVictim() && !HasFollowState(STATE_FOLLOW_COMPLETE) && who->GetEntry() == NPC_GELKAK)
-            {
-                if (me->IsWithinDistInMap(who, 10.0f))
-                {
-                    who->ToCreature()->AI()->Talk(SAY_AT_CLOSE, who);
-                    DoAtEnd();
-                }
-            }
-        }
-
-        void DoAtEnd()
-        {
-            me->SetFaction(FACTION_MONSTER);
-
-            if (Player* pHolder = GetLeaderForFollower())
-                AttackStart(pHolder);
-
-            SetFollowComplete(true);
-        }
-
-        bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
-        {
-            uint32 const action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
-            ClearGossipMenuFor(player);
-            if (action == GOSSIP_ACTION_INFO_DEF + 1)
-            {
-                CloseGossipMenuFor(player);
-
-                Talk(EMOTE_START);
-                StartFollow(player);
-            }
-
-            return true;
-        }
-
-        bool GossipHello(Player* player) override
-        {
-            if (player->GetQuestStatus(QUEST_GYROMAST_REV) == QUEST_STATUS_INCOMPLETE)
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_ITEM_INSERT_KEY, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-
-            SendGossipMenuFor(player, player->GetGossipTextId(me), me->GetGUID());
-            return true;
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_threshwackonatorAI(creature);
-    }
-};
-
 void AddSC_darkshore()
 {
     new npc_kerlonian();
     new npc_prospector_remtravel();
-    new npc_threshwackonator();
 }

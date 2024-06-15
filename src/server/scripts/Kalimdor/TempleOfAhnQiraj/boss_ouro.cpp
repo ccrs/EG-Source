@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -46,9 +45,9 @@ public:
         return GetAQ40AI<boss_ouroAI>(creature);
     }
 
-    struct boss_ouroAI : public ScriptedAI
+    struct boss_ouroAI : public BossAI
     {
-        boss_ouroAI(Creature* creature) : ScriptedAI(creature)
+        boss_ouroAI(Creature* creature) : BossAI(creature, DATA_OURO)
         {
             Initialize();
         }
@@ -79,11 +78,13 @@ public:
         void Reset() override
         {
             Initialize();
+            _Reset();
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* who) override
         {
             DoCastVictim(SPELL_BIRTH);
+            BossAI::JustEngagedWith(who);
         }
 
         void UpdateAI(uint32 diff) override
@@ -111,7 +112,7 @@ public:
             {
                 //Cast
                 me->HandleEmoteCommand(EMOTE_ONESHOT_SUBMERGE);
-                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                 me->SetFaction(FACTION_FRIENDLY);
                 DoCast(me, SPELL_DIRTMOUND_PASSIVE);
 
@@ -122,10 +123,7 @@ public:
             //ChangeTarget_Timer
             if (Submerged && ChangeTarget_Timer <= diff)
             {
-                Unit* target = nullptr;
-                target = SelectTarget(SELECT_TARGET_RANDOM, 0);
-
-                if (target)
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
                     DoTeleportTo(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ());
 
                 ChangeTarget_Timer = urand(10000, 20000);
@@ -134,7 +132,7 @@ public:
             //Back_Timer
             if (Submerged && Back_Timer <= diff)
             {
-                me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                 me->SetFaction(FACTION_MONSTER);
 
                 DoCastVictim(SPELL_GROUND_RUPTURE);

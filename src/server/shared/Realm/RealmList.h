@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,18 +19,26 @@
 #define _REALMLIST_H
 
 #include "Define.h"
+#include "Duration.h"
 #include "Realm.h"
+#include <array>
 #include <map>
 #include <vector>
 #include <unordered_set>
 
+struct RealmBuildInfo
+{
+    uint32 Build;
+    uint32 MajorVersion;
+    uint32 MinorVersion;
+    uint32 BugfixVersion;
+    std::array<char, 4> HotfixVersion;
+    std::array<uint8, 20> WindowsHash;
+    std::array<uint8, 20> MacHash;
+};
+
 namespace boost
 {
-    namespace asio
-    {
-        class io_service;
-    }
-
     namespace system
     {
         class error_code;
@@ -48,24 +55,28 @@ public:
 
     ~RealmList();
 
-    void Initialize(boost::asio::io_service& ioService, uint32 updateInterval);
+    void Initialize(Trinity::Asio::IoContext& ioContext, uint32 updateInterval);
     void Close();
 
     RealmMap const& GetRealms() const { return _realms; }
     Realm const* GetRealm(RealmHandle const& id) const;
 
+    RealmBuildInfo const* GetBuildInfo(uint32 build) const;
+
 private:
     RealmList();
 
+    void LoadBuildInfo();
     void UpdateRealms(boost::system::error_code const& error);
     void UpdateRealm(RealmHandle const& id, uint32 build, std::string const& name,
-        boost::asio::ip::address const& address, boost::asio::ip::address const& localAddr, boost::asio::ip::address const& localSubmask,
+        boost::asio::ip::address&& address, boost::asio::ip::address&& localAddr, boost::asio::ip::address&& localSubmask,
         uint16 port, uint8 icon, RealmFlags flag, uint8 timezone, AccountTypes allowedSecurityLevel, float population);
 
+    std::vector<RealmBuildInfo> _builds;
     RealmMap _realms;
     uint32 _updateInterval;
-    std::unique_ptr<boost::asio::deadline_timer> _updateTimer;
-    std::unique_ptr<boost::asio::ip::tcp_resolver> _resolver;
+    std::unique_ptr<Trinity::Asio::DeadlineTimer> _updateTimer;
+    std::unique_ptr<Trinity::Asio::Resolver> _resolver;
 };
 
 #define sRealmList RealmList::Instance()

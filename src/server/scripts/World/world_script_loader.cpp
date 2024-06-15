@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,9 +21,8 @@
 // world
 void AddSC_areatrigger_scripts();
 void AddSC_emerald_dragons();
-void AddSC_generic_creature();
 void AddSC_go_scripts();
-void AddSC_guards();
+void AddSC_npc_guard();
 void AddSC_item_scripts();
 void AddSC_npc_professions();
 void AddSC_npc_innkeeper();
@@ -31,6 +30,7 @@ void AddSC_npcs_special();
 void AddSC_achievement_scripts();
 void AddSC_action_ip_logger();
 void AddSC_duel_reset();
+void AddSC_xp_boost();
 // player
 void AddSC_chat_log();
 void AddSC_action_ip_logger();
@@ -41,9 +41,8 @@ void AddWorldScripts()
 {
     AddSC_areatrigger_scripts();
     AddSC_emerald_dragons();
-    AddSC_generic_creature();
     AddSC_go_scripts();
-    AddSC_guards();
+    AddSC_npc_guard();
     AddSC_item_scripts();
     AddSC_npc_professions();
     AddSC_npc_innkeeper();
@@ -56,4 +55,6 @@ void AddWorldScripts()
     if (sWorld->getBoolConfig(CONFIG_IP_BASED_ACTION_LOGGING))
         AddSC_action_ip_logger(); // location: scripts\World\action_ip_logger.cpp
     AddSC_duel_reset();
+    if (sWorld->getIntConfig(CONFIG_XP_BOOST_DAYMASK) != 0)
+        AddSC_xp_boost();
 }

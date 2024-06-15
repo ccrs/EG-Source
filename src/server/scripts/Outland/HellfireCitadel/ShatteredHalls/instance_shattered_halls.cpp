@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -53,7 +52,7 @@ class instance_shattered_halls : public InstanceMapScript
 
         struct instance_shattered_halls_InstanceMapScript : public InstanceScript
         {
-            instance_shattered_halls_InstanceMapScript(Map* map) : InstanceScript(map)
+            instance_shattered_halls_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
             {
                 SetHeaders(DataHeader);
                 SetBossNumber(EncounterCount);
@@ -135,6 +134,12 @@ class instance_shattered_halls : public InstanceMapScript
                         victimsGUID[2] = creature->GetGUID();
                         break;
                 }
+            }
+
+            void OnUnitDeath(Unit* unit) override
+            {
+                if (unit->GetEntry() == NPC_BLOOD_GUARD_PORUNG)
+                    SetBossState(DATA_PORUNG, DONE);
             }
 
             bool SetBossState(uint32 type, EncounterState state) override

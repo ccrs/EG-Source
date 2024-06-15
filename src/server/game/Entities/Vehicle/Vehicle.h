@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,8 +20,9 @@
 
 #include "ObjectDefines.h"
 #include "Object.h"
-#include "VehicleDefines.h"
+#include "UniqueTrackablePtr.h"
 #include "Unit.h"
+#include "VehicleDefines.h"
 #include <list>
 
 struct VehicleEntry;
@@ -31,14 +31,10 @@ class VehicleJoinEvent;
 
 class TC_GAME_API Vehicle : public TransportBase
 {
-    protected:
-        friend bool Unit::CreateVehicleKit(uint32 id, uint32 creatureEntry);
+    public:
         Vehicle(Unit* unit, VehicleEntry const* vehInfo, uint32 creatureEntry);
-
-        friend void Unit::RemoveVehicleKit();
         ~Vehicle();
 
-    public:
         void Install();
         void Uninstall();
         void Reset(bool evading = false);
@@ -53,6 +49,7 @@ class TC_GAME_API Vehicle : public TransportBase
         bool HasEmptySeat(int8 seatId) const;
         Unit* GetPassenger(int8 seatId) const;
         SeatMap::const_iterator GetNextEmptySeat(int8 seatId, bool next) const;
+        VehicleSeatAddon const* GetSeatAddonForSeatOfPassenger(Unit const* passenger) const;
         uint8 GetAvailableSeatCount() const;
 
         bool AddPassenger(Unit* passenger, int8 seatId = -1);
@@ -61,15 +58,19 @@ class TC_GAME_API Vehicle : public TransportBase
         void RelocatePassengers();
         void RemoveAllPassengers();
         bool IsVehicleInUse() const;
-
-        void SetLastShootPos(Position const& pos) { _lastShootPos.Relocate(pos); }
-        Position const& GetLastShootPos() const { return _lastShootPos; }
+        bool IsControllableVehicle() const;
 
         SeatMap Seats;                                      ///< The collection of all seats on the vehicle. Including vacant ones.
 
         VehicleSeatEntry const* GetSeatForPassenger(Unit const* passenger) const;
 
         void RemovePendingEventsForPassenger(Unit* passenger);
+
+        Milliseconds GetDespawnDelay();
+
+        std::string GetDebugInfo() const;
+
+        Trinity::unique_weak_ptr<Vehicle> GetWeakPtr() const;
 
     protected:
         friend class VehicleJoinEvent;
@@ -105,6 +106,8 @@ class TC_GAME_API Vehicle : public TransportBase
         void RemovePendingEvent(VehicleJoinEvent* e);
         void RemovePendingEventsForSeat(int8 seatId);
 
+        bool HasPendingEventForSeat(int8 seatId) const;
+
     private:
         Unit* _me;                                          ///< The underlying unit with the vehicle kit. Can be player or creature.
         VehicleEntry const* _vehicleInfo;                   ///< DBC data for vehicle
@@ -112,7 +115,6 @@ class TC_GAME_API Vehicle : public TransportBase
 
         uint32 _creatureEntry;                              ///< Can be different than the entry of _me in case of players
         Status _status;                                     ///< Internal variable for sanity checks
-        Position _lastShootPos;
 
         typedef std::list<VehicleJoinEvent*> PendingJoinEventContainer;
         PendingJoinEventContainer _pendingJoinEvents;       ///< Collection of delayed join events for prospective passengers

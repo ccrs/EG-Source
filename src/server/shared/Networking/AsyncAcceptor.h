@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -18,22 +18,25 @@
 #ifndef __ASYNCACCEPT_H_
 #define __ASYNCACCEPT_H_
 
+#include "IoContext.h"
+#include "IpAddress.h"
 #include "Log.h"
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/ip/address.hpp>
-#include <functional>
 #include <atomic>
+#include <functional>
 
 using boost::asio::ip::tcp;
+
+#define TRINITY_MAX_LISTEN_CONNECTIONS boost::asio::socket_base::max_listen_connections
 
 class AsyncAcceptor
 {
 public:
     typedef void(*AcceptCallback)(tcp::socket&& newSocket, uint32 threadIndex);
 
-    AsyncAcceptor(boost::asio::io_service& ioService, std::string const& bindIp, uint16 port) :
-        _acceptor(ioService), _endpoint(boost::asio::ip::address::from_string(bindIp), port),
-        _socket(ioService), _closed(false), _socketFactory(std::bind(&AsyncAcceptor::DefeaultSocketFactory, this))
+    AsyncAcceptor(Trinity::Asio::IoContext& ioContext, std::string const& bindIp, uint16 port) :
+        _acceptor(ioContext), _endpoint(Trinity::Net::make_address(bindIp), port),
+        _socket(ioContext), _closed(false), _socketFactory(std::bind(&AsyncAcceptor::DefeaultSocketFactory, this))
     {
     }
 
@@ -58,7 +61,7 @@ public:
                 }
                 catch (boost::system::system_error const& err)
                 {
-                    TC_LOG_INFO("network", "Failed to initialize client's socket %s", err.what());
+                    TC_LOG_INFO("network", "Failed to initialize client's socket {}", err.what());
                 }
             }
 
@@ -73,21 +76,30 @@ public:
         _acceptor.open(_endpoint.protocol(), errorCode);
         if (errorCode)
         {
-            TC_LOG_INFO("network", "Failed to open acceptor %s", errorCode.message().c_str());
+            TC_LOG_INFO("network", "Failed to open acceptor {}", errorCode.message());
             return false;
         }
+
+#if TRINITY_PLATFORM != TRINITY_PLATFORM_WINDOWS
+        _acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), errorCode);
+        if (errorCode)
+        {
+            TC_LOG_INFO("network", "Failed to set reuse_address option on acceptor {}", errorCode.message());
+            return false;
+        }
+#endif
 
         _acceptor.bind(_endpoint, errorCode);
         if (errorCode)
         {
-            TC_LOG_INFO("network", "Could not bind to %s:%u %s", _endpoint.address().to_string().c_str(), _endpoint.port(), errorCode.message().c_str());
+            TC_LOG_INFO("network", "Could not bind to {}:{} {}", _endpoint.address().to_string(), _endpoint.port(), errorCode.message());
             return false;
         }
 
-        _acceptor.listen(boost::asio::socket_base::max_connections, errorCode);
+        _acceptor.listen(TRINITY_MAX_LISTEN_CONNECTIONS, errorCode);
         if (errorCode)
         {
-            TC_LOG_INFO("network", "Failed to start listening on %s:%u %s", _endpoint.address().to_string().c_str(), _endpoint.port(), errorCode.message().c_str());
+            TC_LOG_INFO("network", "Failed to start listening on {}:{} {}", _endpoint.address().to_string(), _endpoint.port(), errorCode.message());
             return false;
         }
 
@@ -129,7 +141,7 @@ void AsyncAcceptor::AsyncAccept()
             }
             catch (boost::system::system_error const& err)
             {
-                TC_LOG_INFO("network", "Failed to retrieve client's remote address %s", err.what());
+                TC_LOG_INFO("network", "Failed to retrieve client's remote address {}", err.what());
             }
         }
 

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,90 +33,70 @@ enum Ironaya
     SPELL_WSTOMP                = 11876
 };
 
-class boss_ironaya : public CreatureScript
+struct boss_ironaya : public ScriptedAI
 {
-    public:
+    boss_ironaya(Creature* creature) : ScriptedAI(creature)
+    {
+        Initialize();
+    }
 
-        boss_ironaya()
-            : CreatureScript("boss_ironaya")
+    void Initialize()
+    {
+        _hasCastKnockaway = false;
+        _hasCastWstomp = false;
+    }
+
+    void Reset() override
+    {
+        _scheduler.CancelAll();
+        Initialize();
+    }
+
+    void DamageTaken(Unit* /*attacker*/, uint32& /*damage*/, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
+    {
+        if (!_hasCastKnockaway && HealthBelowPct(50) && me->GetVictim())
         {
+            _hasCastKnockaway = true;
+            DoCastVictim(SPELL_KNOCKAWAY, true);
+            ResetThreat(me->GetVictim(), me);
         }
 
-        struct boss_ironayaAI : public ScriptedAI
+        if (!_hasCastWstomp && HealthBelowPct(25))
         {
-            boss_ironayaAI(Creature* creature) : ScriptedAI(creature)
-            {
-                Initialize();
-            }
-
-            void Initialize()
-            {
-                uiArcingTimer = 3000;
-                bHasCastKnockaway = false;
-                bHasCastWstomp = false;
-            }
-
-            uint32 uiArcingTimer;
-            bool bHasCastWstomp;
-            bool bHasCastKnockaway;
-
-            void Reset() override
-            {
-                Initialize();
-            }
-
-            void EnterCombat(Unit* /*who*/) override { }
-
-            void UpdateAI(uint32 uiDiff) override
-            {
-                //Return since we have no target
-                if (!UpdateVictim())
-                    return;
-
-                //If we are <50% hp do knockaway ONCE
-                if (!bHasCastKnockaway && HealthBelowPct(50))
-                {
-                    DoCastVictim(SPELL_KNOCKAWAY, true);
-
-                    // current aggro target is knocked away pick new target
-                    Unit* target = SelectTarget(SELECT_TARGET_TOPAGGRO, 0);
-
-                    if (!target || target == me->GetVictim())
-                        target = SelectTarget(SELECT_TARGET_TOPAGGRO, 1);
-
-                    if (target)
-                        me->TauntApply(target);
-
-                    //Shouldn't cast this agian
-                    bHasCastKnockaway = true;
-                }
-
-                //uiArcingTimer
-                if (uiArcingTimer <= uiDiff)
-                {
-                    DoCast(me, SPELL_ARCINGSMASH);
-                    uiArcingTimer = 13000;
-                } else uiArcingTimer -= uiDiff;
-
-                if (!bHasCastWstomp && HealthBelowPct(25))
-                {
-                    DoCast(me, SPELL_WSTOMP);
-                    bHasCastWstomp = true;
-                }
-
-                DoMeleeAttackIfReady();
-            }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return GetUldamanAI<boss_ironayaAI>(creature);
+            _hasCastWstomp = true;
+            DoCastSelf(SPELL_WSTOMP);
         }
+    }
+
+    void JustEngagedWith(Unit* /*who*/) override
+    {
+        _scheduler.Schedule(3s, [this](TaskContext task)
+        {
+            DoCastSelf(SPELL_ARCINGSMASH);
+            task.Repeat(13s);
+        });
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        _scheduler.Update(diff, [this]
+        {
+            DoMeleeAttackIfReady();
+        });
+    }
+
+private:
+    TaskScheduler _scheduler;
+    bool _hasCastKnockaway;
+    bool _hasCastWstomp;
 };
 
 //This is the actual function called only once durring InitScripts()
 //It must define all handled functions that are to be run in this script
 void AddSC_boss_ironaya()
 {
-    new boss_ironaya();
+    RegisterUldamanCreatureAI(boss_ironaya);
 }

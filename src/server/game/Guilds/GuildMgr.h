@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -20,6 +20,7 @@
 
 #include "Define.h"
 #include "ObjectGuid.h"
+#include "UniqueTrackablePtr.h"
 #include <unordered_map>
 #include <vector>
 
@@ -38,7 +39,7 @@ public:
 
     Guild* GetGuildByLeader(ObjectGuid guid) const;
     Guild* GetGuildById(ObjectGuid::LowType guildId) const;
-    Guild* GetGuildByName(std::string const& guildName) const;
+    Guild* GetGuildByName(std::string_view guildName) const;
     std::string GetGuildNameById(ObjectGuid::LowType guildId) const;
 
     void LoadGuilds();
@@ -50,7 +51,7 @@ public:
 
     void ResetTimes();
 protected:
-    typedef std::unordered_map<ObjectGuid::LowType, Guild*> GuildContainer;
+    typedef std::unordered_map<ObjectGuid::LowType, Trinity::unique_trackable_ptr<Guild>> GuildContainer;
     ObjectGuid::LowType NextGuildId;
     GuildContainer GuildStore;
 };

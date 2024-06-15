@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,17 +15,15 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "DBCStores.h"
-#include "Common.h"
+#include "M2Stores.h"
 #include "Containers.h"
+#include "DBCStores.h"
 #include "Log.h"
 #include "M2Structure.h"
-#include "M2Stores.h"
-#include "World.h"
+#include "Timer.h"
 #include <boost/filesystem/path.hpp>
+#include <G3D/Vector4.h>
 #include <fstream>
-#include <iostream>
-#include <iomanip>
 
 typedef std::vector<FlyByCamera> FlyByCameraCollection;
 std::unordered_map<uint32, FlyByCameraCollection> sFlyByCameraStore;
@@ -155,10 +153,8 @@ bool readCamera(M2Camera const* cam, uint32 buffSize, M2Header const* header, Ci
                     uint32 timeDiffThis = posTimestamps[i] - lastTarget.timeStamp;
                     float xDiff = nextTarget.locations.GetPositionX() - lastTarget.locations.GetPositionX();
                     float yDiff = nextTarget.locations.GetPositionY() - lastTarget.locations.GetPositionY();
-                    float zDiff = nextTarget.locations.GetPositionZ() - lastTarget.locations.GetPositionZ();
                     x = lastTarget.locations.GetPositionX() + (xDiff * (float(timeDiffThis) / float(timeDiffTarget)));
                     y = lastTarget.locations.GetPositionY() + (yDiff * (float(timeDiffThis) / float(timeDiffTarget)));
-                    z = lastTarget.locations.GetPositionZ() + (zDiff * (float(timeDiffThis) / float(timeDiffTarget)));
                 }
                 float xDiff = x - thisCam.locations.GetPositionX();
                 float yDiff = y - thisCam.locations.GetPositionY();
@@ -203,12 +199,12 @@ void LoadM2Cameras(std::string const& dataPath)
 
         // Get file size
         m2file.seekg(0, std::ios::end);
-        std::streamoff const fileSize = m2file.tellg();
+        std::streamoff fileSize = m2file.tellg();
 
         // Reject if not at least the size of the header
-        if (static_cast<uint32 const>(fileSize) < sizeof(M2Header))
+        if (static_cast<uint32>(fileSize) < sizeof(M2Header))
         {
-            TC_LOG_ERROR("server.loading", "Camera file %s is damaged. File is smaller than header size", filename.string().c_str());
+            TC_LOG_ERROR("server.loading", "Camera file {} is damaged. File is smaller than header size", filename.string());
             m2file.close();
             continue;
         }
@@ -222,7 +218,7 @@ void LoadM2Cameras(std::string const& dataPath)
         // Check file has correct magic (MD20)
         if (strcmp(fileCheck, "MD20"))
         {
-            TC_LOG_ERROR("server.loading", "Camera file %s is damaged. File identifier not found", filename.string().c_str());
+            TC_LOG_ERROR("server.loading", "Camera file {} is damaged. File identifier not found", filename.string());
             m2file.close();
             continue;
         }
@@ -240,19 +236,19 @@ void LoadM2Cameras(std::string const& dataPath)
         // Read header
         M2Header const* header = reinterpret_cast<M2Header const*>(buffer.data());
 
-        if (header->ofsCameras + sizeof(M2Camera) > static_cast<uint32 const>(fileSize))
+        if (header->ofsCameras + sizeof(M2Camera) > static_cast<uint32>(fileSize))
         {
-            TC_LOG_ERROR("server.loading", "Camera file %s is damaged. Camera references position beyond file end", filename.string().c_str());
+            TC_LOG_ERROR("server.loading", "Camera file {} is damaged. Camera references position beyond file end", filename.string());
             continue;
         }
 
         // Get camera(s) - Main header, then dump them.
         M2Camera const* cam = reinterpret_cast<M2Camera const*>(buffer.data() + header->ofsCameras);
         if (!readCamera(cam, fileSize, header, dbcentry))
-            TC_LOG_ERROR("server.loading", "Camera file %s is damaged. Camera references position beyond file end", filename.string().c_str());
+            TC_LOG_ERROR("server.loading", "Camera file {} is damaged. Camera references position beyond file end", filename.string());
     }
 
-    TC_LOG_INFO("server.loading", ">> Loaded %u cinematic waypoint sets in %u ms", (uint32)sFlyByCameraStore.size(), GetMSTimeDiffToNow(oldMSTime));
+    TC_LOG_INFO("server.loading", ">> Loaded {} cinematic waypoint sets in {} ms", (uint32)sFlyByCameraStore.size(), GetMSTimeDiffToNow(oldMSTime));
 }
 
 std::vector<FlyByCamera> const* GetFlyByCameras(uint32 cinematicCameraId)

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -50,7 +49,7 @@ struct FactionState
 {
     uint32 ID;
     RepListID ReputationListID;
-    int32  Standing;
+    int32 Standing;
     uint8 Flags;
     bool needSend;
     bool needSave;
@@ -68,7 +67,7 @@ class TC_GAME_API ReputationMgr
             _visibleFactionCount(0), _honoredFactionCount(0), _reveredFactionCount(0), _exaltedFactionCount(0), _sendFactionIncreased(false) { }
         ~ReputationMgr() { }
 
-        void SaveToDB(SQLTransaction& trans);
+        void SaveToDB(CharacterDatabaseTransaction trans);
         void LoadFromDB(PreparedQueryResult result);
     public:                                                 // statics
         static const int32 PointsInRank[MAX_REPUTATION_RANK];
@@ -86,7 +85,7 @@ class TC_GAME_API ReputationMgr
 
         FactionState const* GetState(FactionEntry const* factionEntry) const
         {
-            return factionEntry->CanHaveReputation() ? GetState(factionEntry->reputationListID) : nullptr;
+            return factionEntry->CanHaveReputation() ? GetState(factionEntry->ReputationIndex) : nullptr;
         }
 
         FactionState const* GetState(RepListID id) const
@@ -97,6 +96,7 @@ class TC_GAME_API ReputationMgr
 
         bool IsAtWar(uint32 faction_id) const;
         bool IsAtWar(FactionEntry const* factionEntry) const;
+        bool IsReputationAllowedForTeam(TeamId team, uint32 factionId) const;
 
         int32 GetReputation(uint32 faction_id) const;
         int32 GetReputation(FactionEntry const* factionEntry) const;
@@ -111,7 +111,7 @@ class TC_GAME_API ReputationMgr
 
         ReputationRank const* GetForcedRankIfAny(FactionTemplateEntry const* factionTemplateEntry) const
         {
-            ForcedReactions::const_iterator forceItr = _forcedReactions.find(factionTemplateEntry->faction);
+            ForcedReactions::const_iterator forceItr = _forcedReactions.find(factionTemplateEntry->Faction);
             return forceItr != _forcedReactions.end() ? &forceItr->second : nullptr;
         }
 
@@ -153,10 +153,10 @@ class TC_GAME_API ReputationMgr
         Player* _player;
         FactionStateList _factions;
         ForcedReactions _forcedReactions;
-        uint8 _visibleFactionCount :8;
-        uint8 _honoredFactionCount :8;
-        uint8 _reveredFactionCount :8;
-        uint8 _exaltedFactionCount :8;
+        uint8 _visibleFactionCount;
+        uint8 _honoredFactionCount;
+        uint8 _reveredFactionCount;
+        uint8 _exaltedFactionCount;
         bool _sendFactionIncreased; //! Play visual effect on next SMSG_SET_FACTION_STANDING sent
 };
 

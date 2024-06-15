@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -29,9 +29,15 @@ EndScriptData */
 #include "GuildMgr.h"
 #include "Language.h"
 #include "ObjectAccessor.h"
+#include "ObjectMgr.h"
 #include "Player.h"
 #include "RBAC.h"
 
+#if TRINITY_COMPILER == TRINITY_COMPILER_GNU
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+using namespace Trinity::ChatCommands;
 class guild_commandscript : public CommandScript
 {
 public:
@@ -87,7 +93,22 @@ public:
         if (target->GetGuildId())
         {
             handler->SendSysMessage(LANG_PLAYER_IN_GUILD);
-            return true;
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        if (sGuildMgr->GetGuildByName(guildName))
+        {
+            handler->SendSysMessage(LANG_GUILD_RENAME_ALREADY_EXISTS);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        if (sObjectMgr->IsReservedName(guildName) || !sObjectMgr->IsValidCharterName(guildName))
+        {
+            handler->SendSysMessage(LANG_BAD_VALUE);
+            handler->SetSentErrorMessage(true);
+            return false;
         }
 
         Guild* guild = new Guild;
@@ -120,8 +141,6 @@ public:
             return false;
 
         targetGuild->Disband();
-        delete targetGuild;
-
         return true;
     }
 
@@ -149,7 +168,7 @@ public:
             return false;
 
         // player's guild membership checked in AddMember before add
-        SQLTransaction trans(nullptr);
+        CharacterDatabaseTransaction trans(nullptr);
         return targetGuild->AddMember(trans, targetGuid);
     }
 
@@ -168,26 +187,19 @@ public:
         if (!targetGuild)
             return false;
 
-        SQLTransaction trans(nullptr);
-        targetGuild->DeleteMember(trans, targetGuid, false, true, true);
+        CharacterDatabaseTransaction trans(nullptr);
+        targetGuild->DeleteMember(trans, targetGuid, false, true);
         return true;
     }
 
-    static bool HandleGuildRankCommand(ChatHandler* handler, char const* args)
+    static bool HandleGuildRankCommand(ChatHandler* handler, Optional<PlayerIdentifier> player, uint8 rank)
     {
-        char* nameStr;
-        char* rankStr;
-        handler->extractOptFirstArg((char*)args, &nameStr, &rankStr);
-        if (!rankStr)
+        if (!player)
+            player = PlayerIdentifier::FromTargetOrSelf(handler);
+        if (!player)
             return false;
 
-        Player* target;
-        ObjectGuid targetGuid;
-        std::string target_name;
-        if (!handler->extractPlayerTarget(nameStr, &target, &targetGuid, &target_name))
-            return false;
-
-        ObjectGuid::LowType guildId = target ? target->GetGuildId() : sCharacterCache->GetCharacterGuildIdByGuid(targetGuid);
+        ObjectGuid::LowType guildId = player->IsConnected() ? player->GetConnectedPlayer()->GetGuildId() : sCharacterCache->GetCharacterGuildIdByGuid(*player);
         if (!guildId)
             return false;
 
@@ -195,9 +207,7 @@ public:
         if (!targetGuild)
             return false;
 
-        uint8 newRank = uint8(atoi(rankStr));
-        SQLTransaction trans(nullptr);
-        return targetGuild->ChangeMemberRank(trans, targetGuid, newRank);
+        return targetGuild->ChangeMemberRank(nullptr, *player, rank);
     }
 
     static bool HandleGuildRenameCommand(ChatHandler* handler, char const* _args)
@@ -249,25 +259,19 @@ public:
         return true;
     }
 
-    static bool HandleGuildInfoCommand(ChatHandler* handler, char const* args)
+    static bool HandleGuildInfoCommand(ChatHandler* handler, Optional<Variant<ObjectGuid::LowType, std::string_view>> const& guildIdentifier)
     {
         Guild* guild = nullptr;
 
-        if (args && args[0] != '\0')
+        if (guildIdentifier)
         {
-            if (isNumeric(args))
-            {
-                uint32 guildId = uint32(atoi(args));
-                guild = sGuildMgr->GetGuildById(guildId);
-            }
+            if (ObjectGuid::LowType const* guid = std::get_if<ObjectGuid::LowType>(&*guildIdentifier))
+                guild = sGuildMgr->GetGuildById(*guid);
             else
-            {
-                std::string guildName = args;
-                guild = sGuildMgr->GetGuildByName(guildName);
-            }
+                guild = sGuildMgr->GetGuildByName(guildIdentifier->get<std::string_view>());
         }
-        else if (Player* target = handler->getSelectedPlayerOrSelf())
-            guild = target->GetGuild();
+        else if (Optional<PlayerIdentifier> target = PlayerIdentifier::FromTargetOrSelf(handler); target && target->IsConnected())
+            guild = target->GetConnectedPlayer()->GetGuild();
 
         if (!guild)
             return false;

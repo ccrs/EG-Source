@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,9 +16,11 @@
  */
 
 #include "BattlefieldMgr.h"
-#include "BattlefieldWG.h"
+#include "DatabaseEnv.h"
+#include "ObjectMgr.h"
 #include "Log.h"
 #include "Player.h"
+#include "ScriptMgr.h"
 
 BattlefieldMgr::BattlefieldMgr()
 {
@@ -41,34 +43,46 @@ BattlefieldMgr* BattlefieldMgr::instance()
 
 void BattlefieldMgr::InitBattlefield()
 {
-    Battlefield* wg = new BattlefieldWG();
-    // respawn, init variables
-    if (!wg->SetupBattlefield())
+    uint32 oldMSTime = getMSTime();
+
+    uint32 count = 0;
+
+    if (QueryResult result = WorldDatabase.Query("SELECT TypeId, ScriptName FROM battlefield_template"))
     {
-        TC_LOG_INFO("bg.battlefield", "Battlefield: Wintergrasp init failed.");
-        delete wg;
-    }
-    else
-    {
-        _battlefieldSet.push_back(wg);
-        TC_LOG_INFO("bg.battlefield", "Battlefield: Wintergrasp successfully initiated.");
+        do
+        {
+            Field* fields = result->Fetch();
+
+            uint32 typeId = fields[0].GetUInt8();
+
+            if (typeId >= BATTLEFIELD_MAX)
+            {
+                TC_LOG_ERROR("sql.sql", "BattlefieldMgr::InitBattlefield: Invalid TypeId value {} in battlefield_template, skipped.", typeId);
+                continue;
+            }
+
+            uint32 scriptId = sObjectMgr->GetScriptId(fields[1].GetString());
+
+            Battlefield* bf = sScriptMgr->CreateBattlefield(scriptId);
+            if (!bf)
+                continue;
+
+            if (!bf->SetupBattlefield())
+            {
+                TC_LOG_INFO("bg.battlefield", "Setting up battlefield with TypeId {} failed.", typeId);
+                delete bf;
+            }
+            else
+            {
+                _battlefieldSet.push_back(bf);
+                TC_LOG_INFO("bg.battlefield", "Setting up battlefield with TypeId {} succeeded.", typeId);
+            }
+
+            ++count;
+        } while (result->NextRow());
     }
 
-    /*
-    For Cataclysm: Tol Barad
-    Battlefield* tb = new BattlefieldTB;
-    // respawn, init variables
-    if (!tb->SetupBattlefield())
-    {
-        TC_LOG_DEBUG("bg.battlefield", "Battlefield: Tol Barad init failed.");
-        delete tb;
-    }
-    else
-    {
-        _battlefieldSet.push_back(tb);
-        TC_LOG_DEBUG("bg.battlefield", "Battlefield: Tol Barad successfully initiated.");
-    }
-    */
+    TC_LOG_INFO("server.loading", ">> Loaded {} battlefields in {} ms", count, GetMSTimeDiffToNow(oldMSTime));
 }
 
 void BattlefieldMgr::AddZone(uint32 zoneId, Battlefield* bf)
@@ -87,7 +101,7 @@ void BattlefieldMgr::HandlePlayerEnterZone(Player* player, uint32 zoneId)
         return;
 
     bf->HandlePlayerEnterZone(player, zoneId);
-    TC_LOG_DEBUG("bg.battlefield", "Player %u entered battlefield id %u", player->GetGUID().GetCounter(), bf->GetTypeId());
+    TC_LOG_DEBUG("bg.battlefield", "Player {} entered battlefield id {}", player->GetGUID().ToString(), bf->GetTypeId());
 }
 
 void BattlefieldMgr::HandlePlayerLeaveZone(Player* player, uint32 zoneId)
@@ -101,7 +115,7 @@ void BattlefieldMgr::HandlePlayerLeaveZone(Player* player, uint32 zoneId)
         return;
 
     itr->second->HandlePlayerLeaveZone(player, zoneId);
-    TC_LOG_DEBUG("bg.battlefield", "Player %u left battlefield id %u", player->GetGUID().GetCounter(), itr->second->GetTypeId());
+    TC_LOG_DEBUG("bg.battlefield", "Player {} left battlefield id {}", player->GetGUID().ToString(), itr->second->GetTypeId());
 }
 
 Battlefield* BattlefieldMgr::GetBattlefieldToZoneId(uint32 zoneId)

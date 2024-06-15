@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,7 +15,6 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef _DYNTREE_H
 #define _DYNTREE_H
 
@@ -30,6 +28,11 @@ namespace G3D
 
 class GameObjectModel;
 struct DynTreeImpl;
+
+namespace VMAP
+{
+    struct AreaAndLiquidData;
+}
 
 class TC_COMMON_API DynamicMapTree
 {
@@ -45,6 +48,8 @@ public:
 
     bool getIntersectionTime(uint32 phasemask, const G3D::Ray& ray,
                              const G3D::Vector3& endPos, float& maxDist) const;
+    bool getAreaInfo(float x, float y, float& z, uint32 phasemask, uint32& flags, int32& adtId, int32& rootId, int32& groupId) const;
+    void getAreaAndLiquidData(float x, float y, float z, uint32 phasemask, uint8 reqLiquidType, VMAP::AreaAndLiquidData& data) const;
 
     bool getObjectHitPos(uint32 phasemask, const G3D::Vector3& pPos1,
                          const G3D::Vector3& pPos2, G3D::Vector3& pResultHitPos,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,45 +15,31 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <OpenSSLCrypto.h>
+#include "OpenSSLCrypto.h"
 #include <openssl/crypto.h>
-#include <vector>
-#include <thread>
-#include <mutex>
 
-std::vector<std::mutex*> cryptoLocks;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#include <openssl/provider.h>
+OSSL_PROVIDER* LegacyProvider;
+OSSL_PROVIDER* DefaultProvider;
+#endif
 
-static void lockingCallback(int mode, int type, char const* /*file*/, int /*line*/)
+void OpenSSLCrypto::threadsSetup([[maybe_unused]] boost::filesystem::path const& providerModulePath)
 {
-    if (mode & CRYPTO_LOCK)
-        cryptoLocks[type]->lock();
-    else
-        cryptoLocks[type]->unlock();
-}
-
-static void threadIdCallback(CRYPTO_THREADID * id)
-{
-    CRYPTO_THREADID_set_numeric(id, std::hash<std::thread::id>()(std::this_thread::get_id()));
-}
-
-void OpenSSLCrypto::threadsSetup()
-{
-    cryptoLocks.resize(CRYPTO_num_locks());
-    for(int i = 0 ; i < CRYPTO_num_locks(); ++i)
-    {
-        cryptoLocks[i] = new std::mutex;
-    }
-    CRYPTO_THREADID_set_callback(threadIdCallback);
-    CRYPTO_set_locking_callback(lockingCallback);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#if TRINITY_PLATFORM == TRINITY_PLATFORM_WINDOWS
+    OSSL_PROVIDER_set_default_search_path(nullptr, providerModulePath.string().c_str());
+#endif
+    LegacyProvider = OSSL_PROVIDER_load(nullptr, "legacy");
+    DefaultProvider = OSSL_PROVIDER_load(nullptr, "default");
+#endif
 }
 
 void OpenSSLCrypto::threadsCleanup()
 {
-    CRYPTO_set_locking_callback(nullptr);
-    CRYPTO_THREADID_set_callback(nullptr);
-    for(int i = 0 ; i < CRYPTO_num_locks(); ++i)
-    {
-        delete cryptoLocks[i];
-    }
-    cryptoLocks.resize(0);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    OSSL_PROVIDER_unload(LegacyProvider);
+    OSSL_PROVIDER_unload(DefaultProvider);
+    OSSL_PROVIDER_set_default_search_path(nullptr, nullptr);
+#endif
 }

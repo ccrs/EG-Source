@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,22 +15,22 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "ruby_sanctum.h"
 #include "AreaBoundary.h"
 #include "CreatureAI.h"
 #include "GameObject.h"
 #include "InstanceScript.h"
 #include "Map.h"
-#include "ruby_sanctum.h"
+#include "ScriptMgr.h"
 #include "TemporarySummon.h"
-#include "WorldPacket.h"
+#include "WorldStatePackets.h"
 
 Position const HalionControllerSpawnPos = { 3156.037f, 533.2656f, 72.97205f, 0.0f };
 
 BossBoundaryData const boundaries =
 {
     { DATA_GENERAL_ZARITHRIAN, new EllipseBoundary(Position(3013.409f, 529.492f), 45.0, 100.0) },
-    { DATA_HALION,             new CircleBoundary(Position(3156.037f, 533.2656f), 48.5)        }
+    { DATA_HALION,             new CircleBoundary(Position(3156.037f, 533.2656f), 52.5)        }
 };
 
 DoorData const doorData[] =
@@ -175,7 +175,10 @@ class instance_ruby_sanctum : public InstanceMapScript
             {
                 if (GetBossState(DATA_SAVIANA_RAGEFIRE) == DONE && GetBossState(DATA_BALTHARUS_THE_WARBORN) == DONE)
                     if (Creature* zarithrian = GetCreature(DATA_GENERAL_ZARITHRIAN))
-                        zarithrian->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NOT_SELECTABLE);
+                    {
+                        zarithrian->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                        zarithrian->SetImmuneToPC(false);
+                    }
             }
 
             void SetData(uint32 type, uint32 data) override
@@ -194,11 +197,11 @@ class instance_ruby_sanctum : public InstanceMapScript
                 return BaltharusSharedHealth;
             }
 
-            void FillInitialWorldStates(WorldPacket& data) override
+            void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override
             {
-                data << uint32(WORLDSTATE_CORPOREALITY_MATERIAL) << uint32(50);
-                data << uint32(WORLDSTATE_CORPOREALITY_TWILIGHT) << uint32(50);
-                data << uint32(WORLDSTATE_CORPOREALITY_TOGGLE) << uint32(0);
+                packet.Worldstates.emplace_back(WORLDSTATE_CORPOREALITY_MATERIAL, 50);
+                packet.Worldstates.emplace_back(WORLDSTATE_CORPOREALITY_TWILIGHT, 50);
+                packet.Worldstates.emplace_back(WORLDSTATE_CORPOREALITY_TOGGLE, 0);
             }
 
         protected:

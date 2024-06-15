@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -71,7 +71,7 @@ class instance_magtheridons_lair : public InstanceMapScript
 
         struct instance_magtheridons_lair_InstanceMapScript : public InstanceScript
         {
-            instance_magtheridons_lair_InstanceMapScript(Map* map) : InstanceScript(map)
+            instance_magtheridons_lair_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
             {
                 SetHeaders(DataHeader);
                 SetBossNumber(EncounterCount);
@@ -105,9 +105,9 @@ class instance_magtheridons_lair : public InstanceMapScript
                             if (GameObject* cube = instance->GetGameObject(gobGUID))
                             {
                                 if (value == ACTION_ENABLE)
-                                    cube->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                                    cube->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                                 else
-                                    cube->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                                    cube->SetFlag(GO_FLAG_NOT_SELECTABLE);
                             }
                         break;
                     case DATA_COLLAPSE:
@@ -123,7 +123,7 @@ class instance_magtheridons_lair : public InstanceMapScript
                         for (ObjectGuid warderGuid : warderGUIDS)
                             if (Creature* warder = instance->GetCreature(warderGuid))
                                 if (warder->IsAlive())
-                                    warder->SetInCombatWithZone();
+                                    warder->AI()->DoZoneInCombat();
                         break;
                     default:
                         break;
@@ -145,4 +145,3 @@ void AddSC_instance_magtheridons_lair()
 {
     new instance_magtheridons_lair();
 }
-

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -23,11 +22,12 @@
 #include "DBCEnums.h"
 #include "Battleground.h"
 #include "BattlegroundQueue.h"
+#include "UniqueTrackablePtr.h"
 #include <unordered_map>
 
 struct BattlemasterListEntry;
 
-typedef std::map<uint32, Battleground*> BattlegroundContainer;
+typedef std::map<uint32, Trinity::unique_trackable_ptr<Battleground>> BattlegroundContainer;
 typedef std::set<uint32> BattlegroundClientIdsContainer;
 
 typedef std::unordered_map<uint32, BattlegroundTypeId> BattleMastersMap;
@@ -53,7 +53,7 @@ struct BattlegroundTemplate
     uint16 MaxPlayersPerTeam;
     uint8 MinLevel;
     uint8 MaxLevel;
-    Position StartLocation[BG_TEAMS_COUNT];
+    Position StartLocation[PVP_TEAMS_COUNT];
     float MaxStartDistSq;
     uint8 Weight;
     uint32 ScriptId;
@@ -69,6 +69,11 @@ class TC_GAME_API BattlegroundMgr
         ~BattlegroundMgr();
 
     public:
+        BattlegroundMgr(BattlegroundMgr const& right) = delete;
+        BattlegroundMgr(BattlegroundMgr&& right) = delete;
+        BattlegroundMgr& operator=(BattlegroundMgr const& right) = delete;
+        BattlegroundMgr& operator=(BattlegroundMgr&& right) = delete;
+
         static BattlegroundMgr* instance();
 
         void Update(uint32 diff);
@@ -78,9 +83,7 @@ class TC_GAME_API BattlegroundMgr
         void BuildPlayerLeftBattlegroundPacket(WorldPacket* data, ObjectGuid guid);
         void BuildBattlegroundListPacket(WorldPacket* data, ObjectGuid guid, Player* player, BattlegroundTypeId bgTypeId, uint8 fromWhere);
         void BuildGroupJoinedBattlegroundPacket(WorldPacket* data, GroupJoinBattlegroundResult result);
-        void BuildUpdateWorldStatePacket(WorldPacket* data, uint32 field, uint32 value);
         void BuildBattlegroundStatusPacket(WorldPacket* data, Battleground* bg, uint8 queueSlot, uint8 statusId, uint32 time1, uint32 time2, uint8 arenaType, uint32 arenaFaction);
-        void BuildPlaySoundPacket(WorldPacket* data, uint32 soundId);
         void SendAreaSpiritHealerQueryOpcode(Player* player, Battleground* bg, ObjectGuid guid);
 
         /* Battlegrounds */
@@ -90,7 +93,6 @@ class TC_GAME_API BattlegroundMgr
         Battleground* CreateNewBattleground(BattlegroundTypeId bgTypeId, PvPDifficultyEntry const* bracketEntry, uint8 arenaType, bool isRated);
 
         void AddBattleground(Battleground* bg);
-        void RemoveBattleground(BattlegroundTypeId bgTypeId, uint32 instanceId);
         void AddToBGFreeSlotQueue(BattlegroundTypeId bgTypeId, Battleground* bg);
         void RemoveFromBGFreeSlotQueue(BattlegroundTypeId bgTypeId, uint32 instanceId);
         BGFreeSlotQueueContainer& GetBGFreeSlotQueueStore(BattlegroundTypeId bgTypeId);
@@ -108,7 +110,8 @@ class TC_GAME_API BattlegroundMgr
         void ToggleArenaTesting();
         void ToggleTesting();
 
-        void SetHolidayWeekends(uint32 mask);
+        void ResetHolidays();
+        void SetHolidayActive(uint32 battlegroundId);
 
         bool isArenaTesting() const { return m_ArenaTesting; }
         bool isTesting() const { return m_Testing; }

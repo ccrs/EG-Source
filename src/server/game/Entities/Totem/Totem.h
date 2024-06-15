@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -32,6 +31,10 @@ enum TotemType
 
 #define SENTRY_TOTEM_ENTRY    3968
 
+// Totems spells
+#define SENTRY_STONECLAW_SPELLID  55277
+#define SENTRY_BIND_SIGHT_SPELLID  6277
+
 class TC_GAME_API Totem : public Minion
 {
     public:
@@ -55,7 +58,7 @@ class TC_GAME_API Totem : public Minion
         void UpdateAttackPowerAndDamage(bool /*ranged*/) override { }
         void UpdateDamagePhysical(WeaponAttackType /*attType*/) override { }
 
-        bool IsImmunedToSpellEffect(SpellInfo const* spellInfo, uint32 index, Unit* caster) const override;
+        bool IsImmunedToSpellEffect(SpellInfo const* spellInfo, SpellEffectInfo const& spellEffectInfo, WorldObject const* caster, bool requireImmunityPurgesEffectAttribute = false) const override;
 
     protected:
         TotemType m_type;

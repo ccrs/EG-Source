@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,6 +23,7 @@ SDCategory: Karazhan
 EndScriptData */
 
 #include "ScriptMgr.h"
+#include "Containers.h"
 #include "karazhan.h"
 #include "InstanceScript.h"
 #include "ObjectAccessor.h"
@@ -122,9 +122,8 @@ public:
         InfernalPoint *point;
 
         void Reset() override { }
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
         void MoveInLineOfSight(Unit* /*who*/) override { }
-
 
         void UpdateAI(uint32 diff) override
         {
@@ -155,20 +154,20 @@ public:
                     creature->AI()->KilledUnit(who);
         }
 
-        void SpellHit(Unit* /*who*/, SpellInfo const* spell) override
+        void SpellHit(WorldObject* /*caster*/, SpellInfo const* spellInfo) override
         {
-            if (spell->Id == SPELL_INFERNAL_RELAY)
+            if (spellInfo->Id == SPELL_INFERNAL_RELAY)
             {
                 me->SetDisplayId(me->GetUInt32Value(UNIT_FIELD_NATIVEDISPLAYID));
-                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                 HellfireTimer = 4000;
                 CleanupTimer = 170000;
             }
         }
 
-        void DamageTaken(Unit* done_by, uint32 &damage) override
+        void DamageTaken(Unit* done_by, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
         {
-            if (done_by->GetGUID() != malchezaar)
+            if (!done_by || done_by->GetGUID() != malchezaar)
                 damage = 0;
         }
 
@@ -250,6 +249,7 @@ public:
                 positions.push_back(&InfernalPoints[i]);
 
             instance->HandleGameObject(instance->GetGuidData(DATA_GO_NETHER_DOOR), true);
+            instance->SetBossState(DATA_MALCHEZZAR, NOT_STARTED);
         }
 
         void KilledUnit(Unit* /*victim*/) override
@@ -270,13 +270,15 @@ public:
                 positions.push_back(&InfernalPoints[i]);
 
             instance->HandleGameObject(instance->GetGuidData(DATA_GO_NETHER_DOOR), true);
+            instance->SetBossState(DATA_MALCHEZZAR, DONE);
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
             Talk(SAY_AGGRO);
 
             instance->HandleGameObject(instance->GetGuidData(DATA_GO_NETHER_DOOR), false); // Open the door leading further in
+            instance->SetBossState(DATA_MALCHEZZAR, IN_PROGRESS);
         }
 
         void InfernalCleanup()
@@ -316,19 +318,18 @@ public:
             if (!info)
                 return;
 
-            ThreatContainer::StorageType const& t_list = me->getThreatManager().getThreatList();
+            Unit* tank = me->GetThreatManager().GetCurrentVictim();
             std::vector<Unit*> targets;
 
-            if (t_list.empty())
-                return;
+            for (ThreatReference const* ref : me->GetThreatManager().GetUnsortedThreatList())
+            {
+                Unit* target = ref->GetVictim();
+                if (target != tank && target->IsAlive() && target->GetTypeId() == TYPEID_PLAYER)
+                    targets.push_back(target);
+            }
 
-            //begin + 1, so we don't target the one with the highest threat
-            ThreatContainer::StorageType::const_iterator itr = t_list.begin();
-            std::advance(itr, 1);
-            for (; itr != t_list.end(); ++itr) //store the threat list in a different container
-                if (Unit* target = ObjectAccessor::GetUnit(*me, (*itr)->getUnitGuid()))
-                    if (target->IsAlive() && target->GetTypeId() == TYPEID_PLAYER)
-                        targets.push_back(target);
+            if (targets.empty())
+              return;
 
             //cut down to size if we have more than 5 targets
             while (targets.size() > 5)
@@ -341,7 +342,10 @@ public:
                     enfeeble_targets[i] = target->GetGUID();
                     enfeeble_health[i] = target->GetHealth();
 
-                    target->CastSpell(target, SPELL_ENFEEBLE, true, 0, 0, me->GetGUID());
+                    CastSpellExtraArgs args;
+                    args.TriggerFlags = TRIGGERED_FULL_MASK;
+                    args.OriginalCaster = me->GetGUID();
+                    target->CastSpell(target, SPELL_ENFEEBLE, args);
                     target->SetHealth(1);
                 }
         }
@@ -370,7 +374,7 @@ public:
                 pos.Relocate(point->x, point->y, INFERNAL_Z, frand(0.0f, float(M_PI * 2)));
             }
 
-            Creature* infernal = me->SummonCreature(NETHERSPITE_INFERNAL, pos, TEMPSUMMON_TIMED_DESPAWN, 180000);
+            Creature* infernal = me->SummonCreature(NETHERSPITE_INFERNAL, pos, TEMPSUMMON_TIMED_DESPAWN, 3min);
 
             if (infernal)
             {
@@ -443,21 +447,19 @@ public:
 
                     Talk(SAY_AXE_TOSS2);
 
-                    Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true);
+                    Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true);
                     for (uint8 i = 0; i < 2; ++i)
                     {
-                        Creature* axe = me->SummonCreature(MALCHEZARS_AXE, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 1000);
+                        Creature* axe = me->SummonCreature(MALCHEZARS_AXE, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 1s);
                         if (axe)
                         {
-                            axe->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                            axe->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                             axe->SetFaction(me->GetFaction());
                             axes[i] = axe->GetGUID();
                             if (target)
                             {
                                 axe->AI()->AttackStart(target);
-                                //axe->getThreatManager().tauntApply(target); //Taunt Apply and fade out does not work properly
-                                                                // So we'll use a hack to add a lot of threat to our target
-                                axe->AddThreat(target, 10000000.0f);
+                                AddThreat(target, 10000000.0f, axe);
                             }
                         }
                     }
@@ -486,18 +488,15 @@ public:
                 {
                     AxesTargetSwitchTimer = urand(7500, 20000);
 
-                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true))
                     {
                         for (uint8 i = 0; i < 2; ++i)
                         {
                             if (Unit* axe = ObjectAccessor::GetUnit(*me, axes[i]))
                             {
                                 if (axe->GetVictim())
-                                    DoModifyThreatPercent(axe->GetVictim(), -100);
-                                if (target)
-                                    axe->AddThreat(target, 1000000.0f);
-                                //axe->getThreatManager().tauntFadeOut(axe->GetVictim());
-                                //axe->getThreatManager().tauntApply(target);
+                                    ResetThreat(axe->GetVictim(), axe);
+                                AddThreat(target, 1000000.0f, axe);
                             }
                         }
                     }
@@ -505,7 +504,7 @@ public:
 
                 if (AmplifyDamageTimer <= diff)
                 {
-                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true))
                         DoCast(target, SPELL_AMPLIFY_DAMAGE);
                     AmplifyDamageTimer = urand(20000, 30000);
                 } else AmplifyDamageTimer -= diff;
@@ -532,7 +531,7 @@ public:
                     if (phase == 1)
                         target = me->GetVictim();        // the tank
                     else                                          // anyone but the tank
-                        target = SelectTarget(SELECT_TARGET_RANDOM, 1, 100, true);
+                        target = SelectTarget(SelectTargetMethod::Random, 1, 100, true);
 
                     if (target)
                         DoCast(target, SPELL_SW_PAIN);

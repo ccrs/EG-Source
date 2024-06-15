@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -77,13 +77,13 @@ public:
             Initialize();
 
             if (IsEvent)
-                instance->SetData(DATA_RAGEWINTERCHILLEVENT, NOT_STARTED);
+                instance->SetBossState(DATA_RAGEWINTERCHILL, NOT_STARTED);
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
             if (IsEvent)
-                instance->SetData(DATA_RAGEWINTERCHILLEVENT, IN_PROGRESS);
+                instance->SetBossState(DATA_RAGEWINTERCHILL, IN_PROGRESS);
             Talk(SAY_ONAGGRO);
         }
 
@@ -92,13 +92,13 @@ public:
             Talk(SAY_ONSLAY);
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (waypointId == 7 && instance)
             {
                 Creature* target = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_JAINAPROUDMOORE));
                 if (target && target->IsAlive())
-                    me->AddThreat(target, 0.0f);
+                    AddThreat(target, 0.0f);
             }
         }
 
@@ -106,7 +106,7 @@ public:
         {
             hyjal_trashAI::JustDied(killer);
             if (IsEvent)
-                instance->SetData(DATA_RAGEWINTERCHILLEVENT, DONE);
+                instance->SetBossState(DATA_RAGEWINTERCHILL, DONE);
             Talk(SAY_ONDEATH);
         }
 
@@ -114,8 +114,8 @@ public:
         {
             if (IsEvent)
             {
-                //Must update npc_escortAI
-                npc_escortAI::UpdateAI(diff);
+                //Must update EscortAI
+                EscortAI::UpdateAI(diff);
                 if (!go)
                 {
                     go = true;
@@ -155,14 +155,13 @@ public:
             } else NovaTimer -= diff;
             if (IceboltTimer <= diff)
             {
-                DoCast(SelectTarget(SELECT_TARGET_RANDOM, 0, 40, true), SPELL_ICEBOLT);
+                DoCast(SelectTarget(SelectTargetMethod::Random, 0, 40, true), SPELL_ICEBOLT);
                 IceboltTimer = 11000 + rand32() % 20000;
             } else IceboltTimer -= diff;
 
             DoMeleeAttackIfReady();
         }
     };
-
 };
 
 void AddSC_boss_rage_winterchill()

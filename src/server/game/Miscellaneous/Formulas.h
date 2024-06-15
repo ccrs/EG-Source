@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -133,7 +132,7 @@ namespace Trinity
                     nBaseExp = 580;
                     break;
                 default:
-                    TC_LOG_ERROR("misc", "BaseGain: Unsupported content level %u", content);
+                    TC_LOG_ERROR("misc", "BaseGain: Unsupported content level {}", content);
                     nBaseExp = 45;
                     break;
             }
@@ -158,6 +157,13 @@ namespace Trinity
                     baseGain = 0;
             }
 
+            if (sWorld->getIntConfig(CONFIG_MIN_CREATURE_SCALED_XP_RATIO))
+            {
+                // Use mob level instead of player level to avoid overscaling on gain in a min is enforced
+                uint32 baseGainMin = (mob_level * 5 + nBaseExp) * sWorld->getIntConfig(CONFIG_MIN_CREATURE_SCALED_XP_RATIO) / 100;
+                baseGain = std::max(baseGainMin, baseGain);
+            }
+
             sScriptMgr->OnBaseGainCalculation(baseGain, pl_level, mob_level, content);
             return baseGain;
         }
@@ -171,7 +177,7 @@ namespace Trinity
             {
                 float xpMod = 1.0f;
 
-                gain = BaseGain(player->getLevel(), u->getLevel(), GetContentLevelsForMapAndZone(u->GetMapId(), u->GetZoneId()));
+                gain = BaseGain(player->GetLevel(), u->GetLevel(), GetContentLevelsForMapAndZone(u->GetMapId(), u->GetZoneId()));
 
                 if (gain && creature)
                 {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -27,29 +27,26 @@ uint32 const EncounterCount     = 15;
 
 enum NAXEncounter
 {
-    BOSS_ANUBREKHAN,
-    BOSS_FAERLINA,
-    BOSS_MAEXXNA,
-    BOSS_NOTH,
-    BOSS_HEIGAN,
-    BOSS_LOATHEB,
-    BOSS_PATCHWERK,
-    BOSS_GROBBULUS,
-    BOSS_GLUTH,
-    BOSS_THADDIUS,
-    BOSS_RAZUVIOUS,
-    BOSS_GOTHIK,
-    BOSS_HORSEMEN,
-    BOSS_SAPPHIRON,
-    BOSS_KELTHUZAD
+    BOSS_ANUBREKHAN = 0,
+    BOSS_FAERLINA   = 1,
+    BOSS_MAEXXNA    = 2,
+    BOSS_NOTH       = 3,
+    BOSS_HEIGAN     = 4,
+    BOSS_LOATHEB    = 5,
+    BOSS_PATCHWERK  = 6,
+    BOSS_GROBBULUS  = 7,
+    BOSS_GLUTH      = 8,
+    BOSS_THADDIUS   = 9,
+    BOSS_RAZUVIOUS  = 10,
+    BOSS_GOTHIK     = 11,
+    BOSS_HORSEMEN   = 12,
+    BOSS_SAPPHIRON  = 13,
+    BOSS_KELTHUZAD  = 14
 };
 
 enum NAXData
 {
     DATA_GOTHIK_GATE,
-    DATA_HAD_ANUBREKHAN_GREET,
-    DATA_HAD_FAERLINA_GREET,
-    DATA_HAD_THADDIUS_GREET,
     DATA_HAD_SAPPHIRON_BIRTH,
 
     DATA_HORSEMEN_CHECK_ACHIEVEMENT_CREDIT,
@@ -111,7 +108,7 @@ enum NAXCreaturesIds
     NPC_BIGGLESWORTH            = 16998,
     NPC_LICH_KING               = 16980,
     NPC_OLD_WORLD_TRIGGER       = 15384,
-    NPC_FROGGER                 = 16027
+    NPC_LIVING_POISON           = 16027
 };
 
 enum NAXGameObjectsIds
@@ -186,9 +183,6 @@ enum NAXInstanceEvents
     // Dialogue that happens after each wing.
     EVENT_KELTHUZAD_WING_TAUNT,
 
-    // Periodic Frogger summon
-    EVENT_SUMMON_FROGGER_WAVE,
-
     // Dialogue that happens after Sapphiron's death.
     EVENT_DIALOGUE_SAPPHIRON_KELTHUZAD,
     EVENT_DIALOGUE_SAPPHIRON_LICHKING,
@@ -218,11 +212,13 @@ enum NAXInstanceTexts
     SAY_DIALOGUE_SAPPHIRON_LICH_KING2 = 2
 };
 
-
 template <class AI, class T>
 inline AI* GetNaxxramasAI(T* obj)
 {
     return GetInstanceAI<AI>(obj, NaxxramasScriptName);
 }
+
+#define RegisterNaxxramasCreatureAI(ai_name) RegisterCreatureAIWithFactory(ai_name, GetNaxxramasAI)
+#define RegisterNaxxramasGameObjectAI(ai_name) RegisterGameObjectAIWithFactory(ai_name, GetNaxxramasAI)
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,7 +24,6 @@ EndScriptData */
 
 #include "ScriptMgr.h"
 #include "InstanceScript.h"
-#include "ObjectAccessor.h"
 #include "ScriptedCreature.h"
 #include "steam_vault.h"
 
@@ -109,7 +108,7 @@ public:
             Talk(SAY_SLAY);
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
             Talk(SAY_AGGRO);
 
@@ -121,14 +120,14 @@ public:
         {
             Talk(SAY_MECHANICS);
 
-            DoSpawnCreature(NPC_STREAMRIGGER_MECHANIC, 5, 5, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 240000);
-            DoSpawnCreature(NPC_STREAMRIGGER_MECHANIC, -5, 5, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 240000);
-            DoSpawnCreature(NPC_STREAMRIGGER_MECHANIC, -5, -5, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 240000);
+            DoSpawnCreature(NPC_STREAMRIGGER_MECHANIC, 5, 5, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 240s);
+            DoSpawnCreature(NPC_STREAMRIGGER_MECHANIC, -5, 5, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 240s);
+            DoSpawnCreature(NPC_STREAMRIGGER_MECHANIC, -5, -5, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 240s);
 
             if (rand32() % 2)
-                DoSpawnCreature(NPC_STREAMRIGGER_MECHANIC, 5, -7, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 240000);
+                DoSpawnCreature(NPC_STREAMRIGGER_MECHANIC, 5, -7, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 240s);
             if (rand32() % 2)
-                DoSpawnCreature(NPC_STREAMRIGGER_MECHANIC, 7, -5, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 240000);
+                DoSpawnCreature(NPC_STREAMRIGGER_MECHANIC, 7, -5, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 240s);
         }
 
         void UpdateAI(uint32 diff) override
@@ -144,7 +143,7 @@ public:
 
             if (Saw_Blade_Timer <= diff)
             {
-                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 1))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1))
                     DoCast(target, SPELL_SAW_BLADE);
                 else
                     DoCastVictim(SPELL_SAW_BLADE);
@@ -232,7 +231,7 @@ public:
             //react only if attacked
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void UpdateAI(uint32 diff) override
         {
@@ -240,12 +239,12 @@ public:
             {
                 if (instance->GetBossState(DATA_MEKGINEER_STEAMRIGGER) == IN_PROGRESS)
                 {
-                    if (Creature* mekgineer = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_MEKGINEER_STEAMRIGGER)))
+                    if (Creature* mekgineer = instance->GetCreature(DATA_MEKGINEER_STEAMRIGGER))
                     {
                         if (me->IsWithinDistInMap(mekgineer, MAX_REPAIR_RANGE))
                         {
                             //are we already channeling? Doesn't work very well, find better check?
-                            if (!me->GetUInt32Value(UNIT_CHANNEL_SPELL))
+                            if (!me->GetChannelSpellId())
                             {
                                 //me->GetMotionMaster()->MovementExpired();
                                 //me->GetMotionMaster()->MoveIdle();

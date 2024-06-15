@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -23,7 +22,6 @@
 #include "BoundingIntervalHierarchy.h"
 #include <unordered_map>
 
-
 namespace VMAP
 {
     class ModelInstance;
@@ -34,7 +32,7 @@ namespace VMAP
 
     struct TC_COMMON_API LocationInfo
     {
-        LocationInfo(): hitInstance(nullptr), hitModel(nullptr), ground_Z(-G3D::finf()) { }
+        LocationInfo(): rootId(-1), hitInstance(nullptr), hitModel(nullptr), ground_Z(-G3D::finf()) { }
         int32 rootId;
         ModelInstance const* hitInstance;
         GroupModel const* hitModel;

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -25,6 +24,7 @@
 #include <list>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 
 enum LocaleConstant : uint8;
 
@@ -36,7 +36,7 @@ enum LocaleConstant : uint8;
 typedef std::list<uint32> SimpleFactionsList;
 TC_GAME_API SimpleFactionsList const* GetFactionTeamList(uint32 faction);
 
-TC_GAME_API char* GetPetName(uint32 petfamily, uint32 dbclang);
+TC_GAME_API char const* GetPetName(uint32 petfamily, uint32 dbclang);
 TC_GAME_API uint32 GetTalentSpellCost(uint32 spellId);
 TC_GAME_API TalentSpellPos const* GetTalentSpellPos(uint32 spellId);
 
@@ -71,8 +71,9 @@ TC_GAME_API uint32 GetLiquidFlags(uint32 liquidType);
 TC_GAME_API PvPDifficultyEntry const* GetBattlegroundBracketByLevel(uint32 mapid, uint32 level);
 TC_GAME_API PvPDifficultyEntry const* GetBattlegroundBracketById(uint32 mapid, BattlegroundBracketId id);
 
-TC_GAME_API CharStartOutfitEntry const* GetCharStartOutfitEntry(uint8 race, uint8 class_, uint8 gender);
+TC_GAME_API CharacterFacialHairStylesEntry const* GetCharFacialHairEntry(uint8 race, uint8 gender, uint8 facialHairID);
 TC_GAME_API CharSectionsEntry const* GetCharSectionEntry(uint8 race, CharSectionType genType, uint8 gender, uint8 type, uint8 color);
+TC_GAME_API CharStartOutfitEntry const* GetCharStartOutfitEntry(uint8 race, uint8 class_, uint8 gender);
 
 TC_GAME_API LFGDungeonEntry const* GetLFGDungeon(uint32 mapId, Difficulty difficulty);
 
@@ -80,6 +81,7 @@ TC_GAME_API uint32 GetDefaultMapLight(uint32 mapId);
 
 typedef std::unordered_multimap<uint32, SkillRaceClassInfoEntry const*> SkillRaceClassInfoMap;
 typedef std::pair<SkillRaceClassInfoMap::iterator, SkillRaceClassInfoMap::iterator> SkillRaceClassInfoBounds;
+TC_GAME_API std::vector<SkillLineAbilityEntry const*> const* GetSkillLineAbilitiesBySkill(uint32 skill);
 TC_GAME_API SkillRaceClassInfoEntry const* GetSkillRaceClassInfo(uint32 skill, uint8 race, uint8 class_);
 
 TC_GAME_API ResponseCodes ValidateName(std::wstring const& name, LocaleConstant locale);
@@ -98,8 +100,9 @@ TC_GAME_API extern DBCStorage <BannedAddOnsEntry>            sBannedAddOnsStore;
 TC_GAME_API extern DBCStorage <BarberShopStyleEntry>         sBarberShopStyleStore;
 TC_GAME_API extern DBCStorage <BattlemasterListEntry>        sBattlemasterListStore;
 TC_GAME_API extern DBCStorage <ChatChannelsEntry>            sChatChannelsStore;
-TC_GAME_API extern DBCStorage <CharStartOutfitEntry>         sCharStartOutfitStore;
+TC_GAME_API extern DBCStorage <CharacterFacialHairStylesEntry> sCharacterFacialHairStylesStore;
 TC_GAME_API extern DBCStorage <CharSectionsEntry>            sCharSectionsStore;
+TC_GAME_API extern DBCStorage <CharStartOutfitEntry>         sCharStartOutfitStore;
 TC_GAME_API extern DBCStorage <CharTitlesEntry>              sCharTitlesStore;
 TC_GAME_API extern DBCStorage <ChrClassesEntry>              sChrClassesStore;
 TC_GAME_API extern DBCStorage <ChrRacesEntry>                sChrRacesStore;
@@ -121,6 +124,7 @@ TC_GAME_API extern DBCStorage <EmotesTextEntry>              sEmotesTextStore;
 TC_GAME_API extern DBCStorage <EmotesTextSoundEntry>         sEmotesTextSoundStore;
 TC_GAME_API extern DBCStorage <FactionEntry>                 sFactionStore;
 TC_GAME_API extern DBCStorage <FactionTemplateEntry>         sFactionTemplateStore;
+TC_GAME_API extern DBCStorage <GameObjectArtKitEntry>        sGameObjectArtKitStore;
 TC_GAME_API extern DBCStorage <GameObjectDisplayInfoEntry>   sGameObjectDisplayInfoStore;
 TC_GAME_API extern DBCStorage <GemPropertiesEntry>           sGemPropertiesStore;
 TC_GAME_API extern DBCStorage <GlyphPropertiesEntry>         sGlyphPropertiesStore;
@@ -148,6 +152,7 @@ TC_GAME_API extern DBCStorage <ItemRandomPropertiesEntry>    sItemRandomProperti
 TC_GAME_API extern DBCStorage <ItemRandomSuffixEntry>        sItemRandomSuffixStore;
 TC_GAME_API extern DBCStorage <ItemSetEntry>                 sItemSetStore;
 TC_GAME_API extern DBCStorage <LFGDungeonEntry>              sLFGDungeonStore;
+TC_GAME_API extern DBCStorage <LightEntry>                   sLightStore;
 TC_GAME_API extern DBCStorage <LiquidTypeEntry>              sLiquidTypeStore;
 TC_GAME_API extern DBCStorage <LockEntry>                    sLockStore;
 TC_GAME_API extern DBCStorage <MailTemplateEntry>            sMailTemplateStore;
@@ -160,7 +165,7 @@ TC_GAME_API extern DBCStorage <PowerDisplayEntry>            sPowerDisplayStore;
 TC_GAME_API extern DBCStorage <QuestSortEntry>               sQuestSortStore;
 TC_GAME_API extern DBCStorage <QuestXPEntry>                 sQuestXPStore;
 TC_GAME_API extern DBCStorage <QuestFactionRewEntry>         sQuestFactionRewardStore;
-TC_GAME_API extern DBCStorage <RandomPropertiesPointsEntry>  sRandomPropertiesPointsStore;
+TC_GAME_API extern DBCStorage <RandPropPointsEntry>          sRandPropPointsStore;
 TC_GAME_API extern DBCStorage <ScalingStatDistributionEntry> sScalingStatDistributionStore;
 TC_GAME_API extern DBCStorage <ScalingStatValuesEntry>       sScalingStatValuesStore;
 TC_GAME_API extern DBCStorage <SkillLineEntry>               sSkillLineStore;
@@ -175,11 +180,13 @@ TC_GAME_API extern DBCStorage <SpellFocusObjectEntry>        sSpellFocusObjectSt
 TC_GAME_API extern DBCStorage <SpellItemEnchantmentEntry>    sSpellItemEnchantmentStore;
 TC_GAME_API extern DBCStorage <SpellItemEnchantmentConditionEntry> sSpellItemEnchantmentConditionStore;
 TC_GAME_API extern PetFamilySpellsStore                      sPetFamilySpellsStore;
+TC_GAME_API extern std::unordered_set<uint32>                sPetTalentSpells;
 TC_GAME_API extern DBCStorage <SpellRadiusEntry>             sSpellRadiusStore;
 TC_GAME_API extern DBCStorage <SpellRangeEntry>              sSpellRangeStore;
 TC_GAME_API extern DBCStorage <SpellRuneCostEntry>           sSpellRuneCostStore;
-TC_GAME_API extern DBCStorage <SpellShapeshiftEntry>         sSpellShapeshiftStore;
+TC_GAME_API extern DBCStorage <SpellShapeshiftFormEntry>     sSpellShapeshiftFormStore;
 TC_GAME_API extern DBCStorage <SpellEntry>                   sSpellStore;
+TC_GAME_API extern DBCStorage <SpellVisualEntry>             sSpellVisualStore;
 TC_GAME_API extern DBCStorage <StableSlotPricesEntry>        sStableSlotPricesStore;
 TC_GAME_API extern DBCStorage <SummonPropertiesEntry>        sSummonPropertiesStore;
 TC_GAME_API extern DBCStorage <TalentEntry>                  sTalentStore;

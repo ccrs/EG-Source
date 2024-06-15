@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -27,16 +26,14 @@
 class TC_GAME_API Bag : public Item
 {
     public:
-
         Bag();
         ~Bag();
 
         void AddToWorld() override;
         void RemoveFromWorld() override;
 
-        bool Create(ObjectGuid::LowType guidlow, ObjectGuid::LowType itemid, Player const* owner) override;
+        bool Create(ObjectGuid::LowType guidlow, uint32 itemid, Player const* owner) override;
 
-        void Clear();
         void StoreItem(uint8 slot, Item* pItem, bool update);
         void RemoveItem(uint8 slot, bool update);
 
@@ -51,13 +48,15 @@ class TC_GAME_API Bag : public Item
 
         // DB operations
         // overwrite virtual Item::SaveToDB
-        void SaveToDB(SQLTransaction& trans) override;
+        void SaveToDB(CharacterDatabaseTransaction trans) override;
         // overwrite virtual Item::LoadFromDB
         bool LoadFromDB(ObjectGuid::LowType guid, ObjectGuid owner_guid, Field* fields, uint32 entry) override;
         // overwrite virtual Item::DeleteFromDB
-        void DeleteFromDB(SQLTransaction& trans) override;
+        void DeleteFromDB(CharacterDatabaseTransaction trans) override;
 
         void BuildCreateUpdateBlockForPlayer(UpdateData* data, Player* target) const override;
+
+        std::string GetDebugInfo() const override;
 
     protected:
 
@@ -70,4 +69,3 @@ inline Item* NewItemOrBag(ItemTemplate const* proto)
     return (proto->InventoryType == INVTYPE_BAG) ? new Bag : new Item;
 }
 #endif
-

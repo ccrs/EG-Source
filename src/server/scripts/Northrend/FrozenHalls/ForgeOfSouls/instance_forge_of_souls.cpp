@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -36,7 +36,7 @@ class instance_forge_of_souls : public InstanceMapScript
 
         struct instance_forge_of_souls_InstanceScript : public InstanceScript
         {
-            instance_forge_of_souls_InstanceScript(Map* map) : InstanceScript(map)
+            instance_forge_of_souls_InstanceScript(InstanceMap* map) : InstanceScript(map)
             {
                 SetHeaders(DataHeader);
                 SetBossNumber(EncounterCount);
@@ -53,14 +53,6 @@ class instance_forge_of_souls : public InstanceMapScript
 
             void OnCreatureCreate(Creature* creature) override
             {
-                if (!teamInInstance)
-                {
-                    Map::PlayerList const& players = instance->GetPlayers();
-                    if (!players.isEmpty())
-                        if (Player* player = players.begin()->GetSource())
-                            teamInInstance = player->GetTeam();
-                }
-
                 switch (creature->GetEntry())
                 {
                     case NPC_BRONJAHM:
@@ -69,18 +61,30 @@ class instance_forge_of_souls : public InstanceMapScript
                     case NPC_DEVOURER:
                         devourerOfSouls = creature->GetGUID();
                         break;
+                }
+            }
+
+            uint32 GetCreatureEntry(ObjectGuid::LowType /*guidLow*/, CreatureData const* data) override
+            {
+                if (!teamInInstance)
+                {
+                    Map::PlayerList const& players = instance->GetPlayers();
+                    if (!players.isEmpty())
+                        if (Player* player = players.begin()->GetSource())
+                            teamInInstance = player->GetTeam();
+                }
+
+                uint32 entry = data->id;
+                switch (entry)
+                {
                     case NPC_SYLVANAS_PART1:
-                        if (teamInInstance == ALLIANCE)
-                            creature->UpdateEntry(NPC_JAINA_PART1);
-                        break;
+                        return teamInInstance == ALLIANCE ? NPC_JAINA_PART1 : NPC_SYLVANAS_PART1;
                     case NPC_LORALEN:
-                        if (teamInInstance == ALLIANCE)
-                            creature->UpdateEntry(NPC_ELANDRA);
-                        break;
+                        return teamInInstance == ALLIANCE ? NPC_ELANDRA : NPC_LORALEN;
                     case NPC_KALIRA:
-                        if (teamInInstance == ALLIANCE)
-                            creature->UpdateEntry(NPC_KORELN);
-                        break;
+                        return teamInInstance == ALLIANCE ? NPC_KORELN : NPC_KALIRA;
+                    default:
+                        return entry;
                 }
             }
 

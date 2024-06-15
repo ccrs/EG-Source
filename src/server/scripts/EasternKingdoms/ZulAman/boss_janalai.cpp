@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,12 +23,13 @@ SDCategory: Zul'Aman
 EndScriptData */
 
 #include "ScriptMgr.h"
-#include "CellImpl.h"
-#include "GridNotifiers.h"
 #include "InstanceScript.h"
+#include "Map.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
+#include "Player.h"
 #include "ScriptedCreature.h"
+#include "SpellInfo.h"
 #include "TemporarySummon.h"
 #include "zulaman.h"
 
@@ -179,14 +179,14 @@ class boss_janalai : public CreatureScript
                 Talk(SAY_SLAY);
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* who) override
             {
-                _EnterCombat();
+                BossAI::JustEngagedWith(who);
 
                 Talk(SAY_AGGRO);
             }
 
-            void DamageDealt(Unit* target, uint32 &damage, DamageEffectType /*damagetype*/) override
+            void DamageDealt(Unit* target, uint32& damage, DamageEffectType /*damagetype*/) override
             {
                 if (isFlameBreathing)
                 {
@@ -209,9 +209,9 @@ class boss_janalai : public CreatureScript
                     for (uint8 j = 0; j < WallNum; j++)
                     {
                         if (WallNum == 3)
-                            wall = me->SummonCreature(NPC_FIRE_BOMB, FireWallCoords[i][0], FireWallCoords[i][1]+5*(j-1), FireWallCoords[i][2], FireWallCoords[i][3], TEMPSUMMON_TIMED_DESPAWN, 15000);
+                            wall = me->SummonCreature(NPC_FIRE_BOMB, FireWallCoords[i][0], FireWallCoords[i][1]+5*(j-1), FireWallCoords[i][2], FireWallCoords[i][3], TEMPSUMMON_TIMED_DESPAWN, 15s);
                         else
-                            wall = me->SummonCreature(NPC_FIRE_BOMB, FireWallCoords[i][0]-2+4*j, FireWallCoords[i][1], FireWallCoords[i][2], FireWallCoords[i][3], TEMPSUMMON_TIMED_DESPAWN, 15000);
+                            wall = me->SummonCreature(NPC_FIRE_BOMB, FireWallCoords[i][0]-2+4*j, FireWallCoords[i][1], FireWallCoords[i][2], FireWallCoords[i][3], TEMPSUMMON_TIMED_DESPAWN, 15s);
                         if (wall) wall->CastSpell(wall, SPELL_FIRE_WALL, true);
                     }
                 }
@@ -225,7 +225,7 @@ class boss_janalai : public CreatureScript
                     dx = float(irand(-area_dx/2, area_dx/2));
                     dy = float(irand(-area_dy/2, area_dy/2));
 
-                    Creature* bomb = DoSpawnCreature(NPC_FIRE_BOMB, dx, dy, 0, 0, TEMPSUMMON_TIMED_DESPAWN, 15000);
+                    Creature* bomb = DoSpawnCreature(NPC_FIRE_BOMB, dx, dy, 0, 0, TEMPSUMMON_TIMED_DESPAWN, 15s);
                     if (bomb)
                         FireBombGUIDs[i] = bomb->GetGUID();
                 }
@@ -235,14 +235,10 @@ class boss_janalai : public CreatureScript
             bool HatchAllEggs(uint32 action) //1: reset, 2: isHatching all
             {
                 std::list<Creature*> templist;
-                float x, y, z;
-                me->GetPosition(x, y, z);
 
-                Trinity::AllCreaturesOfEntryInRange check(me, NPC_EGG, 100);
-                Trinity::CreatureListSearcher<Trinity::AllCreaturesOfEntryInRange> searcher(me, templist, check);
-                Cell::VisitGridObjects(me, searcher, me->GetGridActivationRange());
+                GetCreatureListWithEntryInGrid(templist, me, NPC_EGG, 100.0f);
 
-                //TC_LOG_ERROR("scripts", "Eggs %d at middle", templist.size());
+                //TC_LOG_ERROR("scripts", "Eggs {} at middle", templist.size());
                 if (templist.empty())
                     return false;
 
@@ -259,12 +255,8 @@ class boss_janalai : public CreatureScript
             void Boom()
             {
                 std::list<Creature*> templist;
-                float x, y, z;
-                me->GetPosition(x, y, z);
 
-                Trinity::AllCreaturesOfEntryInRange check(me, NPC_FIRE_BOMB, 100);
-                Trinity::CreatureListSearcher<Trinity::AllCreaturesOfEntryInRange> searcher(me, templist, check);
-                Cell::VisitGridObjects(me, searcher, me->GetGridActivationRange());
+                GetCreatureListWithEntryInGrid(templist, me, NPC_FIRE_BOMB, 100.0f);
 
                 for (std::list<Creature*>::const_iterator i = templist.begin(); i != templist.end(); ++i)
                 {
@@ -279,9 +271,9 @@ class boss_janalai : public CreatureScript
                 {
                     if (Unit* FireBomb = ObjectAccessor::GetUnit(*me, FireBombGUIDs[BombCount]))
                     {
-                        FireBomb->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                        FireBomb->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                         DoCast(FireBomb, SPELL_FIRE_BOMB_THROW, true);
-                        FireBomb->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                        FireBomb->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                     }
                     ++BombCount;
                     if (BombCount == 40)
@@ -400,8 +392,8 @@ class boss_janalai : public CreatureScript
                         if (HatchAllEggs(0))
                         {
                             Talk(SAY_SUMMON_HATCHER);
-                            me->SummonCreature(NPC_AMANI_HATCHER, hatcherway[0][0][0], hatcherway[0][0][1], hatcherway[0][0][2], 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000);
-                            me->SummonCreature(NPC_AMANI_HATCHER, hatcherway[1][0][0], hatcherway[1][0][1], hatcherway[1][0][2], 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000);
+                            me->SummonCreature(NPC_AMANI_HATCHER, hatcherway[0][0][0], hatcherway[0][0][1], hatcherway[0][0][2], 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10s);
+                            me->SummonCreature(NPC_AMANI_HATCHER, hatcherway[1][0][0], hatcherway[1][0][1], hatcherway[1][0][2], 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10s);
                             HatcherTimer = 90000;
                         }
                         else
@@ -413,7 +405,7 @@ class boss_janalai : public CreatureScript
 
                 if (FireBreathTimer <= diff)
                 {
-                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
                     {
                         me->AttackStop();
                         me->GetMotionMaster()->Clear();
@@ -445,13 +437,13 @@ class npc_janalai_firebomb : public CreatureScript
 
             void Reset() override { }
 
-            void SpellHit(Unit* /*caster*/, SpellInfo const* spell) override
+            void SpellHit(WorldObject* /*caster*/, SpellInfo const* spellInfo) override
             {
-                if (spell->Id == SPELL_FIRE_BOMB_THROW)
-                    DoCast(me, SPELL_FIRE_BOMB_DUMMY, true);
+                if (spellInfo->Id == SPELL_FIRE_BOMB_THROW)
+                    DoCastSelf(SPELL_FIRE_BOMB_DUMMY, true);
             }
 
-            void EnterCombat(Unit* /*who*/) override { }
+            void JustEngagedWith(Unit* /*who*/) override { }
 
             void AttackStart(Unit* /*who*/) override { }
 
@@ -509,14 +501,10 @@ class npc_janalai_hatcher : public CreatureScript
             bool HatchEggs(uint32 num)
             {
                 std::list<Creature*> templist;
-                float x, y, z;
-                me->GetPosition(x, y, z);
 
-                Trinity::AllCreaturesOfEntryInRange check(me, 23817, 50);
-                Trinity::CreatureListSearcher<Trinity::AllCreaturesOfEntryInRange> searcher(me, templist, check);
-                Cell::VisitGridObjects(me, searcher, me->GetGridActivationRange());
+                GetCreatureListWithEntryInGrid(templist, me, NPC_EGG, 50.0f);
 
-                //TC_LOG_ERROR("scripts", "Eggs %d at %d", templist.size(), side);
+                //TC_LOG_ERROR("scripts", "Eggs {} at {}", templist.size(), side);
 
                 for (std::list<Creature*>::const_iterator i = templist.begin(); i != templist.end() && num > 0; ++i)
                     if ((*i)->GetDisplayId() != 11686)
@@ -528,7 +516,7 @@ class npc_janalai_hatcher : public CreatureScript
                 return num == 0;   // if num == 0, no more templist
             }
 
-            void EnterCombat(Unit* /*who*/) override { }
+            void JustEngagedWith(Unit* /*who*/) override { }
             void AttackStart(Unit* /*who*/) override { }
             void MoveInLineOfSight(Unit* /*who*/) override { }
 
@@ -627,7 +615,7 @@ class npc_janalai_hatchling : public CreatureScript
                 me->SetDisableGravity(true);
             }
 
-            void EnterCombat(Unit* /*who*/) override {/*DoZoneInCombat();*/ }
+            void JustEngagedWith(Unit* /*who*/) override {/*DoZoneInCombat();*/ }
 
             void UpdateAI(uint32 diff) override
             {
@@ -671,9 +659,9 @@ class npc_janalai_egg : public CreatureScript
 
             void UpdateAI(uint32 /*diff*/) override { }
 
-            void SpellHit(Unit* /*caster*/, SpellInfo const* spell) override
+            void SpellHit(WorldObject* /*caster*/, SpellInfo const* spellInfo) override
             {
-                if (spell->Id == SPELL_HATCH_EGG)
+                if (spellInfo->Id == SPELL_HATCH_EGG)
                     DoCast(SPELL_SUMMON_HATCHLING);
             }
         };
@@ -692,4 +680,3 @@ void AddSC_boss_janalai()
     new npc_janalai_hatchling();
     new npc_janalai_egg();
 }
-

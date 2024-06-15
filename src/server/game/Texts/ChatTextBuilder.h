@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,7 +22,6 @@
 #include "SharedDefines.h"
 #include <string>
 
-class Unit;
 class WorldObject;
 class WorldPacket;
 
@@ -31,16 +30,17 @@ namespace Trinity
     class BroadcastTextBuilder
     {
         public:
-            BroadcastTextBuilder(Unit const* obj, ChatMsg msgType, uint32 textId, WorldObject const* target = nullptr, uint32 achievementId = 0)
-                : _source(obj), _msgType(msgType), _textId(textId), _target(target), _achievementId(achievementId) { }
+            BroadcastTextBuilder(WorldObject const* obj, ChatMsg msgType, uint32 textId, uint8 gender, WorldObject const* target = nullptr, uint32 achievementId = 0)
+                : _source(obj), _msgType(msgType), _textId(textId), _gender(gender), _target(target), _achievementId(achievementId) { }
 
             void operator()(WorldPacket& data, LocaleConstant locale) const;
             size_t operator()(WorldPacket* data, LocaleConstant locale) const;
 
         private:
-            Unit const* _source;
+            WorldObject const* _source;
             ChatMsg _msgType;
             uint32 _textId;
+            uint8 _gender;
             WorldObject const* _target;
             uint32 _achievementId;
     };
@@ -48,7 +48,7 @@ namespace Trinity
     class CustomChatTextBuilder
     {
         public:
-            CustomChatTextBuilder(WorldObject const* obj, ChatMsg msgType, std::string const& text, Language language = LANG_UNIVERSAL, WorldObject const* target = nullptr)
+            CustomChatTextBuilder(WorldObject const* obj, ChatMsg msgType, std::string_view text, Language language = LANG_UNIVERSAL, WorldObject const* target = nullptr)
                 : _source(obj), _msgType(msgType), _text(text), _language(language), _target(target) { }
 
             void operator()(WorldPacket& data, LocaleConstant locale) const;
@@ -59,6 +59,22 @@ namespace Trinity
             std::string _text;
             Language _language;
             WorldObject const* _target;
+    };
+
+    class TrinityStringChatBuilder
+    {
+        public:
+            TrinityStringChatBuilder(WorldObject const* obj, ChatMsg msgType, uint32 textId, WorldObject const* target = nullptr, va_list* args = nullptr)
+                : _source(obj), _msgType(msgType), _textId(textId), _target(target), _args(args) { }
+
+            void operator()(WorldPacket& data, LocaleConstant locale) const;
+
+        private:
+            WorldObject const* _source;
+            ChatMsg _msgType;
+            uint32 _textId;
+            WorldObject const* _target;
+            va_list* _args;
     };
 }
 // namespace Trinity

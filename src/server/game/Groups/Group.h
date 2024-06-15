@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,6 +23,8 @@
 #include "GroupRefManager.h"
 #include "Loot.h"
 #include "SharedDefines.h"
+#include "Timer.h"
+#include "UniqueTrackablePtr.h"
 #include <map>
 
 class Battlefield;
@@ -39,10 +40,11 @@ class WorldSession;
 
 struct MapEntry;
 
-#define MAXGROUPSIZE 5
-#define MAXRAIDSIZE 40
-#define MAX_RAID_SUBGROUPS MAXRAIDSIZE/MAXGROUPSIZE
-#define TARGETICONCOUNT 8
+#define MAX_GROUP_SIZE      5
+#define MAX_RAID_SIZE       40
+#define MAX_RAID_SUBGROUPS  MAX_RAID_SIZE / MAX_GROUP_SIZE
+
+#define TARGET_ICONS_COUNT  8
 
 enum RollVote
 {
@@ -135,7 +137,7 @@ class Roll : public LootValidatorRef
 
         ObjectGuid itemGUID;
         uint32 itemid;
-        int32  itemRandomPropId;
+        int32 itemRandomPropId;
         uint32 itemRandomSuffix;
         uint8 itemCount;
         typedef std::map<ObjectGuid, RollVote> PlayerVote;
@@ -184,25 +186,27 @@ class TC_GAME_API Group
         Group();
         ~Group();
 
+        void Update(uint32 diff);
+
         // group manipulation methods
-        bool   Create(Player* leader);
-        void   LoadGroupFromDB(Field* field);
-        void   LoadMemberFromDB(ObjectGuid::LowType guidLow, uint8 memberFlags, uint8 subgroup, uint8 roles);
-        bool   AddInvite(Player* player);
-        void   RemoveInvite(Player* player);
-        void   RemoveAllInvites();
-        bool   AddLeaderInvite(Player* player);
-        bool   AddMember(Player* player);
-        bool   RemoveMember(ObjectGuid guid, RemoveMethod const& method = GROUP_REMOVEMETHOD_DEFAULT, ObjectGuid kicker = ObjectGuid::Empty, char const* reason = nullptr);
-        void   ChangeLeader(ObjectGuid guid);
- static void   ConvertLeaderInstancesToGroup(Player* player, Group* group, bool switchLeader);
-        void   SetLootMethod(LootMethod method);
-        void   SetLooterGuid(ObjectGuid guid);
-        void   SetMasterLooterGuid(ObjectGuid guid);
-        void   UpdateLooterGuid(WorldObject* pLootedObject, bool ifneed = false);
-        void   SetLootThreshold(ItemQualities threshold);
-        void   Disband(bool hideDestroy = false);
-        void   SetLfgRoles(ObjectGuid guid, uint8 roles);
+        bool Create(Player* leader);
+        void LoadGroupFromDB(Field* field);
+        void LoadMemberFromDB(ObjectGuid::LowType guidLow, uint8 memberFlags, uint8 subgroup, uint8 roles);
+        bool AddInvite(Player* player);
+        void RemoveInvite(Player* player);
+        void RemoveAllInvites();
+        bool AddLeaderInvite(Player* player);
+        bool AddMember(Player* player);
+        bool RemoveMember(ObjectGuid guid, RemoveMethod const& method = GROUP_REMOVEMETHOD_DEFAULT, ObjectGuid kicker = ObjectGuid::Empty, char const* reason = nullptr);
+        void ChangeLeader(ObjectGuid guid);
+        static void ConvertLeaderInstancesToGroup(Player* player, Group* group, bool switchLeader);
+        void SetLootMethod(LootMethod method);
+        void SetLooterGuid(ObjectGuid guid);
+        void SetMasterLooterGuid(ObjectGuid guid);
+        void UpdateLooterGuid(WorldObject* pLootedObject, bool ifneed = false);
+        void SetLootThreshold(ItemQualities threshold);
+        void Disband(bool hideDestroy = false);
+        void SetLfgRoles(ObjectGuid guid, uint8 roles);
 
         // properties accessories
         bool IsFull() const;
@@ -273,7 +277,8 @@ class TC_GAME_API Group
         //void SendInit(WorldSession* session);
         void SendTargetIconList(WorldSession* session);
         void SendUpdate();
-        void SendUpdateToPlayer(ObjectGuid playerGUID, MemberSlot* slot = nullptr);
+        void SendUpdateToPlayer(Player const* player, MemberSlot const* slot = nullptr);
+        void SendOriginalGroupUpdateToPlayer(Player const* player) const;
         void UpdatePlayerOutOfRange(Player* player);
 
         template<class Worker>
@@ -290,8 +295,8 @@ class TC_GAME_API Group
                 worker(itr->GetSource());
         }
 
-        void BroadcastPacket(WorldPacket* packet, bool ignorePlayersInBGRaid, int group = -1, ObjectGuid ignoredPlayer = ObjectGuid::Empty);
-        void BroadcastReadyCheck(WorldPacket* packet);
+        void BroadcastPacket(WorldPacket const* packet, bool ignorePlayersInBGRaid, int group = -1, ObjectGuid ignoredPlayer = ObjectGuid::Empty);
+        void BroadcastReadyCheck(WorldPacket const* packet);
         void OfflineReadyCheck();
 
         /*********************************************************/
@@ -301,7 +306,7 @@ class TC_GAME_API Group
         bool isRollLootActive() const;
         void SendLootStartRoll(uint32 CountDown, uint32 mapid, Roll const& r);
         void SendLootStartRollToPlayer(uint32 countDown, uint32 mapId, Player* p, bool canNeed, Roll const& r);
-        void SendLootRoll(ObjectGuid SourceGuid, ObjectGuid TargetGuid, uint8 RollNumber, uint8 RollType, Roll const& r);
+        void SendLootRoll(ObjectGuid SourceGuid, ObjectGuid TargetGuid, uint8 RollNumber, uint8 RollType, Roll const& r, bool autoPass = false);
         void SendLootRollWon(ObjectGuid SourceGuid, ObjectGuid TargetGuid, uint8 RollNumber, uint8 RollType, Roll const& r);
         void SendLootAllPassed(Roll const& roll);
         void SendLooter(Creature* creature, Player* pLooter);
@@ -310,7 +315,7 @@ class TC_GAME_API Group
         void MasterLoot(Loot* loot, WorldObject* pLootedObject);
         Rolls::iterator GetRoll(ObjectGuid Guid);
         void CountTheRoll(Rolls::iterator roll, Map* allowedMap);
-        void CountRollVote(ObjectGuid playerGUID, ObjectGuid Guid, uint8 Choise);
+        bool CountRollVote(ObjectGuid playerGUID, ObjectGuid Guid, uint8 Choise);
         void EndRoll(Loot* loot, Map* allowedMap);
 
         // related to disenchant rolls
@@ -327,8 +332,14 @@ class TC_GAME_API Group
         InstanceGroupBind* GetBoundInstance(Difficulty difficulty, uint32 mapId);
         BoundInstancesMap& GetBoundInstances(Difficulty difficulty);
 
+        void StartLeaderOfflineTimer();
+        void StopLeaderOfflineTimer();
+        void SelectNewPartyOrRaidLeader();
+
         // FG: evil hacks
         void BroadcastGroupUpdate(void);
+
+        Trinity::unique_weak_ptr<Group> GetWeakPtr() const { return m_scriptRef; }
 
     protected:
         bool _setMembersGroup(ObjectGuid guid, uint8 group);
@@ -351,7 +362,7 @@ class TC_GAME_API Group
         Difficulty          m_raidDifficulty;
         Battleground*       m_bgGroup;
         Battlefield*        m_bfGroup;
-        ObjectGuid          m_targetIcons[TARGETICONCOUNT];
+        ObjectGuid          m_targetIcons[TARGET_ICONS_COUNT];
         LootMethod          m_lootMethod;
         ItemQualities       m_lootThreshold;
         ObjectGuid          m_looterGuid;
@@ -363,5 +374,10 @@ class TC_GAME_API Group
         uint32              m_counter;                      // used only in SMSG_GROUP_LIST
         uint32              m_maxEnchantingLevel;
         uint32              m_dbStoreId;                    // Represents the ID used in database (Can be reused by other groups if group was disbanded)
+        bool                m_isLeaderOffline;
+        TimeTracker         m_leaderOfflineTimer;
+
+        struct NoopGroupDeleter { void operator()(Group*) const { /*noop - not managed*/ } };
+        Trinity::unique_trackable_ptr<Group> m_scriptRef;
 };
 #endif

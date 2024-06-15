@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -43,11 +43,11 @@ void SetProcessPriority(std::string const& logChannel, uint32 affinity, bool hig
             ULONG_PTR currentAffinity = affinity & appAff;
 
             if (!currentAffinity)
-                TC_LOG_ERROR(logChannel, "Processors marked in UseProcessors bitmask (hex) %x are not accessible. Accessible processors bitmask (hex): %x", affinity, appAff);
+                TC_LOG_ERROR(logChannel, "Processors marked in UseProcessors bitmask (hex) {:x} are not accessible. Accessible processors bitmask (hex): {:x}", affinity, appAff);
             else if (SetProcessAffinityMask(hProcess, currentAffinity))
-                TC_LOG_INFO(logChannel, "Using processors (bitmask, hex): %x", currentAffinity);
+                TC_LOG_INFO(logChannel, "Using processors (bitmask, hex): {:x}", currentAffinity);
             else
-                TC_LOG_ERROR(logChannel, "Can't set used processors (hex): %x", currentAffinity);
+                TC_LOG_ERROR(logChannel, "Can't set used processors (hex): {:x}", currentAffinity);
         }
     }
 
@@ -71,21 +71,21 @@ void SetProcessPriority(std::string const& logChannel, uint32 affinity, bool hig
                 CPU_SET(i, &mask);
 
         if (sched_setaffinity(0, sizeof(mask), &mask))
-            TC_LOG_ERROR(logChannel, "Can't set used processors (hex): %x, error: %s", affinity, strerror(errno));
+            TC_LOG_ERROR(logChannel, "Can't set used processors (hex): {:x}, error: {}", affinity, strerror(errno));
         else
         {
             CPU_ZERO(&mask);
             sched_getaffinity(0, sizeof(mask), &mask);
-            TC_LOG_INFO(logChannel, "Using processors (bitmask, hex): %lx", *(__cpu_mask*)(&mask));
+            TC_LOG_INFO(logChannel, "Using processors (bitmask, hex): {:x}", *(__cpu_mask*)(&mask));
         }
     }
 
     if (highPriority)
     {
         if (setpriority(PRIO_PROCESS, 0, PROCESS_HIGH_PRIORITY))
-            TC_LOG_ERROR(logChannel, "Can't set process priority class, error: %s", strerror(errno));
+            TC_LOG_ERROR(logChannel, "Can't set process priority class, error: {}", strerror(errno));
         else
-            TC_LOG_INFO(logChannel, "Process priority class set to %i", getpriority(PRIO_PROCESS, 0));
+            TC_LOG_INFO(logChannel, "Process priority class set to {}", getpriority(PRIO_PROCESS, 0));
     }
 
 #else

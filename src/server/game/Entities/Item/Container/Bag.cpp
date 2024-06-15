@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -42,7 +41,7 @@ Bag::~Bag()
         {
             if (item->IsInWorld())
             {
-                TC_LOG_FATAL("entities.player.items", "Item %u (slot %u, bag slot %u) in bag %u (slot %u, bag slot %u, m_bagslot %u) is to be deleted but is still in world.",
+                TC_LOG_FATAL("entities.player.items", "Item {} (slot {}, bag slot {}) in bag {} (slot {}, bag slot {}, m_bagslot {}) is to be deleted but is still in world.",
                     item->GetEntry(), (uint32)item->GetSlot(), (uint32)item->GetBagSlot(),
                     GetEntry(), (uint32)GetSlot(), (uint32)GetBagSlot(), (uint32)i);
                 item->RemoveFromWorld();
@@ -104,7 +103,7 @@ bool Bag::Create(ObjectGuid::LowType guidlow, uint32 itemid, Player const* owner
     return true;
 }
 
-void Bag::SaveToDB(SQLTransaction& trans)
+void Bag::SaveToDB(CharacterDatabaseTransaction trans)
 {
     Item::SaveToDB(trans);
 }
@@ -127,7 +126,7 @@ bool Bag::LoadFromDB(ObjectGuid::LowType guid, ObjectGuid owner_guid, Field* fie
     return true;
 }
 
-void Bag::DeleteFromDB(SQLTransaction& trans)
+void Bag::DeleteFromDB(CharacterDatabaseTransaction trans)
 {
     for (uint8 i = 0; i < MAX_BAG_SIZE; ++i)
         if (m_bagslot[i])
@@ -246,3 +245,9 @@ Item* Bag::GetItemByPos(uint8 slot) const
     return nullptr;
 }
 
+std::string Bag::GetDebugInfo() const
+{
+    std::stringstream sstr;
+    sstr << Item::GetDebugInfo();
+    return sstr.str();
+}

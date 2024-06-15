@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,6 +18,7 @@
 #include "WorldSession.h"
 #include "ArenaTeam.h"
 #include "ArenaTeamMgr.h"
+#include "BattlegroundMgr.h"
 #include "CharacterCache.h"
 #include "Log.h"
 #include "ObjectAccessor.h"
@@ -35,7 +35,7 @@ void WorldSession::HandleInspectArenaTeamsOpcode(WorldPacket& recvData)
 
     ObjectGuid guid;
     recvData >> guid;
-    TC_LOG_DEBUG("network", "Inspect Arena stats %s", guid.ToString().c_str());
+    TC_LOG_DEBUG("network", "Inspect Arena stats {}", guid.ToString());
 
     Player* player = ObjectAccessor::FindPlayer(guid);
 
@@ -108,7 +108,7 @@ void WorldSession::HandleArenaTeamInviteOpcode(WorldPacket& recvData)
         return;
     }
 
-    if (player->getLevel() < sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+    if (!player->IsMaxLevel())
     {
         SendArenaTeamCommandResult(ERR_ARENA_TEAM_CREATE_S, "", player->GetName(), ERR_ARENA_TEAM_TARGET_TOO_LOW_S);
         return;
@@ -155,7 +155,7 @@ void WorldSession::HandleArenaTeamInviteOpcode(WorldPacket& recvData)
         return;
     }
 
-    TC_LOG_DEBUG("bg.battleground", "Player %s Invited %s to Join his ArenaTeam", GetPlayer()->GetName().c_str(), invitedName.c_str());
+    TC_LOG_DEBUG("bg.battleground", "Player {} Invited {} to Join his ArenaTeam", GetPlayer()->GetName(), invitedName);
 
     player->SetArenaTeamIdInvited(arenaTeam->GetId());
 
@@ -233,6 +233,19 @@ void WorldSession::HandleArenaTeamLeaveOpcode(WorldPacket& recvData)
         return;
     }
 
+    // Player cannot be removed during queues
+    if (BattlegroundQueueTypeId bgQueue = BattlegroundMgr::BGQueueTypeId(BATTLEGROUND_AA, arenaTeam->GetType()))
+    {
+        GroupQueueInfo ginfo;
+        BattlegroundQueue& queue = sBattlegroundMgr->GetBattlegroundQueue(bgQueue);
+        if (queue.GetPlayerGroupInfoData(_player->GetGUID(), &ginfo))
+            if (ginfo.IsInvitedToBGInstanceGUID)
+            {
+                SendArenaTeamCommandResult(ERR_ARENA_TEAM_QUIT_S, "", "", ERR_ARENA_TEAMS_LOCKED);
+                return;
+            }
+    }
+
     // If team consists only of the captain, disband the team
     if (_player->GetGUID() == arenaTeam->GetCaptain())
     {
@@ -262,6 +275,16 @@ void WorldSession::HandleArenaTeamDisbandOpcode(WorldPacket& recvData)
         // Only captain can disband the team
         if (arenaTeam->GetCaptain() != _player->GetGUID())
             return;
+
+        // Teams cannot be disbanded during queues
+        if (BattlegroundQueueTypeId bgQueue = BattlegroundMgr::BGQueueTypeId(BATTLEGROUND_AA, arenaTeam->GetType()))
+        {
+            GroupQueueInfo ginfo;
+            BattlegroundQueue& queue = sBattlegroundMgr->GetBattlegroundQueue(bgQueue);
+            if (queue.GetPlayerGroupInfoData(_player->GetGUID(), &ginfo))
+                if (ginfo.IsInvitedToBGInstanceGUID)
+                    return;
+        }
 
         // Teams cannot be disbanded during fights
         if (arenaTeam->IsFighting())
@@ -310,6 +333,19 @@ void WorldSession::HandleArenaTeamRemoveOpcode(WorldPacket& recvData)
     {
         SendArenaTeamCommandResult(ERR_ARENA_TEAM_QUIT_S, "", "", ERR_ARENA_TEAM_LEADER_LEAVE_S);
         return;
+    }
+
+    // Team cannot be removed during queues
+    if (BattlegroundQueueTypeId bgQueue = BattlegroundMgr::BGQueueTypeId(BATTLEGROUND_AA, arenaTeam->GetType()))
+    {
+        GroupQueueInfo ginfo;
+        BattlegroundQueue& queue = sBattlegroundMgr->GetBattlegroundQueue(bgQueue);
+        if (queue.GetPlayerGroupInfoData(_player->GetGUID(), &ginfo))
+            if (ginfo.IsInvitedToBGInstanceGUID)
+            {
+                SendArenaTeamCommandResult(ERR_ARENA_TEAM_QUIT_S, "", "", ERR_ARENA_TEAMS_LOCKED);
+                return;
+            }
     }
 
     // Player cannot be removed during fights

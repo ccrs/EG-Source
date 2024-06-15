@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,15 +18,16 @@
 #ifndef TRINITY_MAP_INSTANCED_H
 #define TRINITY_MAP_INSTANCED_H
 
-#include "Map.h"
-#include "InstanceSaveMgr.h"
 #include "DBCEnums.h"
+#include "InstanceSaveMgr.h"
+#include "Map.h"
+#include "UniqueTrackablePtr.h"
 
 class TC_GAME_API MapInstanced : public Map
 {
     friend class MapManager;
     public:
-        typedef std::unordered_map< uint32, Map*> InstancedMaps;
+        typedef std::unordered_map<uint32, Trinity::unique_trackable_ptr<Map>> InstancedMaps;
 
         MapInstanced(uint32 id, time_t expiry);
         ~MapInstanced() { }
@@ -43,7 +43,7 @@ class TC_GAME_API MapInstanced : public Map
         Map* FindInstanceMap(uint32 instanceId) const
         {
             InstancedMaps::const_iterator i = m_InstancedMaps.find(instanceId);
-            return(i == m_InstancedMaps.end() ? nullptr : i->second);
+            return(i == m_InstancedMaps.end() ? nullptr : i->second.get());
         }
         bool DestroyInstance(InstancedMaps::iterator &itr);
 
@@ -64,7 +64,7 @@ class TC_GAME_API MapInstanced : public Map
         virtual void InitVisibilityDistance() override;
 
     private:
-        InstanceMap* CreateInstance(uint32 InstanceId, InstanceSave* save, Difficulty difficulty);
+        InstanceMap* CreateInstance(uint32 InstanceId, InstanceSave* save, Difficulty difficulty, TeamId InstanceTeam);
         BattlegroundMap* CreateBattleground(uint32 InstanceId, Battleground* bg);
 
         InstancedMaps m_InstancedMaps;

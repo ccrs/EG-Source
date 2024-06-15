@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -32,7 +32,12 @@ EndScriptData */
 #include "Player.h"
 #include "RBAC.h"
 #include "ReputationMgr.h"
+#include "Util.h"
 #include "WorldSession.h"
+
+#if TRINITY_COMPILER == TRINITY_COMPILER_GNU
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 
 class modify_commandscript : public CommandScript
 {
@@ -164,7 +169,6 @@ public:
             NotifyModification(handler, target, LANG_YOU_CHANGE_ENERGY, LANG_YOURS_ENERGY_CHANGED, energy / energyMultiplier, energymax / energyMultiplier);
             target->SetMaxPower(POWER_ENERGY, energymax);
             target->SetPower(POWER_ENERGY, energy);
-            TC_LOG_DEBUG("misc", handler->GetTrinityString(LANG_CURRENT_ENERGY), target->GetMaxPower(POWER_ENERGY));
             return true;
         }
         return false;
@@ -203,13 +207,8 @@ public:
     }
 
     //Edit Player Faction
-    static bool HandleModifyFactionCommand(ChatHandler* handler, char const* args)
+    static bool HandleModifyFactionCommand(ChatHandler* handler, Optional<uint32> factionid, Optional<uint32> flag, Optional<uint32> npcflag, Optional<uint32> dyflag)
     {
-        if (!*args)
-            return false;
-
-        char* pfactionid = handler->extractKeyFromLink((char*)args, "Hfaction");
-
         Creature* target = handler->getSelectedCreature();
         if (!target)
         {
@@ -218,54 +217,34 @@ public:
             return false;
         }
 
-        if (!pfactionid)
+        if (!flag)
+            flag = target->GetUnitFlags();
+
+        if (!npcflag)
+            npcflag = target->GetNpcFlags();
+
+        if (!dyflag)
+            dyflag = target->GetDynamicFlags();
+
+        if (!factionid)
         {
-            uint32 factionid = target->GetFaction();
-            uint32 flag      = target->GetUInt32Value(UNIT_FIELD_FLAGS);
-            uint32 npcflag   = target->GetUInt32Value(UNIT_NPC_FLAGS);
-            uint32 dyflag    = target->GetUInt32Value(UNIT_DYNAMIC_FLAGS);
-            handler->PSendSysMessage(LANG_CURRENT_FACTION, target->GetGUID().GetCounter(), factionid, flag, npcflag, dyflag);
+            handler->PSendSysMessage(LANG_CURRENT_FACTION, target->GetGUID().GetCounter(), *factionid, *flag, *npcflag, *dyflag);
             return true;
         }
 
-        uint32 factionid = atoi(pfactionid);
-        uint32 flag;
-
-        char *pflag = strtok(nullptr, " ");
-        if (!pflag)
-            flag = target->GetUInt32Value(UNIT_FIELD_FLAGS);
-        else
-            flag = atoi(pflag);
-
-        char* pnpcflag = strtok(nullptr, " ");
-
-        uint32 npcflag;
-        if (!pnpcflag)
-            npcflag = target->GetUInt32Value(UNIT_NPC_FLAGS);
-        else
-            npcflag = atoi(pnpcflag);
-
-        char* pdyflag = strtok(nullptr, " ");
-
-        uint32  dyflag;
-        if (!pdyflag)
-            dyflag = target->GetUInt32Value(UNIT_DYNAMIC_FLAGS);
-        else
-            dyflag = atoi(pdyflag);
-
-        if (!sFactionTemplateStore.LookupEntry(factionid))
+        if (!sFactionTemplateStore.LookupEntry(*factionid))
         {
-            handler->PSendSysMessage(LANG_WRONG_FACTION, factionid);
+            handler->PSendSysMessage(LANG_WRONG_FACTION, *factionid);
             handler->SetSentErrorMessage(true);
             return false;
         }
 
-        handler->PSendSysMessage(LANG_YOU_CHANGE_FACTION, target->GetGUID().GetCounter(), factionid, flag, npcflag, dyflag);
+        handler->PSendSysMessage(LANG_YOU_CHANGE_FACTION, target->GetGUID().GetCounter(), *factionid, *flag, *npcflag, *dyflag);
 
-        target->SetFaction(factionid);
-        target->SetUInt32Value(UNIT_FIELD_FLAGS, flag);
-        target->SetUInt32Value(UNIT_NPC_FLAGS, npcflag);
-        target->SetUInt32Value(UNIT_DYNAMIC_FLAGS, dyflag);
+        target->SetFaction(*factionid);
+        target->ReplaceAllUnitFlags(UnitFlags(*flag));
+        target->ReplaceAllNpcFlags(NPCFlags(*npcflag));
+        target->ReplaceAllDynamicFlags(*dyflag);
 
         return true;
     }
@@ -372,13 +351,8 @@ public:
         return false;
     }
 
-    static bool CheckModifySpeed(ChatHandler* handler, char const* args, Unit* target, float& speed, float minimumBound, float maximumBound, bool checkInFlight = true)
+    static bool CheckModifySpeed(ChatHandler* handler, Unit* target, float speed, float minimumBound, float maximumBound, bool checkInFlight = true)
     {
-        if (!*args)
-            return false;
-
-        speed = (float)atof((char*)args);
-
         if (speed > maximumBound || speed < minimumBound)
         {
             handler->SendSysMessage(LANG_BAD_VALUE);
@@ -407,6 +381,15 @@ public:
             }
         }
         return true;
+    }
+
+    static bool CheckModifySpeed(ChatHandler* handler, char const* args, Unit* target, float& speed, float minimumBound, float maximumBound, bool checkInFlight = true)
+    {
+        if (!*args)
+            return false;
+
+        speed = (float)atof((char*)args);
+        return CheckModifySpeed(handler, target, speed, minimumBound, maximumBound, checkInFlight);
     }
 
     //Edit Player Aspeed
@@ -497,226 +480,10 @@ public:
     }
 
     //Enable Player mount
-    static bool HandleModifyMountCommand(ChatHandler* handler, char const* args)
+    static bool HandleModifyMountCommand(ChatHandler* handler, uint32 mount, float speed)
     {
-        if (!*args)
-            return false;
-
-        uint16 mId = 1147;
-        float speed = (float)15;
-        uint32 num = 0;
-
-        num = atoi((char*)args);
-        switch (num)
+        if (!sCreatureDisplayInfoStore.LookupEntry(mount))
         {
-        case 1:
-            mId=14340;
-            break;
-        case 2:
-            mId=4806;
-            break;
-        case 3:
-            mId=6471;
-            break;
-        case 4:
-            mId=12345;
-            break;
-        case 5:
-            mId=6472;
-            break;
-        case 6:
-            mId=6473;
-            break;
-        case 7:
-            mId=10670;
-            break;
-        case 8:
-            mId=10719;
-            break;
-        case 9:
-            mId=10671;
-            break;
-        case 10:
-            mId=10672;
-            break;
-        case 11:
-            mId=10720;
-            break;
-        case 12:
-            mId=14349;
-            break;
-        case 13:
-            mId=11641;
-            break;
-        case 14:
-            mId=12244;
-            break;
-        case 15:
-            mId=12242;
-            break;
-        case 16:
-            mId=14578;
-            break;
-        case 17:
-            mId=14579;
-            break;
-        case 18:
-            mId=14349;
-            break;
-        case 19:
-            mId=12245;
-            break;
-        case 20:
-            mId=14335;
-            break;
-        case 21:
-            mId=207;
-            break;
-        case 22:
-            mId=2328;
-            break;
-        case 23:
-            mId=2327;
-            break;
-        case 24:
-            mId=2326;
-            break;
-        case 25:
-            mId=14573;
-            break;
-        case 26:
-            mId=14574;
-            break;
-        case 27:
-            mId=14575;
-            break;
-        case 28:
-            mId=604;
-            break;
-        case 29:
-            mId=1166;
-            break;
-        case 30:
-            mId=2402;
-            break;
-        case 31:
-            mId=2410;
-            break;
-        case 32:
-            mId=2409;
-            break;
-        case 33:
-            mId=2408;
-            break;
-        case 34:
-            mId=2405;
-            break;
-        case 35:
-            mId=14337;
-            break;
-        case 36:
-            mId=6569;
-            break;
-        case 37:
-            mId=10661;
-            break;
-        case 38:
-            mId=10666;
-            break;
-        case 39:
-            mId=9473;
-            break;
-        case 40:
-            mId=9476;
-            break;
-        case 41:
-            mId=9474;
-            break;
-        case 42:
-            mId=14374;
-            break;
-        case 43:
-            mId=14376;
-            break;
-        case 44:
-            mId=14377;
-            break;
-        case 45:
-            mId=2404;
-            break;
-        case 46:
-            mId=2784;
-            break;
-        case 47:
-            mId=2787;
-            break;
-        case 48:
-            mId=2785;
-            break;
-        case 49:
-            mId=2736;
-            break;
-        case 50:
-            mId=2786;
-            break;
-        case 51:
-            mId=14347;
-            break;
-        case 52:
-            mId=14346;
-            break;
-        case 53:
-            mId=14576;
-            break;
-        case 54:
-            mId=9695;
-            break;
-        case 55:
-            mId=9991;
-            break;
-        case 56:
-            mId=6448;
-            break;
-        case 57:
-            mId=6444;
-            break;
-        case 58:
-            mId=6080;
-            break;
-        case 59:
-            mId=6447;
-            break;
-        case 60:
-            mId=4805;
-            break;
-        case 61:
-            mId=9714;
-            break;
-        case 62:
-            mId=6448;
-            break;
-        case 63:
-            mId=6442;
-            break;
-        case 64:
-            mId=14632;
-            break;
-        case 65:
-            mId=14332;
-            break;
-        case 66:
-            mId=14331;
-            break;
-        case 67:
-            mId=8469;
-            break;
-        case 68:
-            mId=2830;
-            break;
-        case 69:
-            mId=2346;
-            break;
-        default:
             handler->SendSysMessage(LANG_NO_MOUNT);
             handler->SetSentErrorMessage(true);
             return false;
@@ -734,24 +501,13 @@ public:
         if (handler->HasLowerSecurity(target, ObjectGuid::Empty))
             return false;
 
+        if (!CheckModifySpeed(handler, target, speed, 0.1f, 50.0f))
+            return false;
+
         NotifyModification(handler, target, LANG_YOU_GIVE_MOUNT, LANG_MOUNT_GIVED);
-
-        target->SetUInt32Value(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP);
-        target->Mount(mId);
-
-        WorldPacket data(SMSG_FORCE_RUN_SPEED_CHANGE, (8+4+1+4));
-        data << target->GetPackGUID();
-        data << (uint32)0;
-        data << (uint8)0;                                       //new 2.1.0
-        data << float(speed);
-        target->SendMessageToSet(&data, true);
-
-        data.Initialize(SMSG_FORCE_SWIM_SPEED_CHANGE, (8+4+4));
-        data << target->GetPackGUID();
-        data << (uint32)0;
-        data << float(speed);
-        target->SendMessageToSet(&data, true);
-
+        target->Mount(mount);
+        target->SetSpeedRate(MOVE_RUN, speed);
+        target->SetSpeedRate(MOVE_FLIGHT, speed);
         return true;
     }
 
@@ -773,11 +529,16 @@ public:
         if (handler->HasLowerSecurity(target, ObjectGuid::Empty))
             return false;
 
-        int32 moneyToAdd = 0;
+        Optional<int32> moneyToAddO = 0;
         if (strchr(args, 'g') || strchr(args, 's') || strchr(args, 'c'))
-            moneyToAdd = MoneyStringToMoney(std::string(args));
+            moneyToAddO = MoneyStringToMoney(std::string(args));
         else
-            moneyToAdd = atoi(args);
+            moneyToAddO = Trinity::StringTo<int32>(args);
+
+        if (!moneyToAddO)
+            return false;
+
+        int32 moneyToAdd = *moneyToAddO;
 
         uint32 targetMoney = target->GetMoney();
 
@@ -785,7 +546,7 @@ public:
         {
             int32 newmoney = int32(targetMoney) + moneyToAdd;
 
-            TC_LOG_DEBUG("misc", handler->GetTrinityString(LANG_CURRENT_MONEY), targetMoney, moneyToAdd, newmoney);
+            TC_LOG_DEBUG("misc", "{}", handler->PGetParseString(LANG_CURRENT_MONEY, targetMoney, moneyToAdd, newmoney));
             if (newmoney <= 0)
             {
                 NotifyModification(handler, target, LANG_YOU_TAKE_ALL_MONEY, LANG_YOURS_ALL_MONEY_GONE);
@@ -814,7 +575,7 @@ public:
             target->ModifyMoney(moneyToAdd);
         }
 
-        TC_LOG_DEBUG("misc", handler->GetTrinityString(LANG_NEW_MONEY), targetMoney, moneyToAdd, target->GetMoney());
+        TC_LOG_DEBUG("misc", "{}", handler->PGetParseString(LANG_NEW_MONEY, targetMoney, moneyToAdd, target->GetMoney()));
 
         return true;
     }
@@ -944,7 +705,7 @@ public:
             return false;
 
         amount = atoi(rankTxt);
-        if ((amount == 0) && (rankTxt[0] != '-') && !isdigit(rankTxt[0]))
+        if ((amount == 0) && (rankTxt[0] != '-') && !isdigit((unsigned char)rankTxt[0]))
         {
             std::string rankStr = rankTxt;
             std::wstring wrankStr;
@@ -986,7 +747,7 @@ public:
             }
             if (r >= MAX_REPUTATION_RANK)
             {
-                handler->PSendSysMessage(LANG_COMMAND_FACTION_INVPARAM, rankTxt);
+                handler->PSendSysMessage(LANG_COMMAND_INVALID_PARAM, rankTxt);
                 handler->SetSentErrorMessage(true);
                 return false;
             }
@@ -1001,28 +762,23 @@ public:
             return false;
         }
 
-        if (factionEntry->reputationListID < 0)
+        if (factionEntry->ReputationIndex < 0)
         {
-            handler->PSendSysMessage(LANG_COMMAND_FACTION_NOREP_ERROR, factionEntry->name[handler->GetSessionDbcLocale()], factionId);
+            handler->PSendSysMessage(LANG_COMMAND_FACTION_NOREP_ERROR, factionEntry->Name[handler->GetSessionDbcLocale()], factionId);
             handler->SetSentErrorMessage(true);
             return false;
         }
 
         target->GetReputationMgr().SetOneFactionReputation(factionEntry, amount, false);
         target->GetReputationMgr().SendState(target->GetReputationMgr().GetState(factionEntry));
-        handler->PSendSysMessage(LANG_COMMAND_MODIFY_REP, factionEntry->name[handler->GetSessionDbcLocale()], factionId,
+        handler->PSendSysMessage(LANG_COMMAND_MODIFY_REP, factionEntry->Name[handler->GetSessionDbcLocale()], factionId,
             handler->GetNameLink(target).c_str(), target->GetReputationMgr().GetReputation(factionEntry));
         return true;
     }
 
     //morph creature or player
-    static bool HandleModifyMorphCommand(ChatHandler* handler, char const* args)
+    static bool HandleModifyMorphCommand(ChatHandler* handler, uint32 display_id)
     {
-        if (!*args)
-            return false;
-
-        uint16 display_id = (uint16)atoi((char*)args);
-
         Unit* target = handler->getSelectedUnit();
         if (!target)
             target = handler->GetSession()->GetPlayer();
@@ -1037,13 +793,8 @@ public:
     }
 
     //set temporary phase mask for player
-    static bool HandleModifyPhaseCommand(ChatHandler* handler, char const* args)
+    static bool HandleModifyPhaseCommand(ChatHandler* handler, uint32 phasemask)
     {
-        if (!*args)
-            return false;
-
-        uint32 phasemask = (uint32)atoi((char*)args);
-
         Unit* target = handler->getSelectedUnit();
         if (!target)
             target = handler->GetSession()->GetPlayer();
@@ -1053,7 +804,6 @@ public:
             return false;
 
         target->SetPhaseMask(phasemask, true);
-
         return true;
     }
 
@@ -1064,7 +814,7 @@ public:
             return false;
 
         uint32 anim_id = atoi((char*)args);
-        handler->GetSession()->GetPlayer()->SetUInt32Value(UNIT_NPC_EMOTESTATE, anim_id);
+        handler->GetSession()->GetPlayer()->SetEmoteState(Emote(anim_id));
 
         return true;
     }
@@ -1105,7 +855,7 @@ public:
             return false;
         }
 
-        PlayerInfo const* info = sObjectMgr->GetPlayerInfo(target->getRace(), target->getClass());
+        PlayerInfo const* info = sObjectMgr->GetPlayerInfo(target->GetRace(), target->GetClass());
         if (!info)
             return false;
 
@@ -1116,14 +866,14 @@ public:
 
         if (!strncmp(gender_str, "male", gender_len))            // MALE
         {
-            if (target->getGender() == GENDER_MALE)
+            if (target->GetGender() == GENDER_MALE)
                 return true;
 
             gender = GENDER_MALE;
         }
         else if (!strncmp(gender_str, "female", gender_len))    // FEMALE
         {
-            if (target->getGender() == GENDER_FEMALE)
+            if (target->GetGender() == GENDER_FEMALE)
                 return true;
 
             gender = GENDER_FEMALE;
@@ -1136,8 +886,8 @@ public:
         }
 
         // Set gender
-        target->SetByteValue(UNIT_FIELD_BYTES_0, UNIT_BYTES_0_OFFSET_GENDER, gender);
-        target->SetByteValue(PLAYER_BYTES_3, PLAYER_BYTES_3_OFFSET_GENDER, gender);
+        target->SetGender(gender);
+        target->SetNativeGender(gender);
 
         // Change display ID
         target->InitDisplayIds();

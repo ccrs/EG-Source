@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -42,70 +41,59 @@ enum Events
     EVENT_SHADOW_SHOCK      = 3,
 };
 
-class boss_lucifron : public CreatureScript
+struct boss_lucifron : public BossAI
 {
-    public:
-        boss_lucifron() : CreatureScript("boss_lucifron") { }
+    boss_lucifron(Creature* creature) : BossAI(creature, BOSS_LUCIFRON)
+    {
+    }
 
-        struct boss_lucifronAI : public BossAI
+    void JustEngagedWith(Unit* victim) override
+    {
+        BossAI::JustEngagedWith(victim);
+        events.ScheduleEvent(EVENT_IMPENDING_DOOM, 10s);
+        events.ScheduleEvent(EVENT_LUCIFRON_CURSE, 20s);
+        events.ScheduleEvent(EVENT_SHADOW_SHOCK, 6s);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        while (uint32 eventId = events.ExecuteEvent())
         {
-            boss_lucifronAI(Creature* creature) : BossAI(creature, BOSS_LUCIFRON)
+            switch (eventId)
             {
+                case EVENT_IMPENDING_DOOM:
+                    DoCastVictim(SPELL_IMPENDING_DOOM);
+                    events.ScheduleEvent(EVENT_IMPENDING_DOOM, 20s);
+                    break;
+                case EVENT_LUCIFRON_CURSE:
+                    DoCastVictim(SPELL_LUCIFRON_CURSE);
+                    events.ScheduleEvent(EVENT_LUCIFRON_CURSE, 15s);
+                    break;
+                case EVENT_SHADOW_SHOCK:
+                    DoCastVictim(SPELL_SHADOW_SHOCK);
+                    events.ScheduleEvent(EVENT_SHADOW_SHOCK, 6s);
+                    break;
+                default:
+                    break;
             }
 
-            void EnterCombat(Unit* victim) override
-            {
-                BossAI::EnterCombat(victim);
-                events.ScheduleEvent(EVENT_IMPENDING_DOOM, 10000);
-                events.ScheduleEvent(EVENT_LUCIFRON_CURSE, 20000);
-                events.ScheduleEvent(EVENT_SHADOW_SHOCK, 6000);
-            }
-
-            void UpdateAI(uint32 diff) override
-            {
-                if (!UpdateVictim())
-                    return;
-
-                events.Update(diff);
-
-                if (me->HasUnitState(UNIT_STATE_CASTING))
-                    return;
-
-                while (uint32 eventId = events.ExecuteEvent())
-                {
-                    switch (eventId)
-                    {
-                        case EVENT_IMPENDING_DOOM:
-                            DoCastVictim(SPELL_IMPENDING_DOOM);
-                            events.ScheduleEvent(EVENT_IMPENDING_DOOM, 20000);
-                            break;
-                        case EVENT_LUCIFRON_CURSE:
-                            DoCastVictim(SPELL_LUCIFRON_CURSE);
-                            events.ScheduleEvent(EVENT_LUCIFRON_CURSE, 15000);
-                            break;
-                        case EVENT_SHADOW_SHOCK:
-                            DoCastVictim(SPELL_SHADOW_SHOCK);
-                            events.ScheduleEvent(EVENT_SHADOW_SHOCK, 6000);
-                            break;
-                        default:
-                            break;
-                    }
-
-                    if (me->HasUnitState(UNIT_STATE_CASTING))
-                        return;
-                }
-
-                DoMeleeAttackIfReady();
-            }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return GetMoltenCoreAI<boss_lucifronAI>(creature);
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
         }
+
+        DoMeleeAttackIfReady();
+    }
 };
 
 void AddSC_boss_lucifron()
 {
-    new boss_lucifron();
+    RegisterMoltenCoreCreatureAI(boss_lucifron);
 }

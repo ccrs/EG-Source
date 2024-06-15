@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,426 +15,19 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* ScriptData
-SDName: Hellfire_Peninsula
-SD%Complete: 100
-SDComment: Quest support: 9375, 9410, 9418, 10129, 10146, 10162, 10163, 10340, 10346, 10347, 10382 (Special flight paths) "Needs update"
-SDCategory: Hellfire Peninsula
-EndScriptData */
-
-/* ContentData
-npc_aeranas
-npc_ancestral_wolf
-npc_wounded_blood_elf
-npc_fel_guard_hound
-EndContentData */
-
 #include "ScriptMgr.h"
+#include "CellImpl.h"
+#include "Containers.h"
+#include "GridNotifiersImpl.h"
 #include "Log.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptedEscortAI.h"
 #include "ScriptedGossip.h"
+#include "SpellScript.h"
+#include "TemporarySummon.h"
 #include "WorldSession.h"
-
-/*######
-## npc_aeranas
-######*/
-
-enum Aeranas
-{
-    SAY_SUMMON                  = 0,
-    SAY_FREE                    = 1,
-    SPELL_ENVELOPING_WINDS      = 15535,
-    SPELL_SHOCK                 = 12553
-};
-
-class npc_aeranas : public CreatureScript
-{
-public:
-    npc_aeranas() : CreatureScript("npc_aeranas") { }
-
-    struct npc_aeranasAI : public ScriptedAI
-    {
-        npc_aeranasAI(Creature* creature) : ScriptedAI(creature)
-        {
-            Initialize();
-        }
-
-        void Initialize()
-        {
-            faction_Timer = 8000;
-            envelopingWinds_Timer = 9000;
-            shock_Timer = 5000;
-        }
-
-        void Reset() override
-        {
-            Initialize();
-
-            me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
-            me->SetFaction(FACTION_FRIENDLY);
-
-            Talk(SAY_SUMMON);
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            if (faction_Timer)
-            {
-                if (faction_Timer <= diff)
-                {
-                    me->SetFaction(FACTION_MONSTER_2);
-                    faction_Timer = 0;
-                } else faction_Timer -= diff;
-            }
-
-            if (!UpdateVictim())
-                return;
-
-            if (HealthBelowPct(30))
-            {
-                me->SetFaction(FACTION_FRIENDLY);
-                me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
-                me->RemoveAllAuras();
-                me->DeleteThreatList();
-                me->CombatStop(true);
-                Talk(SAY_FREE);
-                return;
-            }
-
-            if (shock_Timer <= diff)
-            {
-                DoCastVictim(SPELL_SHOCK);
-                shock_Timer = 10000;
-            } else shock_Timer -= diff;
-
-            if (envelopingWinds_Timer <= diff)
-            {
-                DoCastVictim(SPELL_ENVELOPING_WINDS);
-                envelopingWinds_Timer = 25000;
-            } else envelopingWinds_Timer -= diff;
-
-            DoMeleeAttackIfReady();
-        }
-
-    private:
-        uint32 faction_Timer;
-        uint32 envelopingWinds_Timer;
-        uint32 shock_Timer;
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_aeranasAI(creature);
-    }
-};
-
-/*######
-## npc_ancestral_wolf
-######*/
-
-enum AncestralWolf
-{
-    EMOTE_WOLF_LIFT_HEAD        = 0,
-    EMOTE_WOLF_HOWL             = 1,
-    SAY_WOLF_WELCOME            = 0,
-    SPELL_ANCESTRAL_WOLF_BUFF   = 29938,
-    NPC_RYGA                    = 17123
-};
-
-class npc_ancestral_wolf : public CreatureScript
-{
-public:
-    npc_ancestral_wolf() : CreatureScript("npc_ancestral_wolf") { }
-
-    struct npc_ancestral_wolfAI : public npc_escortAI
-    {
-        npc_ancestral_wolfAI(Creature* creature) : npc_escortAI(creature)
-        {
-            if (creature->GetOwner() && creature->GetOwner()->GetTypeId() == TYPEID_PLAYER)
-                Start(false, false, creature->GetOwner()->GetGUID());
-            else
-                TC_LOG_ERROR("scripts", "TRINITY: npc_ancestral_wolf can not obtain owner or owner is not a player.");
-
-            creature->SetSpeedRate(MOVE_WALK, 1.5f);
-            Reset();
-        }
-
-        void Reset() override
-        {
-        }
-
-        // Override Evade Mode event, recast buff that was removed by standard handler
-        void EnterEvadeMode(EvadeReason why) override
-        {
-            npc_escortAI::EnterEvadeMode(why);
-            DoCast(me, SPELL_ANCESTRAL_WOLF_BUFF, true);
-        }
-
-        void WaypointReached(uint32 waypointId) override
-        {
-            switch (waypointId)
-            {
-                case 0:
-                    Talk(EMOTE_WOLF_LIFT_HEAD);
-                    break;
-                case 2:
-                    Talk(EMOTE_WOLF_HOWL);
-                    DoCast(me, SPELL_ANCESTRAL_WOLF_BUFF, true);
-                    break;
-                // Move Ryga into position
-                case 48:
-                    if (Creature* ryga = me->FindNearestCreature(NPC_RYGA,70))
-                    {
-                        if (ryga->IsAlive() && !ryga->IsInCombat())
-                        {
-                            ryga->SetWalk(true);
-                            ryga->SetSpeedRate(MOVE_WALK, 1.5f);
-                            ryga->GetMotionMaster()->MovePoint(0, 517.340698f, 3885.03975f, 190.455978f, true);
-                            Reset();
-                        }
-                    }
-                    break;
-                // Ryga Kneels and welcomes spirit wolf
-                case 50:
-                    if (Creature* ryga = me->FindNearestCreature(NPC_RYGA,70))
-                    {
-                        if (ryga->IsAlive() && !ryga->IsInCombat())
-                        {
-                            ryga->SetFacingTo(0.776773f);
-                            ryga->SetStandState(UNIT_STAND_STATE_KNEEL);
-                            ryga->AI()->Talk(SAY_WOLF_WELCOME);
-                            Reset();
-                        }
-                    }
-                    break;
-                // Ryga returns to spawn point
-                case 51:
-                    if (Creature* ryga = me->FindNearestCreature(NPC_RYGA,70))
-                    {
-                        if (ryga->IsAlive() && !ryga->IsInCombat())
-                        {
-                            float fRetX, fRetY, fRetZ, fRetO;
-                            ryga->GetRespawnPosition(fRetX, fRetY, fRetZ, &fRetO);
-                            ryga->SetHomePosition(fRetX, fRetY, fRetZ, fRetO);
-                            ryga->SetStandState(UNIT_STAND_STATE_STAND);
-                            ryga->GetMotionMaster()->MoveTargetedHome();
-                            Reset();
-                        }
-                    }
-                    break;
-            }
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_ancestral_wolfAI(creature);
-    }
-};
-
-/*######
-## npc_wounded_blood_elf
-######*/
-
-enum WoundedBloodElf
-{
-    SAY_ELF_START               = 0,
-    SAY_ELF_SUMMON1             = 1,
-    SAY_ELF_RESTING             = 2,
-    SAY_ELF_SUMMON2             = 3,
-    SAY_ELF_COMPLETE            = 4,
-    SAY_ELF_AGGRO               = 5,
-    QUEST_ROAD_TO_FALCON_WATCH  = 9375,
-    NPC_HAALESHI_WINDWALKER     = 16966,
-    NPC_HAALESHI_TALONGUARD     = 16967
-};
-
-class npc_wounded_blood_elf : public CreatureScript
-{
-public:
-    npc_wounded_blood_elf() : CreatureScript("npc_wounded_blood_elf") { }
-
-    struct npc_wounded_blood_elfAI : public npc_escortAI
-    {
-        npc_wounded_blood_elfAI(Creature* creature) : npc_escortAI(creature) { }
-
-        void Reset() override { }
-
-        void EnterCombat(Unit* /*who*/) override
-        {
-            if (HasEscortState(STATE_ESCORT_ESCORTING))
-                Talk(SAY_ELF_AGGRO);
-        }
-
-        void JustSummoned(Creature* summoned) override
-        {
-            summoned->AI()->AttackStart(me);
-        }
-
-        void QuestAccept(Player* player, Quest const* quest) override
-        {
-            if (quest->GetQuestId() == QUEST_ROAD_TO_FALCON_WATCH)
-            {
-                me->SetFaction(FACTION_ESCORTEE_H_PASSIVE);
-                npc_escortAI::Start(true, false, player->GetGUID());
-            }
-        }
-
-        void WaypointReached(uint32 waypointId) override
-        {
-            Player* player = GetPlayerForEscort();
-            if (!player)
-                return;
-
-            switch (waypointId)
-            {
-                case 0:
-                    Talk(SAY_ELF_START, player);
-                    break;
-                case 9:
-                    Talk(SAY_ELF_SUMMON1, player);
-                    // Spawn two Haal'eshi Talonguard
-                    DoSpawnCreature(NPC_HAALESHI_TALONGUARD, -15, -15, 0, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
-                    DoSpawnCreature(NPC_HAALESHI_TALONGUARD, -17, -17, 0, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
-                    break;
-                case 13:
-                    Talk(SAY_ELF_RESTING, player);
-                    break;
-                case 14:
-                    Talk(SAY_ELF_SUMMON2, player);
-                    // Spawn two Haal'eshi Windwalker
-                    DoSpawnCreature(NPC_HAALESHI_WINDWALKER, -15, -15, 0, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
-                    DoSpawnCreature(NPC_HAALESHI_WINDWALKER, -17, -17, 0, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000);
-                    break;
-                case 27:
-                    Talk(SAY_ELF_COMPLETE, player);
-                    // Award quest credit
-                    player->GroupEventHappens(QUEST_ROAD_TO_FALCON_WATCH, me);
-                    break;
-            }
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_wounded_blood_elfAI(creature);
-    }
-};
-
-/*######
-## npc_fel_guard_hound
-######*/
-
-enum FelGuard
-{
-    SPELL_SUMMON_POO     = 37688,
-    SPELL_FAKE_BLOOD     = 37692,
-    NPC_DERANGED_HELBOAR = 16863,
-
-    EVENT_SEARCH_HELBOAR = 1,
-    EVENT_HELBOAR_FOUND  = 2,
-    EVENT_SUMMON_POO     = 3,
-    EVENT_FOLLOW_PLAYER  = 4
-};
-
-class npc_fel_guard_hound : public CreatureScript
-{
-public:
-    npc_fel_guard_hound() : CreatureScript("npc_fel_guard_hound") { }
-
-    struct npc_fel_guard_houndAI : public ScriptedAI
-    {
-        npc_fel_guard_houndAI(Creature* creature) : ScriptedAI(creature)
-        {
-            Initialize();
-        }
-
-        void Initialize()
-        {
-            helboarGUID.Clear();
-            _events.ScheduleEvent(EVENT_SEARCH_HELBOAR, Seconds(3));
-        }
-
-        void Reset() override
-        {
-            Initialize();
-        }
-
-        void MovementInform(uint32 type, uint32 id) override
-        {
-            if (type != POINT_MOTION_TYPE || id != 1)
-                return;
-
-            if (Creature* helboar = ObjectAccessor::GetCreature(*me, helboarGUID))
-            {
-                _events.CancelEvent(EVENT_SEARCH_HELBOAR);
-                me->HandleEmoteCommand(EMOTE_ONESHOT_ATTACK_UNARMED);
-                me->CastSpell(helboar, SPELL_FAKE_BLOOD);
-                _events.ScheduleEvent(EVENT_HELBOAR_FOUND, Seconds(2));
-            }
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            _events.Update(diff);
-
-            while (uint32 eventId = _events.ExecuteEvent())
-            {
-                switch (eventId)
-                {
-                    case EVENT_SEARCH_HELBOAR:
-                        if (Creature* helboar = me->FindNearestCreature(NPC_DERANGED_HELBOAR, 10.0f, false))
-                        {
-                            if (helboar->GetGUID() != helboarGUID && me->GetMotionMaster()->GetCurrentMovementGeneratorType() != POINT_MOTION_TYPE && !me->FindCurrentSpellBySpellId(SPELL_SUMMON_POO))
-                            {
-                                helboarGUID = helboar->GetGUID();
-                                me->SetWalk(true);
-                                me->GetMotionMaster()->MovePoint(1, helboar->GetPositionX(), helboar->GetPositionY(), helboar->GetPositionZ());
-                                helboar->DespawnOrUnsummon(Seconds(10));
-                            }
-                        }
-                        _events.Repeat(Seconds(3));
-                        break;
-                    case EVENT_HELBOAR_FOUND:
-                        if (Creature* helboar = ObjectAccessor::GetCreature(*me, helboarGUID))
-                        {
-                            me->HandleEmoteCommand(EMOTE_ONESHOT_ATTACK_UNARMED);
-                            me->CastSpell(helboar, SPELL_FAKE_BLOOD);
-                            _events.ScheduleEvent(EVENT_SUMMON_POO, Seconds(1));
-                        }
-                        break;
-                    case EVENT_SUMMON_POO:
-                        DoCast(SPELL_SUMMON_POO);
-                        _events.ScheduleEvent(EVENT_FOLLOW_PLAYER, Seconds(2));
-                        break;
-                    case EVENT_FOLLOW_PLAYER:
-                        me->SetWalk(false);
-                        if (Player* owner = me->GetCharmerOrOwnerPlayerOrPlayerItself())
-                            me->GetMotionMaster()->MoveFollow(owner, 0.0f, 0.0f);
-                        _events.ScheduleEvent(EVENT_SEARCH_HELBOAR, Seconds(3));
-                        break;
-                }
-            }
-
-            if (!UpdateVictim())
-                return;
-
-            DoMeleeAttackIfReady();
-        }
-
-    private:
-        EventMap _events;
-        ObjectGuid helboarGUID;
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_fel_guard_houndAI(creature);
-    }
-};
 
 enum ExorcismSpells
 {
@@ -555,7 +147,7 @@ public:
 
                 success = false;
 
-                events.ScheduleEvent(EVENT_SUMMON_SKULL, 10000);
+                events.ScheduleEvent(EVENT_SUMMON_SKULL, 10s);
                 break;
             case ACTION_JULES_FLIGHT:
                 me->RemoveAura(SPELL_JULES_GOES_PRONE);
@@ -624,13 +216,13 @@ public:
                     for (uint8 i = 0; i < summonCount; i++)
                         me->SummonCreature(NPC_DARKNESS_RELEASED, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() + 1.5f, 0, TEMPSUMMON_MANUAL_DESPAWN);
 
-                    events.ScheduleEvent(EVENT_SUMMON_SKULL, urand(10000, 15000));
+                    events.ScheduleEvent(EVENT_SUMMON_SKULL, 10s, 15s);
                     break;
                 }
             }
         }
 
-        bool GossipHello(Player* player) override
+        bool OnGossipHello(Player* player) override
         {
             if (success)
                 player->KilledMonsterCredit(NPC_COLONEL_JULES, ObjectGuid::Empty);
@@ -681,10 +273,11 @@ public:
             Initialize();
 
             playerGUID.Clear();
-            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED);
+            me->RemoveUnitFlag(UNIT_FLAG_PACIFIED);
+            me->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
         }
 
-        bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
+        bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
         {
             ClearGossipMenuFor(player);
             switch (gossipListId)
@@ -693,6 +286,7 @@ public:
                     player->PlayerTalkClass->SendCloseGossip();
                     me->AI()->Talk(SAY_BARADA_1);
                     me->AI()->DoAction(ACTION_START_EVENT);
+                    me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                     break;
                 default:
                     break;
@@ -713,7 +307,7 @@ public:
                 me->GetMotionMaster()->MovePoint(0, exorcismPos[1]);
                 Talk(SAY_BARADA_2);
 
-                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED);
+                me->SetUnitFlag(UNIT_FLAG_PACIFIED);
             }
         }
 
@@ -726,7 +320,7 @@ public:
                 me->GetMotionMaster()->MovePoint(1, exorcismPos[1]);
 
             if (id == 1)
-                events.ScheduleEvent(EVENT_BARADAS_TALK, 2000);
+                events.ScheduleEvent(EVENT_BARADAS_TALK, 2s);
         }
 
         void JustDied(Unit* /*killer*/) override
@@ -753,24 +347,24 @@ public:
                                 me->SetFacingTo(1.513286f);
 
                                 me->HandleEmoteCommand(EMOTE_ONESHOT_KNEEL);
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 3000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 3s);
                                 step++;
                                 break;
                             case 1:
                                 DoCast(SPELL_BARADAS_COMMAND);
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 5000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 5s);
                                 step++;
                                 break;
                             case 2:
                                 Talk(SAY_BARADA_3);
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 7000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 7s);
                                 step++;
                                 break;
                             case 3:
                                 if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
                                     jules->AI()->Talk(SAY_JULES_2);
 
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 18000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 18s);
                                 step++;
                                 break;
                             case 4:
@@ -780,98 +374,98 @@ public:
                                 if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
                                     jules->AI()->DoAction(ACTION_JULES_HOVER);
 
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 11000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 11s);
                                 step++;
                                 break;
                             case 5:
                                 if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
                                     jules->AI()->Talk(SAY_JULES_3);
 
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 13000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 13s);
                                 step++;
                                 break;
                             case 6:
                                 Talk(SAY_BARADA_4);
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 5000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 5s);
                                 step++;
                                 break;
                             case 7:
                                 if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
                                     jules->AI()->Talk(SAY_JULES_3);
 
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 13000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 13s);
                                 step++;
                                 break;
                             case 8:
                                 Talk(SAY_BARADA_4);
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 12000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 12s);
                                 step++;
                                 break;
                             case 9:
                                 if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
                                     jules->AI()->Talk(SAY_JULES_4);
 
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 12000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 12s);
                                 step++;
                                 break;
                             case 10:
                                 Talk(SAY_BARADA_4);
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 5000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 5s);
                                 step++;
                                 break;
                             case 11:
                                 if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
                                     jules->AI()->DoAction(ACTION_JULES_FLIGHT);
 
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
                                 step++;
                                 break;
                             case 12:
                                 if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
                                     jules->AI()->Talk(SAY_JULES_4);
 
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 8000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 8s);
                                 step++;
                                 break;
                             case 13:
                                 Talk(SAY_BARADA_5);
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
                                 step++;
                                 break;
                             case 14:
                                 if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
                                     jules->AI()->Talk(SAY_JULES_4);
 
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
                                 step++;
                                 break;
                             case 15:
                                 Talk(SAY_BARADA_6);
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
                                 step++;
                                 break;
                             case 16:
                                 if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
                                     jules->AI()->Talk(SAY_JULES_5);
 
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
                                 step++;
                                 break;
                             case 17:
                                 Talk(SAY_BARADA_7);
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
                                 step++;
                                 break;
                             case 18:
                                 if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
                                     jules->AI()->Talk(SAY_JULES_3);
 
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
                                 step++;
                                 break;
                             case 19:
                                 Talk(SAY_BARADA_7);
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
                                 step++;
                                 break;
                             case 20:
@@ -881,7 +475,7 @@ public:
                                     jules->RemoveAura(SPELL_JULES_VOMITS_AURA);
                                 }
 
-                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10000);
+                                events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
                                 step++;
                                 break;
                             case 21:
@@ -893,12 +487,12 @@ public:
                                 }
 
                                 me->RemoveAura(SPELL_BARADAS_COMMAND);
-                                me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED);
+                                me->RemoveUnitFlag(UNIT_FLAG_PACIFIED);
 
                                 Talk(SAY_BARADA_8);
                                 me->GetMotionMaster()->MoveTargetedHome();
                                 EnterEvadeMode();
-                                events.ScheduleEvent(EVENT_RESET, Minutes(2));
+                                events.ScheduleEvent(EVENT_RESET, 2min);
                                 break;
                         }
                         break;
@@ -949,20 +543,20 @@ public:
         {
             me->Dismount();
             me->SetFacingToObject(player);
-            me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+            me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
             _playerGUID = player->GetGUID();
-            _events.ScheduleEvent(EVENT_TALK, Seconds(2));
+            _events.ScheduleEvent(EVENT_TALK, 2s);
         }
 
         void Reset() override
         {
             me->RestoreFaction();
-            me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
-            me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
-            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+            me->RemoveNpcFlag(UNIT_NPC_FLAG_QUESTGIVER);
+            me->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+            me->SetImmuneToPC(true);
         }
 
-        void DamageTaken(Unit* /*attacker*/, uint32 &damage) override
+        void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
         {
             if (damage > me->GetHealth() || me->HealthBelowPctDamaged(20, damage))
             {
@@ -971,13 +565,13 @@ public:
                 _events.Reset();
                 me->RestoreFaction();
                 me->RemoveAllAuras();
-                me->DeleteThreatList();
                 me->CombatStop(true);
-                me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
-                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                EngagementOver();
+                me->SetNpcFlag(UNIT_NPC_FLAG_QUESTGIVER);
+                me->SetImmuneToPC(true);
                 Talk(SAY_DEFEATED);
 
-                _events.ScheduleEvent(EVENT_EVADE, Minutes(1));
+                _events.ScheduleEvent(EVENT_EVADE, 1min);
             }
         }
 
@@ -991,22 +585,22 @@ public:
                 {
                 case EVENT_TALK:
                     Talk(SAY_CHALLENGE);
-                    _events.ScheduleEvent(EVENT_ATTACK, Seconds(2));
+                    _events.ScheduleEvent(EVENT_ATTACK, 2s);
                     break;
                 case EVENT_ATTACK:
-                    me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                    me->SetImmuneToPC(false);
                     me->SetFaction(FACTION_MONSTER_2);
-                    me->CombatStart(ObjectAccessor::GetPlayer(*me, _playerGUID));
-                    _events.ScheduleEvent(EVENT_FIREBALL, 1);
-                    _events.ScheduleEvent(EVENT_FROSTNOVA, Seconds(5));
+                    me->EngageWithTarget(ObjectAccessor::GetPlayer(*me, _playerGUID));
+                    _events.ScheduleEvent(EVENT_FIREBALL, 1ms);
+                    _events.ScheduleEvent(EVENT_FROSTNOVA, 5s);
                     break;
                 case EVENT_FIREBALL:
                     DoCast(SPELL_FIREBALL);
-                    _events.ScheduleEvent(EVENT_FIREBALL, Seconds(10));
+                    _events.ScheduleEvent(EVENT_FIREBALL, 10s);
                     break;
                 case EVENT_FROSTNOVA:
                     DoCastAOE(SPELL_FROSTNOVA);
-                    _events.ScheduleEvent(EVENT_FROSTNOVA, Seconds(20));
+                    _events.ScheduleEvent(EVENT_FROSTNOVA, 20s);
                     break;
                 case EVENT_EVADE:
                     EnterEvadeMode();
@@ -1020,7 +614,7 @@ public:
             DoMeleeAttackIfReady();
         }
 
-        bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
+        bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
         {
             CloseGossipMenuFor(player);
             me->StopMoving();
@@ -1039,13 +633,231 @@ public:
     }
 };
 
+enum WatchCommanderLeonus
+{
+    SAY_COVER = 0,
+
+    EVENT_START = 1,
+    EVENT_CAST  = 2,
+    EVENT_END   = 3,
+
+    GAME_EVENT_HELLFIRE = 85,
+
+    NPC_INFERNAL_RAIN   = 18729,
+    NPC_FEAR_CONTROLLER = 19393,
+    SPELL_INFERNAL_RAIN = 33814,
+    SPELL_FEAR          = 33815  // Serverside spell
+};
+
+struct npc_watch_commander_leonus : public ScriptedAI
+{
+    npc_watch_commander_leonus(Creature* creature) : ScriptedAI(creature) { }
+
+    void OnGameEvent(bool start, uint16 eventId) override
+    {
+        if (eventId == GAME_EVENT_HELLFIRE && start)
+        {
+            _events.Reset();
+            _events.ScheduleEvent(EVENT_START, 1s);
+        }
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        _events.Update(diff);
+
+        while (uint32 eventId = _events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case EVENT_START:
+                {
+                    Talk(SAY_COVER);
+                    me->HandleEmoteCommand(EMOTE_ONESHOT_SHOUT);
+
+                    std::list<Creature*> dummies;
+                    for (uint32 entry : { NPC_INFERNAL_RAIN, NPC_FEAR_CONTROLLER })
+                    {
+                        Trinity::AllCreaturesOfEntryInRange pred(me, entry);
+                        Trinity::CreatureListSearcher<Trinity::AllCreaturesOfEntryInRange> searcher(me, dummies, pred);
+                        Cell::VisitAllObjects(me, searcher, 500.0f);
+                    }
+
+                    for (Creature* dummy : dummies)
+                        if (dummy->GetCreatureData()->movementType == 0)
+                            dummy->AI()->SetData(EVENT_START, 0);
+                    break;
+                }
+            }
+        }
+
+        if (!UpdateVictim())
+            return;
+
+        DoMeleeAttackIfReady();
+    }
+
+private:
+    EventMap _events;
+};
+
+struct npc_infernal_rain_hellfire : public ScriptedAI
+{
+    npc_infernal_rain_hellfire(Creature* creature) : ScriptedAI(creature) { }
+
+    void SetData(uint32 type, uint32 /*data*/) override
+    {
+        if (type != EVENT_START)
+            return;
+
+        RebuildTargetList();
+        _events.ScheduleEvent(EVENT_CAST, 0s, 1s);
+        _events.ScheduleEvent(EVENT_END, 1min);
+    }
+
+    void RebuildTargetList()
+    {
+        _targets.clear();
+
+        std::vector<Creature*> others;
+        Trinity::AllCreaturesOfEntryInRange pred(me, NPC_INFERNAL_RAIN);
+        Trinity::CreatureListSearcher<Trinity::AllCreaturesOfEntryInRange> searcher(me, others, pred);
+        Cell::VisitAllObjects(me, searcher, 500.0f);
+        for (Creature* other : others)
+            if (other->GetCreatureData()->movementType == 2)
+                _targets.push_back(other->GetGUID());
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        _events.Update(diff);
+
+        while (uint32 eventId = _events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case EVENT_CAST:
+                {
+                    if (Creature* target = ObjectAccessor::GetCreature(*me, Trinity::Containers::SelectRandomContainerElement(_targets)))
+                    {
+                        CastSpellExtraArgs args;
+                        args.AddSpellMod(SPELLVALUE_MAX_TARGETS, 1);
+                        me->CastSpell(target, SPELL_INFERNAL_RAIN, args);
+                    }
+
+                    _events.Repeat(1s, 2s);
+                    break;
+                }
+                case EVENT_END:
+                    _events.Reset();
+                    break;
+            }
+        }
+    }
+
+    private:
+        EventMap _events;
+        std::vector<ObjectGuid> _targets;
+};
+
+struct npc_fear_controller : public ScriptedAI
+{
+    npc_fear_controller(Creature* creature) : ScriptedAI(creature) { }
+
+    void SetData(uint32 type, uint32 /*data*/) override
+    {
+        if (type != EVENT_START)
+            return;
+
+        _events.ScheduleEvent(EVENT_CAST, 0s, 1s);
+        _events.ScheduleEvent(EVENT_END, 1min);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        _events.Update(diff);
+
+        while (uint32 eventId = _events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case EVENT_CAST:
+                    DoCastAOE(SPELL_FEAR);
+                    _events.Repeat(10s);
+                    break;
+                case EVENT_END:
+                    _events.Reset();
+                    break;
+            }
+        }
+    }
+
+    private:
+        EventMap _events;
+};
+
+/*######
+## Quest 10909: Fel Spirits
+######*/
+
+enum FelSpirits
+{
+    SPELL_SEND_VENGEANCE_TO_PLAYER   = 39202,
+    SPELL_SUMMON_FEL_SPIRIT          = 39206
+};
+
+// 39190 - Send Vengeance
+class spell_hellfire_peninsula_send_vengeance : public SpellScript
+{
+    PrepareSpellScript(spell_hellfire_peninsula_send_vengeance);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_SEND_VENGEANCE_TO_PLAYER });
+    }
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        if (TempSummon* target = GetHitUnit()->ToTempSummon())
+            if (Unit* summoner = target->GetSummonerUnit())
+                target->CastSpell(summoner, SPELL_SEND_VENGEANCE_TO_PLAYER, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_hellfire_peninsula_send_vengeance::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 39202 - Send Vengeance to Player
+class spell_hellfire_peninsula_send_vengeance_to_player : public SpellScript
+{
+    PrepareSpellScript(spell_hellfire_peninsula_send_vengeance_to_player);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_SUMMON_FEL_SPIRIT });
+    }
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        GetHitUnit()->CastSpell(GetHitUnit(), SPELL_SUMMON_FEL_SPIRIT, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_hellfire_peninsula_send_vengeance_to_player::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
 void AddSC_hellfire_peninsula()
 {
-    new npc_aeranas();
-    new npc_ancestral_wolf();
-    new npc_wounded_blood_elf();
-    new npc_fel_guard_hound();
     new npc_colonel_jules();
     new npc_barada();
     new npc_magister_aledis();
+    RegisterCreatureAI(npc_watch_commander_leonus);
+    RegisterCreatureAI(npc_infernal_rain_hellfire);
+    RegisterCreatureAI(npc_fear_controller);
+    RegisterSpellScript(spell_hellfire_peninsula_send_vengeance);
+    RegisterSpellScript(spell_hellfire_peninsula_send_vengeance_to_player);
 }

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,6 +23,7 @@
 #include "MapInstanced.h"
 #include "GridStates.h"
 #include "MapUpdater.h"
+#include "UniqueTrackablePtr.h"
 #include <boost/dynamic_bitset.hpp>
 
 class Transport;
@@ -39,21 +39,27 @@ class TC_GAME_API MapManager
         Map* CreateMap(uint32 mapId, Player* player, uint32 loginInstanceId=0);
         Map* FindMap(uint32 mapId, uint32 instanceId) const;
 
-        uint32 GetAreaId(uint32 mapid, float x, float y, float z) const
+        uint32 GetAreaId(uint32 phaseMask, uint32 mapid, float x, float y, float z) const
         {
             Map const* m = const_cast<MapManager*>(this)->CreateBaseMap(mapid);
-            return m->GetAreaId(x, y, z);
+            return m->GetAreaId(phaseMask, x, y, z);
         }
-        uint32 GetZoneId(uint32 mapid, float x, float y, float z) const
+        uint32 GetAreaId(uint32 phaseMask, uint32 mapid, Position const& pos) const { return GetAreaId(phaseMask, mapid, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ()); }
+        uint32 GetAreaId(uint32 phaseMask, WorldLocation const& loc) const { return GetAreaId(phaseMask, loc.GetMapId(), loc); }
+        uint32 GetZoneId(uint32 phaseMask, uint32 mapid, float x, float y, float z) const
         {
             Map const* m = const_cast<MapManager*>(this)->CreateBaseMap(mapid);
-            return m->GetZoneId(x, y, z);
+            return m->GetZoneId(phaseMask, x, y, z);
         }
-        void GetZoneAndAreaId(uint32& zoneid, uint32& areaid, uint32 mapid, float x, float y, float z)
+        uint32 GetZoneId(uint32 phaseMask, uint32 mapid, Position const& pos) const { return GetZoneId(phaseMask, mapid, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ()); }
+        uint32 GetZoneId(uint32 phaseMask, WorldLocation const& loc) const { return GetZoneId(phaseMask, loc.GetMapId(), loc); }
+        void GetZoneAndAreaId(uint32 phaseMask, uint32& zoneid, uint32& areaid, uint32 mapid, float x, float y, float z) const
         {
             Map const* m = const_cast<MapManager*>(this)->CreateBaseMap(mapid);
-            m->GetZoneAndAreaId(zoneid, areaid, x, y, z);
+            m->GetZoneAndAreaId(phaseMask, zoneid, areaid, x, y, z);
         }
+        void GetZoneAndAreaId(uint32 phaseMask, uint32& zoneid, uint32& areaid, uint32 mapid, Position const& pos) const { GetZoneAndAreaId(phaseMask, zoneid, areaid, mapid, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ()); }
+        void GetZoneAndAreaId(uint32 phaseMask, uint32& zoneid, uint32& areaid, WorldLocation const& loc) const { GetZoneAndAreaId(phaseMask, zoneid, areaid, loc.GetMapId(), loc); }
 
         void Initialize(void);
         void Update(uint32);
@@ -96,9 +102,14 @@ class TC_GAME_API MapManager
             return IsValidMAP(mapid, false) && Trinity::IsValidMapCoord(x, y, z, o);
         }
 
+        static bool IsValidMapCoord(uint32 mapid, Position const& pos)
+        {
+            return IsValidMapCoord(mapid, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), pos.GetOrientation());
+        }
+
         static bool IsValidMapCoord(WorldLocation const& loc)
         {
-            return IsValidMapCoord(loc.GetMapId(), loc.GetPositionX(), loc.GetPositionY(), loc.GetPositionZ(), loc.GetOrientation());
+            return IsValidMapCoord(loc.GetMapId(), loc);
         }
 
         void DoDelayedMovesAndRemoves();
@@ -130,7 +141,7 @@ class TC_GAME_API MapManager
         bool IsScriptScheduled() const { return _scheduledScripts > 0; }
 
     private:
-        typedef std::unordered_map<uint32, Map*> MapMapType;
+        typedef std::unordered_map<uint32, Trinity::unique_trackable_ptr<Map>> MapMapType;
         typedef boost::dynamic_bitset<size_t> InstanceIds;
 
         MapManager();
@@ -139,7 +150,7 @@ class TC_GAME_API MapManager
         Map* FindBaseMap(uint32 mapId) const
         {
             MapMapType::const_iterator iter = i_maps.find(mapId);
-            return (iter == i_maps.end() ? nullptr : iter->second);
+            return (iter == i_maps.end() ? nullptr : iter->second.get());
         }
 
         MapManager(MapManager const&) = delete;
@@ -165,12 +176,12 @@ void MapManager::DoForAllMaps(Worker&& worker)
 
     for (auto& mapPair : i_maps)
     {
-        Map* map = mapPair.second;
+        Map* map = mapPair.second.get();
         if (MapInstanced* mapInstanced = map->ToMapInstanced())
         {
             MapInstanced::InstancedMaps& instances = mapInstanced->GetInstancedMaps();
             for (auto& instancePair : instances)
-                worker(instancePair.second);
+                worker(instancePair.second.get());
         }
         else
             worker(map);
@@ -185,12 +196,12 @@ inline void MapManager::DoForAllMapsWithMapId(uint32 mapId, Worker&& worker)
     auto itr = i_maps.find(mapId);
     if (itr != i_maps.end())
     {
-        Map* map = itr->second;
+        Map* map = itr->second.get();
         if (MapInstanced* mapInstanced = map->ToMapInstanced())
         {
             MapInstanced::InstancedMaps& instances = mapInstanced->GetInstancedMaps();
             for (auto& p : instances)
-                worker(p.second);
+                worker(p.second.get());
         }
         else
             worker(map);

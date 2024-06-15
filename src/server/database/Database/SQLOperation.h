@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,7 +24,7 @@
 //- Union that holds element data
 union SQLElementUnion
 {
-    PreparedStatement* stmt;
+    PreparedStatementBase* stmt;
     char const* query;
 };
 
@@ -40,13 +40,6 @@ struct SQLElementData
 {
     SQLElementUnion element;
     SQLElementDataType type;
-};
-
-//- For ambigious resultsets
-union SQLResultSetUnion
-{
-    PreparedResultSet* presult;
-    ResultSet* qresult;
 };
 
 class MySQLConnection;

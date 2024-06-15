@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -64,10 +64,7 @@ struct CreatureTextId
 {
     CreatureTextId(uint32 e, uint32 g, uint32 i) : entry(e), textGroup(g), textId(i) { }
 
-    bool operator<(CreatureTextId const& right) const
-    {
-        return std::tie(entry, textGroup, textId) < std::tie(right.entry, right.textGroup, right.textId);
-    }
+    friend std::strong_ordering operator<=>(CreatureTextId const& left, CreatureTextId const& right) = default;
 
     uint32 entry;
     uint32 textGroup;
@@ -91,10 +88,10 @@ class TC_GAME_API CreatureTextMgr
 
         void LoadCreatureTexts();
         void LoadCreatureTextLocales();
-        CreatureTextMap  const& GetTextMap() const { return mTextMap; }
+        CreatureTextMap const& GetTextMap() const { return mTextMap; }
 
         void SendSound(Creature* source, uint32 sound, ChatMsg msgType, WorldObject const* whisperTarget, CreatureTextRange range, Team team, bool gmOnly);
-        void SendEmote(Unit* source, uint32 emote);
+        void SendEmote(Unit* source, Emote emote);
 
         //if sent, returns the 'duration' of the text else 0 if error
         uint32 SendChat(Creature* source, uint8 textGroup, WorldObject const* whisperTarget = nullptr, ChatMsg msgType = CHAT_MSG_ADDON, Language language = LANG_ADDON, CreatureTextRange range = TEXT_RANGE_NORMAL, uint32 sound = 0, Team team = TEAM_OTHER, bool gmOnly = false, Player* srcPlr = nullptr);
@@ -105,7 +102,7 @@ class TC_GAME_API CreatureTextMgr
         void SendChatPacket(WorldObject* source, Builder const& builder, ChatMsg msgType, WorldObject const* whisperTarget = nullptr, CreatureTextRange range = TEXT_RANGE_NORMAL, Team team = TEAM_OTHER, bool gmOnly = false) const;
 
     private:
-        void SendNonChatPacket(WorldObject* source, WorldPacket* data, ChatMsg msgType, WorldObject const* whisperTarget, CreatureTextRange range, Team team, bool gmOnly) const;
+        void SendNonChatPacket(WorldObject* source, WorldPacket const* data, ChatMsg msgType, WorldObject const* whisperTarget, CreatureTextRange range, Team team, bool gmOnly) const;
         float GetRangeForChatType(ChatMsg msgType) const;
 
         CreatureTextMap mTextMap;

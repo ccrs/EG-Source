@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -48,15 +48,15 @@ class boss_the_ravenian : public CreatureScript
 
         struct boss_theravenianAI : public BossAI
         {
-            boss_theravenianAI(Creature* creature) : BossAI(creature, DATA_THERAVENIAN) { }
+            boss_theravenianAI(Creature* creature) : BossAI(creature, DATA_THE_RAVENIAN) { }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* who) override
             {
-                _EnterCombat();
-                events.ScheduleEvent(EVENT_TRAMPLE, 24000);
-                events.ScheduleEvent(EVENT_CLEAVE, 15000);
-                events.ScheduleEvent(EVENT_SUNDERINCLEAVE, 40000);
-                events.ScheduleEvent(EVENT_KNOCKAWAY, 32000);
+                BossAI::JustEngagedWith(who);
+                events.ScheduleEvent(EVENT_TRAMPLE, 24s);
+                events.ScheduleEvent(EVENT_CLEAVE, 15s);
+                events.ScheduleEvent(EVENT_SUNDERINCLEAVE, 40s);
+                events.ScheduleEvent(EVENT_KNOCKAWAY, 32s);
             }
 
             void UpdateAI(uint32 diff) override
@@ -75,19 +75,19 @@ class boss_the_ravenian : public CreatureScript
                     {
                         case EVENT_TRAMPLE:
                             DoCastVictim(SPELL_TRAMPLE, true);
-                            events.ScheduleEvent(EVENT_TRAMPLE, 10000);
+                            events.ScheduleEvent(EVENT_TRAMPLE, 10s);
                             break;
                         case EVENT_CLEAVE:
                             DoCastVictim(SPELL_CLEAVE, true);
-                            events.ScheduleEvent(EVENT_CLEAVE, 7000);
+                            events.ScheduleEvent(EVENT_CLEAVE, 7s);
                             break;
                         case EVENT_SUNDERINCLEAVE:
                             DoCastVictim(SPELL_SUNDERINCLEAVE, true);
-                            events.ScheduleEvent(EVENT_SUNDERINCLEAVE, 20000);
+                            events.ScheduleEvent(EVENT_SUNDERINCLEAVE, 20s);
                             break;
                         case EVENT_KNOCKAWAY:
                             DoCastVictim(SPELL_KNOCKAWAY, true);
-                            events.ScheduleEvent(EVENT_KNOCKAWAY, 12000);
+                            events.ScheduleEvent(EVENT_KNOCKAWAY, 12s);
                             break;
                         default:
                             break;

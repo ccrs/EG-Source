@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -23,6 +23,15 @@
 
 #include "Packets/QueryPackets.h"
 
+bool ItemTemplate::HasSignature() const
+{
+    return GetMaxStackSize() == 1 &&
+        Class != ITEM_CLASS_CONSUMABLE &&
+        Class != ITEM_CLASS_QUEST &&
+        !HasFlag(ITEM_FLAG_NO_CREATOR) &&
+        ItemId != 6948; /*Hearthstone*/
+}
+
 bool ItemTemplate::CanChangeEquipStateInCombat() const
 {
     switch (InventoryType)
@@ -43,7 +52,6 @@ bool ItemTemplate::CanChangeEquipStateInCombat() const
     return false;
 }
 
-
 float ItemTemplate::getDPS() const
 {
     if (!Delay)
@@ -58,8 +66,10 @@ float ItemTemplate::getDPS() const
 
 int32 ItemTemplate::getFeralBonus(int32 extraDPS /*= 0*/) const
 {
+    constexpr uint32 feralApEnabledInventoryTypeMaks = 1 << INVTYPE_WEAPON | 1 << INVTYPE_2HWEAPON | 1 << INVTYPE_WEAPONMAINHAND | 1 << INVTYPE_WEAPONOFFHAND;
+
     // 0x02A5F3 - is mask for Melee weapon from ItemSubClassMask.dbc
-    if (Class == ITEM_CLASS_WEAPON && (1 << SubClass) & 0x02A5F3)
+    if (Class == ITEM_CLASS_WEAPON && (1 << InventoryType) & feralApEnabledInventoryTypeMaks)
     {
         int32 bonus = int32((extraDPS + getDPS()) * 14.0f) - 767;
         if (bonus < 0)
@@ -140,21 +150,17 @@ void ItemTemplate::_LoadTotalAP()
     for (uint32 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
         if (Spells[i].SpellId > 0 && Spells[i].SpellTrigger == ITEM_SPELLTRIGGER_ON_EQUIP)
             if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(Spells[i].SpellId))
-                for (uint8 j = 0; j < MAX_SPELL_EFFECTS; ++j)
-                    if (spellInfo->Effects[j].IsAura(SPELL_AURA_MOD_ATTACK_POWER))
-                        totalAP += spellInfo->Effects[j].CalcValue();
+                for (SpellEffectInfo const& effect : spellInfo->GetEffects())
+                    if (effect.IsAura(SPELL_AURA_MOD_ATTACK_POWER))
+                        totalAP += effect.CalcValue();
 
     _totalAP = totalAP;
 }
 
 void ItemTemplate::InitializeQueryData()
 {
-    WorldPacket queryTemp;
     for (uint8 loc = LOCALE_enUS; loc < TOTAL_LOCALES; ++loc)
-    {
-        queryTemp = BuildQueryData(static_cast<LocaleConstant>(loc));
-        QueryData[loc] = queryTemp;
-    }
+        QueryData[loc] = BuildQueryData(static_cast<LocaleConstant>(loc));
 }
 
 WorldPacket ItemTemplate::BuildQueryData(LocaleConstant loc) const
@@ -270,5 +276,7 @@ WorldPacket ItemTemplate::BuildQueryData(LocaleConstant loc) const
     response.Stats.ItemLimitCategory = ItemLimitCategory;
     response.Stats.HolidayId = HolidayId;
 
-    return *response.Write();
+    response.Write();
+    response.ShrinkToFit();
+    return response.Move();
 }

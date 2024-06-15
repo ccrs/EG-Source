@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -40,7 +40,8 @@ enum LfgRoles
     PLAYER_ROLE_LEADER                           = 0x01,
     PLAYER_ROLE_TANK                             = 0x02,
     PLAYER_ROLE_HEALER                           = 0x04,
-    PLAYER_ROLE_DAMAGE                           = 0x08
+    PLAYER_ROLE_DAMAGE                           = 0x08,
+    PLAYER_ROLE_ANY                              = PLAYER_ROLE_LEADER | PLAYER_ROLE_TANK | PLAYER_ROLE_HEALER | PLAYER_ROLE_DAMAGE
 };
 
 enum LfgUpdateType

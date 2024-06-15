@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -82,13 +82,13 @@ public:
             Initialize();
 
             if (IsEvent)
-                instance->SetData(DATA_KAZROGALEVENT, NOT_STARTED);
+                instance->SetBossState(DATA_KAZROGAL, NOT_STARTED);
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void JustEngagedWith(Unit* /*who*/) override
         {
             if (IsEvent)
-                instance->SetData(DATA_KAZROGALEVENT, IN_PROGRESS);
+                instance->SetBossState(DATA_KAZROGAL, IN_PROGRESS);
             Talk(SAY_ONAGGRO);
         }
 
@@ -97,13 +97,13 @@ public:
             Talk(SAY_ONSLAY);
         }
 
-        void WaypointReached(uint32 waypointId) override
+        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
         {
             if (waypointId == 7 && instance)
             {
                 Creature* target = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_THRALL));
                 if (target && target->IsAlive())
-                    me->AddThreat(target, 0.0f);
+                    AddThreat(target, 0.0f);
             }
         }
 
@@ -111,7 +111,7 @@ public:
         {
             hyjal_trashAI::JustDied(killer);
             if (IsEvent)
-                instance->SetData(DATA_KAZROGALEVENT, DONE);
+                instance->SetBossState(DATA_KAZROGAL, DONE);
             DoPlaySoundToSet(me, SOUND_ONDEATH);
         }
 
@@ -119,8 +119,8 @@ public:
         {
             if (IsEvent)
             {
-                //Must update npc_escortAI
-                npc_escortAI::UpdateAI(diff);
+                //Must update EscortAI
+                EscortAI::UpdateAI(diff);
                 if (!go)
                 {
                     go = true;
@@ -176,11 +176,12 @@ class MarkTargetFilter
         bool operator()(WorldObject* target) const
         {
             if (Unit* unit = target->ToUnit())
-                return unit->getPowerType() != POWER_MANA;
+                return unit->GetPowerType() != POWER_MANA;
             return false;
         }
 };
 
+// 31447 - Mark of Kaz'rogal
 class spell_mark_of_kazrogal : public SpellScriptLoader
 {
     public:
@@ -216,7 +217,7 @@ class spell_mark_of_kazrogal : public SpellScriptLoader
 
                 if (target->GetPower(POWER_MANA) == 0)
                 {
-                    target->CastSpell(target, SPELL_MARK_DAMAGE, true, nullptr, aurEff);
+                    target->CastSpell(target, SPELL_MARK_DAMAGE, aurEff);
                     // Remove aura
                     SetDuration(0);
                 }

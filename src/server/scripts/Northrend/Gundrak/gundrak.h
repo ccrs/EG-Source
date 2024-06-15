@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -88,15 +88,15 @@ enum GDSpellIds
     SPELL_FIRE_BEAM_ELEMENTAL        = 57072
 };
 
-enum GDInstanceMisc
-{
-    TIMER_STATUE_ACTIVATION          = 3500
-};
+inline constexpr Milliseconds TIMER_STATUE_ACTIVATION = 3500ms;
 
 template <class AI, class T>
 inline AI* GetGundrakAI(T* obj)
 {
     return GetInstanceAI<AI>(obj, GundrakScriptName);
 }
+
+#define RegisterGundrakCreatureAI(ai_name) RegisterCreatureAIWithFactory(ai_name, GetGundrakAI)
+#define RegisterGundrakGameObjectAI(ai_name) RegisterGameObjectAIWithFactory(ai_name, GetGundrakAI)
 
 #endif // GUNDRAK_H_

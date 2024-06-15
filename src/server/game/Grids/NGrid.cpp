@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,6 +16,7 @@
  */
 
 #include "NGrid.h"
+#include "GridDefines.h"
 #include "Random.h"
 
 GridInfo::GridInfo() : i_timer(0), vis_Update(0, irand(0, DEFAULT_VISIBILITY_NOTIFY_PERIOD)),
@@ -27,3 +28,9 @@ GridInfo::GridInfo(time_t expiry, bool unload /*= true */) : i_timer(expiry), vi
     i_unloadActiveLockCount(0), i_unloadExplicitLock(!unload), i_unloadReferenceLock(false)
 {
 }
+
+template class Grid<Player, AllWorldObjectTypes, AllGridObjectTypes>;
+template class NGrid<MAX_NUMBER_OF_CELLS, Player, AllWorldObjectTypes, AllGridObjectTypes>;
+
+template class TC_GAME_API TypeMapContainer<AllGridObjectTypes>;
+template class TC_GAME_API TypeMapContainer<AllWorldObjectTypes>;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -18,6 +18,7 @@
 #include "WorldSession.h"
 #include "Battlefield.h"
 #include "BattlefieldMgr.h"
+#include "GameTime.h"
 #include "Log.h"
 #include "Opcodes.h"
 #include "Player.h"
@@ -37,7 +38,7 @@ void WorldSession::SendBfInvitePlayerToWar(uint32 battleId, uint32 zoneId, uint3
     WorldPacket data(SMSG_BATTLEFIELD_MGR_ENTRY_INVITE, 12);
     data << uint32(battleId);
     data << uint32(zoneId);
-    data << uint32(time(nullptr) + acceptTime);
+    data << uint32(GameTime::GetGameTime() + acceptTime);
     SendPacket(&data);
 }
 
@@ -124,7 +125,7 @@ void WorldSession::HandleBfQueueInviteResponse(WorldPacket& recvData)
 
     recvData >> battleId >> accepted;
 
-    TC_LOG_DEBUG("misc", "HandleBfQueueInviteResponse: BattleID:%u Accepted:%u", battleId, accepted);
+    TC_LOG_DEBUG("misc", "HandleBfQueueInviteResponse: BattleID:{} Accepted:{}", battleId, accepted);
 
     Battlefield* bf = sBattlefieldMgr->GetBattlefieldByBattleId(battleId);
     if (!bf)
@@ -146,7 +147,7 @@ void WorldSession::HandleBfEntryInviteResponse(WorldPacket& recvData)
 
     recvData >> battleId >> accepted;
 
-    TC_LOG_DEBUG("misc", "HandleBfEntryInviteResponse: battleId: %u, accepted: %u", battleId, accepted);
+    TC_LOG_DEBUG("misc", "HandleBfEntryInviteResponse: battleId: {}, accepted: {}", battleId, accepted);
 
     Battlefield* bf = sBattlefieldMgr->GetBattlefieldByBattleId(battleId);
     if (!bf)
@@ -165,17 +166,17 @@ void WorldSession::HandleBfEntryInviteResponse(WorldPacket& recvData)
 }
 
 /**
- * @fn void WorldSession::HandleBfExitRequest(WorldPacket& recvData)
+ * @fn void WorldSession::HandleBfQueueExitRequest(WorldPacket& recvData)
  *
  * @brief Send by client when exited battlefield
  */
-void WorldSession::HandleBfExitRequest(WorldPacket& recvData)
+void WorldSession::HandleBfQueueExitRequest(WorldPacket& recvData)
 {
     uint32 battleId;
 
     recvData >> battleId;
 
-    TC_LOG_DEBUG("misc", "HandleBfExitRequest: battleId: %u ", battleId);
+    TC_LOG_DEBUG("misc", "HandleBfQueueExitRequest: battleId: {} ", battleId);
 
     Battlefield* bf = sBattlefieldMgr->GetBattlefieldByBattleId(battleId);
     if (!bf)

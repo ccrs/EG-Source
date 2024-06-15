@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -27,14 +27,15 @@
 
 DoorData const doorData[] =
 {
-    { GO_PORTCULLIS,             DATA_RAZORGORE_THE_UNTAMED,  DOOR_TYPE_PASSAGE },
-    { GO_DRAKE_RIDER_PORTCULLIS, DATA_VAELASTRAZ_THE_CORRUPT, DOOR_TYPE_PASSAGE },
-    { GO_ALTERAC_VALLEY_GATE,    DATA_BROODLORD_LASHLAYER,    DOOR_TYPE_PASSAGE },
-    { GO_GATE,                   DATA_FIREMAW,                DOOR_TYPE_PASSAGE },
-    { GO_GATE,                   DATA_EBONROC,                DOOR_TYPE_PASSAGE },
-    { GO_GATE,                   DATA_FLAMEGOR,               DOOR_TYPE_PASSAGE },
-    { GO_VACCUUM_EXIT_GATE,      DATA_CHROMAGGUS,             DOOR_TYPE_PASSAGE },
-    { 0,                         0,                           DOOR_TYPE_ROOM } // END
+    { GO_PORTCULLIS_RAZORGORE,    DATA_RAZORGORE_THE_UNTAMED,  DOOR_TYPE_PASSAGE },
+    { GO_PORTCULLIS_VAELASTRASZ,  DATA_VAELASTRAZ_THE_CORRUPT, DOOR_TYPE_PASSAGE },
+    { GO_PORTCULLIS_BROODLORD,    DATA_BROODLORD_LASHLAYER,    DOOR_TYPE_PASSAGE },
+    { GO_PORTCULLIS_THREEDRAGONS, DATA_FIREMAW,                DOOR_TYPE_PASSAGE },
+    { GO_PORTCULLIS_THREEDRAGONS, DATA_EBONROC,                DOOR_TYPE_PASSAGE },
+    { GO_PORTCULLIS_THREEDRAGONS, DATA_FLAMEGOR,               DOOR_TYPE_PASSAGE },
+    { GO_PORTCULLIS_CHROMAGGUS,   DATA_CHROMAGGUS,             DOOR_TYPE_PASSAGE },
+    { GO_PORTCULLIS_NEFARIAN,     DATA_NEFARIAN,               DOOR_TYPE_ROOM },
+    { 0,                         0,                            DOOR_TYPE_ROOM } // END
 };
 
 ObjectData const creatureData[] =
@@ -49,6 +50,12 @@ ObjectData const creatureData[] =
     { NPC_NEFARIAN,        DATA_NEFARIAN               },
     { NPC_VICTOR_NEFARIUS, DATA_LORD_VICTOR_NEFARIUS   },
     { 0,                   0                           } // END
+};
+
+ObjectData const gameObjectData[] =
+{
+    { GO_CHROMAGGUS_DOOR,             DATA_GO_CHROMAGGUS_DOOR },
+    { 0,                              0                       } //END
 };
 
 Position const SummonPosition[8] =
@@ -72,12 +79,12 @@ public:
 
     struct instance_blackwing_lair_InstanceMapScript : public InstanceScript
     {
-        instance_blackwing_lair_InstanceMapScript(Map* map) : InstanceScript(map)
+        instance_blackwing_lair_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
         {
             SetHeaders(DataHeader);
             SetBossNumber(EncounterCount);
             LoadDoorData(doorData);
-            LoadObjectData(creatureData, nullptr);
+            LoadObjectData(creatureData, gameObjectData);
 
             // Razorgore
             EggCount = 0;
@@ -95,7 +102,8 @@ public:
                 case NPC_BLACKWING_LEGIONAIRE:
                 case NPC_BLACKWING_WARLOCK:
                     if (Creature* razor = GetCreature(DATA_RAZORGORE_THE_UNTAMED))
-                        razor->AI()->JustSummoned(creature);
+                        if (CreatureAI* razorAI = razor->AI())
+                            razorAI->JustSummoned(creature);
                     break;
                 default:
                     break;
@@ -106,12 +114,16 @@ public:
         {
             InstanceScript::OnGameObjectCreate(go);
 
-            if (go->GetEntry() == GO_BLACK_DRAGON_EGG)
+            switch(go->GetEntry())
             {
-                if (GetBossState(DATA_FIREMAW) == DONE)
-                    go->SetPhaseMask(2, true);
-                else
-                    EggList.push_back(go->GetGUID());
+                case GO_BLACK_DRAGON_EGG:
+                    if (GetBossState(DATA_FIREMAW) == DONE)
+                        go->SetPhaseMask(2, true);
+                    else
+                        EggList.push_back(go->GetGUID());
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -177,7 +189,7 @@ public:
                                 nefarian->DespawnOrUnsummon();
                             break;
                         case FAIL:
-                            _events.ScheduleEvent(EVENT_RESPAWN_NEFARIUS, 15 * IN_MILLISECONDS * MINUTE);
+                            _events.ScheduleEvent(EVENT_RESPAWN_NEFARIUS, 15min);
                             SetBossState(DATA_NEFARIAN, NOT_STARTED);
                             break;
                         default:
@@ -195,7 +207,7 @@ public:
                 switch (data)
                 {
                     case IN_PROGRESS:
-                        _events.ScheduleEvent(EVENT_RAZOR_SPAWN, 45 * IN_MILLISECONDS);
+                        _events.ScheduleEvent(EVENT_RAZOR_SPAWN, 45s);
                         EggEvent = data;
                         EggCount = 0;
                         break;
@@ -211,9 +223,9 @@ public:
                             {
                                 SetData(DATA_EGG_EVENT, DONE);
                                 razor->RemoveAurasDueToSpell(42013); // MindControl
-                                DoRemoveAurasDueToSpellOnPlayers(42013);
+                                DoRemoveAurasDueToSpellOnPlayers(42013, true, true);
                             }
-                            _events.ScheduleEvent(EVENT_RAZOR_PHASE_TWO, 1 * IN_MILLISECONDS);
+                            _events.ScheduleEvent(EVENT_RAZOR_PHASE_TWO, 1s);
                             _events.CancelEvent(EVENT_RAZOR_SPAWN);
                         }
                         if (EggEvent == NOT_STARTED)
@@ -242,10 +254,10 @@ public:
                 switch (eventId)
                 {
                     case EVENT_RAZOR_SPAWN:
-                        for (uint8 i = urand(2, 5); i > 0 ; --i)
-                            if (Creature* summon =  instance->SummonCreature(Entry[urand(0, 4)], SummonPosition[urand(0, 7)]))
-                                summon->SetInCombatWithZone();
-                        _events.ScheduleEvent(EVENT_RAZOR_SPAWN, urand(12, 17) * IN_MILLISECONDS);
+                        for (uint8 i = urand(2, 5); i > 0; --i)
+                            if (Creature* summon = instance->SummonCreature(Entry[urand(0, 4)], SummonPosition[urand(0, 7)]))
+                                summon->AI()->DoZoneInCombat();
+                        _events.ScheduleEvent(EVENT_RAZOR_SPAWN, 12s, 17s);
                         break;
                     case EVENT_RAZOR_PHASE_TWO:
                         _events.CancelEvent(EVENT_RAZOR_SPAWN);
@@ -257,6 +269,7 @@ public:
                         {
                             nefarius->SetPhaseMask(1, true);
                             nefarius->setActive(true);
+                            nefarius->SetFarVisible(true);
                             nefarius->Respawn();
                             nefarius->GetMotionMaster()->MoveTargetedHome();
                         }

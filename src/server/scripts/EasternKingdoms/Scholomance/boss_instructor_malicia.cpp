@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -50,7 +50,7 @@ class boss_instructor_malicia : public CreatureScript
 
         struct boss_instructormaliciaAI : public BossAI
         {
-            boss_instructormaliciaAI(Creature* creature) : BossAI(creature, DATA_INSTRUCTORMALICIA)
+            boss_instructormaliciaAI(Creature* creature) : BossAI(creature, DATA_INSTRUCTOR_MALICIA)
             {
                 Initialize();
             }
@@ -70,14 +70,14 @@ class boss_instructor_malicia : public CreatureScript
                 Initialize();
             }
 
-            void EnterCombat(Unit* /*who*/) override
+            void JustEngagedWith(Unit* who) override
             {
-                _EnterCombat();
-                events.ScheduleEvent(EVENT_CALLOFGRAVES, 4000);
-                events.ScheduleEvent(EVENT_CORRUPTION, 8000);
-                events.ScheduleEvent(EVENT_RENEW, 32000);
-                events.ScheduleEvent(EVENT_FLASHHEAL, 38000);
-                events.ScheduleEvent(EVENT_HEALINGTOUCH, 45000);
+                BossAI::JustEngagedWith(who);
+                events.ScheduleEvent(EVENT_CALLOFGRAVES, 4s);
+                events.ScheduleEvent(EVENT_CORRUPTION, 8s);
+                events.ScheduleEvent(EVENT_RENEW, 32s);
+                events.ScheduleEvent(EVENT_FLASHHEAL, 38s);
+                events.ScheduleEvent(EVENT_HEALINGTOUCH, 45s);
             }
 
             void UpdateAI(uint32 diff) override
@@ -96,28 +96,28 @@ class boss_instructor_malicia : public CreatureScript
                     {
                         case EVENT_CALLOFGRAVES:
                             DoCastVictim(SPELL_CALLOFGRAVES, true);
-                            events.ScheduleEvent(EVENT_CALLOFGRAVES, 65000);
+                            events.ScheduleEvent(EVENT_CALLOFGRAVES, 65s);
                             break;
                         case EVENT_CORRUPTION:
-                            DoCast(SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true), SPELL_CORRUPTION, true);
-                            events.ScheduleEvent(EVENT_CORRUPTION, 24000);
+                            DoCast(SelectTarget(SelectTargetMethod::Random, 0, 100, true), SPELL_CORRUPTION, true);
+                            events.ScheduleEvent(EVENT_CORRUPTION, 24s);
                             break;
                         case EVENT_RENEW:
                             DoCast(me, SPELL_RENEW);
-                            events.ScheduleEvent(EVENT_RENEW, 10000);
+                            events.ScheduleEvent(EVENT_RENEW, 10s);
                             break;
                         case EVENT_FLASHHEAL:
                             //5 Flashheals will be cast
                             DoCast(me, SPELL_FLASHHEAL);
                             if (FlashCounter < 2)
                             {
-                                events.ScheduleEvent(EVENT_FLASHHEAL, 5000);
+                                events.ScheduleEvent(EVENT_FLASHHEAL, 5s);
                                 ++FlashCounter;
                             }
                             else
                             {
                                 FlashCounter=0;
-                                events.ScheduleEvent(EVENT_FLASHHEAL, 30000);
+                                events.ScheduleEvent(EVENT_FLASHHEAL, 30s);
                             }
                             break;
                         case EVENT_HEALINGTOUCH:
@@ -125,13 +125,13 @@ class boss_instructor_malicia : public CreatureScript
                             DoCast(me, SPELL_HEALINGTOUCH);
                             if (TouchCounter < 2)
                             {
-                                events.ScheduleEvent(EVENT_HEALINGTOUCH, 5500);
+                                events.ScheduleEvent(EVENT_HEALINGTOUCH, 5500ms);
                                 ++TouchCounter;
                             }
                             else
                             {
                                 TouchCounter=0;
-                                events.ScheduleEvent(EVENT_HEALINGTOUCH, 30000);
+                                events.ScheduleEvent(EVENT_HEALINGTOUCH, 30s);
                             }
                             break;
                         default:

@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,9 +18,7 @@
 #ifndef _WARDEN_MAC_H
 #define _WARDEN_MAC_H
 
-#include "Cryptography/ARC4.h"
-#include <map>
-#include "Cryptography/BigNumber.h"
+#include "ARC4.h"
 #include "ByteBuffer.h"
 #include "Warden.h"
 
@@ -34,13 +31,14 @@ class TC_GAME_API WardenMac : public Warden
         WardenMac();
         ~WardenMac();
 
-        void Init(WorldSession* session, BigNumber* k) override;
-        ClientWardenModule* GetModuleForClient() override;
+        void Init(WorldSession* session, SessionKey const& k) override;
+        void InitializeModuleForClient(ClientWardenModule& module) override;
         void InitializeModule() override;
         void RequestHash() override;
         void HandleHashResult(ByteBuffer& buff) override;
-        void RequestData() override;
-        void HandleData(ByteBuffer& buff) override;
+        void RequestChecks() override;
+        size_t DEBUG_ForceSpecificChecks(std::vector<uint16> const& /*checks*/) override { return 0; }
+        void HandleCheckResult(ByteBuffer& buff) override;
 };
 
 #endif

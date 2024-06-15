@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -36,13 +36,11 @@ enum Spells
     SPELL_TREAT                 = 24715
 };
 
-#define LOCALE_TRICK_OR_TREAT_0 "Trick or Treat!"
-#define LOCALE_TRICK_OR_TREAT_2 "Des bonbons ou des blagues!"
-#define LOCALE_TRICK_OR_TREAT_3 "Süßes oder Saures!"
-#define LOCALE_TRICK_OR_TREAT_6 "¡Truco o trato!"
-
-#define LOCALE_INNKEEPER_0 "Make this inn my home."
-#define LOCALE_INNKEEPER_3 "Ich möchte dieses Gasthaus zu meinem Heimatort machen."
+enum Npc
+{
+    NPC_GOSSIP_MENU = 9733,
+    NPC_GOSSIP_MENU_EVENT = 342,
+};
 
 class npc_innkeeper : public CreatureScript
 {
@@ -53,44 +51,27 @@ public:
     {
         npc_innkeeperAI(Creature* creature) : ScriptedAI(creature) { }
 
-        bool GossipHello(Player* player) override
+        bool OnGossipHello(Player* player) override
         {
+            InitGossipMenuFor(player, NPC_GOSSIP_MENU);
             if (IsHolidayActive(HOLIDAY_HALLOWS_END) && !player->HasAura(SPELL_TRICK_OR_TREATED))
-            {
-                char const* localizedEntry;
-                switch (player->GetSession()->GetSessionDbcLocale())
-                {
-                    case LOCALE_frFR: localizedEntry = LOCALE_TRICK_OR_TREAT_2; break;
-                    case LOCALE_deDE: localizedEntry = LOCALE_TRICK_OR_TREAT_3; break;
-                    case LOCALE_esES: localizedEntry = LOCALE_TRICK_OR_TREAT_6; break;
-                    case LOCALE_enUS: default: localizedEntry = LOCALE_TRICK_OR_TREAT_0;
-                }
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, localizedEntry, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-            }
+                AddGossipItemFor(player, NPC_GOSSIP_MENU_EVENT, 0, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
 
             if (me->IsQuestGiver())
                 player->PrepareQuestMenu(me->GetGUID());
 
             if (me->IsVendor())
-                AddGossipItemFor(player, GOSSIP_ICON_VENDOR, GOSSIP_TEXT_BROWSE_GOODS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
+                AddGossipItemFor(player, NPC_GOSSIP_MENU, 2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
 
             if (me->IsInnkeeper())
-            {
-                char const* localizedEntry;
-                switch (player->GetSession()->GetSessionDbcLocale())
-                {
-                    case LOCALE_deDE: localizedEntry = LOCALE_INNKEEPER_3; break;
-                    case LOCALE_enUS: default: localizedEntry = LOCALE_INNKEEPER_0;
-                }
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, localizedEntry, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INN);
-            }
+                AddGossipItemFor(player, NPC_GOSSIP_MENU, 1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INN);
 
             player->TalkedToCreature(me->GetEntry(), me->GetGUID());
             SendGossipMenuFor(player, player->GetGossipTextId(me), me->GetGUID());
             return true;
         }
 
-        bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
+        bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
         {
             uint32 const action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
             ClearGossipMenuFor(player);
@@ -147,4 +128,3 @@ void AddSC_npc_innkeeper()
 {
     new npc_innkeeper();
 }
-

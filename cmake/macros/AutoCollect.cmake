@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+# This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
 #
 # This file is free software; as a special exception the author gives
 # unlimited permission to copy and/or distribute it, with or without
@@ -36,7 +36,7 @@ function(CollectSourceFiles current_dir variable)
 
     file(GLOB SUB_DIRECTORIES ${current_dir}/*)
     foreach(SUB_DIRECTORY ${SUB_DIRECTORIES})
-      if (IS_DIRECTORY ${SUB_DIRECTORY})
+      if(IS_DIRECTORY ${SUB_DIRECTORY})
         CollectSourceFiles("${SUB_DIRECTORY}" "${variable}" "${ARGN}")
       endif()
     endforeach()
@@ -62,7 +62,7 @@ function(CollectIncludeDirectories current_dir variable)
     list(APPEND ${variable} ${current_dir})
     file(GLOB SUB_DIRECTORIES ${current_dir}/*)
     foreach(SUB_DIRECTORY ${SUB_DIRECTORIES})
-      if (IS_DIRECTORY ${SUB_DIRECTORY})
+      if(IS_DIRECTORY ${SUB_DIRECTORY})
         CollectIncludeDirectories("${SUB_DIRECTORY}" "${variable}" "${ARGN}")
       endif()
     endforeach()

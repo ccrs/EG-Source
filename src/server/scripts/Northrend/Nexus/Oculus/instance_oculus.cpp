@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,16 +15,16 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "oculus.h"
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "GameObject.h"
 #include "InstanceScript.h"
 #include "Map.h"
 #include "MotionMaster.h"
-#include "oculus.h"
+#include "ScriptMgr.h"
 #include "TemporarySummon.h"
-#include "WorldPacket.h"
+#include "WorldStatePackets.h"
 
 DoorData const doorData[] =
 {
@@ -43,7 +43,7 @@ class instance_oculus : public InstanceMapScript
 
         struct instance_oculus_InstanceMapScript : public InstanceScript
         {
-            instance_oculus_InstanceMapScript(Map* map) : InstanceScript(map)
+            instance_oculus_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
             {
                 SetHeaders(DataHeader);
                 SetBossNumber(EncounterCount);
@@ -82,7 +82,7 @@ class instance_oculus : public InstanceMapScript
                         BelgaristraszGUID = creature->GetGUID();
                         if (GetBossState(DATA_DRAKOS) == DONE)
                         {
-                            creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                            creature->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                             creature->Relocate(BelgaristraszMove);
                         }
                         break;
@@ -90,7 +90,7 @@ class instance_oculus : public InstanceMapScript
                         EternosGUID = creature->GetGUID();
                         if (GetBossState(DATA_DRAKOS) == DONE)
                         {
-                            creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                            creature->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                             creature->Relocate(EternosMove);
                         }
                         break;
@@ -98,7 +98,7 @@ class instance_oculus : public InstanceMapScript
                         VerdisaGUID = creature->GetGUID();
                         if (GetBossState(DATA_DRAKOS) == DONE)
                         {
-                            creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                            creature->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                             creature->Relocate(VerdisaMove);
                         }
                         break;
@@ -145,17 +145,17 @@ class instance_oculus : public InstanceMapScript
                 }
             }
 
-            void FillInitialWorldStates(WorldPacket& data) override
+            void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override
             {
                 if (GetBossState(DATA_DRAKOS) == DONE && GetBossState(DATA_VAROS) != DONE)
                 {
-                    data << uint32(WORLD_STATE_CENTRIFUGE_CONSTRUCT_SHOW) << uint32(1);
-                    data << uint32(WORLD_STATE_CENTRIFUGE_CONSTRUCT_AMOUNT) << uint32(CentrifugueConstructCounter);
+                    packet.Worldstates.emplace_back(WORLD_STATE_CENTRIFUGE_CONSTRUCT_SHOW, 1);
+                    packet.Worldstates.emplace_back(WORLD_STATE_CENTRIFUGE_CONSTRUCT_AMOUNT, CentrifugueConstructCounter);
                 }
                 else
                 {
-                    data << uint32(WORLD_STATE_CENTRIFUGE_CONSTRUCT_SHOW) << uint32(0);
-                    data << uint32(WORLD_STATE_CENTRIFUGE_CONSTRUCT_AMOUNT) << uint32(0);
+                    packet.Worldstates.emplace_back(WORLD_STATE_CENTRIFUGE_CONSTRUCT_SHOW, 0);
+                    packet.Worldstates.emplace_back(WORLD_STATE_CENTRIFUGE_CONSTRUCT_AMOUNT, 0);
                 }
             }
 
@@ -184,7 +184,7 @@ class instance_oculus : public InstanceMapScript
                             FreeDragons();
                             if (Creature* varos = instance->GetCreature(VarosGUID))
                                 varos->SetPhaseMask(1, true);
-                            events.ScheduleEvent(EVENT_VAROS_INTRO, 15000);
+                            events.ScheduleEvent(EVENT_VAROS_INTRO, 15s);
                         }
                         break;
                     case DATA_VAROS:
@@ -202,7 +202,7 @@ class instance_oculus : public InstanceMapScript
                             {
                                 eregos->SetPhaseMask(1, true);
                                 GreaterWhelps();
-                                events.ScheduleEvent(EVENT_EREGOS_INTRO, 5000);
+                                events.ScheduleEvent(EVENT_EREGOS_INTRO, 5s);
                             }
                         }
                         break;
@@ -212,7 +212,7 @@ class instance_oculus : public InstanceMapScript
                             if (GameObject* cache = instance->GetGameObject(EregosCacheGUID))
                             {
                                 cache->SetRespawnTime(cache->GetRespawnDelay());
-                                cache->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                                cache->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                             }
                         }
                         break;
@@ -229,7 +229,7 @@ class instance_oculus : public InstanceMapScript
                         return KILL_NO_CONSTRUCT;
                     else if (CentrifugueConstructCounter == 1)
                         return KILL_ONE_CONSTRUCT;
-                    else if (CentrifugueConstructCounter > 1)
+                    else
                         return KILL_MORE_CONSTRUCT;
                 }
 

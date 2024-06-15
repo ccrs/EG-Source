@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,13 +18,12 @@
 /* ScriptData
 SDName: Blades_Edge_Mountains
 SD%Complete: 90
-SDComment: Quest support: 10503, 10504, 10556, 10594, 10609, 10821. Ogri'la->Skettis Flight. (npc_daranelle needs bit more work before consider complete)
+SDComment: Quest support: 10503, 10504, 10594, 10609, 10821. Ogri'la->Skettis Flight.
 SDCategory: Blade's Edge Mountains
 EndScriptData */
 
 /* ContentData
 npc_nether_drake
-npc_daranelle
 go_legion_obelisk
 EndContentData */
 
@@ -106,12 +104,12 @@ public:
             Initialize();
         }
 
-        void EnterCombat(Unit* /*who*/) override { }
+        void JustEngagedWith(Unit* /*who*/) override { }
 
         void MoveInLineOfSight(Unit* who) override
 
         {
-            if (me->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE))
+            if (me->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE))
                 return;
 
             ScriptedAI::MoveInLineOfSight(who);
@@ -124,12 +122,16 @@ public:
                 return;
 
             if (id == 0)
-                me->DespawnOrUnsummon(1);
+                me->DespawnOrUnsummon(1ms);
         }
 
-        void SpellHit(Unit* caster, SpellInfo const* spell) override
+        void SpellHit(WorldObject* caster, SpellInfo const* spellInfo) override
         {
-            if (spell->Id == SPELL_T_PHASE_MODULATOR && caster->GetTypeId() == TYPEID_PLAYER)
+            Player* playerCaster = caster->ToPlayer();
+            if (!playerCaster)
+                return;
+
+            if (spellInfo->Id == SPELL_T_PHASE_MODULATOR)
             {
                 const uint32 entry_list[4] = {ENTRY_PROTO, ENTRY_ADOLE, ENTRY_MATUR, ENTRY_NIHIL};
                 int cid = rand32() % (4 - 1);
@@ -141,7 +143,7 @@ public:
                 if (me->GetEntry() == ENTRY_NIHIL)
                 {
                     Talk(SAY_NIHIL_INTERRUPT);
-                    me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                    me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
                     IsNihil = false;
                 }
 
@@ -150,11 +152,11 @@ public:
                     if (entry_list[cid] == ENTRY_NIHIL)
                     {
                         EnterEvadeMode();
-                        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
                         IsNihil = true;
                     }
                     else
-                        AttackStart(caster);
+                        AttackStart(playerCaster);
                 }
             }
         }
@@ -184,7 +186,7 @@ public:
                             ++NihilSpeech_Phase;
                             break;
                         case 4:
-                            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                            me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                             //take off to location above
                             me->GetMotionMaster()->MovePoint(0, me->GetPositionX()+50.0f, me->GetPositionY(), me->GetPositionZ()+50.0f);
                             ++NihilSpeech_Phase;
@@ -209,7 +211,7 @@ public:
             if (ManaBurn_Timer <= diff)
             {
                 Unit* target = me->GetVictim();
-                if (target && target->getPowerType() == POWER_MANA)
+                if (target && target->GetPowerType() == POWER_MANA)
                     DoCast(target, SPELL_MANA_BURN);
                 ManaBurn_Timer = 8000 + rand32() % 8000;
             } else ManaBurn_Timer -= diff;
@@ -227,53 +229,6 @@ public:
     CreatureAI* GetAI(Creature* creature) const override
     {
         return new npc_nether_drakeAI(creature);
-    }
-};
-
-/*######
-## npc_daranelle
-######*/
-
-enum Daranelle
-{
-    SAY_SPELL_INFLUENCE       = 0,
-    SPELL_LASHHAN_CHANNEL     = 36904,
-    SPELL_DISPELLING_ANALYSIS = 37028
-};
-
-class npc_daranelle : public CreatureScript
-{
-public:
-    npc_daranelle() : CreatureScript("npc_daranelle") { }
-
-    struct npc_daranelleAI : public ScriptedAI
-    {
-        npc_daranelleAI(Creature* creature) : ScriptedAI(creature) { }
-
-        void Reset() override { }
-
-        void EnterCombat(Unit* /*who*/) override { }
-
-        void MoveInLineOfSight(Unit* who) override
-
-        {
-            if (who->GetTypeId() == TYPEID_PLAYER)
-            {
-                if (who->HasAura(SPELL_LASHHAN_CHANNEL) && me->IsWithinDistInMap(who, 10.0f))
-                {
-                    Talk(SAY_SPELL_INFLUENCE, who);
-                    /// @todo Move the below to updateAI and run if this statement == true
-                    DoCast(who, SPELL_DISPELLING_ANALYSIS, true);
-                }
-            }
-
-            ScriptedAI::MoveInLineOfSight(who);
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_daranelleAI(creature);
     }
 };
 
@@ -304,7 +259,7 @@ public:
     {
         go_legion_obeliskAI(GameObject* go) : GameObjectAI(go) { }
 
-        bool GossipHello(Player* player) override
+        bool OnGossipHello(Player* player) override
         {
             if (player->GetQuestStatus(QUEST_YOURE_FIRED) == QUEST_STATUS_INCOMPLETE)
             {
@@ -329,7 +284,7 @@ public:
 
                 if (obelisk_one == true && obelisk_two == true && obelisk_three == true && obelisk_four == true && obelisk_five == true)
                 {
-                    me->SummonCreature(NPC_DOOMCRYER, 2943.40f, 4778.20f, 284.49f, 0.94f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 120000);
+                    me->SummonCreature(NPC_DOOMCRYER, 2943.40f, 4778.20f, 284.49f, 0.94f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 2min);
                     //reset global var
                     obelisk_one = false;
                     obelisk_two = false;
@@ -461,18 +416,18 @@ class npc_simon_bunny : public CreatureScript
                         if (!CheckPlayer())
                             ResetNode();
                         else
-                            _events.ScheduleEvent(EVENT_SIMON_PERIODIC_PLAYER_CHECK, 2000);
+                            _events.ScheduleEvent(EVENT_SIMON_PERIODIC_PLAYER_CHECK, 2s);
                         break;
                     case EVENT_SIMON_SETUP_PRE_GAME:
                         SetUpPreGame();
                         _events.CancelEvent(EVENT_SIMON_GAME_TICK);
-                        _events.ScheduleEvent(EVENT_SIMON_PLAY_SEQUENCE, 1000);
+                        _events.ScheduleEvent(EVENT_SIMON_PLAY_SEQUENCE, 1s);
                         break;
                     case EVENT_SIMON_PLAY_SEQUENCE:
                         if (!playableSequence.empty())
                         {
                             PlayNextColor();
-                            _events.ScheduleEvent(EVENT_SIMON_PLAY_SEQUENCE, 1500);
+                            _events.ScheduleEvent(EVENT_SIMON_PLAY_SEQUENCE, 1500ms);
                         }
                         else
                         {
@@ -481,16 +436,16 @@ class npc_simon_bunny : public CreatureScript
                             playerSequence.clear();
                             PrepareClusters();
                             gameTicks = 0;
-                            _events.ScheduleEvent(EVENT_SIMON_GAME_TICK, 3000);
+                            _events.ScheduleEvent(EVENT_SIMON_GAME_TICK, 3s);
                         }
                         break;
                     case EVENT_SIMON_GAME_TICK:
                         DoCast(SPELL_AUDIBLE_GAME_TICK);
 
                         if (gameTicks > gameLevel)
-                            _events.ScheduleEvent(EVENT_SIMON_TOO_LONG_TIME, 500);
+                            _events.ScheduleEvent(EVENT_SIMON_TOO_LONG_TIME, 500ms);
                         else
-                            _events.ScheduleEvent(EVENT_SIMON_GAME_TICK, 3000);
+                            _events.ScheduleEvent(EVENT_SIMON_GAME_TICK, 3s);
                         gameTicks++;
                         break;
                     case EVENT_SIMON_RESET_CLUSTERS:
@@ -517,7 +472,7 @@ class npc_simon_bunny : public CreatureScript
                         if (gameLevel == 10)
                             ResetNode();
                         else
-                            _events.ScheduleEvent(EVENT_SIMON_SETUP_PRE_GAME, 1000);
+                            _events.ScheduleEvent(EVENT_SIMON_SETUP_PRE_GAME, 1s);
                         break;
                     case ACTION_SIMON_CORRECT_FULL_SEQUENCE:
                         gameLevel++;
@@ -549,12 +504,12 @@ class npc_simon_bunny : public CreatureScript
 
                 PlayColor(pressedColor);
                 playerSequence.push_back(pressedColor);
-                _events.ScheduleEvent(EVENT_SIMON_RESET_CLUSTERS, 500);
+                _events.ScheduleEvent(EVENT_SIMON_RESET_CLUSTERS, 500ms);
                 CheckPlayerSequence();
             }
 
             // Used for getting involved player guid. Parameter id is used for defining if is a large(Monument) or small(Relic) node
-            void SetGUID(ObjectGuid guid, int32 id) override
+            void SetGUID(ObjectGuid const& guid, int32 id) override
             {
                 me->SetCanFly(true);
 
@@ -636,11 +591,11 @@ class npc_simon_bunny : public CreatureScript
                 }
 
                 _events.Reset();
-                _events.ScheduleEvent(EVENT_SIMON_ROUND_FINISHED, 1000);
-                _events.ScheduleEvent(EVENT_SIMON_PERIODIC_PLAYER_CHECK, 2000);
+                _events.ScheduleEvent(EVENT_SIMON_ROUND_FINISHED, 1s);
+                _events.ScheduleEvent(EVENT_SIMON_PERIODIC_PLAYER_CHECK, 2s);
 
                 if (GameObject* relic = me->FindNearestGameObject(large ? GO_APEXIS_MONUMENT : GO_APEXIS_RELIC, searchDistance))
-                    relic->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                    relic->SetFlag(GO_FLAG_NOT_SELECTABLE);
             }
 
             // Called when despawning the bunny. Sets all the node GOs to their default states.
@@ -650,16 +605,16 @@ class npc_simon_bunny : public CreatureScript
 
                 for (uint32 clusterId = SIMON_BLUE; clusterId < SIMON_MAX_COLORS; clusterId++)
                     if (GameObject* cluster = me->FindNearestGameObject(clusterIds[clusterId], searchDistance))
-                        cluster->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                        cluster->SetFlag(GO_FLAG_NOT_SELECTABLE);
 
                 for (uint32 auraId = GO_AURA_BLUE; auraId <= GO_AURA_YELLOW; auraId++)
                     if (GameObject* auraGo = me->FindNearestGameObject(auraId, searchDistance))
                         auraGo->RemoveFromWorld();
 
                 if (GameObject* relic = me->FindNearestGameObject(large ? GO_APEXIS_MONUMENT : GO_APEXIS_RELIC, searchDistance))
-                    relic->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                    relic->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
 
-                me->DespawnOrUnsummon(1000);
+                me->DespawnOrUnsummon(1s);
             }
 
             /*
@@ -695,13 +650,12 @@ class npc_simon_bunny : public CreatureScript
                     playableSequence.push_back(*i);
             }
 
-
             // Remove any existant glowing auras over clusters and set clusters ready for interating with them.
             void PrepareClusters(bool clustersOnly = false)
             {
                 for (uint32 clusterId = SIMON_BLUE; clusterId < SIMON_MAX_COLORS; clusterId++)
                     if (GameObject* cluster = me->FindNearestGameObject(clusterIds[clusterId], searchDistance))
-                        cluster->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                        cluster->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
 
                 if (clustersOnly)
                     return;
@@ -755,7 +709,7 @@ class npc_simon_bunny : public CreatureScript
                 {
                     if (GameObject* cluster = me->FindNearestGameObject(clusterIds[clusterId], 2.0f*searchDistance))
                     {
-                        cluster->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                        cluster->SetFlag(GO_FLAG_NOT_SELECTABLE);
 
                         // break since we don't need glowing auras for large clusters
                         if (large)
@@ -827,7 +781,7 @@ class npc_simon_bunny : public CreatureScript
                 if (large)
                 {
                     if (Player* player = ObjectAccessor::GetPlayer(*me, playerGUID))
-                        if (Creature* guardian = me->SummonCreature(NPC_APEXIS_GUARDIAN, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() - zCoordCorrection, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 20000))
+                        if (Creature* guardian = me->SummonCreature(NPC_APEXIS_GUARDIAN, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() - zCoordCorrection, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 20s))
                             guardian->AI()->AttackStart(player);
 
                     ResetNode();
@@ -844,15 +798,19 @@ class npc_simon_bunny : public CreatureScript
                 }
             }
 
-            void SpellHitTarget(Unit* target, SpellInfo const* spell) override
+            void SpellHitTarget(WorldObject* target, SpellInfo const* spellInfo) override
             {
+                Unit* unitTarget = target->ToUnit();
+                if (!unitTarget)
+                    return;
+
                 // Cast SPELL_BAD_PRESS_DAMAGE with scaled basepoints when the visual hits the target.
                 // Need Fix: When SPELL_BAD_PRESS_TRIGGER hits target it triggers spell SPELL_BAD_PRESS_DAMAGE by itself
                 // so player gets damage equal to calculated damage  dbc basepoints for SPELL_BAD_PRESS_DAMAGE (~50)
-                if (spell->Id == SPELL_BAD_PRESS_TRIGGER)
+                if (spellInfo->Id == SPELL_BAD_PRESS_TRIGGER)
                 {
-                    int32 bp = (int32)((float)(fails)*0.33f*target->GetMaxHealth());
-                    target->CastCustomSpell(target, SPELL_BAD_PRESS_DAMAGE, &bp, nullptr, nullptr, true);
+                    int32 bp = (int32)((float)(fails) * 0.33f * unitTarget->GetMaxHealth());
+                    unitTarget->CastSpell(unitTarget, SPELL_BAD_PRESS_DAMAGE, CastSpellExtraArgs(TRIGGERED_FULL_MASK).AddSpellBP0(bp));
                 }
             }
 
@@ -891,7 +849,7 @@ class go_simon_cluster : public GameObjectScript
         {
             go_simon_clusterAI(GameObject* go) : GameObjectAI(go) { }
 
-            bool GossipHello(Player* player) override
+            bool OnGossipHello(Player* player) override
             {
                 if (Creature* bunny = me->FindNearestCreature(NPC_SIMON_BUNNY, 12.0f, true))
                     bunny->AI()->SetData(me->GetEntry(), 0);
@@ -927,14 +885,14 @@ class go_apexis_relic : public GameObjectScript
         {
             go_apexis_relicAI(GameObject* go) : GameObjectAI(go) { }
 
-            bool GossipHello(Player* player) override
+            bool OnGossipHello(Player* player) override
             {
                 player->PrepareGossipMenu(me, me->GetGOInfo()->questgiver.gossipID);
                 player->SendPreparedGossip(me);
                 return true;
             }
 
-            bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
+            bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
             {
                 CloseGossipMenuFor(player);
 
@@ -988,17 +946,17 @@ public:
             else
             {
                 // Spell 37392 does not exist in dbc, manually spawning
-                me->SummonCreature(NPC_OSCILLATING_FREQUENCY_SCANNER_TOP_BUNNY, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() + 0.5f, me->GetOrientation(), TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 50000);
-                me->SummonGameObject(GO_OSCILLATING_FREQUENCY_SCANNER, *me, QuaternionData(), 50);
-                me->DespawnOrUnsummon(50000);
+                me->SummonCreature(NPC_OSCILLATING_FREQUENCY_SCANNER_TOP_BUNNY, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() + 0.5f, me->GetOrientation(), TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 50s);
+                me->SummonGameObject(GO_OSCILLATING_FREQUENCY_SCANNER, *me, QuaternionData(), 50s);
+                me->DespawnOrUnsummon(50s);
             }
 
             timer = 500;
         }
 
-        void IsSummonedBy(Unit* summoner) override
+        void IsSummonedBy(WorldObject* summoner) override
         {
-            if (summoner->isType(TYPEMASK_PLAYER))
+            if (summoner->IsPlayer())
                 playerGuid = summoner->GetGUID();
         }
 
@@ -1026,6 +984,7 @@ public:
     }
 };
 
+// 37408 - Oscillation Field
 class spell_oscillating_field : public SpellScriptLoader
 {
     public:
@@ -1057,7 +1016,6 @@ class spell_oscillating_field : public SpellScriptLoader
 void AddSC_blades_edge_mountains()
 {
     new npc_nether_drake();
-    new npc_daranelle();
     new go_legion_obelisk();
     new npc_simon_bunny();
     new go_simon_cluster();

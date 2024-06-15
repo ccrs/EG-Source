@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,7 +21,6 @@
 #include "GameObject.h"
 #include "InstanceScript.h"
 #include "Map.h"
-#include "MotionMaster.h"
 #include "naxxramas.h"
 #include "TemporarySummon.h"
 
@@ -113,7 +112,7 @@ class instance_naxxramas : public InstanceMapScript
 
         struct instance_naxxramas_InstanceMapScript : public InstanceScript
         {
-            instance_naxxramas_InstanceMapScript(Map* map) : InstanceScript(map)
+            instance_naxxramas_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
             {
                 SetHeaders(DataHeader);
                 SetBossNumber(EncounterCount);
@@ -121,16 +120,10 @@ class instance_naxxramas : public InstanceMapScript
                 LoadDoorData(doorData);
                 LoadObjectData(nullptr, objectData);
 
-                hadAnubRekhanGreet      = false;
-                hadFaerlinaGreet        = false;
-                hadThaddiusGreet        = false;
                 hadSapphironBirth       = false;
                 CurrentWingTaunt        = SAY_KELTHUZAD_FIRST_WING_TAUNT;
 
-                playerDied              = 0;
-
-                nextFroggerWave         = 0;
-                events.ScheduleEvent(EVENT_SUMMON_FROGGER_WAVE, Seconds(1));
+                playerDied              = false;
             }
 
             void OnCreatureCreate(Creature* creature) override
@@ -221,23 +214,23 @@ class instance_naxxramas : public InstanceMapScript
                         break;
                     case GO_NAXX_PORTAL_ARACHNID:
                         if (GetBossState(BOSS_MAEXXNA) == DONE)
-                            go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                            go->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                         break;
                     case GO_NAXX_PORTAL_CONSTRUCT:
                         if (GetBossState(BOSS_THADDIUS) == DONE)
-                            go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                            go->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                         break;
                     case GO_NAXX_PORTAL_PLAGUE:
                         if (GetBossState(BOSS_LOATHEB) == DONE)
-                            go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                            go->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                         break;
                     case GO_NAXX_PORTAL_MILITARY:
                         if (GetBossState(BOSS_HORSEMEN) == DONE)
-                            go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                            go->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                         break;
                     case GO_KELTHUZAD_THRONE:
                         if (GetBossState(BOSS_KELTHUZAD) == DONE)
-                            go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                            go->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                         break;
                     case GO_BIRTH:
                         if (hadSapphironBirth || GetBossState(BOSS_SAPPHIRON) == DONE)
@@ -255,9 +248,9 @@ class instance_naxxramas : public InstanceMapScript
 
             void OnUnitDeath(Unit* unit) override
             {
-                if (unit->GetTypeId() == TYPEID_PLAYER && IsEncounterInProgress())
+                if (!playerDied && unit->IsPlayer() && IsEncounterInProgress())
                 {
-                    playerDied = 1;
+                    playerDied = true;
                     SaveToDB();
                 }
 
@@ -279,15 +272,6 @@ class instance_naxxramas : public InstanceMapScript
                         if (GameObject* gate = instance->GetGameObject(GothikGateGUID))
                             gate->SetGoState(GOState(value));
                         break;
-                    case DATA_HAD_ANUBREKHAN_GREET:
-                        hadAnubRekhanGreet = (value == 1u);
-                        break;
-                    case DATA_HAD_FAERLINA_GREET:
-                        hadFaerlinaGreet = (value == 1u);
-                        break;
-                    case DATA_HAD_THADDIUS_GREET:
-                        hadThaddiusGreet = (value == 1u);
-                        break;
                     case DATA_HAD_SAPPHIRON_BIRTH:
                         hadSapphironBirth = (value == 1u);
                         break;
@@ -300,12 +284,6 @@ class instance_naxxramas : public InstanceMapScript
             {
                 switch (id)
                 {
-                    case DATA_HAD_ANUBREKHAN_GREET:
-                        return hadAnubRekhanGreet ? 1u : 0u;
-                    case DATA_HAD_FAERLINA_GREET:
-                        return hadFaerlinaGreet ? 1u : 0u;
-                    case DATA_HAD_THADDIUS_GREET:
-                        return hadThaddiusGreet ? 1u : 0u;
                     case DATA_HAD_SAPPHIRON_BIRTH:
                         return hadSapphironBirth ? 1u : 0u;
                     default:
@@ -377,32 +355,32 @@ class instance_naxxramas : public InstanceMapScript
                         if (state == DONE)
                         {
                             if (GameObject* teleporter = GetGameObject(DATA_NAXX_PORTAL_ARACHNID))
-                                teleporter->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                                teleporter->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
 
-                            events.ScheduleEvent(EVENT_KELTHUZAD_WING_TAUNT, Seconds(6));
+                            events.ScheduleEvent(EVENT_KELTHUZAD_WING_TAUNT, 6s);
                         }
                         break;
                     case BOSS_LOATHEB:
                         if (state == DONE)
                         {
                             if (GameObject* teleporter = GetGameObject(DATA_NAXX_PORTAL_PLAGUE))
-                                teleporter->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                                teleporter->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
 
-                            events.ScheduleEvent(EVENT_KELTHUZAD_WING_TAUNT, Seconds(6));
+                            events.ScheduleEvent(EVENT_KELTHUZAD_WING_TAUNT, 6s);
                         }
                         break;
                     case BOSS_THADDIUS:
                         if (state == DONE)
                         {
                             if (GameObject* teleporter = GetGameObject(DATA_NAXX_PORTAL_CONSTRUCT))
-                                teleporter->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                                teleporter->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
 
-                            events.ScheduleEvent(EVENT_KELTHUZAD_WING_TAUNT, Seconds(6));
+                            events.ScheduleEvent(EVENT_KELTHUZAD_WING_TAUNT, 6s);
                         }
                         break;
                     case BOSS_GOTHIK:
                         if (state == DONE)
-                            events.ScheduleEvent(EVENT_DIALOGUE_GOTHIK_KORTHAZZ, Seconds(10));
+                            events.ScheduleEvent(EVENT_DIALOGUE_GOTHIK_KORTHAZZ, 10s);
                         break;
                     case BOSS_HORSEMEN:
                         if (state == DONE)
@@ -410,24 +388,24 @@ class instance_naxxramas : public InstanceMapScript
                             if (GameObject* horsemenChest = instance->GetGameObject(HorsemenChestGUID))
                             {
                                 horsemenChest->SetRespawnTime(horsemenChest->GetRespawnDelay());
-                                horsemenChest->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                                horsemenChest->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                             }
 
                             if (GameObject* teleporter = GetGameObject(DATA_NAXX_PORTAL_MILITARY))
-                                teleporter->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                                teleporter->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
 
-                            events.ScheduleEvent(EVENT_KELTHUZAD_WING_TAUNT, Seconds(6));
+                            events.ScheduleEvent(EVENT_KELTHUZAD_WING_TAUNT, 6s);
                         }
                         break;
                     case BOSS_SAPPHIRON:
                         if (state == DONE)
-                            events.ScheduleEvent(EVENT_DIALOGUE_SAPPHIRON_KELTHUZAD, Seconds(6));
+                            events.ScheduleEvent(EVENT_DIALOGUE_SAPPHIRON_KELTHUZAD, 6s);
                         HandleGameObject(KelthuzadDoorGUID, false);
                         break;
                     case BOSS_KELTHUZAD:
                         if (state == DONE)
                             if (GameObject* throne = GetGameObject(DATA_KELTHUZAD_THRONE))
-                                throne->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                                throne->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                         break;
                     default:
                         break;
@@ -447,17 +425,17 @@ class instance_naxxramas : public InstanceMapScript
                         case EVENT_DIALOGUE_GOTHIK_KORTHAZZ:
                             if (Creature* korthazz = instance->GetCreature(ThaneGUID))
                                 korthazz->AI()->Talk(SAY_DIALOGUE_GOTHIK_HORSEMAN);
-                            events.ScheduleEvent(EVENT_DIALOGUE_GOTHIK_ZELIEK, Seconds(5));
+                            events.ScheduleEvent(EVENT_DIALOGUE_GOTHIK_ZELIEK, 5s);
                             break;
                         case EVENT_DIALOGUE_GOTHIK_ZELIEK:
                             if (Creature* zeliek = instance->GetCreature(SirGUID))
                                 zeliek->AI()->Talk(SAY_DIALOGUE_GOTHIK_HORSEMAN);
-                            events.ScheduleEvent(EVENT_DIALOGUE_GOTHIK_BLAUMEUX, Seconds(6));
+                            events.ScheduleEvent(EVENT_DIALOGUE_GOTHIK_BLAUMEUX, 6s);
                             break;
                         case EVENT_DIALOGUE_GOTHIK_BLAUMEUX:
                             if (Creature* blaumeux = instance->GetCreature(LadyGUID))
                                 blaumeux->AI()->Talk(SAY_DIALOGUE_GOTHIK_HORSEMAN);
-                            events.ScheduleEvent(EVENT_DIALOGUE_GOTHIK_RIVENDARE, Seconds(6));
+                            events.ScheduleEvent(EVENT_DIALOGUE_GOTHIK_RIVENDARE, 6s);
                             break;
                         case EVENT_DIALOGUE_GOTHIK_RIVENDARE:
                             if (Creature* rivendare = instance->GetCreature(BaronGUID))
@@ -490,20 +468,10 @@ class instance_naxxramas : public InstanceMapScript
                                 kelthuzad->AI()->Talk(CurrentWingTaunt);
                             ++CurrentWingTaunt;
                             break;
-                        case EVENT_SUMMON_FROGGER_WAVE:
-                        {
-                            std::list<TempSummon*> spawns;
-                            instance->SummonCreatureGroup(nextFroggerWave, &spawns);
-                            if (!spawns.empty())
-                                spawns.front()->GetMotionMaster()->MovePath(10 * NPC_FROGGER + nextFroggerWave, false);
-                            events.Repeat(Seconds(1) + Milliseconds(666));
-                            nextFroggerWave = (nextFroggerWave+1) % 3;
-                            break;
-                        }
                         case EVENT_DIALOGUE_SAPPHIRON_KELTHUZAD:
                             if (Creature* kelthuzad = instance->GetCreature(KelthuzadGUID))
                                 kelthuzad->AI()->Talk(SAY_DIALOGUE_SAPPHIRON_KELTHUZAD);
-                            events.ScheduleEvent(EVENT_DIALOGUE_SAPPHIRON_LICHKING, Seconds(6));
+                            events.ScheduleEvent(EVENT_DIALOGUE_SAPPHIRON_LICHKING, 6s);
                             break;
                         case EVENT_DIALOGUE_SAPPHIRON_LICHKING:
                             if (Creature* lichKing = instance->GetCreature(LichKingGUID))
@@ -584,6 +552,18 @@ class instance_naxxramas : public InstanceMapScript
                 return false;
             }
 
+            void WriteSaveDataMore(std::ostringstream& data) override
+            {
+                data << uint32(playerDied ? 1 : 0);
+            }
+
+            void ReadSaveDataMore(std::istringstream& data) override
+            {
+                uint32 tmpState;
+                data >> tmpState;
+                playerDied = tmpState != 0;
+            }
+
         protected:
             /* The Arachnid Quarter */
             // Anub'rekhan
@@ -625,16 +605,11 @@ class instance_naxxramas : public InstanceMapScript
             ObjectGuid PortalsGUID[4];
             ObjectGuid KelthuzadDoorGUID;
             ObjectGuid LichKingGUID;
-            bool hadAnubRekhanGreet;
-            bool hadFaerlinaGreet;
-            bool hadThaddiusGreet;
             bool hadSapphironBirth;
             uint8 CurrentWingTaunt;
 
             /* The Immortal / The Undying */
-            uint32 playerDied;
-
-            int8 nextFroggerWave;
+            bool playerDied;
 
             EventMap events;
         };

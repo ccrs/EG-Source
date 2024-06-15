@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2008-2017 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -64,7 +63,7 @@ public:
 
     struct instance_karazhan_InstanceMapScript : public InstanceScript
     {
-        instance_karazhan_InstanceMapScript(Map* map) : InstanceScript(map)
+        instance_karazhan_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
         {
             SetHeaders(DataHeader);
             SetBossNumber(EncounterCount);
@@ -132,6 +131,11 @@ public:
                         }
                     }
                     break;
+                case NPC_HYAKISS_THE_LURKER:
+                case NPC_SHADIKITH_THE_GLIDER:
+                case NPC_ROKAD_THE_RAVAGER:
+                    SetBossState(DATA_OPTIONAL_BOSS, DONE);
+                    break;
                 default:
                     break;
             }
@@ -163,13 +167,13 @@ public:
                         HandleGameObject(StageDoorLeftGUID, true);
                         HandleGameObject(StageDoorRightGUID, true);
                         if (GameObject* sideEntrance = instance->GetGameObject(SideEntranceDoor))
-                            sideEntrance->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
+                            sideEntrance->RemoveFlag(GO_FLAG_LOCKED);
                         UpdateEncounterStateForKilledCreature(16812, nullptr);
                     }
                     break;
                 case DATA_CHESS:
                     if (state == DONE)
-                        DoRespawnGameObject(DustCoveredChest, DAY);
+                        DoRespawnGameObject(DustCoveredChest, 24h);
                     break;
                 default:
                     break;
@@ -225,9 +229,9 @@ public:
                 case GO_SIDE_ENTRANCE_DOOR:
                     SideEntranceDoor = go->GetGUID();
                     if (GetBossState(DATA_OPERA_PERFORMANCE) == DONE)
-                        go->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
+                        go->SetFlag(GO_FLAG_LOCKED);
                     else
-                        go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
+                        go->RemoveFlag(GO_FLAG_LOCKED);
                     break;
                 case GO_DUST_COVERED_CHEST:
                     DustCoveredChest = go->GetGUID();
