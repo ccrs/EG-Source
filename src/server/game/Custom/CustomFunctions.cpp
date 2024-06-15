@@ -1,3 +1,6 @@
+#include "DatabaseEnv.h"
+#include "ObjectMgr.h"
+#include "Log.h"
 #include "Player.h"
 #include "CustomFunctions.h"
 
@@ -27,7 +30,7 @@ void Player::_SaveCustomSettings()
     for (uint16 value : _customFlags)
         data << value << ' ';
 
-    if (PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_CUSTOM_SETTINGS))
+    if (CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_CUSTOM_SETTINGS))
     {
         stmt->setUInt32(0, GetGUID().GetCounter());
         stmt->setString(1, data.str());
