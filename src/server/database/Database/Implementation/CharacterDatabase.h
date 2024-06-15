@@ -510,6 +510,11 @@ enum CharacterDatabaseStatements : uint32
 
     CHAR_INS_DESERTER_TRACK,
 
+    // EG - Custom Settings
+    CHAR_INS_CUSTOM_SETTINGS,
+    CHAR_SEL_CUSTOM_SETTINGS,
+    CHAR_DEL_CUSTOM_SETTINGS,
+
     MAX_CHARACTERDATABASE_STATEMENTS
 };
 

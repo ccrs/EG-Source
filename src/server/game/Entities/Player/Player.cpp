@@ -4332,6 +4332,11 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
             trans->Append(stmt);
 
             Corpse::DeleteFromDB(playerguid, trans);
+
+            // EG - Custom Settings
+            stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CUSTOM_SETTINGS);
+            stmt->setUInt32(0, guid);
+            trans->Append(stmt);
             break;
         }
         // The character gets unlinked from the account, the name gets freed up and appears as deleted ingame
@@ -17792,6 +17797,8 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
 
     _LoadEquipmentSets(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_EQUIPMENT_SETS));
 
+    // EG - Custom Settings
+    _LoadCustomSettings(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS));
     return true;
 }
 
@@ -19514,6 +19521,9 @@ void Player::SaveToDB(CharacterDatabaseTransaction trans, bool create /* = false
     // save pet (hunter pet level and experience and all type pets health/mana).
     if (Pet* pet = GetPet())
         pet->SavePetToDB(PET_SAVE_AS_CURRENT);
+
+    // EG - Custom Settings
+    _SaveCustomSettings();
 }
 
 // fast save function for item/money cheating preventing - save only inventory and money state

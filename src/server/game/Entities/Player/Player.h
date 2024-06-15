@@ -740,6 +740,7 @@ enum PlayerLoginQueryIndex
     PLAYER_LOGIN_QUERY_LOAD_MONTHLY_QUEST_STATUS    = 32,
     PLAYER_LOGIN_QUERY_LOAD_CORPSE_LOCATION         = 33,
     PLAYER_LOGIN_QUERY_LOAD_PET_SLOTS               = 34,
+    PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS         = 35,
     MAX_PLAYER_LOGIN_QUERY
 };
 
@@ -879,6 +880,16 @@ struct ResurrectionData
 };
 
 #define SPELL_DK_RAISE_ALLY 46619
+
+enum CustomFlagsIndex : uint16
+{
+    CUSTOM_FLAGS_MAX      = 1,
+};
+
+enum CustomFlags : uint16
+{
+    CUSTOM_FLAG_NONE                    = 0,
+};
 
 class TC_GAME_API Player : public Unit, public GridObject<Player>
 {
@@ -2197,6 +2208,12 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         std::string GetCoordsMapAreaAndZoneString() const;
 
         std::string GetDebugInfo() const override;
+        // EG - Custom Declarations
+        bool HasCustomFlag(CustomFlagsIndex const index, CustomFlags const flag) const;
+        void SetCustomFlags(CustomFlagsIndex const index, CustomFlags const flag);
+        void AddCustomFlag(CustomFlagsIndex const index, CustomFlags const flag);
+        void RemoveCustomFlag(CustomFlagsIndex const index, CustomFlags const flag);
+        uint16 GetCustomFlags(CustomFlagsIndex const index) const;
 
     protected:
         // Gamemaster whisper whitelist
@@ -2524,6 +2541,12 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         uint32 manaBeforeDuel;
 
         WorldLocation _corpseLocation;
+
+        // EG - Custom Declarations
+
+        void _SaveCustomSettings();
+        void _LoadCustomSettings(PreparedQueryResult result);
+        std::vector<uint16> _customFlags;
 };
 
 TC_GAME_API void AddItemsSetItem(Player* player, Item* item);

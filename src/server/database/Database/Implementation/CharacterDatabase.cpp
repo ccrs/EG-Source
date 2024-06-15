@@ -594,6 +594,11 @@ void CharacterDatabaseConnection::DoPrepareStatements()
 
     // DeserterTracker
     PrepareStatement(CHAR_INS_DESERTER_TRACK, "INSERT INTO battleground_deserters (guid, type, datetime) VALUES (?, ?, NOW())", CONNECTION_ASYNC);
+
+    // EG - Custom Settings
+    PrepareStatement(CHAR_SEL_CUSTOM_SETTINGS, "SELECT customFlags FROM character_extended WHERE guid = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_INS_CUSTOM_SETTINGS, "INSERT INTO character_extended (guid, customFlags) VALUES (?, ?) ON DUPLICATE KEY UPDATE customFlags = VALUES(customFlags)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_DEL_CUSTOM_SETTINGS, "DELETE FROM character_extended WHERE guid = ?", CONNECTION_ASYNC);
 }
 
 CharacterDatabaseConnection::CharacterDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo)
