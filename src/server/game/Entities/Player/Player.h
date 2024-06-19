@@ -2562,7 +2562,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void _LoadCustomSettings(PreparedQueryResult result);
         void _LoadTransmogrifications(PreparedQueryResult result);
 
-        std::vector<uint16> _customFlags;
+        std::array<uint16, CUSTOM_FLAGS_MAX> _customFlags;
 
         std::unordered_map<ObjectGuid, uint32> _transmogrificationMap;
         std::unordered_map<uint8, uint32> _transmogrificationHideMap;
