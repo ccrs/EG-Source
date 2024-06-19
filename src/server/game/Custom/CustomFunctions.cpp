@@ -67,7 +67,7 @@ void Player::_SaveCustomSettings()
 
 void Player::_SaveTransmogrifications()
 {
-    SQLTransaction trans = CharacterDatabase.BeginTransaction();
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
     uint32 lowguid = GetGUID().GetCounter();
     
     CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_TRANSMOGRIFICATIONS);
