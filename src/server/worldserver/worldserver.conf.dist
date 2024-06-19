@@ -4313,40 +4313,4 @@ Transmogrification.IgnoreReqEvent = 0
 Transmogrification.IgnoreReqStats = 0
 
 #
-#    SET FEATURE
-#
-#    Transmogrification.EnableSets
-#        Description: Enables / Disables the set feature. If you want permanent disable, check Transmogrification.h
-#        Default:    1
-#
-#    Transmogrification.MaxSets
-#        Description: Maximum amount of sets a player can save (hardcap at 25)
-#        Default:    10
-#
-#    Transmogrification.EnableSetInfo
-#        Description: Enables / Disables the info button for set fature
-#        Default:    1
-#
-#    Transmogrification.SetNpcText
-#        Description: The npc_text entry of the info menu for the set feature
-#        Default:    60000
-#
-#    Transmogrification.SetCostModifier
-#        Description: A multiplier for the default gold cost (all costs summed together) (change to 0 for no default cost)
-#        Default:    3.0
-#
-#    Transmogrification.SetCopperCost
-#        Description: Cost added on top of other costs (can be negative)
-#        Default:    0
-
-Transmogrification.EnableSets = 1
-Transmogrification.MaxSets = 10
-
-Transmogrification.EnableSetInfo = 1
-Transmogrification.SetNpcText = 60000
-
-Transmogrification.SetCostModifier = 3.0
-Transmogrification.SetCopperCost = 0
-
-#
 ###################################################################################################
