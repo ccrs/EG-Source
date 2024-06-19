@@ -1,12 +1,18 @@
 DELETE FROM `creature_template` WHERE `entry` IN (60000, 60001);
-INSERT INTO `creature_template` (`entry`, `modelid1`, `modelid2`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `scale`, `rank`, `dmgschool`, `baseattacktime`, `rangeattacktime`, `unit_class`, `unit_flags`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `AIName`, `MovementType`, `InhabitType`, `HoverHeight`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `flags_extra`, `ScriptName`) VALUES
-(60000, 20985, 0, 'Warpweaver Hashom', 'Transmogrifier', '', 0, 80, 80, 2, 35, 1, 1, 0, 0, 2000, 0, 1, 0, 0, 138936390, 0, 0, 0, '', 0, 3, 1, 0, 0, 1, 0, 0, 'EG_transmogrification_creature'),
-(60001, 20985, 0, 'Warpweaver Dushar', 'Transmogrifier', '', 0, 80, 80, 2, 35, 1, 1, 0, 0, 2000, 0, 1, 0, 0, 138936390, 0, 0, 0, '', 0, 3, 1, 0, 0, 1, 0, 0, 'EG_transmogrification_creature');
+INSERT INTO `creature_template` (`entry`, `modelid1`, `modelid2`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `scale`, `rank`, `dmgschool`, `baseattacktime`, `rangeattacktime`, `unit_class`, `unit_flags`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `AIName`, `MovementType`, `HoverHeight`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `flags_extra`, `ScriptName`) VALUES
+(60000, 20985, 0, 'Warpweaver Hashom', 'Transmogrifier', '', 0, 80, 80, 2, 35, 1, 1, 0, 0, 2000, 0, 1, 0, 0, 138936390, 0, 0, 0, '', 0, 1, 0, 0, 1, 0, 0, 'EG_transmogrification_creature'),
+(60001, 20985, 0, 'Warpweaver Dushar', 'Transmogrifier', '', 0, 80, 80, 2, 35, 1, 1, 0, 0, 2000, 0, 1, 0, 0, 138936390, 0, 0, 0, '', 0, 1, 0, 0, 1, 0, 0, 'EG_transmogrification_creature');
+
+DELETE FROM `creature_template_movement` WHERE `CreatureId` IN (60000, 60001);
+INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`, `Chase`, `Random`) VALUES
+('60000', '1', '0', '0', '0', '0', '0'),
+('60001', '1', '0', '0', '0', '0', '0');
+
 
 DELETE FROM `creature` WHERE `guid` IN (300100, 300101);
-INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `spawndist`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `dynamicflags`, `VerifiedBuild`) VALUES
-(300100,60000,0,0,0,1,1,0,0,-8700.15,851.796,105.065,3.79383,300,0,0,12600,0,0,0,0,0,0),
-(300101,60001,1,0,0,1,1,0,0,1792.59,-4555.24,23.0066,5.62405,300,0,0,12600,0,0,0,0,0,0);
+INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `dynamicflags`, `VerifiedBuild`) VALUES
+(300100,60000,0,0,0,1,1,0,0,-8700.15,851.796,105.065,3.79383,300,0,0,12600,0,0,0,0,0),
+(300101,60001,1,0,0,1,1,0,0,1792.59,-4555.24,23.0066,5.62405,300,0,0,12600,0,0,0,0,0);
 
 SET @TEXT_ID := 60000;
 DELETE FROM `npc_text` WHERE `ID` IN (@TEXT_ID, @TEXT_ID+1);
