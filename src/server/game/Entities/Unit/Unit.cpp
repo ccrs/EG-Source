@@ -13572,6 +13572,29 @@ void Unit::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player const* t
                 else
                     fieldBuffer << m_uint32Values[index];
             }
+            else if (index >= PLAYER_VISIBLE_ITEM_1_ENTRYID && index <= PLAYER_VISIBLE_ITEM_19_ENTRYID && (index & 1) && m_uint32Values[index] != 0 && target->HasCustomFlag(CUSTOM_TRANSMOG_FLAGS, CUSTOM_FLAG_TRANSMOG_HIDE))
+            {
+                uint8 itemIndex = ((index - PLAYER_VISIBLE_ITEM_1_ENTRYID) / 2U);
+                uint32 itemId = m_uint32Values[index];
+                if (uint32 entry = plr->GetHiddenTransmogrificationEntry(itemIndex))
+                    itemId = entry;
+
+                if (target->HasCustomFlag(CUSTOM_TRANSMOG_FLAGS, CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY))
+                {
+                    if (uint32 entry = plr->GetHiddenTransmogrificationEntry(itemIndex))
+                    {
+                        if (ItemTemplate const* item = sObjectMgr->GetItemTemplate(entry))
+                            if (item->Quality == ITEM_QUALITY_LEGENDARY)
+                                itemId = entry;
+
+                        if (ItemTemplate const* item = sObjectMgr->GetItemTemplate(m_uint32Values[index]))
+                            if (item->Quality == ITEM_QUALITY_LEGENDARY)
+                                itemId = entry;
+                    }
+                }
+
+                fieldBuffer << itemId;
+            }
             else
             {
                 // send in current format (float as float, uint32 as uint32)

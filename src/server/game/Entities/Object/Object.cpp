@@ -1599,6 +1599,13 @@ bool WorldObject::CanSeeOrDetect(WorldObject const* obj, bool implicitDetect, bo
             return false;
     }
 
+    // EG - Transmog Visibility
+    if (Player const* player = this->ToPlayer())
+    {
+        if (obj->GetEntry() == 60000 || obj->GetEntry() == 60001)
+            return !player->HasCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CUSTOM_FLAG_TRANSMOG_HIDE);
+    }
+
     // GM visibility off or hidden NPC
     if (!obj->m_serverSideVisibility.GetValue(SERVERSIDE_VISIBILITY_GM))
     {

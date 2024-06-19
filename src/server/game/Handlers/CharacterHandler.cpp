@@ -217,6 +217,16 @@ bool LoginQueryHolder::Initialize()
     stmt->setUInt32(0, lowGuid);
     res &= SetPreparedQuery(PLAYER_LOGIN_QUERY_LOAD_PET_SLOTS, stmt);
 
+    // EG - Custom Settings
+    stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CUSTOM_SETTINGS);
+    stmt->setUInt32(0, lowGuid);
+    res &= SetPreparedQuery(PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS, stmt);
+
+    // EG - Transmogrification
+    stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_TRANSMOGRIFICATIONS);
+    stmt->setUInt32(0, lowGuid);
+    res &= SetPreparedQuery(PLAYER_LOGIN_QUERY_LOAD_TRANSMOGRIFICATIONS, stmt);
+
     return res;
 }
 

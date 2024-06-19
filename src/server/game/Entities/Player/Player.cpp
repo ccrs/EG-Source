@@ -105,6 +105,7 @@
 #include "WorldPacket.h"
 #include "WorldSession.h"
 #include "WorldStatePackets.h"
+#include "Transmogrification.h"
 
 #define ZONE_UPDATE_INTERVAL (1*IN_MILLISECONDS)
 
@@ -4335,6 +4336,11 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
 
             // EG - Custom Settings
             stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CUSTOM_SETTINGS);
+            stmt->setUInt32(0, guid);
+            trans->Append(stmt);
+
+            // EG - Transmogrification
+            stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_TRANSMOGRIFICATIONS);
             stmt->setUInt32(0, guid);
             trans->Append(stmt);
             break;
@@ -12177,12 +12183,24 @@ void Player::SetVisibleItemSlot(uint8 slot, Item* pItem)
 {
     if (pItem)
     {
-        SetUInt32Value(PLAYER_VISIBLE_ITEM_1_ENTRYID + (slot * 2), pItem->GetEntry());
+        // EG - Transmogrification
+        if (uint32 entry = sTransmogrification->GetFakeEntry(pItem))
+        {
+            _transmogrificationHideMap[slot] = pItem->GetEntry();
+            SetUInt32Value(PLAYER_VISIBLE_ITEM_1_ENTRYID + (slot * 2), entry);
+        }
+        else
+        {
+            _transmogrificationHideMap[slot] = 0;
+            SetUInt32Value(PLAYER_VISIBLE_ITEM_1_ENTRYID + (slot * 2), pItem->GetEntry());
+        }
         SetUInt16Value(PLAYER_VISIBLE_ITEM_1_ENCHANTMENT + (slot * 2), 0, pItem->GetEnchantmentId(PERM_ENCHANTMENT_SLOT));
         SetUInt16Value(PLAYER_VISIBLE_ITEM_1_ENCHANTMENT + (slot * 2), 1, pItem->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT));
     }
     else
     {
+        // EG - Transmogrification
+        _transmogrificationHideMap[slot] = 0;
         SetUInt32Value(PLAYER_VISIBLE_ITEM_1_ENTRYID + (slot * 2), 0);
         SetUInt32Value(PLAYER_VISIBLE_ITEM_1_ENCHANTMENT + (slot * 2), 0);
     }
@@ -12307,6 +12325,7 @@ void Player::MoveItemFromInventory(uint8 bag, uint8 slot, bool update)
 {
     if (Item* it = GetItemByPos(bag, slot))
     {
+        sTransmogrification->DeleteFakeEntry(this, it);
         RemoveItem(bag, slot, update);
         ItemRemovedQuestCheck(it->GetEntry(), it->GetCount());
         it->SetNotRefundable(this, false);
@@ -17799,6 +17818,10 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
 
     // EG - Custom Settings
     _LoadCustomSettings(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS));
+
+    // EG - Transmogrification
+    _LoadTransmogrifications(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_TRANSMOGRIFICATIONS));
+
     return true;
 }
 

@@ -599,6 +599,11 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     PrepareStatement(CHAR_SEL_CUSTOM_SETTINGS, "SELECT customFlags FROM character_extended WHERE guid = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_INS_CUSTOM_SETTINGS, "INSERT INTO character_extended (guid, customFlags) VALUES (?, ?) ON DUPLICATE KEY UPDATE customFlags = VALUES(customFlags)", CONNECTION_ASYNC);
     PrepareStatement(CHAR_DEL_CUSTOM_SETTINGS, "DELETE FROM character_extended WHERE guid = ?", CONNECTION_ASYNC);
+
+    // EG - Transmogrification
+    PrepareStatement(CHAR_SEL_TRANSMOGRIFICATIONS, "SELECT GUID, FakeEntry FROM character_transmogrification WHERE Owner = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_INS_TRANSMOGRIFICATION, "INSERT INTO character_transmogrification (GUID, FakeEntry, Owner) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE GUID = VALUES(GUID), FakeEntry = VALUES(FakeEntry), Owner = VALUES(Owner)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_DEL_TRANSMOGRIFICATIONS, "DELETE FROM character_transmogrification WHERE Owner = ?", CONNECTION_ASYNC);
 }
 
 CharacterDatabaseConnection::CharacterDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo)

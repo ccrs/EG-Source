@@ -741,6 +741,7 @@ enum PlayerLoginQueryIndex
     PLAYER_LOGIN_QUERY_LOAD_CORPSE_LOCATION         = 33,
     PLAYER_LOGIN_QUERY_LOAD_PET_SLOTS               = 34,
     PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS         = 35,
+    PLAYER_LOGIN_QUERY_LOAD_TRANSMOGRIFICATIONS     = 36,
     MAX_PLAYER_LOGIN_QUERY
 };
 
@@ -883,12 +884,17 @@ struct ResurrectionData
 
 enum CustomFlagsIndex : uint16
 {
+    CUSTOM_TRANSMOG_FLAGS = 0,
     CUSTOM_FLAGS_MAX      = 1,
 };
 
 enum CustomFlags : uint16
 {
     CUSTOM_FLAG_NONE                    = 0,
+
+    CUSTOM_FLAG_TRANSMOG_HIDE           = 0x01,
+    CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY = 0x02,
+    CUSTOM_FLAG_TRANSMOG_FULL           = 0x03
 };
 
 class TC_GAME_API Player : public Unit, public GridObject<Player>
@@ -2215,6 +2221,13 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void RemoveCustomFlag(CustomFlagsIndex const index, CustomFlags const flag);
         uint16 GetCustomFlags(CustomFlagsIndex const index) const;
 
+        bool HasTransmogrifications() const { return !_transmogrificationMap.empty(); }
+        uint32 GetTransmogrificationEntry(ObjectGuid itemGUID) const;
+        bool EraseTransmogrificationEntry(ObjectGuid itemGUID);
+        void InsertTransmogrificationEntry(ObjectGuid itemGUID, uint32 entry);
+        std::unordered_map<ObjectGuid, uint32> GetTransmogrificationContainer() const { return _transmogrificationMap; }
+        uint32 GetHiddenTransmogrificationEntry(uint8 itemIndex) const;
+
     protected:
         // Gamemaster whisper whitelist
         GuidList WhisperList;
@@ -2545,8 +2558,14 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         // EG - Custom Declarations
 
         void _SaveCustomSettings();
+        void _SaveTransmogrifications();
         void _LoadCustomSettings(PreparedQueryResult result);
+        void _LoadTransmogrifications(PreparedQueryResult result);
+
         std::vector<uint16> _customFlags;
+
+        std::unordered_map<ObjectGuid, uint32> _transmogrificationMap;
+        std::unordered_map<uint8, uint32> _transmogrificationHideMap;
 };
 
 TC_GAME_API void AddItemsSetItem(Player* player, Item* item);

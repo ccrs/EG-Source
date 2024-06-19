@@ -754,6 +754,8 @@ enum RBACPermissions
     // custom permissions 1000+
     // EG - Custom Permissions 1000+
     RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS              = 1000,
+    RBAC_PERM_FREE_TRANSMOGRIFICATION                        = 1002,
+
     RBAC_PERM_MAX
 };
 
