@@ -11,7 +11,7 @@
 #include "SpellInfo.h"
 #include "SpellMgr.h"
 #include "StringFormat.h"
-#include "TemporarySummon.h"UNIT_FLAG_UNINTERACTIBLE
+#include "TemporarySummon.h"
 
 enum TestDummyModes
 {
@@ -65,7 +65,7 @@ public:
                 me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_IMMUNE_TO_PC);
         }
 
-        void BeginAttempt(Player* target, TestDummyModes mode, Milliseconds timer)
+        void BeginAttempt(Player* target, TestDummyModes /*mode*/, Milliseconds timer)
         {
             _currentPlayer = target->GetGUID();
             _attemptScores.clear();
@@ -186,7 +186,7 @@ public:
             damage = 0;
         }
 
-        void EnterEvadeMode(EvadeReason why) { }
+        void EnterEvadeMode(EvadeReason /*why*/) { }
 
     private:
         std::string pretty(uint32 value)
@@ -229,7 +229,7 @@ public:
     }
 };
 
-enum TestDummyGossipOffsets
+enum TestDummyGossipOffsets : uint32
 {
     GOSSIP_OFFSET_CANCEL,
     GOSSIP_OFFSET_ATTEMPT_MENU,
@@ -474,22 +474,22 @@ public:
 
         void SendAuraMenu(Player* player, FriendAI* dummyAI)
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Begin attempt]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_ATTEMPT_MENU);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Begin attempt]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_MENU));
             //if (HasAnyBuff(player))
-                //AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset my buff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_RESET_BUFFS);
+                //AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset my buff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_RESET_BUFFS));
             if (HasAnyDebuff(dummyAI))
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset debuff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_RESET_DEBUFFS);
-            //AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid buffs to yourself", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_MENU_BUFFS);
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid debuffs to dummy", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_MENU_DEBUFFS);
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset debuff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_RESET_DEBUFFS));
+            //AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid buffs to yourself", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU_BUFFS));
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid debuffs to dummy", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU_DEBUFFS));
             SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
         }
 
         void SendBuffMenu(Player* player, FriendAI* dummyAI)
         {
             if (!dummyAI->_currentPlayer)
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Go back]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_MENU);
+                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Go back]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU));
             else if (HasAnyBuff(player))
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset my buff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_RESET_BUFFS);
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset my buff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_RESET_BUFFS));
             bool main = false;
             for (uint32 i = 0, n = buffs.size(); i < n; ++i)
             {
@@ -503,17 +503,17 @@ public:
                     continue;
                 if (!main)
                 {
-                    AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Add all raid buffs", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_ALL_BUFFS);
+                    AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Add all raid buffs", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ALL_BUFFS));
                     main = true;
                 }
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, Trinity::StringFormat("Add '%s'", spell->SpellName[0]), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_FIRST_BUFF + i);
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, Trinity::StringFormat("Add '%s'", spell->SpellName[0]), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_BUFF) + i);
             }
             SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
         }
 
         void SendDebuffMenu(Player* player, FriendAI* dummyAI)
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Go back]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_MENU);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Go back]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU));
             bool main = false;
             for (uint32 i = 0, n = debuffs.size(); i < n; ++i)
             {
@@ -525,10 +525,10 @@ public:
                     continue;
                 if (!main)
                 {
-                    AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Add all raid debuffs", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_ALL_DEBUFFS);
+                    AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Add all raid debuffs", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ALL_DEBUFFS));
                     main = true;
                 }
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, Trinity::StringFormat("Add '%s'", spell->SpellName[0]), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_FIRST_DEBUFF + i);
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, Trinity::StringFormat("Add '%s'", spell->SpellName[0]), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_DEBUFF) + i);
             }
             SendGossipMenuFor(player, 7381, me->GetGUID());
         }
@@ -546,20 +546,20 @@ public:
             if (current)
             {
                 if (player->GetGUID() == current)
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Cancel current attempt", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_CANCEL);
-                //AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid buffs to yourself", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_MENU_BUFFS);
+                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Cancel current attempt", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_CANCEL));
+                //AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid buffs to yourself", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU_BUFFS));
             }
             else
             {
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Begin attempt", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_ATTEMPT_MENU);
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Modify auras", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_MENU);
+                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Begin attempt", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_MENU));
+                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Modify auras", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU));
             }
 
             SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
             return true;
         }
 
-        bool OnGossipSelect(Player* player, uint32 sender, uint32 listId) override
+        bool OnGossipSelect(Player* player, uint32 /*sender*/, uint32 listId) override
         {
             uint32 const action = GetGossipActionFor(player, listId);
             ClearGossipMenuFor(player);
@@ -583,10 +583,10 @@ public:
             case GOSSIP_OFFSET_ATTEMPT_MENU:
                 if (current)
                     break;
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Modify auras]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_MENU);
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Burst DPS (30 sec)", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_ATTEMPT_DPS_30SEC);
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Standard DPS (150 sec)", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_ATTEMPT_DPS_150SEC);
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Sustained DPS (6 min)", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_ATTEMPT_DPS_360SEC);
+                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Modify auras]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU));
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Burst DPS (30 sec)", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_DPS_30SEC));
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Standard DPS (150 sec)", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_DPS_150SEC));
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Sustained DPS (6 min)", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_DPS_360SEC));
                 SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
                 break;
             case GOSSIP_OFFSET_ATTEMPT_DPS_30SEC:
@@ -639,7 +639,7 @@ public:
                 SendAuraMenu(player, dummyAI);
                 break;
             default:
-                if (action >= GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_FIRST_BUFF)
+                if (action >= GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_BUFF))
                 {
                     uint32 const offset = action - GOSSIP_ACTION_INFO_DEF - GOSSIP_OFFSET_FIRST_BUFF;
                     if (offset < buffs.size())
@@ -649,7 +649,7 @@ public:
                         break;
                     }
                 }
-                if (action >= GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_FIRST_DEBUFF)
+                if (action >= GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_DEBUFF))
                 {
                     uint32 const offset = action - GOSSIP_ACTION_INFO_DEF - GOSSIP_OFFSET_FIRST_DEBUFF;
                     if (offset < debuffs.size())
