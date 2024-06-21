@@ -359,9 +359,9 @@ public:
                 _timer -= diff;
         }
 
-        void GhettoSpellMod(Aura* buff, SpellEffIndex index)
+        void GhettoSpellMod(Aura* /*buff*/, SpellEffIndex /*index*/)
         {
-            SpellInfo const* buffInfo = buff->GetSpellInfo();
+            /*SpellInfo const* buffInfo = buff->GetSpellInfo();
             if (!buffInfo->IsAffectedBySpellMods())
                 return;
             AuraEffect* effect = buff->GetEffect(index);
@@ -400,7 +400,7 @@ public:
                         }
                 }
             }
-            effect->ChangeAmount(uint32(float(amount + flat) * mul));
+            effect->ChangeAmount(uint32(float(amount + flat) * mul));*/
         }
 
         void AddBuff(Unit* unit, TestDummyBuffInfo info)
