@@ -475,11 +475,11 @@ public:
         void SendAuraMenu(Player* player, FriendAI* dummyAI)
         {
             AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Begin attempt]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_ATTEMPT_MENU);
-            if (HasAnyBuff(player))
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset my buff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_RESET_BUFFS);
+            //if (HasAnyBuff(player))
+                //AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset my buff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_RESET_BUFFS);
             if (HasAnyDebuff(dummyAI))
                 AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset debuff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_RESET_DEBUFFS);
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid buffs to yourself", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_MENU_BUFFS);
+            //AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid buffs to yourself", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_MENU_BUFFS);
             AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid debuffs to dummy", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_MENU_DEBUFFS);
             SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
         }
@@ -547,7 +547,7 @@ public:
             {
                 if (player->GetGUID() == current)
                     AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Cancel current attempt", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_CANCEL);
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid buffs to yourself", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_MENU_BUFFS);
+                //AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid buffs to yourself", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + GOSSIP_OFFSET_AURA_MENU_BUFFS);
             }
             else
             {
@@ -628,9 +628,9 @@ public:
                 SendDebuffMenu(player, dummyAI);
                 break;
             case GOSSIP_OFFSET_ALL_BUFFS:
-                for (TestDummyBuffInfo info : buffs)
-                    if (!UnavailableToTeam(player->GetTeamId(), info.spellId)) // heroic presence
-                        AddBuff(player, info);
+                //for (TestDummyBuffInfo info : buffs)
+                    //if (!UnavailableToTeam(player->GetTeamId(), info.spellId)) // heroic presence
+                        //AddBuff(player, info);
                 SendAuraMenu(player, dummyAI);
                 break;
             case GOSSIP_OFFSET_ALL_DEBUFFS:
