@@ -15,23 +15,59 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BATTLEFIELD_MGR_H_
-#define BATTLEFIELD_MGR_H_
+#ifndef TRINITY_BATTLEFIELD_MGR_H_
+#define TRINITY_BATTLEFIELD_MGR_H_
 
-#include "Battlefield.h"
-#include "ScriptMgr.h"
+#include "Common.h"
+#include "SharedDefines.h"
+#include <functional>
+#include <memory>
+#include <unordered_map>
 
-// class to handle player enter / leave / areatrigger / GO use events
+class Battlefield;
+class Player;
+class ZoneScript;
+
+static uint32 constexpr BATTLEFIELD_OBJECTIVE_UPDATE_INTERVAL = 1000;
+
 class TC_GAME_API BattlefieldMgr
 {
-    public:
-        static BattlefieldMgr* instance();
+public:
+    static BattlefieldMgr* instance();
 
-    private:
-        BattlefieldMgr();
-        ~BattlefieldMgr();
+    // create battlefields
+    void Initialize();
+    void Update(uint32 diff);
+    void ForEach(std::function<void(Battlefield*)> const& action);
+
+    // called when a player enters a battlefield area
+    void HandlePlayerEnterZone(Player* player, uint32 zoneId);
+    // called when player leaves a battlefield area
+    void HandlePlayerLeaveZone(Player* player, uint32 zoneId);
+
+    Battlefield* GetBattlefield(uint32 zoneId) const;
+    Battlefield* GetBattlefield(BattlefieldBattleId battleId) const;
+    ZoneScript* GetZoneScript(uint32 zoneId) const;
+    ZoneScript* GetZoneScript(BattlefieldBattleId battleId) const;
+    Battlefield* GetEnabledBattlefield(uint32 zoneId) const;
+    Battlefield* GetEnabledBattlefield(BattlefieldBattleId battleId) const;
+
+private:
+    typedef std::unique_ptr<Battlefield> BattlefieldPointer;
+    typedef std::unordered_map<uint32 /*zoneId*/, BattlefieldPointer> BattlefieldContainer;
+
+    explicit BattlefieldMgr();
+    ~BattlefieldMgr();
+
+    BattlefieldMgr(BattlefieldMgr const&) = delete;
+    BattlefieldMgr& operator=(BattlefieldMgr const&) = delete;
+
+    // contains all initialized battlefields
+    BattlefieldContainer _battlefieldContainer;
+    // update interval
+    uint32 _updateTimer;
 };
 
 #define sBattlefieldMgr BattlefieldMgr::instance()
 
-#endif // BATTLEFIELD_MGR_H_
+#endif
