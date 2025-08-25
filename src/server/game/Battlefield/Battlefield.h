@@ -49,7 +49,7 @@ public:
     virtual ~Battlefield();
 
     // Called on battlefield creation
-    virtual bool Initialize(bool enabled);
+    virtual bool SetupBattlefield();
     virtual void Update(uint32 diff);
 
     // Called when a player enters the battlefield zone

@@ -26,9 +26,9 @@ Battlefield::~Battlefield()
 {
 }
 
-bool Battlefield::Initialize(bool enabled)
+bool Battlefield::SetupBattlefield()
 {
-    _enabled = enabled;
+    _enabled = false;
     return true;
 }
 
