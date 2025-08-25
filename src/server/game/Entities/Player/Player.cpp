@@ -4872,8 +4872,8 @@ void Player::RepopAtGraveyard()
         ClosestGrave = bg->GetClosestGraveyard(this);
     else
     {
-        if (Battlefield* bf = sBattlefieldMgr->GetBattlefieldToZoneId(GetZoneId()))
-            ClosestGrave = bf->GetClosestGraveyard(this);
+        if (Battlefield* battlefield = sBattlefieldMgr->GetBattlefield(GetZoneId()))
+            ClosestGrave = battlefield->GetClosestGraveyardLocation(this);
         else
             ClosestGrave = sObjectMgr->GetClosestGraveyard(GetPositionX(), GetPositionY(), GetPositionZ(), GetMapId(), GetTeam(), this);
     }
@@ -8441,7 +8441,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                     loot->FillLoot(PLAYER_CORPSE_LOOT_ENTRY, LootTemplates_Creature, this, true);
             }
             // For wintergrasp Quests
-            else if (GetZoneId() == AREA_WINTERGRASP)
+            else if (GetZoneId() == BATTLEFIELD_ZONEID_WINTERGRASP)
                 loot->FillLoot(PLAYER_CORPSE_LOOT_ENTRY, LootTemplates_Creature, this, true);
 
             // It may need a better formula
@@ -8659,7 +8659,7 @@ void Player::SendInitWorldStates(uint32 zoneId, uint32 areaId)
     Battleground* battleground = GetBattleground();
     OutdoorPvP* outdoorPvP = sOutdoorPvPMgr->GetOutdoorPvPToZoneId(zoneId);
     InstanceScript* instance = GetInstanceScript();
-    Battlefield* battlefield = sBattlefieldMgr->GetBattlefieldToZoneId(zoneId);
+    Battlefield* battlefield = sBattlefieldMgr->GetBattlefield(zoneId);
 
     TC_LOG_DEBUG("network", "Player::SendInitWorldStates: Sending SMSG_INIT_WORLD_STATES for Map: {}, Zone: {}", mapId, zoneId);
 
@@ -9245,7 +9245,7 @@ void Player::SendInitWorldStates(uint32 zoneId, uint32 areaId)
             }
             break;
         case AREA_WINTERGRASP: // Wintergrasp
-            if (battlefield && battlefield->GetTypeId() == BATTLEFIELD_WG)
+            if (battlefield && battlefield->GetId() == BATTLEFIELD_BATTLEID_WINTERGRASP)
                 battlefield->FillInitialWorldStates(packet);
             else
             {
@@ -9277,16 +9277,10 @@ void Player::SendBGWeekendWorldStates() const
 
 void Player::SendBattlefieldWorldStates() const
 {
-    /// Send misc stuff that needs to be sent on every login, like the battle timers.
-    if (sWorld->getBoolConfig(CONFIG_WINTERGRASP_ENABLE))
+    sBattlefieldMgr->ForEach([this](Battlefield* battlefield)
     {
-        if (Battlefield* wg = sBattlefieldMgr->GetBattlefieldByBattleId(BATTLEFIELD_BATTLEID_WG))
-        {
-            SendUpdateWorldState(WS_BATTLEFIELD_WG_ACTIVE, wg->IsWarTime() ? 0 : 1);
-            uint32 timer = wg->IsWarTime() ? 0 : (wg->GetTimer() / 1000); // 0 - Time to next battle
-            SendUpdateWorldState(WS_BATTLEFIELD_WG_TIME_NEXT_BATTLE, uint32(GameTime::GetGameTime() + timer));
-        }
-    }
+        battlefield->SendGlobalWorldStates(this);
+    });
 }
 
 uint32 Player::GetXPRestBonus(uint32 xp)
