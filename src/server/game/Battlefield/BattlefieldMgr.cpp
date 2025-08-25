@@ -62,12 +62,12 @@ void BattlefieldMgr::Initialize()
             std::unique_ptr<Battlefield> newBattlefield = std::unique_ptr<Battlefield>(scriptPointer);
             if (!newBattlefield->SetupBattlefield())
             {
-                TC_LOG_INFO("server.loading", "Setting up battlefield with TypeId {} failed.", typeId);
+                TC_LOG_INFO("server.loading", ">> Setting up battlefield with TypeId {} failed.", typeId);
             }
             else
             {
                 _battlefieldContainer.emplace(newBattlefield->GetZoneId(), std::move(newBattlefield));
-                TC_LOG_INFO("server.loading", "Setting up battlefield with TypeId {} succeeded.", typeId);
+                TC_LOG_INFO("server.loading", ">> Setting up battlefield with TypeId {} succeeded.", typeId);
             }
 
             ++count;

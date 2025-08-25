@@ -18,7 +18,7 @@
 #include "Battlefield.h"
 #include "BattlefieldEntities.h"
 
-Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) : _battleId(battleId), _zoneId(zoneId), _enabled(false), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0)
+Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) : _enabled(false), _battleId(battleId), _zoneId(zoneId), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0)
 {
 }
 
@@ -28,7 +28,6 @@ Battlefield::~Battlefield()
 
 bool Battlefield::SetupBattlefield()
 {
-    _enabled = false;
     return true;
 }
 

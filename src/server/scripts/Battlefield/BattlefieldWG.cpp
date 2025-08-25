@@ -81,7 +81,7 @@ BattlefieldWintergrasp::~BattlefieldWintergrasp()
 {
 }
 
-bool BattlefieldWintergrasp::Initialize()
+bool BattlefieldWintergrasp::SetupBattlefield()
 {
     _enabled = /*sWorld->getBoolConfig(CONFIG_WINTERGRASP_ENABLE)*/false;
     return false;

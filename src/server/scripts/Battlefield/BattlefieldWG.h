@@ -287,7 +287,7 @@ public:
     explicit BattlefieldWintergrasp();
     ~BattlefieldWintergrasp();
 
-    bool Initialize() override;
+    bool SetupBattlefield() override;
     void OnCreatureCreate(Creature* object) override;
     void OnCreatureRemove(Creature* object) override;
     void OnGameObjectCreate(GameObject* object) override;
