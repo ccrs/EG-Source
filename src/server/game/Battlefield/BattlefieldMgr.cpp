@@ -17,9 +17,9 @@
 
 #include "BattlefieldMgr.h"
 #include "Battlefield.h"
-#include "BattlefieldWG.h"
 #include "Log.h"
 #include "Player.h"
+#include "ScriptMgr.h"
 #include "World.h"
 #include "ZoneScript.h"
 #include <algorithm>
@@ -40,16 +40,41 @@ BattlefieldMgr* BattlefieldMgr::instance()
 
 void BattlefieldMgr::Initialize()
 {
-    std::unique_ptr<BattlefieldWintergrasp> wintergrasp = std::make_unique<BattlefieldWintergrasp>();
-    if (!wintergrasp->Initialize(/*sWorld->getBoolConfig(CONFIG_WINTERGRASP_ENABLE)*/ false))
+    uint32 oldMSTime = getMSTime();
+    uint32 count = 0;
+    if (QueryResult result = WorldDatabase.Query("SELECT TypeId, ScriptName FROM battlefield_template"))
     {
-        TC_LOG_ERROR("server.loading", ">> Wintergrasp initialization failed!");
+        do
+        {
+            Field* fields = result->Fetch();
+            uint32 typeId = fields[0].GetUInt8();
+            if (typeId >= BATTLEFIELD_BATTLEID_MAX)
+            {
+                TC_LOG_ERROR("sql.sql", "BattlefieldMgr::InitBattlefield: Invalid TypeId value {} in battlefield_template, skipped.", typeId);
+                continue;
+            }
+
+            uint32 scriptId = sObjectMgr->GetScriptId(fields[1].GetString());
+            Battlefield* scriptPointer = sScriptMgr->CreateBattlefield(scriptId);
+            if (!scriptPointer)
+                continue;
+
+            std::unique_ptr<Battlefield> newBattlefield = std::unique_ptr<Battlefield>(scriptPointer);
+            if (!newBattlefield->SetupBattlefield())
+            {
+                TC_LOG_INFO("server.loading", ">> Setting up battlefield with TypeId {} failed.", typeId);
+            }
+            else
+            {
+                _battlefieldContainer.emplace(newBattlefield->GetZoneId(), std::move(newBattlefield));
+                TC_LOG_INFO("server.loading", ">> Setting up battlefield with TypeId {} succeeded.", typeId);
+            }
+
+            ++count;
+        } while (result->NextRow());
     }
-    else
-    {
-        _battlefieldContainer.emplace(wintergrasp->GetZoneId(), std::move(wintergrasp));
-        TC_LOG_INFO("server.loading", ">> Wintergrasp successfully initialized");
-    }
+
+    TC_LOG_INFO("server.loading", ">> Loaded {} battlefields in {} ms", count, GetMSTimeDiffToNow(oldMSTime));
 }
 
 void BattlefieldMgr::Update(uint32 diff)

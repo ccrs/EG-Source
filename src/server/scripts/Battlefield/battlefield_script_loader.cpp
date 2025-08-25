@@ -15,9 +15,9 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-void AddSC_BF_wintergrasp();
+void AddSCBattlefieldWintergraspScript();
 
 void AddBattlefieldScripts()
 {
-    AddSC_BF_wintergrasp();
+    AddSCBattlefieldWintergraspScript();
 }

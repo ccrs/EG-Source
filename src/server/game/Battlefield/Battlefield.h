@@ -46,10 +46,16 @@ public:
     typedef std::unordered_map<uint8 /*id*/, BattlefieldGraveyardPointer> BattlefieldGraveyardContainer;
 
     explicit Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId);
+    Battlefield(Battlefield const&) = delete;
+    Battlefield(Battlefield&&) = delete;
+
+    Battlefield& operator=(Battlefield const&) = delete;
+    Battlefield& operator=(Battlefield&&) = delete;
+
     virtual ~Battlefield();
 
     // Called on battlefield creation
-    virtual bool Initialize(bool enabled);
+    virtual bool SetupBattlefield();
     virtual void Update(uint32 diff);
 
     // Called when a player enters the battlefield zone
@@ -96,15 +102,14 @@ public:
     bool IsEnabled() const { return _enabled; }
     bool IsWarTime() const { return _active; }
 
-private:
-    Battlefield(Battlefield const&) = delete;
-    Battlefield& operator=(Battlefield const&) = delete;
+protected:
+    bool _enabled;
 
+private:
     // constant information
     BattlefieldBattleId _battleId;
     uint32 _zoneId;
 
-    bool _enabled;
     bool _active;
     PvPTeamId _controllingTeam;
     CountdownTimer _timer;

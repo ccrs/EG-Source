@@ -16,6 +16,7 @@
  */
 
 #include "Object.h"
+#include "Battlefield.h"
 #include "BattlefieldMgr.h"
 #include "Battleground.h"
 #include "CellImpl.h"
@@ -25,6 +26,7 @@
 #include "GameTime.h"
 #include "GridNotifiersImpl.h"
 #include "G3DPosition.hpp"
+#include "InstanceScript.h"
 #include "Item.h"
 #include "Log.h"
 #include "Map.h"
@@ -1071,7 +1073,7 @@ bool WorldObject::IsInWorldPvpZone() const
     switch (GetZoneId())
     {
         case AREA_WINTERGRASP: // Wintergrasp
-            return true;
+            return sBattlefieldMgr->GetEnabledBattlefield(GetZoneId());
         default:
             return false;
     }
@@ -1962,7 +1964,6 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
 * @param group Id of group to summon.
 * @param list  List to store pointers to summoned creatures.
 */
-
 void Map::SummonCreatureGroup(uint8 group, std::list<TempSummon*>* list /*= nullptr*/)
 {
     std::vector<TempSummonData> const* data = sObjectMgr->GetSummonGroup(GetId(), SUMMONER_TYPE_MAP, group);
@@ -1977,17 +1978,24 @@ void Map::SummonCreatureGroup(uint8 group, std::list<TempSummon*>* list /*= null
 
 void WorldObject::SetZoneScript()
 {
-    if (Map* map = FindMap())
+    Map* map = FindMap();
+    if (!map)
+        return;
+
+    if (map->IsBattlegroundOrArena())
+        return;
+
+    if (map->IsDungeon())
     {
         if (InstanceMap* instanceMap = map->ToInstanceMap())
             m_zoneScript = reinterpret_cast<ZoneScript*>(instanceMap->GetInstanceScript());
-        else if (!map->IsBattlegroundOrArena())
-        {
-            if (Battlefield* bf = sBattlefieldMgr->GetBattlefieldToZoneId(GetZoneId()))
-                m_zoneScript = bf;
-            else
-                m_zoneScript = sOutdoorPvPMgr->GetZoneScript(GetZoneId());
-        }
+    }
+    else
+    {
+        if (Battlefield* battlefield = sBattlefieldMgr->GetBattlefield(GetZoneId()))
+            m_zoneScript = battlefield;
+        else
+            m_zoneScript = sOutdoorPvPMgr->GetZoneScript(GetZoneId());
     }
 }
 

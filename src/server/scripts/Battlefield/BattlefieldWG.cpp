@@ -17,7 +17,6 @@
 
 #include "BattlefieldWG.h"
 #include "Creature.h"
-#include "DBCStores.h"
 #include "GameObject.h"
 #include "GameTime.h"
 #include "Player.h"
@@ -80,6 +79,12 @@ BattlefieldWintergrasp::BattlefieldWintergrasp() : Battlefield(BATTLEFIELD_BATTL
 
 BattlefieldWintergrasp::~BattlefieldWintergrasp()
 {
+}
+
+bool BattlefieldWintergrasp::SetupBattlefield()
+{
+    _enabled = /*sWorld->getBoolConfig(CONFIG_WINTERGRASP_ENABLE)*/false;
+    return false;
 }
 
 void BattlefieldWintergrasp::OnCreatureCreate(Creature* object)
@@ -315,4 +320,19 @@ void WintergraspGraveyard::OnObjectRemove(WorldObject* object)
         return;
 
     BattlefieldGraveyard::OnObjectRemove(object);
+}
+
+class BattlefieldWintergraspScript : public BattlefieldScript
+{
+public:
+    BattlefieldWintergraspScript() : BattlefieldScript("battlefield_wg") {}
+
+    Battlefield* GetBattlefield() const override
+    {
+        return new BattlefieldWintergrasp();
+    }
+};
+
+void AddSCBattlefieldWintergraspScript() {
+    new BattlefieldWintergraspScript();
 }
