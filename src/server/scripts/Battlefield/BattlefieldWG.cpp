@@ -321,3 +321,18 @@ void WintergraspGraveyard::OnObjectRemove(WorldObject* object)
 
     BattlefieldGraveyard::OnObjectRemove(object);
 }
+
+class BattlefieldWintergraspScript : public BattlefieldScript
+{
+public:
+    BattlefieldWintergraspScript() : BattlefieldScript("battlefield_wg") {}
+
+    Battlefield* GetBattlefield() const override
+    {
+        return new BattlefieldWintergrasp();
+    }
+};
+
+void AddSCBattlefieldWintergraspScript() {
+    new BattlefieldWintergraspScript();
+}

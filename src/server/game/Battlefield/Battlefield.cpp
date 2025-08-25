@@ -17,6 +17,7 @@
 
 #include "Battlefield.h"
 #include "BattlefieldEntities.h"
+#include <BattlegroundPackets.h>
 
 Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) : _enabled(false), _battleId(battleId), _zoneId(zoneId), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0)
 {
@@ -45,6 +46,10 @@ void Battlefield::HandlePlayerLeaveZone(Player* /*player*/)
 
 void Battlefield::HandleAreaSpiritHealerQueryOpcode(Player* /*player*/, ObjectGuid /*source*/)
 {
+    /*WorldPackets::Battleground::AreaSpiritHealerTime areaSpiritHealerTime;
+    areaSpiritHealerTime.HealerGuid = source;
+    areaSpiritHealerTime.TimeLeft = m_LastResurrectTimer;
+    player->SendDirectMessage(areaSpiritHealerTime.Write());*/
 }
 
 void Battlefield::HandleAddPlayerToResurrectionQueue(Player* /*player*/, ObjectGuid /*source*/)

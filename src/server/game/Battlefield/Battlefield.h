@@ -106,9 +106,6 @@ protected:
     bool _enabled;
 
 private:
-    Battlefield(Battlefield const&) = delete;
-    Battlefield& operator=(Battlefield const&) = delete;
-
     // constant information
     BattlefieldBattleId _battleId;
     uint32 _zoneId;
