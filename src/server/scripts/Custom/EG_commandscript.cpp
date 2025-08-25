@@ -7,22 +7,24 @@
 #include "Language.h"
 #include "WorldSession.h"
 
+using namespace Trinity::ChatCommands;
+
 class EG_commandscript : public CommandScript
 {
 public:
     EG_commandscript() : CommandScript("EG_commandscript") { }
 
-    std::vector<ChatCommand> GetCommands() const override
+    ChatCommandTable GetCommands() const override
     {
-        static std::vector<ChatCommand> customCharacterSettings =
+        ChatCommandTable customCharacterSettings =
         {
-            { "transmogrification", rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, false, &HandleDisableTransmogrification,          "" },
-            { "legendary",          rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, false, &HandleDisableLegendaryTransmogrification, "" },
+            { "transmogrification", HandleDisableTransmogrification,          rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "legendary",          HandleDisableLegendaryTransmogrification, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
         };
 
-        static std::vector<ChatCommand> commandTable =
+        ChatCommandTable commandTable =
         {
-            { "settings",           rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, false, nullptr,                                   "", customCharacterSettings },
+            { "settings", customCharacterSettings },
         };
 
         return commandTable;
