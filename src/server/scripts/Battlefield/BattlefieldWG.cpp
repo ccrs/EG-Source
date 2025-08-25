@@ -17,7 +17,6 @@
 
 #include "BattlefieldWG.h"
 #include "Creature.h"
-#include "DBCStores.h"
 #include "GameObject.h"
 #include "GameTime.h"
 #include "Player.h"
@@ -63,17 +62,6 @@ static std::vector<BattlefieldGraveyardInfo> const wintergraspGraveyardInfo =
     { { NPC_WINTERGRASP_TAUNKA_SPIRIT_GUIDE, NPC_WINTERGRASP_DWARVEN_SPIRIT_GUIDE }, GRAVEYARD_ALLIANCE,    WORLDSAFELOC_WINTERGRASP_ALLIANCE_STARTING_AREA,   GOSSIP_WINTERGRASP_GRAVEYARD_ALLIANCE }
 };
 
-class Battlefield_wintergrasp : public BattlefieldScript
-{
-public:
-    Battlefield_wintergrasp() : BattlefieldScript("battlefield_wg") {}
-
-    Battlefield* GetBattlefield() const override
-    {
-        return new BattlefieldWintergrasp();
-    }
-};
-
 BattlefieldWintergrasp::BattlefieldWintergrasp() : Battlefield(BATTLEFIELD_BATTLEID_WINTERGRASP, BATTLEFIELD_ZONEID_WINTERGRASP)
 {
     for (auto itr = wintergraspBuildingInfo.begin(); itr != wintergraspBuildingInfo.end(); ++itr)
@@ -91,6 +79,12 @@ BattlefieldWintergrasp::BattlefieldWintergrasp() : Battlefield(BATTLEFIELD_BATTL
 
 BattlefieldWintergrasp::~BattlefieldWintergrasp()
 {
+}
+
+bool BattlefieldWintergrasp::Initialize()
+{
+    _enabled = /*sWorld->getBoolConfig(CONFIG_WINTERGRASP_ENABLE)*/false;
+    return false;
 }
 
 void BattlefieldWintergrasp::OnCreatureCreate(Creature* object)

@@ -20,6 +20,7 @@
 
 #include "Battlefield.h"
 #include "BattlefieldEntities.h"
+#include "ScriptMgr.h"
 #include <memory>
 #include <unordered_map>
 
@@ -230,7 +231,6 @@ enum WintergraspAreaIds
     AREA_THE_BROKEN_TEMPLE = 4539,
     AREA_WESTPARK_WORKSHOP = 4611,
     AREA_EASTPARK_WORKSHOP = 4612,
-    AREA_WINTERGRASP = 4197,
     AREA_THE_CHILLED_QUAGMIRE = 4589
 };
 
@@ -287,6 +287,7 @@ public:
     explicit BattlefieldWintergrasp();
     ~BattlefieldWintergrasp();
 
+    bool Initialize() override;
     void OnCreatureCreate(Creature* object) override;
     void OnCreatureRemove(Creature* object) override;
     void OnGameObjectCreate(GameObject* object) override;
@@ -310,5 +311,20 @@ private:
 
     WintergraspBuildingContainer _buildings;
 };
+
+class BattlefieldWintergraspScript : public BattlefieldScript
+{
+public:
+    BattlefieldWintergraspScript() : BattlefieldScript("battlefield_wg") { }
+
+    Battlefield* GetBattlefield() const override
+    {
+        return new BattlefieldWintergrasp();
+    }
+};
+
+void AddSCBattlefieldWintergraspScript() {
+    new BattlefieldWintergraspScript();
+}
 
 #endif
