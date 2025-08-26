@@ -104,6 +104,7 @@ public:
 
 protected:
     bool _enabled;
+    uint32 _resurrectionBaseTimer;
 
 private:
     // constant information
@@ -114,6 +115,7 @@ private:
     PvPTeamId _controllingTeam;
     CountdownTimer _timer;
     BattlefieldGraveyardContainer _graveyards;
+    CountdownTimer _resurrectionTimer;
 };
 
 #endif

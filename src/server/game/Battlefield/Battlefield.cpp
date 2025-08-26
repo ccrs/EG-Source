@@ -19,7 +19,7 @@
 #include "BattlefieldEntities.h"
 #include <BattlegroundPackets.h>
 
-Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) : _enabled(false), _battleId(battleId), _zoneId(zoneId), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0)
+Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) : _enabled(false), _resurrectionBaseTimer(30 * IN_MILLISECONDS), _battleId(battleId), _zoneId(zoneId), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0), _resurrectionTimer(_resurrectionBaseTimer)
 {
 }
 
@@ -32,8 +32,13 @@ bool Battlefield::SetupBattlefield()
     return true;
 }
 
-void Battlefield::Update(uint32 /*diff*/)
+void Battlefield::Update(uint32 diff)
 {
+    _resurrectionTimer.Update(diff);
+    if (_resurrectionTimer.Passed())
+    {
+        _resurrectionTimer.Reset(_resurrectionBaseTimer);
+    }
 }
 
 void Battlefield::HandlePlayerEnterZone(Player* /*player*/)
@@ -44,12 +49,12 @@ void Battlefield::HandlePlayerLeaveZone(Player* /*player*/)
 {
 }
 
-void Battlefield::HandleAreaSpiritHealerQueryOpcode(Player* /*player*/, ObjectGuid /*source*/)
+void Battlefield::HandleAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid source)
 {
-    /*WorldPackets::Battleground::AreaSpiritHealerTime areaSpiritHealerTime;
+    WorldPackets::Battleground::AreaSpiritHealerTime areaSpiritHealerTime;
     areaSpiritHealerTime.HealerGuid = source;
-    areaSpiritHealerTime.TimeLeft = m_LastResurrectTimer;
-    player->SendDirectMessage(areaSpiritHealerTime.Write());*/
+    areaSpiritHealerTime.TimeLeft = _resurrectionTimer.GetTimer();
+    player->SendDirectMessage(areaSpiritHealerTime.Write());
 }
 
 void Battlefield::HandleAddPlayerToResurrectionQueue(Player* /*player*/, ObjectGuid /*source*/)
