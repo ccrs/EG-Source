@@ -17,7 +17,9 @@
 
 #include "Battlefield.h"
 #include "BattlefieldEntities.h"
-#include <BattlegroundPackets.h>
+#include "BattlegroundPackets.h"
+#include "DBCStores.h"
+#include "Player.h"
 
 Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) : _enabled(false), _resurrectionBaseTimer(30 * IN_MILLISECONDS), _battleId(battleId), _zoneId(zoneId), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0), _resurrectionTimer(_resurrectionBaseTimer)
 {
@@ -101,7 +103,21 @@ TeamId Battlefield::GetAttackingTeamId() const
     return TeamIdByPvPTeamId(GetAttackingTeam());
 }
 
-WorldSafeLocsEntry const* Battlefield::GetClosestGraveyardLocation(Player* /*who*/) const
+WorldSafeLocsEntry const* Battlefield::GetClosestGraveyardLocation(Player* player) const
 {
-    return nullptr;
+    std::pair<float, WorldSafeLocsEntry const*> selection{ -1, nullptr };
+    for (const std::pair<const uint8, BattlefieldGraveyardPointer>& pair : _graveyards)
+    {
+        if (TeamIdByPvPTeamId(pair.second->GetPvPTeamId()) != player->GetTeamId())
+            continue;
+        WorldSafeLocsEntry const* safeLoc = sWorldSafeLocsStore.LookupEntry(pair.second->GetWorldSafeLocsEntryId());
+        if (safeLoc == nullptr)
+            continue;
+
+        float dist = player->GetDistance2d(safeLoc->Loc.X, safeLoc->Loc.Y);
+        if (dist < selection.first || selection.first < 0)
+            selection = { dist, safeLoc };
+    }
+
+    return selection.second;
 }
