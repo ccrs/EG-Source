@@ -167,6 +167,7 @@ public:
     virtual ~BattlefieldGraveyard() { }
 
     PvPTeamId GetPvPTeamId() const override;
+    uint16 GetWorldSafeLocsEntryId() const { return WorldSafeLocsEntryId; }
 
 protected:
     uint8 Id;

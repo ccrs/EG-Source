@@ -97,7 +97,7 @@ public:
     // Battle timer
     uint32 GetTimer() const { return _timer.GetTimer(); }
     // Closest available graveyard WorldSafeLocsEntry for Player's TeamId
-    WorldSafeLocsEntry const* GetClosestGraveyardLocation(Player* who) const;
+    WorldSafeLocsEntry const* GetClosestGraveyardLocation(Player* player) const;
 
     bool IsEnabled() const { return _enabled; }
     bool IsWarTime() const { return _active; }
