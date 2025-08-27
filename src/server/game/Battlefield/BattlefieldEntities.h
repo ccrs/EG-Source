@@ -103,6 +103,7 @@ public:
     virtual PvPTeamId GetPvPTeamId() const { return PVP_TEAM_NEUTRAL; }
 
     bool ValidateObjectEntry(uint32 entry) const { return Info.ValidateObjectEntry(entry); }
+    bool ValidateObjectGUID(ObjectGuid reference) const { return !ObjectGUID.IsEmpty() && reference == ObjectGUID; }
 
     Battlefield* Battle;
     BattlefieldEntityInfo Info;

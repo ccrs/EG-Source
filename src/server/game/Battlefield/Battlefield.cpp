@@ -20,6 +20,7 @@
 #include "BattlegroundPackets.h"
 #include "DBCStores.h"
 #include "Player.h"
+#include <algorithm>
 
 Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) : _enabled(false), _resurrectionBaseTimer(30 * IN_MILLISECONDS), _battleId(battleId), _zoneId(zoneId), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0), _resurrectionTimer(_resurrectionBaseTimer)
 {
@@ -59,12 +60,24 @@ void Battlefield::HandleAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid s
     player->SendDirectMessage(areaSpiritHealerTime.Write());
 }
 
-void Battlefield::HandleAddPlayerToResurrectionQueue(Player* /*player*/, ObjectGuid /*source*/)
+void Battlefield::HandleAddPlayerToResurrectionQueue(Player* player, ObjectGuid source)
 {
+    if (std::any_of(_graveyards.begin(), _graveyards.end(), [&](const auto& pair) { return pair.second->ValidateObjectGUID(source); }))
+    {
+        if (_resurrectionQueue.insert(player->GetGUID()).second)
+            player->CastSpell(player, SPELL_WAITING_FOR_RESURRECT, true);
+    }
 }
 
-void Battlefield::HandleRemovePlayerFromResurrectionQueue(Player* /*player*/)
+void Battlefield::HandleRemovePlayerFromResurrectionQueue(Player* player)
 {
+    auto itr = _resurrectionQueue.find(player->GetGUID());
+    if (itr != _resurrectionQueue.end())
+    {
+        _resurrectionQueue.erase(player->GetGUID());
+        if (Player* player = ObjectAccessor::FindPlayer(player->GetGUID()))
+            player->RemoveAurasDueToSpell(SPELL_WAITING_FOR_RESURRECT);
+    }
 }
 
 void Battlefield::EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer)
