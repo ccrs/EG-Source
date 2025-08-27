@@ -210,6 +210,65 @@ private:
     }
 };
 
+struct npc_wg_spirit_guide : public ScriptedAI
+{
+    npc_wg_spirit_guide(Creature* creature) : ScriptedAI(creature) { }
+
+    void UpdateAI(uint32 /*diff*/) override
+    {
+        if (!me->HasUnitState(UNIT_STATE_CASTING))
+            DoCast(me, SPELL_CHANNEL_SPIRIT_HEAL);
+    }
+
+    bool OnGossipHello(Player* player) override
+    {
+        if (me->IsQuestGiver())
+            player->PrepareQuestMenu(me->GetGUID());
+
+        SendGossipMenuFor(player, player->GetGossipTextId(me), me->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
+    {
+        uint32 const action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
+        CloseGossipMenuFor(player);
+        return true;
+    }
+};
+
+struct npc_wg_queue : public ScriptedAI
+{
+    npc_wg_queue(Creature* creature) : ScriptedAI(creature)
+    {
+    }
+
+    void Reset() override
+    {
+    }
+
+    void JustEngagedWith(Unit* /*who*/) override { }
+
+    void UpdateAI(uint32 diff) override
+    {
+        DoMeleeAttackIfReady();
+    }
+
+    bool OnGossipHello(Player* player) override
+    {
+        if (me->IsQuestGiver())
+            player->PrepareQuestMenu(me->GetGUID());
+
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
+    {
+        CloseGossipMenuFor(player);
+        return true;
+    }
+};
+
 struct go_wg_vehicle_teleporter : public GameObjectAI
 {
     go_wg_vehicle_teleporter(GameObject* gameObject) : GameObjectAI(gameObject), _checkTimer(1000) { }
@@ -491,6 +550,8 @@ class condition_is_wintergrasp_alliance : public ConditionScript
 
 void AddSC_wintergrasp()
 {
+    RegisterCreatureAI(npc_wg_queue);
+    RegisterCreatureAI(npc_wg_spirit_guide);
     RegisterCreatureAI(npc_wg_demolisher_engineer);
     RegisterGameObjectAI(go_wg_vehicle_teleporter);
     RegisterSpellScript(spell_wintergrasp_force_building);
