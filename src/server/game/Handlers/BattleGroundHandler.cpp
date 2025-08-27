@@ -756,7 +756,7 @@ void WorldSession::HandleHearthAndResurrect(WorldPackets::Battleground::HearthAn
     if (_player->IsInFlight())
         return;
 
-    if (Battlefield* bf = sBattlefieldMgr->GetEnabledBattlefield(_player->GetZoneId()))
+    if (/*Battlefield* bf = */sBattlefieldMgr->GetEnabledBattlefield(_player->GetZoneId()))
     {
         return;
     }
