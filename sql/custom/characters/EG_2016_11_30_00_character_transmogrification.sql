@@ -1,3 +1,4 @@
+--
 DROP TABLE IF EXISTS `character_transmogrification`;
 CREATE TABLE `character_transmogrification` (
   `GUID` int(10) unsigned NOT NULL COMMENT 'Item guidLow',

@@ -1,3 +1,4 @@
+--
 SET @GGUID := 200000;
 SET @SPAWNGROUPID := 100;
 

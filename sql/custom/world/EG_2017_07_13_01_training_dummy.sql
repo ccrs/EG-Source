@@ -1,3 +1,4 @@
+--
 DELETE FROM `creature_template` WHERE (`name`="Raid Target Dummy" AND `subname`="You hate me, so punch me!") OR (`name`="Raid Dummy Controller" AND `subname`="Come talk to me!");
 SET @centry:= 60002;
 INSERT INTO `creature_template` (`entry`,`modelid1`,`name`,`subname`,`minlevel`,`maxlevel`,`faction`,`npcflag`,`scale`,`rank`,`unit_class`,`type`,`type_flags`,`MovementType`,`ArmorModifier`,`mechanic_immune_mask`,`flags_extra`,`ScriptName`) VALUES
