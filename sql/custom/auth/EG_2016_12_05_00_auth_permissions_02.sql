@@ -1,3 +1,4 @@
+--
 DELETE FROM `rbac_linked_permissions` WHERE `id` IN (194, 198);
 INSERT INTO `rbac_linked_permissions` VALUES
 (194,   1), -- Instant logout

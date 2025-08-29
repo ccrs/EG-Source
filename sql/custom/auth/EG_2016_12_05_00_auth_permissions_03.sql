@@ -1,3 +1,4 @@
+--
 DELETE FROM `rbac_linked_permissions` WHERE `id` IN (193, 197);
 INSERT INTO `rbac_linked_permissions` VALUES
 (193,  14), -- Skip character creation team mask check
