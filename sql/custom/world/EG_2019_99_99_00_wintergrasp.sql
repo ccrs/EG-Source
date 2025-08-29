@@ -17,10 +17,6 @@ UPDATE `creature_template` SET `ScriptName` = '' WHERE `ScriptName` = 'npc_wg_gi
 -- Remove 'spell_wintergrasp_force_building' from 'Activate Robotic Arms'
 DELETE FROM `spell_script_names` WHERE `spell_id` = 49899 AND `ScriptName` = 'spell_wintergrasp_force_building';
 
--- Remove spell_area from 56618 - Horde Controls Factory Phase Shift
--- Remove spell_area from 56617 - Alliance Controls Factory Phase Shift
-DELETE FROM `spell_area` WHERE `spell` IN (56618, 56617);
-
 -- Gameobject spawns
 DELETE FROM `gameobject` WHERE `id` IN (190219,190220,191795,191796,191799,191800,191801,191802,191803,191804,191806,191807,191808,191809,190369,190370,190371,190372,190374,190376,191797,191798,191805,190375,191810) AND `map` = 571;
 DELETE FROM `gameobject` WHERE `id` IN (190763, 191575, 192951) AND `map` = 571;
