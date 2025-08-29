@@ -720,35 +720,13 @@ bool SpellArea::IsFitToRequirements(Player const* player, uint32 newZone, uint32
                 return false;
             break;
         }
-        case 58730: // SPELL_WINTERGRASP_RESTRICTED_FLIGHT_AREA
-        {
-            if (!player)
-                return false;
-
-            if (Battlefield* wintergrasp = sBattlefieldMgr->GetEnabledBattlefield(player->GetZoneId()))
-            {
-                if (wintergrasp->IsFlyingMountAllowed() || (!player->HasAuraType(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED) && !player->HasAuraType(SPELL_AURA_FLY)))
-                    return false;
-            }
-            break;
-        }
         case 57940: // SPELL_WINTERGRASP_ESSENCE_OF_WINTERGRASP_NORTHREND
-        case 58045: // SPELL_WINTERGRASP_ESSENCE_OF_WINTERGRASP
         {
             if (!player)
                 return false;
 
             if (Battlefield* wintergrasp = sBattlefieldMgr->GetEnabledBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP))
                 return !wintergrasp->IsWarTime() && player->GetTeamId() == wintergrasp->GetControllingTeamId();
-            break;
-        }
-        case 74411: // SPELL_WINTERGRASP_BATTLEGROUND_DAMPENING
-        {
-            if (!player)
-                return false;
-
-            if (Battlefield* wintergrasp = sBattlefieldMgr->GetEnabledBattlefield(player->GetZoneId()))
-                return wintergrasp->IsWarTime();
             break;
         }
     }

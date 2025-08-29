@@ -223,6 +223,12 @@ bool BattlefieldWintergrasp::IsSpellAreaAllowed(uint32 spellId, Player const* pl
             return false;
         case SPELL_WINTERGRASP_BATTLEGROUND_DAMPENING:
             return IsEnabled() && IsWarTime();
+        case SPELL_WINTERGRASP_ALLIANCE_CONTROLS_FACTORY_PHASE_SHIFT:
+        case SPELL_WINTERGRASP_HORDE_CONTROLS_FACTORY_PHASE_SHIFT:
+            return false;
+        case SPELL_WINTERGRASP_ALLIANCE_CONTROL_PHASE_SHIFT:
+        case SPELL_WINTERGRASP_HORDE_CONTROL_PHASE_SHIFT:
+            return player->GetTeamId() == GetControllingTeamId();
         default:
             break;
     }
