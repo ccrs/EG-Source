@@ -1,7 +1,5 @@
 #include "Chat.h"
 #include "ObjectMgr.h"
-#include "ItemTemplate.h"
-#include "Item.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "Language.h"
@@ -16,13 +14,18 @@ public:
 
     ChatCommandTable GetCommands() const override
     {
-        ChatCommandTable customCharacterSettings =
+        static ChatCommandTable transmogrificationSettings =
         {
-            { "transmogrification", HandleDisableTransmogrification,          rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
-            { "legendary",          HandleDisableLegendaryTransmogrification, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "legendary", HandleDisableTransmogrification,          rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "",          HandleDisableLegendaryTransmogrification, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
         };
 
-        ChatCommandTable commandTable =
+        static ChatCommandTable customCharacterSettings =
+        {
+            { "transmogrification", transmogrificationSettings }, 
+        };
+
+        static ChatCommandTable commandTable =
         {
             { "settings", customCharacterSettings },
         };
@@ -30,83 +33,47 @@ public:
         return commandTable;
     }
 
-    static bool HandleDisableTransmogrification(ChatHandler* handler, char const* args)
+    static bool HandleDisableTransmogrification(ChatHandler* handler, bool active)
     {
-        if (!args)
-            return false;
-
-        if (!handler->GetSession())
-            return false;
-
-        char* param1 = strtok(const_cast<char*>(args), " ");
-        if (!param1)
-        {
-            handler->SendSysMessage("Wrong command parameter, use on/off.");
-            handler->SetSentErrorMessage(true);
-            return false;
-        }
-
         Player* player = handler->GetSession()->GetPlayer();
-        std::string command = param1;
-        if (command == "on")
+        if (!player)
+            return false;
+
+        if (active)
         {
             player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_TRANSMOG_HIDE);
             player->UpdateObjectVisibility();
             handler->SendSysMessage("Showing transmoged items, disconnect and reconnect to see the applied changes.");
             return true;
         }
-        else if (command == "off")
+        else
         {
             player->AddCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_TRANSMOG_HIDE);
             player->UpdateObjectVisibility();
             handler->SendSysMessage("Hiding transmoged items, disconnect and reconnect to see the applied changes.");
             return true;
         }
-        else
-        {
-            handler->SendSysMessage("Wrong command parameter, use on/off.");
-            handler->SetSentErrorMessage(true);
-            return false;
-        }
     }
 
-    static bool HandleDisableLegendaryTransmogrification(ChatHandler* handler, char const* args)
+    static bool HandleDisableLegendaryTransmogrification(ChatHandler* handler, bool active)
     {
-        if (!args)
-            return false;
-
-        if (!handler->GetSession())
-            return false;
-
-        char* param1 = strtok(const_cast<char*>(args), " ");
-        if (!param1)
-        {
-            handler->SendSysMessage("Wrong command parameter, use on/off.");
-            handler->SetSentErrorMessage(true);
-            return false;
-        }
-
         Player* player = handler->GetSession()->GetPlayer();
-        std::string command = param1;
-        if (command == "on")
+        if (!player)
+            return false;
+
+        if (active)
         {
             player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY);
             player->UpdateObjectVisibility();
             handler->SendSysMessage("Showing legendary transmoged items, disconnect and reconnect to see the applied changes.");
             return true;
         }
-        else if (command == "off")
+        else
         {
             player->AddCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY);
             player->UpdateObjectVisibility();
             handler->SendSysMessage("Hiding legendary transmoged items, disconnect and reconnect to see the applied changes.");
             return true;
-        }
-        else
-        {
-            handler->SendSysMessage("Wrong command parameter, use on/off.");
-            handler->SetSentErrorMessage(true);
-            return false;
         }
     }
 };
