@@ -247,6 +247,8 @@ enum WintergraspWorldSafeLocs
     WORLDSAFELOC_WINTERGRASP_FORTRESS_GRAVEYARD_INDOORS = 1474
 };
 
+static uint32 constexpr MAPID_WINTERGRASP = 571; // Northrend
+
 class Creature;
 class GameObject;
 class WorldObject;
