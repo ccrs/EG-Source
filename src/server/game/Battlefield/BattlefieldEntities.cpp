@@ -16,8 +16,21 @@
  */
 
 #include "BattlefieldEntities.h"
+#include "Battlefield.h"
+#include "Creature.h"
 #include "Errors.h"
 #include "Object.h"
+#include "ObjectAccessor.h"
+#include "Player.h"
+#include <algorithm>
+
+bool BattlefieldEntityInfo::ValidateObjectEntry(uint32 entry) const
+{
+    return std::any_of(ObjectEntriesByPvPTeamId.begin(), ObjectEntriesByPvPTeamId.end(), [&](std::unordered_map<PvPTeamId, std::vector<uint32 /*entry*/>>::value_type pair) -> bool
+    {
+        return std::find(pair.second.begin(), pair.second.end(), entry) != pair.second.end();
+    });
+}
 
 BattlefieldEntity::BattlefieldEntity(Battlefield* battlefield, BattlefieldEntityInfo const info) : Battle(battlefield), Info(info)
 {
@@ -26,12 +39,30 @@ BattlefieldEntity::BattlefieldEntity(Battlefield* battlefield, BattlefieldEntity
 
 void BattlefieldEntity::OnObjectCreate(WorldObject* object)
 {
-    ObjectGUID = object->GetGUID();
+    for (PvPTeamId currentTeam : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE, PVP_TEAM_NEUTRAL })
+    {
+        std::vector<uint32> factionEntries = Info.ObjectEntriesByPvPTeamId.at(currentTeam);
+        if (std::find(factionEntries.begin(), factionEntries.end(), object->GetEntry()) != factionEntries.end())
+            ObjectGUIDsByPvPTeamId[currentTeam].insert(object->GetGUID());
+    }
 }
 
-void BattlefieldEntity::OnObjectRemove(WorldObject* /*object*/)
+void BattlefieldEntity::OnObjectRemove(WorldObject* object)
 {
-    ObjectGUID.Clear();
+    for (PvPTeamId currentTeam : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE, PVP_TEAM_NEUTRAL })
+    {
+        std::vector<uint32> factionEntries = Info.ObjectEntriesByPvPTeamId.at(currentTeam);
+        if (std::find(factionEntries.begin(), factionEntries.end(), object->GetEntry()) != factionEntries.end())
+            ObjectGUIDsByPvPTeamId[currentTeam].erase(object->GetGUID());
+    }
+}
+
+bool BattlefieldEntity::ValidateObjectGUID(ObjectGuid reference) const
+{
+    return std::any_of(ObjectGUIDsByPvPTeamId.begin(), ObjectGUIDsByPvPTeamId.end(), [&](std::unordered_map<PvPTeamId, GuidUnorderedSet>::value_type pair) -> bool
+    {
+        return std::find(pair.second.begin(), pair.second.end(), reference) != pair.second.end();
+    });
 }
 
 BattlefieldBuilding::BattlefieldBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info) : BattlefieldEntity(battlefield, info.Info), BuildingType(info.Type), State(BATTLEFIELD_BUILDING_STATE_NEUTRAL_INTACT)
@@ -76,6 +107,48 @@ PvPTeamId BattlefieldCapturePoint::GetPvPTeamId() const
 
 BattlefieldGraveyard::BattlefieldGraveyard(Battlefield* battlefield, BattlefieldGraveyardInfo const info) : BattlefieldEntity(battlefield, info.Info), Id(info.Id), WorldSafeLocsEntryId(info.WorldSafeLocsEntryId), TextId(info.TextId), State(BATTLEFIELD_GRAVEYARD_STATE_NEUTRAL)
 {
+}
+
+void BattlefieldGraveyard::AddPlayerToResurrectionQueue(Player* player)
+{
+    if (ResurrectionQueue.insert(player->GetGUID()).second)
+        player->CastSpell(player, SPELL_BATTLEFIELD_WAITING_FOR_RESURRECT, true);
+}
+
+void BattlefieldGraveyard::RemovePlayerFromResurrectionQueue(Player* player)
+{
+    auto itr = ResurrectionQueue.find(player->GetGUID());
+    if (itr != ResurrectionQueue.end())
+    {
+        ResurrectionQueue.erase(player->GetGUID());
+        player->RemoveAurasDueToSpell(SPELL_BATTLEFIELD_WAITING_FOR_RESURRECT);
+    }
+}
+
+void BattlefieldGraveyard::ResurrectPlayers()
+{
+    if (ResurrectionQueue.empty())
+        return;
+
+    for (ObjectGuid playerGuid : ResurrectionQueue)
+    {
+        // Get player object from his guid
+        Player* player = ObjectAccessor::FindPlayer(playerGuid);
+        if (!player)
+            continue;
+
+        if (Creature* spirit = Battle->GetCreature(*ObjectGUIDsByPvPTeamId[GetPvPTeamId()].begin()))
+            spirit->CastSpell(spirit, SPELL_BATTLEFIELD_SPIRIT_HEAL, true);
+
+        // Resurrect player
+        player->CastSpell(player, SPELL_BATTLEFIELD_RESURRECTION_VISUAL, true);
+        player->ResurrectPlayer(1.0f);
+        player->CastSpell(player, 6962, true);
+        player->CastSpell(player, SPELL_BATTLEFIELD_SPIRIT_HEAL_MANA, true);
+        player->SpawnCorpseBones(false);
+    }
+
+    ResurrectionQueue.clear();
 }
 
 PvPTeamId BattlefieldGraveyard::GetPvPTeamId() const

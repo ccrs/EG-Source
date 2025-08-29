@@ -27,14 +27,12 @@
 
 enum BattlefieldSpells
 {
-    SPELL_WAITING_FOR_RESURRECT     = 2584,  // Waiting to Resurrect
-    SPELL_SPIRIT_HEAL_CHANNEL       = 22011, // Spirit Heal Channel
-    SPELL_SPIRIT_HEAL               = 22012, // Spirit Heal
-    SPELL_RESURRECTION_VISUAL       = 24171, // Resurrection Impact Visual
-    SPELL_ARENA_PREPARATION         = 32727, // use this one, 32728 not correct
-    SPELL_PREPARATION               = 44521, // Preparation
-    SPELL_SPIRIT_HEAL_MANA          = 44535, // Spirit Heal
-    SPELL_AURA_PLAYER_INACTIVE      = 43681 // Inactive
+    SPELL_BATTLEFIELD_WAITING_FOR_RESURRECT = 2584,  // Waiting to Resurrect
+    SPELL_BATTLEFIELD_SPIRIT_HEAL_CHANNEL   = 22011, // Spirit Heal Channel
+    SPELL_BATTLEFIELD_SPIRIT_HEAL           = 22012, // Spirit Heal
+    SPELL_BATTLEFIELD_RESURRECTION_VISUAL   = 24171, // Resurrection Impact Visual
+    SPELL_BATTLEFIELD_SPIRIT_HEAL_MANA      = 44535, // Spirit Heal
+    SPELL_BATTLEFIELD_AURA_PLAYER_INACTIVE  = 43681  // Inactive
 };
 
 namespace WorldPackets
@@ -46,6 +44,7 @@ namespace WorldPackets
 }
 
 class BattlefieldGraveyard;
+class GameObject;
 class ObjectGuid;
 class Player;
 class Unit;
@@ -69,7 +68,6 @@ public:
     // Called on battlefield creation
     virtual bool SetupBattlefield();
     virtual void Update(uint32 diff);
-
     // Called when a player enters the battlefield zone
     virtual void HandlePlayerEnterZone(Player* player);
     // Called when a player leaves the battlefield zone
@@ -82,10 +80,8 @@ public:
     virtual void HandleAddPlayerToResurrectionQueue(Player* player, ObjectGuid source);
     // Called when a player moves out of a resurrection queue
     virtual void HandleRemovePlayerFromResurrectionQueue(Player* player);
-
     virtual void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& /*packet*/) { }
     virtual void SendGlobalWorldStates(Player const* /*player*/) const { }
-
     // Can players inside the battlefield zone use ground mounts?
     virtual bool IsMountAllowed() const { return true; }
     // Can players inside the battlefield zone use flying mounts?
@@ -95,6 +91,8 @@ public:
 
     void EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer);
     BattlefieldGraveyardPointer& GetGraveyard(uint8 graveyardId);
+
+    void SetMapId(uint32 mapId) { _mapId = mapId; }
 
     BattlefieldBattleId GetId() const { return _battleId; }
     uint32 GetZoneId() const { return _zoneId; }
@@ -110,11 +108,14 @@ public:
     uint32 GetTimer() const { return _timer.GetTimer(); }
     // Closest available graveyard WorldSafeLocsEntry for Player's TeamId
     WorldSafeLocsEntry const* GetClosestGraveyardLocation(Player* player) const;
+    Creature* GetCreature(ObjectGuid guid);
+    GameObject* GetGameObject(ObjectGuid guid);
 
     bool IsEnabled() const { return _enabled; }
     bool IsWarTime() const { return _active; }
 
 protected:
+    uint32 _mapId;
     bool _enabled;
     uint32 _resurrectionBaseTimer;
 
@@ -128,7 +129,6 @@ private:
     CountdownTimer _timer;
     BattlefieldGraveyardContainer _graveyards;
     CountdownTimer _resurrectionTimer;
-    GuidUnorderedSet _resurrectionQueue;
 };
 
 #endif

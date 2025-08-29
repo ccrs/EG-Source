@@ -17,10 +17,11 @@
 
 #include "BattlefieldMgr.h"
 #include "Battlefield.h"
+#include "DatabaseEnv.h"
 #include "Log.h"
+#include "ObjectMgr.h"
 #include "Player.h"
 #include "ScriptMgr.h"
-#include "World.h"
 #include "ZoneScript.h"
 #include <algorithm>
 

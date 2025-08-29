@@ -231,7 +231,7 @@ struct npc_wg_spirit_guide : public ScriptedAI
 
     bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
     {
-        uint32 const action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
+        /*uint32 const action = */player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
         CloseGossipMenuFor(player);
         return true;
     }
@@ -249,7 +249,7 @@ struct npc_wg_queue : public ScriptedAI
 
     void JustEngagedWith(Unit* /*who*/) override { }
 
-    void UpdateAI(uint32 diff) override
+    void UpdateAI(uint32 /*diff*/) override
     {
         DoMeleeAttackIfReady();
     }

@@ -19,10 +19,11 @@
 #include "BattlefieldEntities.h"
 #include "BattlegroundPackets.h"
 #include "DBCStores.h"
+#include "MapManager.h"
 #include "Player.h"
 #include <algorithm>
 
-Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) : _enabled(false), _resurrectionBaseTimer(30 * IN_MILLISECONDS), _battleId(battleId), _zoneId(zoneId), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0), _resurrectionTimer(_resurrectionBaseTimer)
+Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) : _mapId(0), _enabled(false), _resurrectionBaseTimer(30 * IN_MILLISECONDS), _battleId(battleId), _zoneId(zoneId), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0), _resurrectionTimer(_resurrectionBaseTimer)
 {
 }
 
@@ -40,6 +41,9 @@ void Battlefield::Update(uint32 diff)
     _resurrectionTimer.Update(diff);
     if (_resurrectionTimer.Passed())
     {
+        for (BattlefieldGraveyardContainer::value_type& pair : _graveyards)
+            pair.second->ResurrectPlayers();
+
         _resurrectionTimer.Reset(_resurrectionBaseTimer);
     }
 }
@@ -62,22 +66,18 @@ void Battlefield::HandleAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid s
 
 void Battlefield::HandleAddPlayerToResurrectionQueue(Player* player, ObjectGuid source)
 {
-    if (std::any_of(_graveyards.begin(), _graveyards.end(), [&](const auto& pair) { return pair.second->ValidateObjectGUID(source); }))
+    auto itr = std::find_if(_graveyards.begin(), _graveyards.end(), [&](BattlefieldGraveyardContainer::value_type const& pair) -> bool
     {
-        if (_resurrectionQueue.insert(player->GetGUID()).second)
-            player->CastSpell(player, SPELL_WAITING_FOR_RESURRECT, true);
-    }
+        return pair.second->ValidateObjectGUID(source);
+    });
+    if (itr != _graveyards.end())
+        itr->second->AddPlayerToResurrectionQueue(player);
 }
 
 void Battlefield::HandleRemovePlayerFromResurrectionQueue(Player* player)
 {
-    auto itr = _resurrectionQueue.find(player->GetGUID());
-    if (itr != _resurrectionQueue.end())
-    {
-        _resurrectionQueue.erase(player->GetGUID());
-        if (Player* player = ObjectAccessor::FindPlayer(player->GetGUID()))
-            player->RemoveAurasDueToSpell(SPELL_WAITING_FOR_RESURRECT);
-    }
+    for (BattlefieldGraveyardContainer::value_type const& pair : _graveyards)
+        pair.second->RemovePlayerFromResurrectionQueue(player);
 }
 
 void Battlefield::EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer)
@@ -119,7 +119,7 @@ TeamId Battlefield::GetAttackingTeamId() const
 WorldSafeLocsEntry const* Battlefield::GetClosestGraveyardLocation(Player* player) const
 {
     std::pair<float, WorldSafeLocsEntry const*> selection{ -1, nullptr };
-    for (const std::pair<const uint8, BattlefieldGraveyardPointer>& pair : _graveyards)
+    for (BattlefieldGraveyardContainer::value_type const& pair : _graveyards)
     {
         if (TeamIdByPvPTeamId(pair.second->GetPvPTeamId()) != player->GetTeamId())
             continue;
@@ -133,4 +133,22 @@ WorldSafeLocsEntry const* Battlefield::GetClosestGraveyardLocation(Player* playe
     }
 
     return selection.second;
+}
+
+Creature* Battlefield::GetCreature(ObjectGuid guid)
+{
+    if (!_mapId || !guid)
+        return nullptr;
+    if (Map* battleMap = sMapMgr->FindMap(_mapId, 0))
+        return battleMap->GetCreature(guid);
+    return nullptr;
+}
+
+GameObject* Battlefield::GetGameObject(ObjectGuid guid)
+{
+    if (!_mapId || !guid)
+        return nullptr;
+    if (Map* battleMap = sMapMgr->FindMap(_mapId, 0))
+        return battleMap->GetGameObject(guid);
+    return nullptr;
 }
