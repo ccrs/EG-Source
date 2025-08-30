@@ -85,7 +85,7 @@ bool BattlefieldWintergrasp::SetupBattlefield()
 {
     SetMapId(MAPID_WINTERGRASP);
     _enabled = /*sWorld->getBoolConfig(CONFIG_WINTERGRASP_ENABLE)*/false;
-    return false;
+    return true;
 }
 
 void BattlefieldWintergrasp::OnCreatureCreate(Creature* object)
