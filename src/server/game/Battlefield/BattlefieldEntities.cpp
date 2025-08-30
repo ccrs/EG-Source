@@ -41,9 +41,12 @@ void BattlefieldEntity::OnObjectCreate(WorldObject* object)
 {
     for (PvPTeamId currentTeam : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE, PVP_TEAM_NEUTRAL })
     {
-        std::vector<uint32> factionEntries = Info.ObjectEntriesByPvPTeamId.at(currentTeam);
-        if (std::find(factionEntries.begin(), factionEntries.end(), object->GetEntry()) != factionEntries.end())
-            ObjectGUIDsByPvPTeamId[currentTeam].insert(object->GetGUID());
+        if (Info.ObjectEntriesByPvPTeamId.contains(currentTeam))
+        {
+            std::vector<uint32> factionEntries = Info.ObjectEntriesByPvPTeamId.at(currentTeam);
+            if (std::find(factionEntries.begin(), factionEntries.end(), object->GetEntry()) != factionEntries.end())
+                ObjectGUIDsByPvPTeamId[currentTeam].insert(object->GetGUID());
+        }
     }
 }
 
@@ -51,9 +54,12 @@ void BattlefieldEntity::OnObjectRemove(WorldObject* object)
 {
     for (PvPTeamId currentTeam : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE, PVP_TEAM_NEUTRAL })
     {
-        std::vector<uint32> factionEntries = Info.ObjectEntriesByPvPTeamId.at(currentTeam);
-        if (std::find(factionEntries.begin(), factionEntries.end(), object->GetEntry()) != factionEntries.end())
-            ObjectGUIDsByPvPTeamId[currentTeam].erase(object->GetGUID());
+        if (Info.ObjectEntriesByPvPTeamId.contains(currentTeam))
+        {
+            std::vector<uint32> factionEntries = Info.ObjectEntriesByPvPTeamId.at(currentTeam);
+            if (std::find(factionEntries.begin(), factionEntries.end(), object->GetEntry()) != factionEntries.end())
+                ObjectGUIDsByPvPTeamId[currentTeam].erase(object->GetGUID());
+        }
     }
 }
 
