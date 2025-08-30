@@ -23,7 +23,7 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (194,  41), -- Use Config option START_GM_LEVEL to assign new character level
 (194,  44), -- Receive global GM messages/texts
 (194,  45), -- Join channels without announce
-(194,  47), -- Enables lower security than target check
+(194,  47), -- Can ignore non-strong lower security checks if it\'s disabled in config
 (194,  52), -- No battleground deserter debuff
 (194,  53), -- Can be AFK on the battleground
 (194, 195), -- Role: Sec Level Player
