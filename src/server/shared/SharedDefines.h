@@ -3504,7 +3504,19 @@ enum PvPTeamId
     PVP_TEAM_NEUTRAL     = 2  // Battleground: Neutral,  Arena: None
 };
 
-uint8 constexpr PVP_TEAMS_COUNT = 2;
+static uint8 constexpr PVP_TEAMS_COUNT = 2;
+
+constexpr TeamId TeamIdByPvPTeamId(PvPTeamId value)
+{
+    switch (value)
+    {
+        case PVP_TEAM_HORDE: return TEAM_HORDE;
+        case PVP_TEAM_ALLIANCE: return TEAM_ALLIANCE;
+        case PVP_TEAM_NEUTRAL: return TEAM_NEUTRAL;
+        default: break;
+    }
+    return TEAM_NEUTRAL;
+}
 
 // indexes of BattlemasterList.dbc
 enum BattlegroundTypeId : uint32
@@ -3531,6 +3543,11 @@ enum BattlefieldBattleId : uint8
 {
     BATTLEFIELD_BATTLEID_WINTERGRASP = 1, // Wintergrasp battle
     BATTLEFIELD_BATTLEID_MAX = 2
+};
+
+enum BattlefieldZoneId : uint32
+{
+    BATTLEFIELD_ZONEID_WINTERGRASP = 4197 // Wintergrasp battle
 };
 
 enum MailResponseType
@@ -3843,38 +3860,11 @@ enum class MountResult : uint32
 
 enum AreaId : uint32
 {
-    AREA_WINTERGRASP                = 4197,
-    AREA_THE_SUNKEN_RING            = 4538,
-    AREA_THE_BROKEN_TEMPLATE        = 4539,
-    AREA_WINTERGRASP_FORTRESS       = 4575,
-    AREA_THE_CHILLED_QUAGMIRE       = 4589,
-    AREA_WESTPARK_WORKSHOP          = 4611,
-    AREA_EASTPARK_WORKSHOP          = 4612,
+    AREA_WINTERGRASP = 4197
 };
 
 enum WorldState : uint32
 {
-    WS_BATTLEFIELD_WG_VEHICLE_H        = 3490,
-    WS_BATTLEFIELD_WG_MAX_VEHICLE_H    = 3491,
-    WS_BATTLEFIELD_WG_VEHICLE_A        = 3680,
-    WS_BATTLEFIELD_WG_MAX_VEHICLE_A    = 3681,
-    WS_BATTLEFIELD_WG_WORKSHOP_K_W     = 3698,
-    WS_BATTLEFIELD_WG_WORKSHOP_K_E     = 3699,
-    WS_BATTLEFIELD_WG_WORKSHOP_NW      = 3700,
-    WS_BATTLEFIELD_WG_WORKSHOP_NE      = 3701,
-    WS_BATTLEFIELD_WG_WORKSHOP_SW      = 3702,
-    WS_BATTLEFIELD_WG_WORKSHOP_SE      = 3703,
-    WS_BATTLEFIELD_WG_SHOW_WORLDSTATE  = 3710,
-    WS_BATTLEFIELD_WG_TIME_BATTLE_END  = 3781,
-    WS_BATTLEFIELD_WG_ACTIVE           = 3801,
-    WS_BATTLEFIELD_WG_DEFENDER         = 3802,
-    WS_BATTLEFIELD_WG_ATTACKER         = 3803,
-    WS_BATTLEFIELD_WG_ATTACKED_H       = 4022,
-    WS_BATTLEFIELD_WG_ATTACKED_A       = 4023,
-    WS_BATTLEFIELD_WG_DEFENDED_H       = 4024,
-    WS_BATTLEFIELD_WG_DEFENDED_A       = 4025,
-    WS_BATTLEFIELD_WG_TIME_NEXT_BATTLE = 4354,
-
     WS_ARENA_DISTRIBUTION_TIME  = 20001,                     // Next arena distribution time
     WS_WEEKLY_QUEST_RESET_TIME  = 20002,                     // Next weekly quest reset time
     WS_BG_DAILY_RESET_TIME      = 20003,                     // Next daily BG reset time

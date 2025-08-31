@@ -16,23 +16,21 @@
  */
 
 #include "BattlefieldMgr.h"
+#include "Battlefield.h"
 #include "DatabaseEnv.h"
-#include "ObjectMgr.h"
 #include "Log.h"
+#include "ObjectMgr.h"
 #include "Player.h"
 #include "ScriptMgr.h"
+#include "ZoneScript.h"
+#include <algorithm>
 
-BattlefieldMgr::BattlefieldMgr()
+BattlefieldMgr::BattlefieldMgr() : _updateTimer(0)
 {
-    _updateTimer = 0;
 }
 
 BattlefieldMgr::~BattlefieldMgr()
 {
-    for (BattlefieldSet::iterator itr = _battlefieldSet.begin(); itr != _battlefieldSet.end(); ++itr)
-        delete *itr;
-
-    _battlefieldMap.clear();
 }
 
 BattlefieldMgr* BattlefieldMgr::instance()
@@ -41,41 +39,36 @@ BattlefieldMgr* BattlefieldMgr::instance()
     return &instance;
 }
 
-void BattlefieldMgr::InitBattlefield()
+void BattlefieldMgr::Initialize()
 {
     uint32 oldMSTime = getMSTime();
-
     uint32 count = 0;
-
     if (QueryResult result = WorldDatabase.Query("SELECT TypeId, ScriptName FROM battlefield_template"))
     {
         do
         {
             Field* fields = result->Fetch();
-
             uint32 typeId = fields[0].GetUInt8();
-
-            if (typeId >= BATTLEFIELD_MAX)
+            if (typeId >= BATTLEFIELD_BATTLEID_MAX)
             {
                 TC_LOG_ERROR("sql.sql", "BattlefieldMgr::InitBattlefield: Invalid TypeId value {} in battlefield_template, skipped.", typeId);
                 continue;
             }
 
             uint32 scriptId = sObjectMgr->GetScriptId(fields[1].GetString());
-
-            Battlefield* bf = sScriptMgr->CreateBattlefield(scriptId);
-            if (!bf)
+            Battlefield* scriptPointer = sScriptMgr->CreateBattlefield(scriptId);
+            if (!scriptPointer)
                 continue;
 
-            if (!bf->SetupBattlefield())
+            std::unique_ptr<Battlefield> newBattlefield = std::unique_ptr<Battlefield>(scriptPointer);
+            if (!newBattlefield->SetupBattlefield())
             {
-                TC_LOG_INFO("bg.battlefield", "Setting up battlefield with TypeId {} failed.", typeId);
-                delete bf;
+                TC_LOG_INFO("server.loading", ">> Setting up battlefield with TypeId {} failed.", typeId);
             }
             else
             {
-                _battlefieldSet.push_back(bf);
-                TC_LOG_INFO("bg.battlefield", "Setting up battlefield with TypeId {} succeeded.", typeId);
+                _battlefieldContainer.emplace(newBattlefield->GetZoneId(), std::move(newBattlefield));
+                TC_LOG_INFO("server.loading", ">> Setting up battlefield with TypeId {} succeeded.", typeId);
             }
 
             ++count;
@@ -85,81 +78,89 @@ void BattlefieldMgr::InitBattlefield()
     TC_LOG_INFO("server.loading", ">> Loaded {} battlefields in {} ms", count, GetMSTimeDiffToNow(oldMSTime));
 }
 
-void BattlefieldMgr::AddZone(uint32 zoneId, Battlefield* bf)
+void BattlefieldMgr::Update(uint32 diff)
 {
-    _battlefieldMap[zoneId] = bf;
+    _updateTimer += diff;
+    if (_updateTimer <= BATTLEFIELD_OBJECTIVE_UPDATE_INTERVAL)
+        return;
+
+    for (BattlefieldContainer::value_type const& value : _battlefieldContainer)
+    {
+        if (value.second->IsEnabled())
+            value.second->Update(_updateTimer);
+    }
+    _updateTimer = 0;
+}
+
+void BattlefieldMgr::ForEach(std::function<void(Battlefield*)> const& action)
+{
+    for (BattlefieldContainer::value_type const& value : _battlefieldContainer)
+        action(value.second.get());
 }
 
 void BattlefieldMgr::HandlePlayerEnterZone(Player* player, uint32 zoneId)
 {
-    BattlefieldMap::iterator itr = _battlefieldMap.find(zoneId);
-    if (itr == _battlefieldMap.end())
+    auto itr = _battlefieldContainer.find(zoneId);
+    if (itr == _battlefieldContainer.end())
         return;
 
-    Battlefield* bf = itr->second;
-    if (!bf->IsEnabled() || bf->HasPlayer(player))
-        return;
-
-    bf->HandlePlayerEnterZone(player, zoneId);
-    TC_LOG_DEBUG("bg.battlefield", "Player {} entered battlefield id {}", player->GetGUID().ToString(), bf->GetTypeId());
+    itr->second->HandlePlayerEnterZone(player);
 }
 
 void BattlefieldMgr::HandlePlayerLeaveZone(Player* player, uint32 zoneId)
 {
-    BattlefieldMap::iterator itr = _battlefieldMap.find(zoneId);
-    if (itr == _battlefieldMap.end())
+    auto itr = _battlefieldContainer.find(zoneId);
+    if (itr == _battlefieldContainer.end())
         return;
 
-    // teleport: remove once in removefromworld, once in updatezone
-    if (!itr->second->HasPlayer(player))
-        return;
-
-    itr->second->HandlePlayerLeaveZone(player, zoneId);
-    TC_LOG_DEBUG("bg.battlefield", "Player {} left battlefield id {}", player->GetGUID().ToString(), itr->second->GetTypeId());
+    itr->second->HandlePlayerLeaveZone(player);
 }
 
-Battlefield* BattlefieldMgr::GetBattlefieldToZoneId(uint32 zoneId)
+Battlefield* BattlefieldMgr::GetBattlefield(uint32 zoneId) const
 {
-    BattlefieldMap::iterator itr = _battlefieldMap.find(zoneId);
-    if (itr == _battlefieldMap.end())
-    {
-        // no handle for this zone, return
-        return nullptr;
-    }
-
-    if (!itr->second->IsEnabled())
+    auto itr = _battlefieldContainer.find(zoneId);
+    if (itr == _battlefieldContainer.end())
         return nullptr;
 
-    return itr->second;
+    return itr->second.get();
 }
 
-Battlefield* BattlefieldMgr::GetBattlefieldByBattleId(uint32 battleId)
+Battlefield* BattlefieldMgr::GetBattlefield(BattlefieldBattleId battleId) const
 {
-    for (BattlefieldSet::iterator itr = _battlefieldSet.begin(); itr != _battlefieldSet.end(); ++itr)
+    auto itr = std::find_if(_battlefieldContainer.begin(), _battlefieldContainer.end(), [battleId](BattlefieldContainer::value_type const& a) -> bool
     {
-        if ((*itr)->GetBattleId() == battleId)
-            return *itr;
-    }
+        return a.second->GetId() == battleId;
+    });
+    return itr != _battlefieldContainer.end() ? itr->second.get() : nullptr;
+}
+
+ZoneScript* BattlefieldMgr::GetZoneScript(uint32 zoneId) const
+{
+    return GetBattlefield(zoneId);
+}
+
+ZoneScript* BattlefieldMgr::GetZoneScript(BattlefieldBattleId battleId) const
+{
+    return GetBattlefield(battleId);
+}
+
+Battlefield* BattlefieldMgr::GetEnabledBattlefield(uint32 zoneId) const
+{
+    auto itr = _battlefieldContainer.find(zoneId);
+    if (itr == _battlefieldContainer.end())
+        return nullptr;
+
+    if (itr->second->IsEnabled())
+        return itr->second.get();
+
     return nullptr;
 }
 
-ZoneScript* BattlefieldMgr::GetZoneScript(uint32 zoneId)
+Battlefield* BattlefieldMgr::GetEnabledBattlefield(BattlefieldBattleId battleId) const
 {
-    BattlefieldMap::iterator itr = _battlefieldMap.find(zoneId);
-    if (itr != _battlefieldMap.end())
-        return itr->second;
-
-    return nullptr;
-}
-
-void BattlefieldMgr::Update(uint32 diff)
-{
-    _updateTimer += diff;
-    if (_updateTimer > BATTLEFIELD_OBJECTIVE_UPDATE_INTERVAL)
+    auto itr = std::find_if(_battlefieldContainer.begin(), _battlefieldContainer.end(), [battleId](BattlefieldContainer::value_type const& a) -> bool
     {
-        for (BattlefieldSet::iterator itr = _battlefieldSet.begin(); itr != _battlefieldSet.end(); ++itr)
-            if ((*itr)->IsEnabled())
-                (*itr)->Update(_updateTimer);
-        _updateTimer = 0;
-    }
+        return a.second->GetId() == battleId && a.second->IsEnabled();
+    });
+    return itr != _battlefieldContainer.end() ? itr->second.get() : nullptr;
 }

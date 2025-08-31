@@ -1,3 +1,4 @@
+--
 DELETE FROM `creature_template` WHERE `entry` IN (60000, 60001);
 INSERT INTO `creature_template` (`entry`, `modelid1`, `modelid2`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `scale`, `rank`, `dmgschool`, `baseattacktime`, `rangeattacktime`, `unit_class`, `unit_flags`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `AIName`, `MovementType`, `HoverHeight`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `flags_extra`, `ScriptName`) VALUES
 (60000, 20985, 0, 'Warpweaver Hashom', 'Transmogrifier', '', 0, 80, 80, 2, 35, 1, 1, 0, 0, 2000, 0, 1, 0, 0, 138936390, 0, 0, 0, '', 0, 1, 0, 0, 1, 0, 0, 'EG_transmogrification_creature'),
@@ -33,3 +34,9 @@ INSERT INTO `trinity_string` (`entry`, `content_default`) VALUES
 (@STRING_ENTRY+7, "You don\'t have enough tokens"),
 (@STRING_ENTRY+8, 'Transmogrifications removed'),
 (@STRING_ENTRY+9, 'There are no transmogrifications');
+
+DELETE FROM `command` WHERE `name` IN ('settings', 'settings transmogrification', 'settings transmogrification legendary');
+INSERT INTO `command` (`name`, `help`) VALUES
+('settings', 'Character settings, use one of the available options'),
+('settings transmogrification', 'Syntax: .settings transmogrification [0/1] - Enables or hides all surrounding transmogrifications (including own)'),
+('settings transmogrification legendary', 'Syntax: .settings transmogrification legendary [0/1] - Enables or hides all surrounding legendary transmogrifications (including own)');
