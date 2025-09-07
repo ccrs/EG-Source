@@ -1,3 +1,4 @@
+--
 DELETE FROM `rbac_linked_permissions` WHERE `id` IN (192, 196);
 INSERT INTO `rbac_linked_permissions` VALUES
 (192,  21), -- Skip reset talents when used more than allowed check

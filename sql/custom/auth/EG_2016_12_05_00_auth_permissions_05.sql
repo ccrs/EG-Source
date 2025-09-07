@@ -1,3 +1,4 @@
+--
 DELETE FROM `rbac_default_permissions`;
 DELETE FROM `rbac_permissions` WHERE `id` IN (2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007);
 INSERT INTO `rbac_permissions` (`id`, `name`) VALUES

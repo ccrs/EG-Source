@@ -1,3 +1,4 @@
+--
 DELETE FROM `rbac_linked_permissions` WHERE `id` IN (195, 199);
 INSERT INTO `rbac_linked_permissions` VALUES
 (195,   3), -- Join Normal Battleground
