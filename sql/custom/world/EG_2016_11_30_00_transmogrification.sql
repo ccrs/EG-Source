@@ -35,3 +35,8 @@ INSERT INTO `trinity_string` (`entry`, `content_default`) VALUES
 (@STRING_ENTRY+8, 'Transmogrifications removed'),
 (@STRING_ENTRY+9, 'There are no transmogrifications');
 
+DELETE FROM `command` WHERE `name` IN ('settings', 'settings transmogrification', 'settings transmogrification legendary');
+INSERT INTO `command` (`name`, `help`) VALUES
+('settings', 'Character settings, use one of the available options'),
+('settings transmogrification', 'Syntax: .settings transmogrification [0/1] - Enables or hides all surrounding transmogrifications (including own)'),
+('settings transmogrification legendary', 'Syntax: .settings transmogrification legendary [0/1] - Enables or hides all surrounding legendary transmogrifications (including own)');
