@@ -149,7 +149,6 @@ void BattlefieldGraveyard::ResurrectPlayers()
         // Resurrect player
         player->CastSpell(player, SPELL_BATTLEFIELD_RESURRECTION_VISUAL, true);
         player->ResurrectPlayer(1.0f);
-        player->CastSpell(player, 6962, true);
         player->CastSpell(player, SPELL_BATTLEFIELD_SPIRIT_HEAL_MANA, true);
         player->SpawnCorpseBones(false);
     }
