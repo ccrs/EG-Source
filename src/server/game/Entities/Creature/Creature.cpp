@@ -2145,6 +2145,12 @@ void Creature::ForcedDespawn(uint32 timeMSToDespawn, Seconds forceRespawnTimer)
 
             setDeathState(JUST_DIED);
         }
+        else if (forceRespawnTimer > Seconds::zero())
+        {
+            SetRespawnDelay(0);
+            SetRespawnTime(forceRespawnTimer.count());
+            overrideRespawnTime = false;
+        }
 
         // Skip corpse decay time
         RemoveCorpse(!overrideRespawnTime, false);
