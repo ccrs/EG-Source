@@ -746,8 +746,7 @@ void WorldSession::HandleAreaSpiritHealerQueueOpcode(WorldPackets::Battleground:
 
     if (Battleground* bg = _player->GetBattleground())
         bg->AddPlayerToResurrectQueue(areaSpiritHealerQueue.HealerGuid, _player->GetGUID());
-
-    if (Battlefield* bf = sBattlefieldMgr->GetBattlefield(_player->GetZoneId()))
+    else if (Battlefield* bf = sBattlefieldMgr->GetBattlefield(_player->GetZoneId()))
         bf->HandleAddPlayerToResurrectionQueue(_player, areaSpiritHealerQueue.HealerGuid);
 }
 
