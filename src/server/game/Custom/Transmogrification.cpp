@@ -214,7 +214,7 @@ uint32 Transmogrification::GetFakeEntry(Item const* item) const
 
 void Transmogrification::UpdateItem(Player* player, Item* item) const
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::UpdateItem called with values: player (%s, %u), item (%u)", player->GetName().c_str(), player->GetGUID().GetCounter(), item->GetEntry());
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::UpdateItem called with values: player (%s, %s), item (%u)", player->GetName().c_str(), player->GetGUID().ToString().c_str(), item->GetEntry());
 
     if (item->IsEquipped())
     {
@@ -226,7 +226,7 @@ void Transmogrification::UpdateItem(Player* player, Item* item) const
 
 void Transmogrification::DeleteFakeEntry(Player* player, Item* item)
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::DeleteFakeEntry called with values: player (%s, %u), item (%u)", player->GetName().c_str(), player->GetGUID().GetCounter(), item->GetEntry());
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::DeleteFakeEntry called with values: player (%s, %s), item (%u)", player->GetName().c_str(), player->GetGUID().ToString().c_str(), item->GetEntry());
 
     if (player->EraseTransmogrificationEntry(item->GetGUID()))
         UpdateItem(player, item);
@@ -234,7 +234,7 @@ void Transmogrification::DeleteFakeEntry(Player* player, Item* item)
 
 void Transmogrification::SetFakeEntry(Player* player, Item* item, uint32 entry)
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::SetFakeEntry called with values: player (%s, %u), item (%u)", player->GetName().c_str(), player->GetGUID().GetCounter(), item->GetEntry());
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::SetFakeEntry called with values: player (%s, %s), item (%u)", player->GetName().c_str(), player->GetGUID().ToString().c_str(), item->GetEntry());
 
     player->InsertTransmogrificationEntry(item->GetGUID(), entry);
     UpdateItem(player, item);
@@ -242,7 +242,7 @@ void Transmogrification::SetFakeEntry(Player* player, Item* item, uint32 entry)
 
 TrinityStrings Transmogrification::Transmogrify(Player* player, ObjectGuid itemGUID, uint8 slot, bool noCost)
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::Transmogrify called with values: player (%s, %u), itemGUID (%u), slot (%u), cost (%s)", player->GetName().c_str(), player->GetGUID().GetCounter(), itemGUID.GetCounter(), slot, noCost ? "true" : "false");
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::Transmogrify called with values: player (%s, %s), itemGUID (%s), slot (%u), cost (%s)", player->GetName().c_str(), player->GetGUID().ToString().c_str(), itemGUID.ToString().c_str(), slot, noCost ? "true" : "false");
 
     // slot of the transmogrified item
     if (slot >= EQUIPMENT_SLOT_END)
@@ -335,7 +335,7 @@ TrinityStrings Transmogrification::Transmogrify(Player* player, ObjectGuid itemG
 
 bool Transmogrification::CanTransmogrifyItemWithItem(Player* player, ItemTemplate const* target, ItemTemplate const* source) const
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::CanTransmogrifyItemWithItem called with values: player (%s, %u), target (%u), source (%u)", player->GetName().c_str(), player->GetGUID().GetCounter(), target->ItemId, source->ItemId);
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::CanTransmogrifyItemWithItem called with values: player (%s, %s), target (%u), source (%u)", player->GetName().c_str(), player->GetGUID().ToString().c_str(), target->ItemId, source->ItemId);
 
     if (!target || !source)
         return false;
@@ -399,7 +399,7 @@ bool Transmogrification::CanTransmogrifyItemWithItem(Player* player, ItemTemplat
 
 bool Transmogrification::SuitableForTransmogrification(Player* player, ItemTemplate const* proto) const
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::SuitableForTransmogrification called with values: player (%s, %u), proto (%u)", player->GetName().c_str(), player->GetGUID().GetCounter(), proto->ItemId);
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::SuitableForTransmogrification called with values: player (%s, %s), proto (%u)", player->GetName().c_str(), player->GetGUID().ToString().c_str(), proto->ItemId);
 
     // ItemTemplate const* proto = item->GetTemplate();
     if (!player || !proto)

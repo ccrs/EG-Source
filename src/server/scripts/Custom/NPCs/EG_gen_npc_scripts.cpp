@@ -59,7 +59,7 @@ public:
 
         void UpdateFlags()
         {
-            if (_currentPlayer)
+            if (!_currentPlayer.IsEmpty())
                 me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_IMMUNE_TO_PC);
             else
                 me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_IMMUNE_TO_PC);
@@ -543,7 +543,7 @@ public:
             }
 
             ObjectGuid const& current = dummyAI->_currentPlayer;
-            if (current)
+            if (!current.IsEmpty())
             {
                 if (player->GetGUID() == current)
                     AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Cancel current attempt", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_CANCEL));
@@ -581,7 +581,7 @@ public:
                     dummyAI->CancelAttempt();
                 break;
             case GOSSIP_OFFSET_ATTEMPT_MENU:
-                if (current)
+                if (!current.IsEmpty())
                     break;
                 AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Modify auras]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU));
                 AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Burst DPS (30 sec)", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_DPS_30SEC));
@@ -590,26 +590,26 @@ public:
                 SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
                 break;
             case GOSSIP_OFFSET_ATTEMPT_DPS_30SEC:
-                if (current)
+                if (!current.IsEmpty())
                     break;
                 CloseGossipMenuFor(player);
                 dummyAI->BeginAttempt(player, TestDummyModes::MODE_DPS, Seconds(30));
                 break;
             case GOSSIP_OFFSET_ATTEMPT_DPS_150SEC:
-                if (current)
+                if (!current.IsEmpty())
                     break;
                 CloseGossipMenuFor(player);
                 dummyAI->BeginAttempt(player, TestDummyModes::MODE_DPS, Seconds(150));
                 break;
             case GOSSIP_OFFSET_ATTEMPT_DPS_360SEC:
-                if (current)
+                if (!current.IsEmpty())
                     break;
                 CloseGossipMenuFor(player);
                 dummyAI->BeginAttempt(player, TestDummyModes::MODE_DPS, Minutes(6));
                 break;
             case GOSSIP_OFFSET_AURA_RESET_BUFFS:
                 ClearAllBuffs(player);
-                if (dummyAI->_currentPlayer)
+                if (!dummyAI->_currentPlayer.IsEmpty())
                     SendBuffMenu(player, dummyAI);
                 else
                     SendAuraMenu(player, dummyAI);

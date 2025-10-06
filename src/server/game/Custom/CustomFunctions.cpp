@@ -34,7 +34,7 @@ void Player::_LoadTransmogrifications(PreparedQueryResult result)
             uint32 lowGUID = fields[0].GetUInt32();
             uint32 fakeEntry = fields[1].GetUInt32();
 
-            ObjectGuid itemGUID(HighGuid::Item, 0, lowGUID);
+            ObjectGuid itemGUID = ObjectGuid::Create<HighGuid::Item>(lowGUID);
 
             // Only load items that are in inventory / bank / etc
             if (sObjectMgr->GetItemTemplate(fakeEntry) && GetItemByGuid(itemGUID))
@@ -45,7 +45,7 @@ void Player::_LoadTransmogrifications(PreparedQueryResult result)
             {
                 // Ignore, will be erased on next save.
                 // Additionally this can happen if an item was deleted from DB but still exists for the player
-                TC_LOG_DEBUG("transmogrification", "Item entry (Entry: %u, itemGUID: %u, playerGUID: %u) does not exist, ignoring.", fakeEntry, itemGUID.GetCounter(), GetGUID().GetCounter());
+                TC_LOG_DEBUG("transmogrification", "Item entry (Entry: %u, itemGUID: %s, playerGUID: %s) does not exist, ignoring.", fakeEntry, itemGUID.ToString().c_str(), GetGUID().ToString().c_str());
             }
         } while (result->NextRow());
     }
