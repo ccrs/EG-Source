@@ -53,17 +53,17 @@ typedef std::map<uint32, AnticheatData> AnticheatPlayersDataMap;
 
 class TC_GAME_API ServerOrderData
 {
-public:
-    ServerOrderData(uint32 serv, uint32 resp) : ServerOpcode1(serv), ServerOpcode2(0), ClientResp(resp), LastSent(0), LastRcvd(0), Counter(0) {}
-    ServerOrderData(uint32 serv1, uint32 serv2, uint32 resp) : ServerOpcode1(serv1), ServerOpcode2(serv2), ClientResp(resp), LastSent(0), LastRcvd(0), Counter(0) {}
+    public:
+        ServerOrderData(uint32 serv, uint32 resp) : ServerOpcode1(serv), ServerOpcode2(0), ClientResp(resp), LastSent(0), LastRcvd(0), Counter(0) {}
+        ServerOrderData(uint32 serv1, uint32 serv2, uint32 resp) : ServerOpcode1(serv1), ServerOpcode2(serv2), ClientResp(resp), LastSent(0), LastRcvd(0), Counter(0) {}
 
-    uint32 ServerOpcode1;
-    uint32 ServerOpcode2;
-    uint32 ClientResp;
+        uint32 ServerOpcode1;
+        uint32 ServerOpcode2;
+        uint32 ClientResp;
 
-    uint32 LastSent;
-    uint32 LastRcvd;
-    int32 Counter;
+        uint32 LastSent;
+        uint32 LastRcvd;
+        int32 Counter;
 };
 
 class TC_GAME_API AnticheatMgr
