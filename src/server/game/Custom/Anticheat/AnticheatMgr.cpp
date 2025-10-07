@@ -30,6 +30,7 @@
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
+#include "Realm.h"
 #include "SharedDefines.h"
 #include "SpellAuras.h"
 #include "World.h"
@@ -108,12 +109,13 @@ void AnticheatMgr::Initialize()
     _LoadBlockedLuaFunctions();
 }
 
-void AnticheatMgr::SaveLuaCheater(uint32 guid, uint32 accountId, std::string macro)
+void AnticheatMgr::SaveLuaCheater(uint32 accountId, uint32 realmId, uint32 guid, std::string macro)
 {
     auto pstmt = LoginDatabase.GetPreparedStatement(LOGIN_INS_ANTICHEAT_LUA_CHEATERS);
-    pstmt->setUInt32(0, guid);
-    pstmt->setUInt32(1, accountId);
-    pstmt->setString(2, macro);
+    pstmt->setUInt32(0, accountId);
+    pstmt->setUInt32(1, realmId);
+    pstmt->setUInt32(2, guid);
+    pstmt->setString(3, macro);
     LoginDatabase.Execute(pstmt);
 }
 
@@ -163,7 +165,7 @@ bool AnticheatMgr::CheckBlockedLuaFunctions(AccountData const* accountData, Play
                 TC_LOG_INFO("anticheat", "ANTICHEAT COUNTER MEASURE::Player {} has inaccessible LUA MACRO, placing on watch list", player->GetName());
                 // Outputs a log message indicating that the player has an inaccessible Lua macro and is being placed on a watch list.
 
-                SaveLuaCheater(player->GetGUID().GetCounter(), player->GetSession()->GetAccountId(), macro);
+                SaveLuaCheater(player->GetSession()->GetAccountId(), realm.Id.Realm, player->GetGUID().GetCounter(), macro);
                 // Calls the 'SaveLuaCheater' function, passing in the player's GUID, session account ID, and the 'macro' string.
                 // This function saves information about the Lua cheater, such as the id of the player account, character, and macro used, for further analysis or enforcement actions.
 
@@ -238,7 +240,7 @@ void AnticheatMgr::HandlePlayerLogin(Player* player)
     _players[player->GetGUID().GetCounter()].SetPosition(player->GetPositionX(), player->GetPositionY(), player->GetPositionZ(), player->GetOrientation());
     time_t gameTime = GameTime::GetGameTime();
     time_t today = (gameTime / DAY) * DAY;
-    QueryResult resultDB = LoginDatabase.PQuery("SELECT id, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, op_ack_hack_reports, counter_measures_reports FROM account_anticheat_reports WHERE id={} AND guid={} AND time={};", player->GetSession()->GetAccountId(), player->GetGUID().GetCounter(), today);
+    QueryResult resultDB = LoginDatabase.PQuery("SELECT id, realmid, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, op_ack_hack_reports, counter_measures_reports FROM account_anticheat_reports WHERE id={} AND realmid={} AND guid={} AND time={};", player->GetSession()->GetAccountId(), realm.Id.Realm, player->GetGUID().GetCounter(), today);
     if (resultDB)
         _players[player->GetGUID().GetCounter()].SetDailyReportState(true);
 }
@@ -320,7 +322,7 @@ void AnticheatMgr::SavePlayerData(Player* player)
     if (playerData.GetDailyReportState()) {
         time_t gameTime = GameTime::GetGameTime();
         time_t today = (gameTime / DAY) * DAY;
-        LoginDatabase.PExecute("REPLACE INTO account_anticheat_reports (id, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, op_ack_hack_reports, counter_measures_reports) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});", player->GetSession()->GetAccountId(), lowGUID, today, _players[lowGUID].GetCreationTime(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(OP_ACK_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT));
+        LoginDatabase.PExecute("REPLACE INTO account_anticheat_reports (id, realmid, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, op_ack_hack_reports, counter_measures_reports) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});", player->GetSession()->GetAccountId(), realm.Id.Realm, lowGUID, today, _players[lowGUID].GetCreationTime(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(OP_ACK_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT));
     }
 }
 
@@ -359,7 +361,7 @@ void AnticheatMgr::AnticheatGlobalCommand(ChatHandler* handler)
         if (Player* plr = itr->second->GetPlayer())
             SavePlayerData(plr);
 
-    QueryResult resultDB = LoginDatabase.Query("SELECT id, guid, average, total_reports, time FROM account_anticheat_reports WHERE total_reports != 0 ORDER BY average ASC LIMIT 10;");
+    QueryResult resultDB = LoginDatabase.PQuery("SELECT id, guid, average, total_reports, time, realmid FROM account_anticheat_reports WHERE total_reports != 0 AND realmid={} ORDER BY average ASC LIMIT 10;", realm.Id.Realm);
     if (!resultDB)
     {
         handler->PSendSysMessage("No players found.");
@@ -386,7 +388,7 @@ void AnticheatMgr::AnticheatGlobalCommand(ChatHandler* handler)
         } while (resultDB->NextRow());
     }
 
-    resultDB = LoginDatabase.Query("SELECT id, guid, average, total_reports FROM account_anticheat_reports WHERE total_reports != 0 ORDER BY total_reports DESC LIMIT 10;");
+    resultDB = LoginDatabase.PQuery("SELECT id, guid, average, total_reports, time, realmid FROM account_anticheat_reports WHERE total_reports != 0 AND realmid={} ORDER BY total_reports DESC LIMIT 10;", realm.Id.Realm);
 
     if (!resultDB)
     {
