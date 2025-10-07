@@ -310,13 +310,11 @@ void AnticheatMgr::CheckForOrderAck(uint32 opcode)
     }
 }
 
-void AnticheatMgr::SetAllowedMovement(Player* player, bool)
-{
-    player->SetCanTeleport(true);
-}
-
 void AnticheatMgr::SavePlayerData(Player* player)
 {
+    if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
+        return;
+
     uint32 lowGUID = player->GetGUID().GetCounter();
     AnticheatData const& playerData = _players[lowGUID];
     if (playerData.GetDailyReportState()) {
@@ -328,8 +326,11 @@ void AnticheatMgr::SavePlayerData(Player* player)
 
 void AnticheatMgr::OnPlayerMove(Player* player, MovementInfo const& movementInfo, uint32 opcode)
 {
+    if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
+        return;
+
     if (!AccountMgr::IsAdminAccount(player->GetSession()->GetSecurity()) || sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE_ON_GM))
-        sAnticheatMgr->StartHackDetection(player, movementInfo, opcode);
+        StartHackDetection(player, movementInfo, opcode);
 }
 
 uint32 AnticheatMgr::GetTotalReports(uint32 lowGUID) const
@@ -356,7 +357,7 @@ void AnticheatMgr::AnticheatGlobalCommand(ChatHandler* handler)
     // save All Anticheat Player Data before displaying global stats
     for (SessionMap::const_iterator itr = sWorld->GetAllSessions().begin(); itr != sWorld->GetAllSessions().end(); ++itr)
         if (Player* plr = itr->second->GetPlayer())
-            sAnticheatMgr->SavePlayerData(plr);
+            SavePlayerData(plr);
 
     QueryResult resultDB = LoginDatabase.Query("SELECT id, guid, average, total_reports, time FROM account_anticheat_reports WHERE total_reports != 0 ORDER BY average ASC LIMIT 10;");
     if (!resultDB)
@@ -440,6 +441,9 @@ void AnticheatMgr::AnticheatPurgeCommand(ChatHandler* /*handler*/)
 
 void AnticheatMgr::ResetDailyReportStates()
 {
+    if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
+        return;
+
     // this resets the daily reports to zero
     for (AnticheatPlayersDataMap::iterator it = _players.begin(); it != _players.end(); ++it)
         _players[(*it).first].SetDailyReportState(false);
