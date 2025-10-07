@@ -1688,10 +1688,7 @@ void AnticheatMgr::_BuildReport(Player* player, AnticheatReportTypes reportType)
     if (sWorld->getIntConfig(CONFIG_ANTICHEAT_MAX_REPORTS_FOR_DAILY_REPORT) < _players[key].GetTotalReports())
     {
         if (!_players[key].GetDailyReportState())
-        {
-            AnticheatData const& playerData = _players[key];
             _players[key].SetDailyReportState(true);
-        }
     }
 
     if (_players[key].GetTotalReports() > sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORTS_INGAME_NOTIFICATION))
