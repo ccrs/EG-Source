@@ -41,7 +41,7 @@ void AnticheatData::SetDailyReportState(bool b)
     _hasDailyReport = b;
 }
 
-bool AnticheatData::GetDailyReportState()
+bool AnticheatData::GetDailyReportState() const
 {
     return _hasDailyReport;
 }
@@ -116,7 +116,7 @@ void AnticheatData::SetTempReports(uint32 amount, uint8 type)
     _tempReports[type] = amount;
 }
 
-uint32 AnticheatData::GetTempReports(uint8 type)
+uint32 AnticheatData::GetTempReports(uint8 type) const
 {
     return _tempReports[type];
 }
@@ -126,7 +126,7 @@ void AnticheatData::SetTempReportsTimer(uint32 time, uint8 type)
     _tempReportsTimer[type] = time;
 }
 
-uint32 AnticheatData::GetTempReportsTimer(uint8 type)
+uint32 AnticheatData::GetTempReportsTimer(uint8 type) const
 {
     return _tempReportsTimer[type];
 }

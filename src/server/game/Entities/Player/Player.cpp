@@ -19371,7 +19371,6 @@ void Player::SaveToDB(CharacterDatabaseTransaction trans, bool create /* = false
     if (m_session->isLogingOut() || !sWorld->getBoolConfig(CONFIG_STATS_SAVE_ONLY_ON_LOGOUT))
         _SaveStats(trans);
 
-    // we save the data here to prevent spamming
     sAnticheatMgr->SavePlayerData(this);
 
     // save pet (hunter pet level and experience and all type pets health/mana).

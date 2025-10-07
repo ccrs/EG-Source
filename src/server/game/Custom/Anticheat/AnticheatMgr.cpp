@@ -23,6 +23,7 @@
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
 #include "GameObject.h"
+#include "GameTime.h"
 #include "Log.h"
 #include "Map.h"
 #include "MapManager.h"
@@ -109,18 +110,18 @@ void AnticheatMgr::Initialize()
 
 void AnticheatMgr::SaveLuaCheater(uint32 guid, uint32 accountId, std::string macro)
 {
-    auto pstmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ANTICHEAT_LUA_CHEATERS);
+    auto pstmt = LoginDatabase.GetPreparedStatement(LOGIN_INS_ANTICHEAT_LUA_CHEATERS);
     pstmt->setUInt32(0, guid);
     pstmt->setUInt32(1, accountId);
     pstmt->setString(2, macro);
-    CharacterDatabase.Execute(pstmt);
+    LoginDatabase.Execute(pstmt);
 }
 
 bool AnticheatMgr::CheckIsLuaCheater(uint32 accountId)
 {
-    auto pstmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_ANTICHEAT_LUA_CHEATERS);
+    auto pstmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ANTICHEAT_LUA_CHEATERS);
     pstmt->setUInt32(0, accountId);
-    auto result = CharacterDatabase.Query(pstmt);
+    auto result = LoginDatabase.Query(pstmt);
     if (result)
         return true;
 
@@ -233,12 +234,11 @@ void AnticheatMgr::StartHackDetection(Player* player, MovementInfo const& moveme
 
 void AnticheatMgr::HandlePlayerLogin(Player* player)
 {
-    // we must delete this to prevent errors in case of crash
-    CharacterDatabase.PExecute("DELETE FROM players_reports_status WHERE guid={}", player->GetGUID().GetCounter());
     // we initialize the pos of lastMovementPosition var.
     _players[player->GetGUID().GetCounter()].SetPosition(player->GetPositionX(), player->GetPositionY(), player->GetPositionZ(), player->GetOrientation());
-    QueryResult resultDB = CharacterDatabase.PQuery("SELECT * FROM daily_players_reports WHERE guid={};", player->GetGUID().GetCounter());
-
+    time_t gameTime = GameTime::GetGameTime();
+    time_t today = (gameTime / DAY) * DAY;
+    QueryResult resultDB = LoginDatabase.PQuery("SELECT id, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, op_ack_hack_reports, counter_measures_reports FROM account_anticheat_reports WHERE id={} AND guid={} AND time={};", player->GetSession()->GetAccountId(), player->GetGUID().GetCounter(), today);
     if (resultDB)
         _players[player->GetGUID().GetCounter()].SetDailyReportState(true);
 }
@@ -247,8 +247,6 @@ void AnticheatMgr::HandlePlayerLogout(Player* player)
 {
     // TO-DO Make a table that stores the cheaters of the day, with more detailed information.
 
-    // We must also delete it at logout to prevent have data of offline players in the db when we query the database (IE: The GM Command)
-    CharacterDatabase.PExecute("DELETE FROM players_reports_status WHERE guid={}", player->GetGUID().GetCounter());
     // Delete not needed data from the memory.
     _players.erase(player->GetGUID().GetCounter());
 }
@@ -319,14 +317,13 @@ void AnticheatMgr::SetAllowedMovement(Player* player, bool)
 
 void AnticheatMgr::SavePlayerData(Player* player)
 {
-    AnticheatData playerData = _players[player->GetGUID().GetCounter()];
-    CharacterDatabase.PExecute("REPLACE INTO players_reports_status (guid,average,total_reports,speed_reports,fly_reports,jump_reports,waterwalk_reports,teleportplane_reports,climb_reports,teleport_reports,ignorecontrol_reports,zaxis_reports,antiswim_reports,gravity_reports,antiknockback_reports,no_fall_damage_reports,op_ack_hack_reports,counter_measures_reports,creation_time) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});", player->GetGUID().GetCounter(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(OP_ACK_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT), _players[player->GetGUID().GetCounter()].GetCreationTime());
-}
-
-void AnticheatMgr::SavePlayerDataDaily(Player* player)
-{
-    AnticheatData playerData = _players[player->GetGUID().GetCounter()];
-    CharacterDatabase.PExecute("REPLACE INTO daily_players_reports (guid,average,total_reports,speed_reports,fly_reports,jump_reports,waterwalk_reports,teleportplane_reports,climb_reports,teleport_reports,ignorecontrol_reports,zaxis_reports,antiswim_reports,gravity_reports,antiknockback_reports,no_fall_damage_reports,op_ack_hack_reports,counter_measures_reports,creation_time) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});", player->GetGUID().GetCounter(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(OP_ACK_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT), _players[player->GetGUID().GetCounter()].GetCreationTime());
+    uint32 lowGUID = player->GetGUID().GetCounter();
+    AnticheatData const& playerData = _players[lowGUID];
+    if (playerData.GetDailyReportState()) {
+        time_t gameTime = GameTime::GetGameTime();
+        time_t today = (gameTime / DAY) * DAY;
+        LoginDatabase.PExecute("REPLACE INTO account_anticheat_reports (id, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, op_ack_hack_reports, counter_measures_reports) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});", player->GetSession()->GetAccountId(), lowGUID, today, _players[lowGUID].GetCreationTime(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(OP_ACK_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT));
+    }
 }
 
 void AnticheatMgr::OnPlayerMove(Player* player, MovementInfo const& movementInfo, uint32 opcode)
@@ -359,12 +356,9 @@ void AnticheatMgr::AnticheatGlobalCommand(ChatHandler* handler)
     // save All Anticheat Player Data before displaying global stats
     for (SessionMap::const_iterator itr = sWorld->GetAllSessions().begin(); itr != sWorld->GetAllSessions().end(); ++itr)
         if (Player* plr = itr->second->GetPlayer())
-        {
             sAnticheatMgr->SavePlayerData(plr);
-            sAnticheatMgr->SavePlayerDataDaily(plr);
-        }
 
-    QueryResult resultDB = CharacterDatabase.Query("SELECT guid,average,total_reports FROM players_reports_status WHERE total_reports != 0 ORDER BY average ASC LIMIT 3;");
+    QueryResult resultDB = LoginDatabase.Query("SELECT id, guid, average, total_reports, time FROM account_anticheat_reports WHERE total_reports != 0 ORDER BY average ASC LIMIT 10;");
     if (!resultDB)
     {
         handler->PSendSysMessage("No players found.");
@@ -377,18 +371,21 @@ void AnticheatMgr::AnticheatGlobalCommand(ChatHandler* handler)
         do
         {
             Field* fieldsDB = resultDB->Fetch();
-
-            uint32 guid = fieldsDB[0].GetUInt32();
-            float average = fieldsDB[1].GetFloat();
-            uint32 total_reports = fieldsDB[2].GetUInt32();
+            uint32 id = fieldsDB[0].GetUInt32();
+            uint32 guid = fieldsDB[1].GetUInt32();
+            float average = fieldsDB[2].GetFloat();
+            uint32 total_reports = fieldsDB[3].GetUInt32();
+            std::string reportTime = TimeToTimestampStr(fieldsDB[4].GetUInt64());
 
             if (Player* player = ObjectAccessor::FindPlayerByLowGUID(guid))
-                handler->PSendSysMessage("Player: {} Average: {} Total Reports: {}", player->GetName(), average, total_reports);
+                handler->PSendSysMessage("Account: {}, Player: {}, Average: {}, Total Reports: {}, Report Time: {}", player->GetSession()->GetAccountName(), player->GetName(), average, total_reports, reportTime);
+            else
+                handler->PSendSysMessage("Account: {}, Player: {}, Average: {}, Total Reports: {}, Report Time: {}", id, guid, average, total_reports, reportTime);
 
         } while (resultDB->NextRow());
     }
 
-    resultDB = CharacterDatabase.Query("SELECT guid,average,total_reports FROM players_reports_status WHERE total_reports != 0 ORDER BY total_reports DESC LIMIT 3;");
+    resultDB = LoginDatabase.Query("SELECT id, guid, average, total_reports FROM account_anticheat_reports WHERE total_reports != 0 ORDER BY total_reports DESC LIMIT 10;");
 
     if (!resultDB)
     {
@@ -402,13 +399,16 @@ void AnticheatMgr::AnticheatGlobalCommand(ChatHandler* handler)
         do
         {
             Field* fieldsDB = resultDB->Fetch();
-
-            uint32 guid = fieldsDB[0].GetUInt32();
-            float average = fieldsDB[1].GetFloat();
-            uint32 total_reports = fieldsDB[2].GetUInt32();
+            uint32 id = fieldsDB[0].GetUInt32();
+            uint32 guid = fieldsDB[1].GetUInt32();
+            float average = fieldsDB[2].GetFloat();
+            uint32 total_reports = fieldsDB[3].GetUInt32();
+            std::string reportTime = TimeToTimestampStr(fieldsDB[4].GetUInt64());
 
             if (Player* player = ObjectAccessor::FindPlayerByLowGUID(guid))
-                handler->PSendSysMessage("Player: {} Total Reports: {} Average: {}", player->GetName(), total_reports, average);
+                handler->PSendSysMessage("Account: {}, Player: {}, Average: {}, Total Reports: {}, Report Time: {}", player->GetSession()->GetAccountName(), player->GetName(), average, total_reports, reportTime);
+            else
+                handler->PSendSysMessage("Account: {}, Player: {}, Average: {}, Total Reports: {}, Report Time: {}", id, guid, average, total_reports, reportTime);
 
         } while (resultDB->NextRow());
     }
@@ -417,23 +417,7 @@ void AnticheatMgr::AnticheatGlobalCommand(ChatHandler* handler)
 // .anticheat delete gm cmd
 void AnticheatMgr::AnticheatDeleteCommand(uint32 guid)
 {
-    if (!guid)
-    {
-        for (AnticheatPlayersDataMap::iterator it = _players.begin(); it != _players.end(); ++it)
-        {
-            (*it).second.SetTotalReports(0);
-            (*it).second.SetAverage(0);
-            (*it).second.SetCreationTime(0);
-            for (uint8 i = 0; i < MAX_REPORT_TYPES; i++)
-            {
-                (*it).second.SetTempReports(0, i);
-                (*it).second.SetTempReportsTimer(0, i);
-                (*it).second.SetTypeReports(i, 0);
-            }
-        }
-        CharacterDatabase.PExecute("DELETE FROM players_reports_status;");
-    }
-    else
+    if (guid)
     {
         _players[guid].SetTotalReports(0);
         _players[guid].SetAverage(0);
@@ -444,15 +428,14 @@ void AnticheatMgr::AnticheatDeleteCommand(uint32 guid)
             _players[guid].SetTempReportsTimer(0, i);
             _players[guid].SetTypeReports(i, 0);
         }
-        CharacterDatabase.PExecute("DELETE FROM players_reports_status WHERE guid={};", guid);
     }
 }
 
 // .anticheat purge gm cmd
 void AnticheatMgr::AnticheatPurgeCommand(ChatHandler* /*handler*/)
 {
-    // we purge the whole daily_players_reports table in the character database
-    CharacterDatabase.Execute("TRUNCATE TABLE daily_players_reports;");
+    // we purge the whole account_anticheat_reports table in the character database
+    LoginDatabase.Execute("TRUNCATE TABLE account_anticheat_reports;");
 }
 
 void AnticheatMgr::ResetDailyReportStates()
@@ -1702,8 +1685,7 @@ void AnticheatMgr::_BuildReport(Player* player, AnticheatReportTypes reportType)
     {
         if (!_players[key].GetDailyReportState())
         {
-            AnticheatData playerData = _players[player->GetGUID().GetCounter()];
-            CharacterDatabase.PExecute("REPLACE INTO players_reports_status (guid,average,total_reports,speed_reports,fly_reports,jump_reports,waterwalk_reports,teleportplane_reports,climb_reports,teleport_reports,ignorecontrol_reports,zaxis_reports,antiswim_reports,gravity_reports,antiknockback_reports,no_fall_damage_reports,op_ack_hack_reports,counter_measures_reports,creation_time) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});", player->GetGUID().GetCounter(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(OP_ACK_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT), _players[player->GetGUID().GetCounter()].GetCreationTime());
+            AnticheatData const& playerData = _players[key];
             _players[key].SetDailyReportState(true);
         }
     }

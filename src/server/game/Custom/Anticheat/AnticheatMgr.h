@@ -78,7 +78,6 @@ class TC_GAME_API AnticheatMgr
         void SetAllowedMovement(Player* player, bool);
         void StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
         void SavePlayerData(Player* player);
-        void SavePlayerDataDaily(Player* player);
         void OnPlayerMove(Player* player, MovementInfo const& movementInfo, uint32 opcode);
 
         void HandlePlayerLogin(Player* player);

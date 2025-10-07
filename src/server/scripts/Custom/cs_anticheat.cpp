@@ -175,7 +175,7 @@ public:
             return false;
         }
         sAnticheatMgr->AnticheatDeleteCommand(player->GetGUID().GetCounter());
-        handler->PSendSysMessage("Anticheat players_reports_status deleted for player %s", player->GetName().c_str());
+        handler->PSendSysMessage("Anticheat data deleted for player %s", player->GetName().c_str());
         return true;
     }
     static bool HandleAntiCheatPurgeCommand(ChatHandler* handler)

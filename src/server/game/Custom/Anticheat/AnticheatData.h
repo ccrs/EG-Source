@@ -50,13 +50,13 @@ class AnticheatData
         void SetCreationTime(uint32 creationTime);
 
         void SetTempReports(uint32 amount, uint8 type);
-        uint32 GetTempReports(uint8 type);
+        uint32 GetTempReports(uint8 type) const;
 
         void SetTempReportsTimer(uint32 time, uint8 type);
-        uint32 GetTempReportsTimer(uint8 type);
+        uint32 GetTempReportsTimer(uint8 type) const;
 
         void SetDailyReportState(bool b);
-        bool GetDailyReportState();
+        bool GetDailyReportState() const;
     private:
         uint32 _lastOpcode;
         MovementInfo _lastMovementInfo;
