@@ -1641,7 +1641,7 @@ void AnticheatMgr::_CheckBGOriginPositions(Player* player)
 // mistake that was here or not, please increment the
 // following counter as a warning to the next guy:
 //
-// total_hours_wasted_here = 42
+// total_hours_wasted_here = 44
 //
 void AnticheatMgr::_BuildReport(Player* player, AnticheatReportTypes reportType)
 {
