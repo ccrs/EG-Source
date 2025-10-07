@@ -19,6 +19,7 @@
 #include "AnticheatScripts.h"
 #include "AccountMgr.h"
 #include "Battleground.h"
+#include "Chat.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
 #include "GameObject.h"
@@ -90,6 +91,12 @@ AnticheatMgr::~AnticheatMgr()
 {
 }
 
+AnticheatMgr* AnticheatMgr::instance()
+{
+    static AnticheatMgr instance;
+    return &instance;
+}
+
 void AnticheatMgr::Initialize()
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
@@ -120,7 +127,7 @@ bool AnticheatMgr::CheckIsLuaCheater(uint32 accountId)
     return false;
 }
 
-bool AnticheatMgr::CheckBlockedLuaFunctions(AccountData accountData[NUM_ACCOUNT_DATA_TYPES], Player* player)
+bool AnticheatMgr::CheckBlockedLuaFunctions(AccountData const* accountData, Player* player)
 {
     for (auto& kv : _luaBlockedFunctions)
     {
@@ -152,17 +159,12 @@ bool AnticheatMgr::CheckBlockedLuaFunctions(AccountData accountData[NUM_ACCOUNT_
                 std::string macro = currentData.substr(minPos, length);
                 // Extracts a substring from 'currentData' starting at 'minPos' with a length of 'length' and assigns it to the variable 'macro'.
 
-                if (player)
-                {
-                    // Checks if the 'player' pointer is not null (i.e., it points to a valid object, aka The NULL CHECK).
+                TC_LOG_INFO("anticheat", "ANTICHEAT COUNTER MEASURE::Player {} has inaccessible LUA MACRO, placing on watch list", player->GetName());
+                // Outputs a log message indicating that the player has an inaccessible Lua macro and is being placed on a watch list.
 
-                    TC_LOG_INFO("anticheat", "ANTICHEAT COUNTER MEASURE::Player {} has inaccessible LUA MACRO, placing on watch list", player->GetName());
-                    // Outputs a log message indicating that the player has an inaccessible Lua macro and is being placed on a watch list.
-
-                    SaveLuaCheater(player->GetGUID().GetCounter(), player->GetSession()->GetAccountId(), macro);
-                    // Calls the 'SaveLuaCheater' function, passing in the player's GUID, session account ID, and the 'macro' string.
-                    // This function saves information about the Lua cheater, such as the id of the player account, character, and macro used, for further analysis or enforcement actions.
-                }
+                SaveLuaCheater(player->GetGUID().GetCounter(), player->GetSession()->GetAccountId(), macro);
+                // Calls the 'SaveLuaCheater' function, passing in the player's GUID, session account ID, and the 'macro' string.
+                // This function saves information about the Lua cheater, such as the id of the player account, character, and macro used, for further analysis or enforcement actions.
 
                 return true;
             }
@@ -333,19 +335,22 @@ void AnticheatMgr::OnPlayerMove(Player* player, MovementInfo const& movementInfo
         sAnticheatMgr->StartHackDetection(player, movementInfo, opcode);
 }
 
-uint32 AnticheatMgr::GetTotalReports(uint32 lowGUID)
+uint32 AnticheatMgr::GetTotalReports(uint32 lowGUID) const
 {
-    return _players[lowGUID].GetTotalReports();
+    auto itr = _players.find(lowGUID);
+    return itr != _players.end() ? itr->second.GetTotalReports() : 0;
 }
 
-float AnticheatMgr::GetAverage(uint32 lowGUID)
+float AnticheatMgr::GetAverage(uint32 lowGUID) const
 {
-    return _players[lowGUID].GetAverage();
+    auto itr = _players.find(lowGUID);
+    return itr != _players.end() ? itr->second.GetAverage() : 0;
 }
 
-uint32 AnticheatMgr::GetTypeReports(uint32 lowGUID, uint8 type)
+uint32 AnticheatMgr::GetTypeReports(uint32 lowGUID, uint8 type) const
 {
-    return _players[lowGUID].GetTypeReports(type);
+    auto itr = _players.find(lowGUID);
+    return  itr != _players.end() ? itr->second.GetTypeReports(type) : 0;
 }
 
 // these are the supporters for the gm commands in cs_anticheat.cpp
@@ -456,6 +461,10 @@ void AnticheatMgr::ResetDailyReportStates()
     for (AnticheatPlayersDataMap::iterator it = _players.begin(); it != _players.end(); ++it)
         _players[(*it).first].SetDailyReportState(false);
 }
+
+/*
+ * Private class members
+ */
 
 void AnticheatMgr::_LoadBlockedLuaFunctions()
 {

@@ -19,13 +19,14 @@
 #define SC_ACMGR_H
 
 #include "AnticheatData.h"
-#include "Chat.h"
 #include "Common.h"
-#include "Player.h"
-#include "ScriptMgr.h"
 #include "SharedDefines.h"
-#include "WorldSession.h"
 #include <unordered_map>
+
+class AccountData;
+class ChatHandler;
+class Player;
+class WorldPacket;
 
 enum AnticheatReportTypes : uint8
 {
@@ -72,11 +73,7 @@ class TC_GAME_API AnticheatMgr
     ~AnticheatMgr();
 
     public:
-        static AnticheatMgr* instance()
-        {
-           static AnticheatMgr* instance = new AnticheatMgr();
-           return instance;
-        }
+        static AnticheatMgr* instance();
         void Initialize();
         void SetAllowedMovement(Player* player, bool);
         void StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
@@ -92,11 +89,10 @@ class TC_GAME_API AnticheatMgr
         // orders
         void OrderSent(WorldPacket const* data);
         void CheckForOrderAck(uint32 opcode);
-        std::vector<ServerOrderData> _opackorders; // Packets sent by server, triggering *_ACK from client
 
-        uint32 GetTotalReports(uint32 lowGUID);
-        float GetAverage(uint32 lowGUID);
-        uint32 GetTypeReports(uint32 lowGUID, uint8 type);
+        uint32 GetTotalReports(uint32 lowGUID) const;
+        float GetAverage(uint32 lowGUID) const;
+        uint32 GetTypeReports(uint32 lowGUID, uint8 type) const;
 
         void AnticheatGlobalCommand(ChatHandler* handler);
         void AnticheatDeleteCommand(uint32 guid);
@@ -104,7 +100,7 @@ class TC_GAME_API AnticheatMgr
         void ResetDailyReportStates();
         void SaveLuaCheater(uint32 guid, uint32 accountId, std::string macro);
         bool CheckIsLuaCheater(uint32 accountId);
-        bool CheckBlockedLuaFunctions(AccountData accountData[NUM_ACCOUNT_DATA_TYPES], Player* player = nullptr);
+        bool CheckBlockedLuaFunctions(AccountData const* accountData, Player* player = nullptr);
 
     private:
         void _LoadBlockedLuaFunctions();
@@ -151,6 +147,7 @@ class TC_GAME_API AnticheatMgr
         uint32 _updateCheckTimer = 4000;
         std::unordered_map<std::string, bool> _luaBlockedFunctions;
         AnticheatPlayersDataMap _players;
+        std::vector<ServerOrderData> _opackorders; // Packets sent by server, triggering *_ACK from client
 };
 
 #define sAnticheatMgr AnticheatMgr::instance()
