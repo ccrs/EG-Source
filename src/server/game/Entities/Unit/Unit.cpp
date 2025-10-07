@@ -8684,9 +8684,7 @@ void Unit::SetSpeedRate(UnitMoveType mtype, float rate)
 
     float newSpeedFlat = rate * (IsControlledByPlayer() ? playerBaseMoveSpeed[mtype] : baseMoveSpeed[mtype]);
     if (IsMovedByClient() && IsInWorld())
-    {
         MovementPacketSender::SendSpeedChangeToMover(this, mtype, newSpeedFlat);
-    }
     else if (IsMovedByClient() && !IsInWorld()) // (1)
         SetSpeedRateReal(mtype, rate);
     else // <=> if(!IsMovedByPlayer())
