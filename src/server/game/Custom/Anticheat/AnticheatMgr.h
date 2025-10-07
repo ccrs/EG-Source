@@ -102,9 +102,6 @@ class TC_GAME_API AnticheatMgr
         void AnticheatDeleteCommand(uint32 guid);
         void AnticheatPurgeCommand(ChatHandler* handler);
         void ResetDailyReportStates();
-        void SetMapId(uint32 mapId) { _mapId = mapId; }
-        [[nodiscard]] uint32 GetMapId() const { return _mapId; }
-        void LoadBlockedLuaFunctions();
         void SaveLuaCheater(uint32 guid, uint32 accountId, std::string macro);
         bool CheckIsLuaCheater(uint32 accountId);
         bool CheckBlockedLuaFunctions(AccountData accountData[NUM_ACCOUNT_DATA_TYPES], Player* player = nullptr);
@@ -152,7 +149,6 @@ class TC_GAME_API AnticheatMgr
         uint32 _alertFrequency = 0;
         uint32 _assignedspeeddiff = 0;
         uint32 _updateCheckTimer = 4000;
-        uint32 _mapId = uint32(-1);
         std::unordered_map<std::string, bool> _luaBlockedFunctions;
         AnticheatPlayersDataMap _players;
 };
