@@ -19,8 +19,7 @@
 #define SC_ACDATA_H
 
 #include "Define.h"
-
-struct MovementInfo;
+#include "MovementInfo.h"
 
 #define MAX_REPORT_TYPES 15
 
@@ -33,8 +32,8 @@ class AnticheatData
         void SetLastOpcode(uint32 opcode);
         uint32 GetLastOpcode() const;
 
-        const MovementInfo& GetLastMovementInfo() const;
-        void SetLastMovementInfo(MovementInfo& moveInfo);
+        MovementInfo const& GetLastMovementInfo() const;
+        void SetLastMovementInfo(MovementInfo const& moveInfo);
 
         void SetPosition(float x, float y, float z, float o);
 

@@ -66,7 +66,7 @@ const MovementInfo& AnticheatData::GetLastMovementInfo() const
     return _lastMovementInfo;
 }
 
-void AnticheatData::SetLastMovementInfo(MovementInfo& moveInfo)
+void AnticheatData::SetLastMovementInfo(MovementInfo const& moveInfo)
 {
     _lastMovementInfo = moveInfo;
 }

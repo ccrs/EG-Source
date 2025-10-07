@@ -79,10 +79,10 @@ class TC_GAME_API AnticheatMgr
         }
         void Initialize();
         void SetAllowedMovement(Player* player, bool);
-        void StartHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
+        void StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
         void SavePlayerData(Player* player);
         void SavePlayerDataDaily(Player* player);
-        void OnPlayerMove(Player* player, MovementInfo mi, uint32 opcode);
+        void OnPlayerMove(Player* player, MovementInfo const& movementInfo, uint32 opcode);
 
         void HandlePlayerLogin(Player* player);
         void HandlePlayerLogout(Player* player);
@@ -109,20 +109,20 @@ class TC_GAME_API AnticheatMgr
     private:
         void _LoadBlockedLuaFunctions();
 
-        void _SpeedHackDetection(Player* player, MovementInfo movementInfo);
-        void _FlyHackDetection(Player* player, MovementInfo movementInfo);
-        void _TeleportHackDetection(Player* player, MovementInfo movementInfo);
-        void _JumpHackDetection(Player* player, MovementInfo movementInfo,uint32 opcode);
-        void _TeleportPlaneHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
-        void _ClimbHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
-        void _IgnoreControlHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
-        void _GravityHackDetection(Player* player, MovementInfo movementInfo);
-        void _WalkOnWaterHackDetection(Player* player, MovementInfo movementInfo);
-        void _ZAxisHackDetection(Player* player, MovementInfo movementInfo);
-        void _AntiSwimHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
-        void _AntiKnockBackHackDetection(Player* player, MovementInfo movementInfo);
-        void _NoFallDamageDetection(Player* player, MovementInfo movementInfo);
-        void _BGStartExploitDetection(Player* player, MovementInfo movementInfo);
+        void _SpeedHackDetection(Player* player, MovementInfo const& movementInfo);
+        void _FlyHackDetection(Player* player, MovementInfo const& movementInfo);
+        void _TeleportHackDetection(Player* player, MovementInfo const& movementInfo);
+        void _JumpHackDetection(Player* player, MovementInfo const& movementInfo,uint32 opcode);
+        void _TeleportPlaneHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
+        void _ClimbHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
+        void _IgnoreControlHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
+        void _GravityHackDetection(Player* player, MovementInfo const& movementInfo);
+        void _WalkOnWaterHackDetection(Player* player, MovementInfo const& movementInfo);
+        void _ZAxisHackDetection(Player* player, MovementInfo const& movementInfo);
+        void _AntiSwimHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
+        void _AntiKnockBackHackDetection(Player* player, MovementInfo const& movementInfo);
+        void _NoFallDamageDetection(Player* player, MovementInfo const& movementInfo);
+        void _BGStartExploitDetection(Player* player, MovementInfo const& movementInfo);
 
         void _BGreport(Player* player);
         void _CheckBGOriginPositions(Player* player);

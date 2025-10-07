@@ -171,7 +171,7 @@ bool AnticheatMgr::CheckBlockedLuaFunctions(AccountData accountData[NUM_ACCOUNT_
     return false;
 }
 
-void AnticheatMgr::StartHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode)
+void AnticheatMgr::StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
         return;
@@ -326,10 +326,10 @@ void AnticheatMgr::SavePlayerDataDaily(Player* player)
     CharacterDatabase.PExecute("REPLACE INTO daily_players_reports (guid,average,total_reports,speed_reports,fly_reports,jump_reports,waterwalk_reports,teleportplane_reports,climb_reports,teleport_reports,ignorecontrol_reports,zaxis_reports,antiswim_reports,gravity_reports,antiknockback_reports,no_fall_damage_reports,op_ack_hack_reports,counter_measures_reports,creation_time) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});", player->GetGUID().GetCounter(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(OP_ACK_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT), _players[player->GetGUID().GetCounter()].GetCreationTime());
 }
 
-void AnticheatMgr::OnPlayerMove(Player* player, MovementInfo mi, uint32 opcode)
+void AnticheatMgr::OnPlayerMove(Player* player, MovementInfo const& movementInfo, uint32 opcode)
 {
     if (!AccountMgr::IsAdminAccount(player->GetSession()->GetSecurity()) || sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE_ON_GM))
-        sAnticheatMgr->StartHackDetection(player, mi, opcode);
+        sAnticheatMgr->StartHackDetection(player, movementInfo, opcode);
 }
 
 uint32 AnticheatMgr::GetTotalReports(uint32 lowGUID)
@@ -482,7 +482,7 @@ void AnticheatMgr::_LoadBlockedLuaFunctions()
     TC_LOG_INFO("server.loading", ">> Anticheat loaded {} LUA blocked private functions in {} ms", count, GetMSTimeDiffToNow(oldmsTime));
 }
 
-void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo movementInfo)
+void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movementInfo)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_SPEEDHACK_ENABLE))
         return;
@@ -633,7 +633,7 @@ void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo movementInfo
     }
 }
 
-void AnticheatMgr::_FlyHackDetection(Player* player, MovementInfo movementInfo)
+void AnticheatMgr::_FlyHackDetection(Player* player, MovementInfo const& movementInfo)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_FLYHACK_ENABLE))
         return;
@@ -703,7 +703,7 @@ void AnticheatMgr::_FlyHackDetection(Player* player, MovementInfo movementInfo)
     _BuildReport(player, FLY_HACK_REPORT);
 }
 
-void AnticheatMgr::_TeleportHackDetection(Player* player, MovementInfo movementInfo)
+void AnticheatMgr::_TeleportHackDetection(Player* player, MovementInfo const& movementInfo)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_TELEPORTHACK_ENABLE))
         return;
@@ -829,7 +829,7 @@ void AnticheatMgr::_TeleportHackDetection(Player* player, MovementInfo movementI
         player->SetCanTeleport(false);
 }
 
-void AnticheatMgr::_JumpHackDetection(Player* player, MovementInfo  movementInfo, uint32 opcode)
+void AnticheatMgr::_JumpHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_JUMPHACK_ENABLE))
         return;
@@ -975,7 +975,7 @@ void AnticheatMgr::_JumpHackDetection(Player* player, MovementInfo  movementInfo
     }
 }
 
-void AnticheatMgr::_TeleportPlaneHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode)
+void AnticheatMgr::_TeleportPlaneHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_TELEPANEHACK_ENABLE))
         return;
@@ -1038,7 +1038,7 @@ void AnticheatMgr::_TeleportPlaneHackDetection(Player* player, MovementInfo move
 }
 
 // basic detection
-void AnticheatMgr::_ClimbHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode)
+void AnticheatMgr::_ClimbHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_CLIMBHACK_ENABLE))
         return;
@@ -1080,7 +1080,7 @@ void AnticheatMgr::_ClimbHackDetection(Player* player, MovementInfo movementInfo
     }
 }
 
-void AnticheatMgr::_IgnoreControlHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode)
+void AnticheatMgr::_IgnoreControlHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode)
 {
     uint32 key = player->GetGUID().GetCounter();
 
@@ -1148,7 +1148,7 @@ void AnticheatMgr::_IgnoreControlHackDetection(Player* player, MovementInfo move
     }
 }
 
-void AnticheatMgr::_GravityHackDetection(Player* player, MovementInfo movementInfo)
+void AnticheatMgr::_GravityHackDetection(Player* player, MovementInfo const& movementInfo)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_GRAVITY_ENABLE))
         return;
@@ -1175,7 +1175,7 @@ void AnticheatMgr::_GravityHackDetection(Player* player, MovementInfo movementIn
     }
 }
 
-void AnticheatMgr::_WalkOnWaterHackDetection(Player* player, MovementInfo movementInfo)
+void AnticheatMgr::_WalkOnWaterHackDetection(Player* player, MovementInfo const& movementInfo)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_WATERWALKHACK_ENABLE))
         return;
@@ -1241,7 +1241,7 @@ void AnticheatMgr::_WalkOnWaterHackDetection(Player* player, MovementInfo moveme
     _BuildReport(player, WALK_WATER_HACK_REPORT);
 }
 
-void AnticheatMgr::_ZAxisHackDetection(Player* player, MovementInfo movementInfo)
+void AnticheatMgr::_ZAxisHackDetection(Player* player, MovementInfo const& movementInfo)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ZAXISHACK_ENABLE))
         return;
@@ -1364,7 +1364,7 @@ void AnticheatMgr::_ZAxisHackDetection(Player* player, MovementInfo movementInfo
 }
 
 // basic detection
-void AnticheatMgr::_AntiSwimHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode)
+void AnticheatMgr::_AntiSwimHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ANTISWIM_ENABLE))
         return;
@@ -1402,7 +1402,7 @@ void AnticheatMgr::_AntiSwimHackDetection(Player* player, MovementInfo movementI
 }
 
 // basic detection
-void AnticheatMgr::_AntiKnockBackHackDetection(Player* player, MovementInfo movementInfo)
+void AnticheatMgr::_AntiKnockBackHackDetection(Player* player, MovementInfo const& movementInfo)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ANTIKNOCKBACK_ENABLE))
         return;
@@ -1430,7 +1430,7 @@ void AnticheatMgr::_AntiKnockBackHackDetection(Player* player, MovementInfo move
 }
 
 // basic detection
-void AnticheatMgr::_NoFallDamageDetection(Player* player, MovementInfo movementInfo)
+void AnticheatMgr::_NoFallDamageDetection(Player* player, MovementInfo const& movementInfo)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_NO_FALL_DAMAGE_ENABLE))
         return;
@@ -1476,7 +1476,7 @@ void AnticheatMgr::_NoFallDamageDetection(Player* player, MovementInfo movementI
     }
 }
 
-void AnticheatMgr::_BGStartExploitDetection(Player* player, MovementInfo movementInfo)
+void AnticheatMgr::_BGStartExploitDetection(Player* player, MovementInfo const& movementInfo)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_BG_START_HACK_ENABLE))
         return;
