@@ -89,6 +89,16 @@ AnticheatMgr::~AnticheatMgr()
 {
 }
 
+void AnticheatMgr::Initialize()
+{
+    if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
+        return;
+
+    new AnticheatScripts();
+
+    LoadBlockedLuaFunctions();
+}
+
 void AnticheatMgr::LoadBlockedLuaFunctions()
 {
     if (!sWorld->getBoolConfig(CONFIG_LUABLOCKER_ENABLE))
@@ -1452,14 +1462,6 @@ void AnticheatMgr::BGStartExploit(Player* player, MovementInfo movementInfo)
         }
         return;
     }
-}
-
-void AnticheatMgr::StartScripts()
-{
-    if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
-        return;
-
-    new AnticheatScripts();
 }
 
 void AnticheatMgr::HandlePlayerLogin(Player* player)

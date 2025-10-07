@@ -77,12 +77,12 @@ class TC_GAME_API AnticheatMgr
            static AnticheatMgr* instance = new AnticheatMgr();
            return instance;
         }
+        void Initialize();
         void SetAllowedMovement(Player* player, bool);
         void StartHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
         void SavePlayerData(Player* player);
         void SavePlayerDataDaily(Player* player);
         void OnPlayerMove(Player* player, MovementInfo mi, uint32 opcode);
-        void StartScripts();
 
         void HandlePlayerLogin(Player* player);
         void HandlePlayerLogout(Player* player);
