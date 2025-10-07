@@ -1630,7 +1630,7 @@ void AnticheatMgr::_CheckBGOriginPositions(Player* player)
         std::string str = "|cFFFFFC00 BG START SPOT COUNTER MEASURE ALERT";
         sWorld->SendGMText(LANG_ANTICHEAT_COUNTERMEASURE, str.c_str(), player->GetName().c_str(), player->GetName().c_str());
     }
-    player->TeleportTo(player->GetMapId(), startPos->GetPositionX(), startPos->GetPositionY(), startPos->GetPositionZ(), startPos->GetOrientation());
+    player->TeleportTo(mapid, startPos->GetPositionX(), startPos->GetPositionY(), startPos->GetPositionZ(), startPos->GetOrientation());
 }
 
 //
