@@ -27,7 +27,7 @@
 #include "WorldSession.h"
 #include <unordered_map>
 
-enum AnticheatReportTypes
+enum AnticheatReportTypes : uint8
 {
     SPEED_HACK_REPORT = 0,
     FLY_HACK_REPORT = 1,
@@ -127,10 +127,26 @@ class TC_GAME_API AnticheatMgr
         void _NoFallDamageDetection(Player* player, MovementInfo movementInfo);
         void _BGStartExploitDetection(Player* player, MovementInfo movementInfo);
 
-        void BGreport(Player* player);
-        void CheckBGOriginPositions(Player* player);
-        void BuildReport(Player* player,uint8 reportType);
-        bool MustCheckTempReports(uint8 type);
+        void _BGreport(Player* player);
+        void _CheckBGOriginPositions(Player* player);
+
+        void _BuildReport(Player* player, AnticheatReportTypes reportType);
+        bool _MustCheckTempReports(AnticheatReportTypes type) const
+        {
+            switch (type)
+            {
+                case JUMP_HACK_REPORT:
+                case TELEPORT_HACK_REPORT:
+                case IGNORE_CONTROL_REPORT:
+                case GRAVITY_HACK_REPORT:
+                case ANTIKNOCK_BACK_HACK_REPORT:
+                case NO_FALL_DAMAGE_HACK_REPORT:
+                case OP_ACK_HACK_REPORT:
+                    return false;
+                default:
+                    return true;
+            }
+        }
 
         uint32 _counter = 0;
         uint32 _alertFrequency = 0;
