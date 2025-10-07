@@ -32,15 +32,15 @@
 #include "World.h"
 #include "WorldSession.h"
 
-constexpr auto LANG_ANTICHEAT_ALERT = 30087;
-constexpr auto LANG_ANTICHEAT_TELEPORT = 30088;
-constexpr auto LANG_ANTICHEAT_IGNORECONTROL = 30089;
-constexpr auto LANG_ANTICHEAT_DUEL = 30090;
-constexpr auto LANG_ANTICHEAT_BG_EXPLOIT = 30091;
-constexpr auto LANG_ANTICHEAT_COUNTERMEASURE = 30092;
+constexpr uint32 LANG_ANTICHEAT_ALERT = 30087;
+constexpr uint32 LANG_ANTICHEAT_TELEPORT = 30088;
+constexpr uint32 LANG_ANTICHEAT_IGNORECONTROL = 30089;
+constexpr uint32 LANG_ANTICHEAT_DUEL = 30090;
+constexpr uint32 LANG_ANTICHEAT_BG_EXPLOIT = 30091;
+constexpr uint32 LANG_ANTICHEAT_COUNTERMEASURE = 30092;
 
 // Time between server sends acknowledgement, and client is actually acknowledged
-constexpr auto ALLOWED_ACK_LAG = 2000;
+constexpr uint32 ALLOWED_ACK_LAG = 2000;
 
 enum AnticheatSpells
 {
