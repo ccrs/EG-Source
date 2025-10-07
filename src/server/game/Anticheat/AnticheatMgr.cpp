@@ -1456,6 +1456,9 @@ void AnticheatMgr::BGStartExploit(Player* player, MovementInfo movementInfo)
 
 void AnticheatMgr::StartScripts()
 {
+    if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
+        return;
+
     new AnticheatScripts();
 }
 

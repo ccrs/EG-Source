@@ -2285,6 +2285,7 @@ void World::SetInitialWorldSettings()
 
     TC_LOG_INFO("server.loading", "Loading Anticheat LUA blocked data...");
     sAnticheatMgr->LoadBlockedLuaFunctions();
+    sAnticheatMgr->StartScripts();
 
     TC_LOG_INFO("server.loading", "Calculate deletion of old calendar events time...");
     InitCalendarOldEventsDeletionTime();
