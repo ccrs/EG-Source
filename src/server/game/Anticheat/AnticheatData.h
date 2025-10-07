@@ -38,13 +38,13 @@ public:
     void SetPosition(float x, float y, float z, float o);
 
     uint32 GetTotalReports() const;
-    void SetTotalReports(uint32 _totalReports);
+    void SetTotalReports(uint32 totalReports);
 
     uint32 GetTypeReports(uint32 type) const;
     void SetTypeReports(uint32 type, uint32 amount);
 
     float GetAverage() const;
-    void SetAverage(float _average);
+    void SetAverage(float average);
 
     uint32 GetCreationTime() const;
     void SetCreationTime(uint32 creationTime);
@@ -58,15 +58,15 @@ public:
     void SetDailyReportState(bool b);
     bool GetDailyReportState();
 private:
-    uint32 lastOpcode;
-    MovementInfo lastMovementInfo;
-    uint32 totalReports;
-    uint32 typeReports[MAX_REPORT_TYPES];
-    float average;
-    uint32 creationTime;
-    uint32 tempReports[MAX_REPORT_TYPES];
-    uint32 tempReportsTimer[MAX_REPORT_TYPES];
-    bool hasDailyReport;
+    uint32 _lastOpcode;
+    MovementInfo _lastMovementInfo;
+    uint32 _totalReports;
+    uint32 _typeReports[MAX_REPORT_TYPES];
+    float _average;
+    uint32 _creationTime;
+    uint32 _tempReports[MAX_REPORT_TYPES];
+    uint32 _tempReportsTimer[MAX_REPORT_TYPES];
+    bool _hasDailyReport;
 };
 
 #endif

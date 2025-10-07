@@ -18,19 +18,16 @@
 #ifndef SC_ACMGR_H
 #define SC_ACMGR_H
 
-#include "Common.h"
-#include "SharedDefines.h"
-#include "ScriptMgr.h"
 #include "AnticheatData.h"
 #include "Chat.h"
+#include "Common.h"
 #include "Player.h"
-#include <unordered_map>
+#include "ScriptMgr.h"
+#include "SharedDefines.h"
 #include "WorldSession.h"
+#include <unordered_map>
 
-class Player;
-class AnticheatData;
-
-enum ReportTypes
+enum AnticheatReportTypes
 {
     SPEED_HACK_REPORT = 0,
     FLY_HACK_REPORT = 1,
@@ -57,16 +54,16 @@ typedef std::map<uint32, AnticheatData> AnticheatPlayersDataMap;
 class TC_GAME_API ServerOrderData
 {
 public:
-    ServerOrderData(uint32 serv, uint32 resp) : serverOpcode1(serv), serverOpcode2(0), clientResp(resp), lastSent(0), lastRcvd(0), counter(0) {}
-    ServerOrderData(uint32 serv1, uint32 serv2, uint32 resp) : serverOpcode1(serv1), serverOpcode2(serv2), clientResp(resp), lastSent(0), lastRcvd(0), counter(0) {}
+    ServerOrderData(uint32 serv, uint32 resp) : ServerOpcode1(serv), ServerOpcode2(0), ClientResp(resp), LastSent(0), LastRcvd(0), Counter(0) {}
+    ServerOrderData(uint32 serv1, uint32 serv2, uint32 resp) : ServerOpcode1(serv1), ServerOpcode2(serv2), ClientResp(resp), LastSent(0), LastRcvd(0), Counter(0) {}
 
-    uint32 serverOpcode1;
-    uint32 serverOpcode2;
-    uint32 clientResp;
+    uint32 ServerOpcode1;
+    uint32 ServerOpcode2;
+    uint32 ClientResp;
 
-    uint32 lastSent;
-    uint32 lastRcvd;
-    int32 counter;
+    uint32 LastSent;
+    uint32 LastRcvd;
+    int32 Counter;
 };
 
 class TC_GAME_API AnticheatMgr
@@ -105,8 +102,8 @@ class TC_GAME_API AnticheatMgr
         void AnticheatDeleteCommand(uint32 guid);
         void AnticheatPurgeCommand(ChatHandler* handler);
         void ResetDailyReportStates();
-        void SetMapId(uint32 MapID) { m_MapId = MapID; }
-        [[nodiscard]] uint32 GetMapId() const { return m_MapId; }
+        void SetMapId(uint32 mapId) { _mapId = mapId; }
+        [[nodiscard]] uint32 GetMapId() const { return _mapId; }
         void LoadBlockedLuaFunctions();
         void SaveLuaCheater(uint32 guid, uint32 accountId, std::string macro);
         bool CheckIsLuaCheater(uint32 accountId);
@@ -132,15 +129,16 @@ class TC_GAME_API AnticheatMgr
         void BuildReport(Player* player,uint8 reportType);
 
         bool MustCheckTempReports(uint8 type);
+        Position const* GetTeamStartPosition(TeamId teamId) const;
+
         uint32 _counter = 0;
         uint32 _alertFrequency = 0;
         uint32 _assignedspeeddiff = 0;
         uint32 _updateCheckTimer = 4000;
-        uint32 m_MapId = uint32(-1);
+        uint32 _mapId = uint32(-1);
         std::unordered_map<std::string, bool> _luaBlockedFunctions;
         std::array<Position, PVP_TEAMS_COUNT> _startPosition;
-        Position const* GetTeamStartPosition(TeamId teamId) const;
-        AnticheatPlayersDataMap m_Players;                        ///< Player data
+        AnticheatPlayersDataMap _players;
 };
 
 #define sAnticheatMgr AnticheatMgr::instance()

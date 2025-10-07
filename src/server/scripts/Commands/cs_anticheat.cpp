@@ -29,7 +29,7 @@
 
 using namespace Trinity::ChatCommands;
 
-enum Spells
+enum AnticheatSpells
 {
     SHACKLES = 38505,
     LFG_SPELL_DUNGEON_DESERTER = 71041,
