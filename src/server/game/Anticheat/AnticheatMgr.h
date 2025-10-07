@@ -110,26 +110,27 @@ class TC_GAME_API AnticheatMgr
         bool CheckBlockedLuaFunctions(AccountData accountData[NUM_ACCOUNT_DATA_TYPES], Player* player = nullptr);
 
     private:
-        void SpeedHackDetection(Player* player, MovementInfo movementInfo);
-        void FlyHackDetection(Player* player, MovementInfo movementInfo);
-        void WalkOnWaterHackDetection(Player* player, MovementInfo movementInfo);
-        void JumpHackDetection(Player* player, MovementInfo movementInfo,uint32 opcode);
-        void TeleportPlaneHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
-        void ClimbHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
-        void IgnoreControlHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
-        void TeleportHackDetection(Player* player, MovementInfo movementInfo);
-        void ZAxisHackDetection(Player* player, MovementInfo movementInfo);
-        void AntiSwimHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
-        void AntiKnockBackHackDetection(Player* player, MovementInfo movementInfo);
-        void GravityHackDetection(Player* player, MovementInfo movementInfo);
-        void NoFallDamageDetection(Player* player, MovementInfo movementInfo);
+        void _LoadBlockedLuaFunctions();
+
+        void _SpeedHackDetection(Player* player, MovementInfo movementInfo);
+        void _FlyHackDetection(Player* player, MovementInfo movementInfo);
+        void _TeleportHackDetection(Player* player, MovementInfo movementInfo);
+        void _JumpHackDetection(Player* player, MovementInfo movementInfo,uint32 opcode);
+        void _TeleportPlaneHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
+        void _ClimbHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
+        void _IgnoreControlHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
+        void _GravityHackDetection(Player* player, MovementInfo movementInfo);
+        void _WalkOnWaterHackDetection(Player* player, MovementInfo movementInfo);
+        void _ZAxisHackDetection(Player* player, MovementInfo movementInfo);
+        void _AntiSwimHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
+        void _AntiKnockBackHackDetection(Player* player, MovementInfo movementInfo);
+        void _NoFallDamageDetection(Player* player, MovementInfo movementInfo);
+        void _BGStartExploitDetection(Player* player, MovementInfo movementInfo);
+
         void BGreport(Player* player);
         void CheckBGOriginPositions(Player* player);
-        void BGStartExploit(Player* player, MovementInfo movementInfo);
         void BuildReport(Player* player,uint8 reportType);
-
         bool MustCheckTempReports(uint8 type);
-        Position const* GetTeamStartPosition(TeamId teamId) const;
 
         uint32 _counter = 0;
         uint32 _alertFrequency = 0;
@@ -137,7 +138,6 @@ class TC_GAME_API AnticheatMgr
         uint32 _updateCheckTimer = 4000;
         uint32 _mapId = uint32(-1);
         std::unordered_map<std::string, bool> _luaBlockedFunctions;
-        std::array<Position, PVP_TEAMS_COUNT> _startPosition;
         AnticheatPlayersDataMap _players;
 };
 
