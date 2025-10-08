@@ -23,7 +23,7 @@
 #include "SharedDefines.h"
 #include <unordered_map>
 
-class AccountData;
+struct AccountData;
 class ChatHandler;
 class Player;
 class WorldPacket;
