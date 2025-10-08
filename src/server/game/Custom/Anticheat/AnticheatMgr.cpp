@@ -16,7 +16,6 @@
  */
 
 #include "AnticheatMgr.h"
-#include "AnticheatScripts.h"
 #include "AccountMgr.h"
 #include "Battleground.h"
 #include "Chat.h"
@@ -103,8 +102,6 @@ void AnticheatMgr::Initialize()
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
         return;
-
-    new AnticheatScripts();
 
     _LoadBlockedLuaFunctions();
 }

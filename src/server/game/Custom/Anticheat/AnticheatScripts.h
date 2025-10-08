@@ -15,12 +15,9 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SC_ACSCRIPTS_H
-#define SC_ACSCRIPTS_H
-
 #include "ScriptMgr.h"
 
-class AnticheatScripts: public PlayerScript
+class TC_GAME_API AnticheatScripts : public PlayerScript
 {
     public:
         AnticheatScripts();
@@ -30,4 +27,4 @@ class AnticheatScripts: public PlayerScript
         void OnUpdate(Player* player, uint32 diff);
 };
 
-#endif
+void AddSC_AnticheatScripts();
