@@ -26,7 +26,6 @@
 struct AccountData;
 class ChatHandler;
 class Player;
-class WorldPacket;
 
 enum AnticheatReportTypes : uint8
 {
@@ -43,29 +42,13 @@ enum AnticheatReportTypes : uint8
     GRAVITY_HACK_REPORT = 10,
     ANTIKNOCK_BACK_HACK_REPORT = 11,
     NO_FALL_DAMAGE_HACK_REPORT = 12,
-    OP_ACK_HACK_REPORT = 13,
-    COUNTER_MEASURES_REPORT = 14
+    COUNTER_MEASURES_REPORT = 13
 
    // MAX_REPORT_TYPES
 };
 
 // GUIDLow is the key.
 typedef std::unordered_map<uint32, AnticheatData> AnticheatPlayersDataMap;
-
-class TC_GAME_API ServerOrderData
-{
-    public:
-        ServerOrderData(uint32 serv, uint32 resp) : ServerOpcode1(serv), ServerOpcode2(0), ClientResp(resp), LastSent(0), LastRcvd(0), Counter(0) {}
-        ServerOrderData(uint32 serv1, uint32 serv2, uint32 resp) : ServerOpcode1(serv1), ServerOpcode2(serv2), ClientResp(resp), LastSent(0), LastRcvd(0), Counter(0) {}
-
-        uint32 ServerOpcode1;
-        uint32 ServerOpcode2;
-        uint32 ClientResp;
-
-        uint32 LastSent;
-        uint32 LastRcvd;
-        int32 Counter;
-};
 
 class TC_GAME_API AnticheatMgr
 {
@@ -81,12 +64,6 @@ class TC_GAME_API AnticheatMgr
 
         void HandlePlayerLogin(Player* player);
         void HandlePlayerLogout(Player* player);
-        void AckUpdate(Player* player, uint32 diff);
-        void DoActions(Player* player);
-
-        // orders
-        void OrderSent(WorldPacket const* data);
-        void CheckForOrderAck(uint32 opcode);
 
         uint32 GetTotalReports(uint32 lowGUID) const;
         float GetAverage(uint32 lowGUID) const;
@@ -132,7 +109,6 @@ class TC_GAME_API AnticheatMgr
                 case GRAVITY_HACK_REPORT:
                 case ANTIKNOCK_BACK_HACK_REPORT:
                 case NO_FALL_DAMAGE_HACK_REPORT:
-                case OP_ACK_HACK_REPORT:
                     return false;
                 default:
                     return true;
@@ -142,10 +118,8 @@ class TC_GAME_API AnticheatMgr
         uint32 _counter = 0;
         uint32 _alertFrequency = 0;
         uint32 _assignedspeeddiff = 0;
-        uint32 _updateCheckTimer = 4000;
         std::unordered_map<std::string, bool> _luaBlockedFunctions;
         AnticheatPlayersDataMap _players;
-        std::vector<ServerOrderData> _opackorders; // Packets sent by server, triggering *_ACK from client
 };
 
 #define sAnticheatMgr AnticheatMgr::instance()

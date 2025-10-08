@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS `account_anticheat_reports` (
   `gravity_reports` bigint unsigned NOT NULL DEFAULT 0,
   `antiknockback_reports` bigint unsigned NOT NULL DEFAULT 0,
   `no_fall_damage_reports` bigint unsigned NOT NULL DEFAULT 0,
-  `op_ack_hack_reports` bigint unsigned NOT NULL DEFAULT 0,
   `counter_measures_reports` bigint unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`,`realmid`,`guid`,`time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -1592,7 +1592,6 @@ void World::LoadConfigSettings(bool reload)
     m_bool_configs[CONFIG_ANTICHEAT_NO_FALL_DAMAGE_ENABLE] = sConfigMgr->GetBoolDefault("Anticheat.NoFallDamage", false);
     m_bool_configs[CONFIG_ANTICHEAT_BG_START_HACK_ENABLE] = sConfigMgr->GetBoolDefault("Anticheat.DetectBGStartHack", false);
     m_bool_configs[CONFIG_ANTICHEAT_BG_START_COUNTERHACK_ENABLE] = sConfigMgr->GetBoolDefault("Anticheat.BG.StartAreaTeleport", false);
-    m_bool_configs[CONFIG_ANTICHEAT_OP_ACK_HACK_ENABLE] = sConfigMgr->GetBoolDefault("Anticheat.OpAckOrderHack", false);
     m_bool_configs[CONFIG_ANTICHEAT_CM_TIMEMANIPULATION] = sConfigMgr->GetBoolDefault("Anticheat.CM.TIMEMANIPULATION", true);
     m_bool_configs[CONFIG_ANTICHEAT_CM_FLYHACK] = sConfigMgr->GetBoolDefault("Anticheat.CM.FLYHACK", false);
     m_bool_configs[CONFIG_ANTICHEAT_CM_TELEPORT] = sConfigMgr->GetBoolDefault("Anticheat.CM.Teleport", false);
