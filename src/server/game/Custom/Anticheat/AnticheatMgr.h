@@ -118,6 +118,7 @@ class TC_GAME_API AnticheatMgr
         uint32 _counter = 0;
         uint32 _alertFrequency = 0;
         uint32 _assignedspeeddiff = 0;
+        uint32 _ingameNotificationThreshold = 0;
         std::unordered_map<std::string, bool> _luaBlockedFunctions;
         AnticheatPlayersDataMap _players;
 };

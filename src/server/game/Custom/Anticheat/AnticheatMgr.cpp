@@ -60,6 +60,15 @@ AnticheatMgr::AnticheatMgr()
     **    May you share freely, never taking more than you give.
     **    CTHULHU is watching ^(;,;)^
     */
+
+    // create a conf to establish a speed limit tolerance over server rate set speed
+    // this is done so we can ignore minor violations that are not false positives such as going 1 or 2 over the speed limit
+    _assignedspeeddiff = sWorld->getIntConfig(CONFIG_ANTICHEAT_SPEED_LIMIT_TOLERANCE);
+    // we do this because we can not get the collumn count being propper when we add more collumns for the report, so we make a indvidual warning for Teleport Hack
+    _alertFrequency = sWorld->getIntConfig(CONFIG_ANTICHEAT_ALERT_FREQUENCY);
+    if (_alertFrequency < 1)
+        _alertFrequency = 1;
+    _ingameNotificationThreshold = sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORTS_INGAME_NOTIFICATION);
 }
 
 AnticheatMgr::~AnticheatMgr()
@@ -492,10 +501,6 @@ void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movem
 
     // we create a diff speed in uint32 for further precision checking to avoid legit fall and slide
 
-    // create a conf to establish a speed limit tolerance over server rate set speed
-    // this is done so we can ignore minor violations that are not false positives such as going 1 or 2 over the speed limit
-    _assignedspeeddiff = sWorld->getIntConfig(CONFIG_ANTICHEAT_SPEED_LIMIT_TOLERANCE);
-
     // We did the (uint32) cast to accept a margin of tolerance for seasonal spells and buffs such as sugar rush
     // We check the last MovementInfo for the falling flag since falling down a hill and sliding a bit triggered a false positive
     if ((clientSpeedRate >= _assignedspeeddiff + speedRate) && !_players[key].GetLastMovementInfo().HasMovementFlag(MOVEMENTFLAG_FALLING))
@@ -675,13 +680,8 @@ void AnticheatMgr::_TeleportHackDetection(Player* player, MovementInfo const& mo
     /* Please work */
     if ((xDiff >= 50.0f || yDiff >= 50.0f) && !player->CanTeleport() && !player->IsBeingTeleported())// teleport helpers in play
     {
-        if (_players[key].GetTotalReports() > sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORTS_INGAME_NOTIFICATION))
+        if (_players[key].GetTotalReports() > _ingameNotificationThreshold)
         {
-            // we do this because we can not get the collumn count being propper when we add more collumns for the report, so we make a indvidual warning for Teleport Hack
-            _alertFrequency = sWorld->getIntConfig(CONFIG_ANTICHEAT_ALERT_FREQUENCY);
-            // So we dont divide by 0 by accident
-            if (_alertFrequency < 1)
-                _alertFrequency = 1;
             if (++_counter % _alertFrequency == 0)
             {
                 // display warning at the center of the screen, hacky way?
@@ -1009,12 +1009,8 @@ void AnticheatMgr::_IgnoreControlHackDetection(Player* player, MovementInfo cons
         if (unrestricted)
         {
             // we do this because we can not get the collumn count being propper when we add more collumns for the report, so we make a indvidual warning for Ignore Control
-            if (_players[key].GetTotalReports() > sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORTS_INGAME_NOTIFICATION))
+            if (_players[key].GetTotalReports() > _ingameNotificationThreshold)
             {
-                _alertFrequency = sWorld->getIntConfig(CONFIG_ANTICHEAT_ALERT_FREQUENCY);
-                // So we dont divide by 0 by accident
-                if (_alertFrequency < 1)
-                    _alertFrequency = 1;
                 if (++_counter % _alertFrequency == 0)
                 {
                     // display warning at the center of the screen, hacky way?
@@ -1186,13 +1182,8 @@ void AnticheatMgr::_ZAxisHackDetection(Player* player, MovementInfo const& movem
    // This is Black Magic. Check only for x and y difference but no z difference that is greater then or equal to z +2.5 of the ground
    if (_players[key].GetLastMovementInfo().pos.GetPositionZ() == movementInfo.pos.GetPositionZ() && player->GetPositionZ() >= player->GetFloorZ() + 2.5f)
    {
-       if (_players[key].GetTotalReports() > sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORTS_INGAME_NOTIFICATION))
+       if (_players[key].GetTotalReports() > _ingameNotificationThreshold)
        {
-            // we do this because we can not get the collumn count being propper when we add more collumns for the report, so we make a indvidual warning for Ignore Zaxis Hack
-           _alertFrequency = sWorld->getIntConfig(CONFIG_ANTICHEAT_ALERT_FREQUENCY);
-           // So we dont divide by 0 by accident
-           if (_alertFrequency < 1)
-               _alertFrequency = 1;
            if (++_counter % _alertFrequency == 0)
            {
                 // display warning at the center of the screen, hacky way?
@@ -1449,10 +1440,6 @@ void AnticheatMgr::_BGreport(Player* player)
 {
     uint32 key = player->GetGUID().GetCounter();
 
-    _alertFrequency = sWorld->getIntConfig(CONFIG_ANTICHEAT_ALERT_FREQUENCY);
-    // So we dont divide by 0 by accident
-    if (_alertFrequency < 1)
-        _alertFrequency = 1;
     if (++_counter % _alertFrequency == 0)
     {
         // display warning at the center of the screen, hacky way?
@@ -1575,12 +1562,8 @@ void AnticheatMgr::_BuildReport(Player* player, AnticheatReportTypes reportType)
             _players[key].SetDailyReportState(true);
     }
 
-    if (_players[key].GetTotalReports() > sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORTS_INGAME_NOTIFICATION))
+    if (_players[key].GetTotalReports() > _ingameNotificationThreshold)
     {
-        _alertFrequency = sWorld->getIntConfig(CONFIG_ANTICHEAT_ALERT_FREQUENCY);
-        // So we dont divide by 0 by accident
-        if (_alertFrequency < 1)
-            _alertFrequency = 1;
         if (++_counter % _alertFrequency == 0)
         {
             // display warning at the center of the screen, hacky way?
