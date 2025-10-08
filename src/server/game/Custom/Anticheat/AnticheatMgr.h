@@ -73,12 +73,13 @@ class TC_GAME_API AnticheatMgr
         void AnticheatDeleteCommand(uint32 guid);
         void AnticheatPurgeCommand(ChatHandler* handler);
         void ResetDailyReportStates();
-        void SaveLuaCheater(uint32 accountId, uint32 realmId, uint32 guid, std::string macro);
+
         bool CheckIsLuaCheater(uint32 accountId);
         bool CheckBlockedLuaFunctions(AccountData const* accountData, Player* player = nullptr);
 
     private:
         void _LoadBlockedLuaFunctions();
+        void _SaveLuaCheater(uint32 accountId, uint32 realmId, uint32 guid, std::string macro);
 
         void _SpeedHackDetection(Player* player, MovementInfo const& movementInfo);
         void _FlyHackDetection(Player* player, MovementInfo const& movementInfo);

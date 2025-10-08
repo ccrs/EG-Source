@@ -64,7 +64,6 @@ AnticheatMgr::AnticheatMgr()
     // create a conf to establish a speed limit tolerance over server rate set speed
     // this is done so we can ignore minor violations that are not false positives such as going 1 or 2 over the speed limit
     _assignedspeeddiff = sWorld->getIntConfig(CONFIG_ANTICHEAT_SPEED_LIMIT_TOLERANCE);
-    // we do this because we can not get the collumn count being propper when we add more collumns for the report, so we make a indvidual warning for Teleport Hack
     _alertFrequency = sWorld->getIntConfig(CONFIG_ANTICHEAT_ALERT_FREQUENCY);
     if (_alertFrequency < 1)
         _alertFrequency = 1;
@@ -87,74 +86,6 @@ void AnticheatMgr::Initialize()
         return;
 
     _LoadBlockedLuaFunctions();
-}
-
-void AnticheatMgr::SaveLuaCheater(uint32 accountId, uint32 realmId, uint32 guid, std::string macro)
-{
-    auto pstmt = LoginDatabase.GetPreparedStatement(LOGIN_INS_ANTICHEAT_LUA_CHEATERS);
-    pstmt->setUInt32(0, accountId);
-    pstmt->setUInt32(1, realmId);
-    pstmt->setUInt32(2, guid);
-    pstmt->setString(3, macro);
-    LoginDatabase.Execute(pstmt);
-}
-
-bool AnticheatMgr::CheckIsLuaCheater(uint32 accountId)
-{
-    auto pstmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ANTICHEAT_LUA_CHEATERS);
-    pstmt->setUInt32(0, accountId);
-    auto result = LoginDatabase.Query(pstmt);
-    if (result)
-        return true;
-
-    return false;
-}
-
-bool AnticheatMgr::CheckBlockedLuaFunctions(AccountData const* accountData, Player* player)
-{
-    for (auto& kv : _luaBlockedFunctions)
-    {
-        for (uint8 i = 0; i < NUM_ACCOUNT_DATA_TYPES; ++i)
-        {
-            std::string currentData = accountData[i].Data;
-            std::size_t pos = currentData.find(kv.first);
-            if (pos != std::string::npos)
-            {
-                // Code inside this if statement block will only execute if the variable 'pos' is not equal to std::string::npos.
-                // std::string::npos is a special value indicating the absence of a valid position.
-                // The following below is all done to capture the macro used and stored it in the SaveLuaCheater
-
-                const static std::size_t defaultLength = 200;
-                // Declares a constant variable 'defaultLength' with a value of 200.
-                // This variable represents the default length of a substring to be extracted.
-
-                std::size_t minPos = int64(int(pos) - 50) < 0 ? 0 : pos - 50;
-                // Calculates the minimum position from where the substring will be extracted.
-                // It subtracts 50 from the 'pos' value, casts it to int64, and checks if it's less than 0.
-                // If it is less than 0, sets 'minPos' to 0, otherwise sets 'minPos' to 'pos - 50'.
-                // With out the - 50 we will get a crash on certain substrings
-
-                std::size_t length = defaultLength + minPos > currentData.length() - 1 ? currentData.length() - minPos : defaultLength;
-                // Calculates the length of the substring to be extracted.
-                // It adds 'defaultLength' to 'minPos' and checks if it's greater than the length of 'currentData' minus 1.
-                // If it is greater, sets 'length' to 'currentData.length() - minPos', otherwise sets it to 'defaultLength'.
-
-                std::string macro = currentData.substr(minPos, length);
-                // Extracts a substring from 'currentData' starting at 'minPos' with a length of 'length' and assigns it to the variable 'macro'.
-
-                TC_LOG_INFO("anticheat", "ANTICHEAT COUNTER MEASURE::Player {} has inaccessible LUA MACRO, placing on watch list", player->GetName());
-                // Outputs a log message indicating that the player has an inaccessible Lua macro and is being placed on a watch list.
-
-                SaveLuaCheater(player->GetSession()->GetAccountId(), realm.Id.Realm, player->GetGUID().GetCounter(), macro);
-                // Calls the 'SaveLuaCheater' function, passing in the player's GUID, session account ID, and the 'macro' string.
-                // This function saves information about the Lua cheater, such as the id of the player account, character, and macro used, for further analysis or enforcement actions.
-
-                return true;
-            }
-        }
-    }
-
-    return false;
 }
 
 void AnticheatMgr::StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode)
@@ -373,6 +304,64 @@ void AnticheatMgr::ResetDailyReportStates()
         _players[(*it).first].SetDailyReportState(false);
 }
 
+bool AnticheatMgr::CheckIsLuaCheater(uint32 accountId)
+{
+    auto pstmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ANTICHEAT_LUA_CHEATERS);
+    pstmt->setUInt32(0, accountId);
+    auto result = LoginDatabase.Query(pstmt);
+    if (result)
+        return true;
+
+    return false;
+}
+
+bool AnticheatMgr::CheckBlockedLuaFunctions(AccountData const* accountData, Player* player)
+{
+    for (auto& kv : _luaBlockedFunctions)
+    {
+        for (uint8 i = 0; i < NUM_ACCOUNT_DATA_TYPES; ++i)
+        {
+            std::string currentData = accountData[i].Data;
+            std::size_t pos = currentData.find(kv.first);
+            if (pos != std::string::npos)
+            {
+                // Code inside this if statement block will only execute if the variable 'pos' is not equal to std::string::npos.
+                // std::string::npos is a special value indicating the absence of a valid position.
+                // The following below is all done to capture the macro used and stored it in the _SaveLuaCheater
+
+                const static std::size_t defaultLength = 200;
+                // Declares a constant variable 'defaultLength' with a value of 200.
+                // This variable represents the default length of a substring to be extracted.
+
+                std::size_t minPos = int64(int(pos) - 50) < 0 ? 0 : pos - 50;
+                // Calculates the minimum position from where the substring will be extracted.
+                // It subtracts 50 from the 'pos' value, casts it to int64, and checks if it's less than 0.
+                // If it is less than 0, sets 'minPos' to 0, otherwise sets 'minPos' to 'pos - 50'.
+                // With out the - 50 we will get a crash on certain substrings
+
+                std::size_t length = defaultLength + minPos > currentData.length() - 1 ? currentData.length() - minPos : defaultLength;
+                // Calculates the length of the substring to be extracted.
+                // It adds 'defaultLength' to 'minPos' and checks if it's greater than the length of 'currentData' minus 1.
+                // If it is greater, sets 'length' to 'currentData.length() - minPos', otherwise sets it to 'defaultLength'.
+
+                std::string macro = currentData.substr(minPos, length);
+                // Extracts a substring from 'currentData' starting at 'minPos' with a length of 'length' and assigns it to the variable 'macro'.
+
+                TC_LOG_INFO("anticheat", "ANTICHEAT COUNTER MEASURE::Player {} has inaccessible LUA MACRO, placing on watch list", player->GetName());
+                // Outputs a log message indicating that the player has an inaccessible Lua macro and is being placed on a watch list.
+
+                _SaveLuaCheater(player->GetSession()->GetAccountId(), realm.Id.Realm, player->GetGUID().GetCounter(), macro);
+                // Calls the '_SaveLuaCheater' function, passing in the player's GUID, session account ID, and the 'macro' string.
+                // This function saves information about the Lua cheater, such as the id of the player account, character, and macro used, for further analysis or enforcement actions.
+
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 /*
  * Private class members
  */
@@ -401,6 +390,16 @@ void AnticheatMgr::_LoadBlockedLuaFunctions()
     } while (result->NextRow());
 
     TC_LOG_INFO("server.loading", ">> Anticheat loaded {} LUA blocked private functions in {} ms", count, GetMSTimeDiffToNow(oldmsTime));
+}
+
+void AnticheatMgr::_SaveLuaCheater(uint32 accountId, uint32 realmId, uint32 guid, std::string macro)
+{
+    auto pstmt = LoginDatabase.GetPreparedStatement(LOGIN_INS_ANTICHEAT_LUA_CHEATERS);
+    pstmt->setUInt32(0, accountId);
+    pstmt->setUInt32(1, realmId);
+    pstmt->setUInt32(2, guid);
+    pstmt->setString(3, macro);
+    LoginDatabase.Execute(pstmt);
 }
 
 void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movementInfo)
