@@ -24,7 +24,6 @@ class TC_GAME_API AnticheatScripts : public PlayerScript
 
         void OnLogout(Player* player);
         void OnLogin(Player* player,bool);
-        void OnUpdate(Player* player, uint32 diff);
 };
 
 void AddSC_AnticheatScripts();
