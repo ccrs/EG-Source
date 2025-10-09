@@ -448,46 +448,35 @@ void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movem
 
     // Ah ah ah! You'll never understand why this one works. Or will you?
     // This covers packet manipulation
-    if (int32(timeDiff) < 0 && sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_TIMEMANIPULATION))
+    if (_players[key].GetLastMovementInfo().time > movementInfo.time || !timeDiff)
     {
-        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_WRITELOG))
+        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_TIMEMANIPULATION))
         {
-            uint32 latency = player->GetSession()->GetLatency();
-            std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-            TC_LOG_INFO("anticheat", "AnticheatMgr:: Time Manipulation - Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-        }
-        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_ALERTSCREEN))
-            _NotifyGameMasters("|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] TIME MANIPULATION COUNTER MEASURE ALERT");
+            if (Aura* slowcheater = player->AddAura(SLOWDOWN, player)) // SLOWDOWN
+                slowcheater->SetDuration(10000);
 
-        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_ALERTCHAT))
-        {
-            std::string str = "|cFFFFFC00 TIME MANIPULATION COUNTER MEASURE ALERT";
-            sWorld->SendGMText(LANG_ANTICHEAT_COUNTERMEASURE, str.c_str(), player->GetName().c_str(), player->GetName().c_str());
-        }
-        timeDiff = 1;
-        _BuildReport(player, COUNTER_MEASURES_REPORT);
-    }
-    else if (!timeDiff && sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_TIMEMANIPULATION))
-    {
-        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_WRITELOG))
-        {
-            std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-            TC_LOG_INFO("anticheat", "ANTICHEAT COUNTER MEASURE:: {} Time Diff Corrected(Map: {}) (possible Zero Time Manipulation) - Flagged at: {}", player->GetName(), player->GetMapId(), goXYZ);
-        }
-        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_ALERTSCREEN))
-            _NotifyGameMasters("|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] TIME MANIPULATION COUNTER MEASURE ALERT");
+            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_ALERTSCREEN))
+                _NotifyGameMasters("|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] TIME MANIPULATION COUNTER MEASURE ALERT");
 
-        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_ALERTCHAT))
-        {
-            std::string str = "|cFFFFFC00 TIME MANIPULATION COUNTER MEASURE ALERT";
-            sWorld->SendGMText(LANG_ANTICHEAT_COUNTERMEASURE, str.c_str(), player->GetName().c_str(), player->GetName().c_str());
+            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_WRITELOG))
+            {
+                std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
+                TC_LOG_INFO("anticheat", "ANTICHEAT COUNTER MEASURE:: {} Time Diff Corrected(Map: {}) (possible Zero Time Manipulation) - Flagged at: {}", player->GetName(), player->GetMapId(), goXYZ);
+            }
+            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_ALERTCHAT))
+            {
+                std::string str = "|cFFFFFC00 TIME MANIPULATION COUNTER MEASURE ALERT";
+                sWorld->SendGMText(LANG_ANTICHEAT_COUNTERMEASURE, str.c_str(), player->GetName().c_str(), player->GetName().c_str());
+            }
+            _BuildReport(player, COUNTER_MEASURES_REPORT);
         }
-        timeDiff = 1;
-        _BuildReport(player, COUNTER_MEASURES_REPORT);
+        _LogInfo(player, "Time Manipulation - Hack detected");
+        _BuildReport(player, SPEED_HACK_REPORT);
+        return;
     }
 
     // this is the distance doable by the player in 1 sec, using the time done to move to this point.
-    uint32 clientSpeedRate = distance2D * 1000 / timeDiff; // Only Chuck Norris can divide by zero so we divide by 1
+    uint32 clientSpeedRate = distance2D * 1000 / timeDiff;
 
     // we create a diff speed in uint32 for further precision checking to avoid legit fall and slide
 
@@ -495,14 +484,13 @@ void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movem
     // We check the last MovementInfo for the falling flag since falling down a hill and sliding a bit triggered a false positive
     if ((clientSpeedRate >= _assignedspeeddiff + speedRate) && !_players[key].GetLastMovementInfo().HasMovementFlag(MOVEMENTFLAG_FALLING))
     {
-
         if (!player->CanTeleport())
         {
             _LogInfo(player, "Speed-Hack (Speed Movement at " + std::to_string(clientSpeedRate) + " above allowed Server Set rate " + std::to_string(speedRate) + ".) detected");
             if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_SPEEDHACK))
             {
                 if (Aura* slowcheater = player->AddAura(SLOWDOWN, player)) // SLOWDOWN
-                    slowcheater->SetDuration(1000);
+                    slowcheater->SetDuration(10000);
 
                 if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_WRITELOG))
                 {
@@ -559,7 +547,6 @@ void AnticheatMgr::_FlyHackDetection(Player* player, MovementInfo const& movemen
         // Drop them with a op code set if they use a exploit or hack app
         WorldPacket cheater(12);
         cheater.SetOpcode(SMSG_MOVE_UNSET_CAN_FLY);
-
         cheater << player->GetPackGUID();
         cheater << uint32(0);
         player->SendMessageToSet(&cheater, true);
@@ -605,36 +592,31 @@ void AnticheatMgr::_TeleportHackDetection(Player* player, MovementInfo const& mo
     GameObject* transportGobj = player->GetMap()->GetGameObject(movementInfo.transport.guid);
     float maxDist2d = 70.0f; // Transports usually dont go far away.
     if (player->GetMapId() == 369) // Deeprun tram
-    {
         maxDist2d = 3000.0f;
-    }
-    if (transportGobj && (transportGobj->IsTransport() || transportGobj->IsWithinDist(player, maxDist2d, false)))
-    {
-        return;
-    }
 
-    /* Dueling exploit detection*/
-    if (player->duel)
-    {
-        if ((xDiff >= 50.0f || yDiff >= 50.0f) && !player->CanTeleport() && !player->IsBeingTeleported())
-        {
-            Player* opponent = player->duel->Opponent;
-            _NotifyGameMasters(player, "Possible Teleport Hack Detected! While Dueling [|cFF60FF00" + std::string(opponent->GetName()) + "|cFF00FFFF]", LANG_ANTICHEAT_DUEL);
-            _LogInfo(player, "DUEL ALERT Teleport-Hack detected");
-            _LogInfo(opponent, "DUEL ALERT Teleport-Hack detected");
-            _BuildReport(player, TELEPORT_HACK_REPORT);
-            _BuildReport(opponent, TELEPORT_HACK_REPORT);
-        }
-        else if (player->CanTeleport())
-            player->SetCanTeleport(false);
-    }
+    if (transportGobj && (transportGobj->IsTransport() || transportGobj->IsWithinDist(player, maxDist2d, false)))
+        return;
+
     /* Please work */
     if ((xDiff >= 50.0f || yDiff >= 50.0f) && !player->CanTeleport() && !player->IsBeingTeleported())// teleport helpers in play
     {
-        if (_players[key].GetTotalReports() > _ingameNotificationThreshold)
-            _NotifyGameMasters(player, "Possible Teleport Hack Detected!", LANG_ANTICHEAT_TELEPORT);
+        if (player->duel)
+        {
+            Player* opponent = player->duel->Opponent;
+            if (_players[key].GetTotalReports() > _ingameNotificationThreshold)
+                _NotifyGameMasters(player, "Possible Teleport Hack Detected! While Dueling [|cFF60FF00" + std::string(opponent->GetName()) + "|cFF00FFFF]", LANG_ANTICHEAT_DUEL);
 
-        _LogInfo(player, "Teleport-Hack detected");
+            _LogInfo(player, "DUEL ALERT Teleport-Hack detected");
+            _LogInfo(opponent, "DUEL ALERT Teleport-Hack detected");
+        }
+        else
+        {
+            if (_players[key].GetTotalReports() > _ingameNotificationThreshold)
+                _NotifyGameMasters(player, "Possible Teleport Hack Detected!", LANG_ANTICHEAT_TELEPORT);
+
+            _LogInfo(player, "Teleport-Hack detected");
+        }
+
         if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_TELEPORT))
         {
             if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_WRITELOG))
@@ -652,6 +634,11 @@ void AnticheatMgr::_TeleportHackDetection(Player* player, MovementInfo const& mo
             }
             player->TeleportTo(player->GetMapId(), lastX, lastY, lastZ, player->GetOrientation());
             _BuildReport(player, COUNTER_MEASURES_REPORT);
+        }
+        if (player->duel)
+        {
+            Player* opponent = player->duel->Opponent;
+            _BuildReport(opponent, TELEPORT_HACK_REPORT);
         }
         _BuildReport(player, TELEPORT_HACK_REPORT);
     }
@@ -1383,17 +1370,14 @@ void AnticheatMgr::_BuildReport(Player* player, AnticheatReportTypes reportType)
             player->CastSpell(player, SHACKLES);// shackle him in place to ensure no exploit happens for jail break attempt
 
             if (Aura* dungdesert = player->AddAura(LFG_SPELL_DUNGEON_DESERTER, player))// LFG_SPELL_DUNGEON_DESERTER
-            {
                 dungdesert->SetDuration(-1);
-            }
+
             if (Aura* bgdesert = player->AddAura(BG_SPELL_DESERTER, player))// BG_SPELL_DESERTER
-            {
                 bgdesert->SetDuration(-1);
-            }
+
             if (Aura* silent = player->AddAura(SILENCED, player))// SILENCED
-            {
                 silent->SetDuration(-1);
-            }
+
 
             // publically shame them with a server message
             if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_ANNOUNCEJAIL_ENABLE))
