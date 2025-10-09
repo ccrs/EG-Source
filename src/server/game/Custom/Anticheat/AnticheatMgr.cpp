@@ -253,9 +253,9 @@ void AnticheatMgr::AnticheatGlobalCommand(ChatHandler* handler)
             std::string reportTime = TimeToTimestampStr(fieldsDB[4].GetUInt64());
 
             if (Player* player = ObjectAccessor::FindPlayerByLowGUID(guid))
-                handler->PSendSysMessage("Account: {}, Player: {}, Average: {}, Total Reports: {}, Report Time: {}", player->GetSession()->GetAccountName(), player->GetName(), average, total_reports, reportTime);
+                handler->PSendSysMessage("Account: %s, Player: %s, Average: %f, Total Reports: %u, Report Time: %s", player->GetSession()->GetAccountName().c_str(), player->GetName().c_str(), average, total_reports, reportTime.c_str());
             else
-                handler->PSendSysMessage("Account: {}, Player: {}, Average: {}, Total Reports: {}, Report Time: {}", id, guid, average, total_reports, reportTime);
+                handler->PSendSysMessage("Account: %u, Player: %u, Average: %f, Total Reports: %u, Report Time: %s", id, guid, average, total_reports, reportTime.c_str());
 
         } while (resultDB->NextRow());
     }
@@ -281,9 +281,9 @@ void AnticheatMgr::AnticheatGlobalCommand(ChatHandler* handler)
             std::string reportTime = TimeToTimestampStr(fieldsDB[4].GetUInt64());
 
             if (Player* player = ObjectAccessor::FindPlayerByLowGUID(guid))
-                handler->PSendSysMessage("Account: {}, Player: {}, Average: {}, Total Reports: {}, Report Time: {}", player->GetSession()->GetAccountName(), player->GetName(), average, total_reports, reportTime);
+                handler->PSendSysMessage("Account: %s, Player: %s, Average: %f, Total Reports: %u, Report Time: %s", player->GetSession()->GetAccountName().c_str(), player->GetName().c_str(), average, total_reports, reportTime.c_str());
             else
-                handler->PSendSysMessage("Account: {}, Player: {}, Average: {}, Total Reports: {}, Report Time: {}", id, guid, average, total_reports, reportTime);
+                handler->PSendSysMessage("Account: %u, Player: %u, Average: %f, Total Reports: %u, Report Time: %s", id, guid, average, total_reports, reportTime.c_str());
 
         } while (resultDB->NextRow());
     }
