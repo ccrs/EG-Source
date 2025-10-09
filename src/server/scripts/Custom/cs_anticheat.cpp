@@ -46,14 +46,14 @@ public:
     {
         static ChatCommandTable anticheatCommandTable =
         {
-            { "global",      HandleAntiCheatGlobalCommand,   rbac::RBAC_ROLE_GAMEMASTER,              Console::Yes },
-            { "player",      HandleAntiCheatPlayerCommand,   rbac::RBAC_ROLE_GAMEMASTER,              Console::Yes },
-            { "delete",      HandleAntiCheatDeleteCommand,   rbac::RBAC_ROLE_ADMINISTRATOR,           Console::Yes },
-            { "purge",       HandleAntiCheatPurgeCommand,    rbac::RBAC_ROLE_ADMINISTRATOR,           Console::Yes },
-            { "handle",      HandleAntiCheatHandleCommand,   rbac::RBAC_ROLE_ADMINISTRATOR,           Console::Yes },
-            { "jail",        HandleAnticheatJailCommand,     rbac::RBAC_ROLE_GAMEMASTER,              Console::Yes },
-            { "parole",      HandleAnticheatParoleCommand,   rbac::RBAC_ROLE_ADMINISTRATOR,           Console::Yes },
-            { "warn",        HandleAnticheatWarnCommand,     rbac::RBAC_ROLE_GAMEMASTER,              Console::Yes }
+            { "global", HandleAntiCheatGlobalCommand, rbac::RBAC_ROLE_GAMEMASTER,    Console::Yes },
+            { "player", HandleAntiCheatPlayerCommand, rbac::RBAC_ROLE_GAMEMASTER,    Console::Yes },
+            { "delete", HandleAntiCheatDeleteCommand, rbac::RBAC_ROLE_ADMINISTRATOR, Console::Yes },
+            { "purge",  HandleAntiCheatPurgeCommand,  rbac::RBAC_ROLE_ADMINISTRATOR, Console::Yes },
+            { "handle", HandleAntiCheatHandleCommand, rbac::RBAC_ROLE_ADMINISTRATOR, Console::Yes },
+            { "jail",   HandleAnticheatJailCommand,   rbac::RBAC_ROLE_GAMEMASTER,    Console::Yes },
+            { "parole", HandleAnticheatParoleCommand, rbac::RBAC_ROLE_ADMINISTRATOR, Console::Yes },
+            { "warn",   HandleAnticheatWarnCommand,   rbac::RBAC_ROLE_GAMEMASTER,    Console::Yes }
         };
 
         static ChatCommandTable commandTable =
@@ -181,9 +181,9 @@ public:
     static bool HandleAntiCheatPurgeCommand(ChatHandler* handler)
     {
         // For the sins I am about to commit, may CTHULHU forgive me
-        // this will purge the daily_player_reports which is the cumlative statistics of auto reports
+        // this will purge the data which is the cumlative statistics of auto reports
         sAnticheatMgr->AnticheatPurgeCommand(handler);
-        handler->PSendSysMessage("The Anticheat daily_player_reports has been purged.");
+        handler->PSendSysMessage("The Anticheat data has been purged.");
         return true;
     }
 
@@ -367,12 +367,12 @@ public:
     {
         if (enable)
         {
-            sWorld->setBoolConfig(CONFIG_ANTICHEAT_ENABLE,true);
+            sWorld->setBoolConfig(CONFIG_ANTICHEAT_ENABLE, true);
             handler->SendSysMessage("The Anticheat System is now: Enabled!");
         }
         else
         {
-            sWorld->setBoolConfig(CONFIG_ANTICHEAT_ENABLE,false);
+            sWorld->setBoolConfig(CONFIG_ANTICHEAT_ENABLE, false);
             handler->SendSysMessage("The Anticheat System is now: Disabled!");
         }
 
