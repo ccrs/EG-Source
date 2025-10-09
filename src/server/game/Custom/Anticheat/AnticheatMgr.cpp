@@ -155,27 +155,23 @@ void AnticheatMgr::HandlePlayerLogin(Player* player)
     QueryResult resultDB = LoginDatabase.PQuery("SELECT id, realmid, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, counter_measures_reports FROM account_anticheat_reports WHERE id={} AND realmid={} AND guid={} AND time={};", player->GetSession()->GetAccountId(), realm.Id.Realm, player->GetGUID().GetCounter(), today);
     if (resultDB)
     {
-        do
-        {
-            Field* fields = resultDB->Fetch();
-            playerAntiCheatData.SetAverage(fields[5].GetUInt32());
-            playerAntiCheatData.SetTotalReports(fields[6].GetUInt32());
-            playerAntiCheatData.SetTypeReports(SPEED_HACK_REPORT, fields[7].GetUInt32());
-            playerAntiCheatData.SetTypeReports(FLY_HACK_REPORT, fields[8].GetUInt32());
-            playerAntiCheatData.SetTypeReports(JUMP_HACK_REPORT, fields[9].GetUInt32());
-            playerAntiCheatData.SetTypeReports(WALK_WATER_HACK_REPORT, fields[10].GetUInt32());
-            playerAntiCheatData.SetTypeReports(TELEPORT_PLANE_HACK_REPORT, fields[11].GetUInt32());
-            playerAntiCheatData.SetTypeReports(CLIMB_HACK_REPORT, fields[12].GetUInt32());
-            playerAntiCheatData.SetTypeReports(TELEPORT_HACK_REPORT, fields[13].GetUInt32());
-            playerAntiCheatData.SetTypeReports(IGNORE_CONTROL_REPORT, fields[14].GetUInt32());
-            playerAntiCheatData.SetTypeReports(ZAXIS_HACK_REPORT, fields[15].GetUInt32());
-            playerAntiCheatData.SetTypeReports(ANTISWIM_HACK_REPORT, fields[16].GetUInt32());
-            playerAntiCheatData.SetTypeReports(GRAVITY_HACK_REPORT, fields[17].GetUInt32());
-            playerAntiCheatData.SetTypeReports(ANTIKNOCK_BACK_HACK_REPORT, fields[18].GetUInt32());
-            playerAntiCheatData.SetTypeReports(NO_FALL_DAMAGE_HACK_REPORT, fields[19].GetUInt32());
-            playerAntiCheatData.SetTypeReports(COUNTER_MEASURES_REPORT, fields[20].GetUInt32());
-        }
-        while (resultDB->NextRow());
+        Field* fields = resultDB->Fetch();
+        playerAntiCheatData.SetAverage(fields[5].GetUInt32());
+        playerAntiCheatData.SetTotalReports(fields[6].GetUInt32());
+        playerAntiCheatData.SetTypeReports(SPEED_HACK_REPORT, fields[7].GetUInt32());
+        playerAntiCheatData.SetTypeReports(FLY_HACK_REPORT, fields[8].GetUInt32());
+        playerAntiCheatData.SetTypeReports(JUMP_HACK_REPORT, fields[9].GetUInt32());
+        playerAntiCheatData.SetTypeReports(WALK_WATER_HACK_REPORT, fields[10].GetUInt32());
+        playerAntiCheatData.SetTypeReports(TELEPORT_PLANE_HACK_REPORT, fields[11].GetUInt32());
+        playerAntiCheatData.SetTypeReports(CLIMB_HACK_REPORT, fields[12].GetUInt32());
+        playerAntiCheatData.SetTypeReports(TELEPORT_HACK_REPORT, fields[13].GetUInt32());
+        playerAntiCheatData.SetTypeReports(IGNORE_CONTROL_REPORT, fields[14].GetUInt32());
+        playerAntiCheatData.SetTypeReports(ZAXIS_HACK_REPORT, fields[15].GetUInt32());
+        playerAntiCheatData.SetTypeReports(ANTISWIM_HACK_REPORT, fields[16].GetUInt32());
+        playerAntiCheatData.SetTypeReports(GRAVITY_HACK_REPORT, fields[17].GetUInt32());
+        playerAntiCheatData.SetTypeReports(ANTIKNOCK_BACK_HACK_REPORT, fields[18].GetUInt32());
+        playerAntiCheatData.SetTypeReports(NO_FALL_DAMAGE_HACK_REPORT, fields[19].GetUInt32());
+        playerAntiCheatData.SetTypeReports(COUNTER_MEASURES_REPORT, fields[20].GetUInt32());
         playerAntiCheatData.SetDailyReportState(true);
     }
 }
