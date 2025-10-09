@@ -156,7 +156,7 @@ void AnticheatMgr::HandlePlayerLogin(Player* player)
     if (resultDB)
     {
         Field* fields = resultDB->Fetch();
-        playerAntiCheatData.SetAverage(fields[5].GetUInt32());
+        playerAntiCheatData.SetAverage(fields[5].GetFloat());
         playerAntiCheatData.SetTotalReports(fields[6].GetUInt32());
         playerAntiCheatData.SetTypeReports(SPEED_HACK_REPORT, fields[7].GetUInt32());
         playerAntiCheatData.SetTypeReports(FLY_HACK_REPORT, fields[8].GetUInt32());
