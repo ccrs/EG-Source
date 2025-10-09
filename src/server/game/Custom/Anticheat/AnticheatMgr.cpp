@@ -597,13 +597,9 @@ void AnticheatMgr::_TeleportHackDetection(Player* player, MovementInfo const& mo
 
     float lastX = _players[key].GetLastMovementInfo().pos.GetPositionX();
     float newX = movementInfo.pos.GetPositionX();
-
     float lastY = _players[key].GetLastMovementInfo().pos.GetPositionY();
     float newY = movementInfo.pos.GetPositionY();
-
     float lastZ = _players[key].GetLastMovementInfo().pos.GetPositionZ();
-    float newZ = movementInfo.pos.GetPositionZ();
-
     float xDiff = fabs(lastX - newX);
     float yDiff = fabs(lastY - newY);
 
