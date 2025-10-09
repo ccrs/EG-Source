@@ -507,13 +507,7 @@ void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movem
 
         if (!player->CanTeleport())
         {
-            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-            {
-                uint32 latency = 0;
-                latency = player->GetSession()->GetLatency();
-                std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-                TC_LOG_INFO("anticheat", "AnticheatMgr:: Speed-Hack (Speed Movement at {} above allowed Server Set rate {}.) detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", clientSpeedRate, speedRate, player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-            }
+            _LogInfo(player, "Speed-Hack (Speed Movement at " + std::to_string(clientSpeedRate) + " above allowed Server Set rate " + std::to_string(speedRate) + ".) detected");
             if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_SPEEDHACK))
             {
                 if (Aura* slowcheater = player->AddAura(SLOWDOWN, player))// SLOWDOWN
@@ -574,13 +568,7 @@ void AnticheatMgr::_FlyHackDetection(Player* player, MovementInfo const& movemen
     if (!movementInfo.HasMovementFlag(MOVEMENTFLAG_CAN_FLY) && !movementInfo.HasMovementFlag(MOVEMENTFLAG_FLYING) && stricterChecks)
         return;
 
-    if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-    {
-        uint32 latency = 0;
-        latency = player->GetSession()->GetLatency();
-        std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-        TC_LOG_INFO("anticheat", "AnticheatMgr:: Fly-Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-    }
+    _LogInfo(player, "Fly-Hack detected");
     if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_FLYHACK))
     {   // display warning at the center of the screen, hacky way?
         std::string str = "|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] FLY HACK COUNTER MEASURE ALERT";
@@ -652,24 +640,9 @@ void AnticheatMgr::_TeleportHackDetection(Player* player, MovementInfo const& mo
         if ((xDiff >= 50.0f || yDiff >= 50.0f) && !player->CanTeleport() && !player->IsBeingTeleported())
         {
             Player* opponent = player->duel->Opponent;
-
-            std::string str = "|cFFFFFC00[DUEL ALERT Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Possible Teleport Hack Detected! While Dueling [|cFF60FF00" + std::string(opponent->GetName()) + "|cFF00FFFF]";
-            WorldPacket data(SMSG_NOTIFICATION, (str.size() + 1));
-            data << str;
-            sWorld->SendGlobalGMMessage(&data);
-            uint32 latency = 0;
-            latency = player->GetSession()->GetLatency();
-            std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-            uint32 latency2 = 0;
-            latency2 = opponent->GetSession()->GetLatency();
-            std::string goXYZ2 = ".go xyz " + std::to_string(opponent->GetPositionX()) + " " + std::to_string(opponent->GetPositionY()) + " " + std::to_string(opponent->GetPositionZ() + 1.0f) + " " + std::to_string(opponent->GetMap()->GetId()) + " " + std::to_string(opponent->GetOrientation());
-            sWorld->SendGMText(LANG_ANTICHEAT_DUEL, player->GetName().c_str(), latency, opponent->GetName().c_str(), latency2);
-
-            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-            {
-                TC_LOG_INFO("anticheat", "AnticheatMgr:: DUEL ALERT Teleport-Hack detected player {} ({}) while dueling {} - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), opponent->GetName(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-                TC_LOG_INFO("anticheat", "AnticheatMgr:: DUEL ALERT Teleport-Hack detected player {} ({}) while dueling {} - Latency: {} ms - IP: {} - Cheat Flagged at: {}", opponent->GetName(), opponent->GetGUID().ToString(), player->GetName(), latency2, opponent->GetSession()->GetRemoteAddress(), goXYZ2);
-            }
+            _NotifyGameMasters(player, "Possible Teleport Hack Detected! While Dueling [|cFF60FF00" + std::string(opponent->GetName()) + "|cFF00FFFF]", LANG_ANTICHEAT_DUEL);
+            _LogInfo(player, "DUEL ALERT Teleport-Hack detected");
+            _LogInfo(opponent, "DUEL ALERT Teleport-Hack detected");
             _BuildReport(player, TELEPORT_HACK_REPORT);
             _BuildReport(opponent, TELEPORT_HACK_REPORT);
         }
@@ -680,31 +653,9 @@ void AnticheatMgr::_TeleportHackDetection(Player* player, MovementInfo const& mo
     if ((xDiff >= 50.0f || yDiff >= 50.0f) && !player->CanTeleport() && !player->IsBeingTeleported())// teleport helpers in play
     {
         if (_players[key].GetTotalReports() > _ingameNotificationThreshold)
-        {
-            if (++_counter % _alertFrequency == 0)
-            {
-                // display warning at the center of the screen, hacky way?
-                std::string str = "|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Possible Teleport Hack Detected!";
-                WorldPacket data(SMSG_NOTIFICATION, (str.size() + 1));
-                data << str;
-                sWorld->SendGlobalGMMessage(&data);
-                uint32 latency = 0;
-                latency = player->GetSession()->GetLatency();
-                // need better way to limit chat spam
-                if (_players[key].GetTotalReports() >= sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORT_IN_CHAT_MIN) && _players[key].GetTotalReports() <= sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORT_IN_CHAT_MAX))
-                {
-                    sWorld->SendGMText(LANG_ANTICHEAT_TELEPORT, player->GetName().c_str(), latency);
-                }
-                _counter = 0;
-            }
-        }
-        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-        {
-            uint32 latency = 0;
-            latency = player->GetSession()->GetLatency();
-            std::string goXYZ = ".go xyz " + std::to_string(newX) + " " + std::to_string(newY) + " " + std::to_string(newZ + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-            TC_LOG_INFO("anticheat", "AnticheatMgr:: Teleport-Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-        }
+            _NotifyGameMasters(player, "Possible Teleport Hack Detected!", LANG_ANTICHEAT_TELEPORT);
+
+        _LogInfo(player, "Teleport-Hack detected");
         if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_TELEPORT))
         {
             if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_WRITELOG))
@@ -754,13 +705,7 @@ void AnticheatMgr::_JumpHackDetection(Player* player, MovementInfo const& moveme
     // Chain or double multi jumping is not a thing in 335
     if (_players[key].GetLastOpcode() == MSG_MOVE_JUMP && opcode == MSG_MOVE_JUMP)
     {
-        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-        {
-            uint32 latency = 0;
-            latency = player->GetSession()->GetLatency();
-            std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-            TC_LOG_INFO("anticheat", "AnticheatMgr:: Jump-Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-        }
+        _LogInfo(player, "Jump-Hack detected");
         if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_JUMPHACK))
         {   // display warning at the center of the screen, hacky way?
             std::string str = "|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] JUMP HACK COUNTER MEASURE ALERT";
@@ -832,13 +777,7 @@ void AnticheatMgr::_JumpHackDetection(Player* player, MovementInfo const& moveme
 
         if (ground_Z > 5.0f && movementInfo.pos.GetPositionZ() >= player->GetPositionZ())
         {
-            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-            {
-                uint32 latency = 0;
-                latency = player->GetSession()->GetLatency();
-                std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-                TC_LOG_INFO("anticheat", "AnticheatMgr:: Stricter Jump-Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-            }
+            _LogInfo(player, "Stricter Jump-Hack detected");
             if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_ADVJUMPHACK))
             {   // display warning at the center of the screen, hacky way?
                 std::string str = "|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] ADVANCE JUMP HACK COUNTER MEASURE ALERT";
@@ -923,13 +862,7 @@ void AnticheatMgr::_TeleportPlaneHackDetection(Player* player, MovementInfo cons
     // we are not really walking there
     if (groundZ == floorZ && (fabs(ground_Z - pos_z) > 2.0f || fabs(ground_Z - pos_z) < -1.0f))
     {
-        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-        {
-            uint32 latency = 0;
-            latency = player->GetSession()->GetLatency();
-            std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-            TC_LOG_INFO("anticheat", "AnticheatMgr:: Teleport To Plane - Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-        }
+        _LogInfo(player, "Teleport To Plane - Hack detected");
         _BuildReport(player, TELEPORT_PLANE_HACK_REPORT);
     }
 }
@@ -962,14 +895,7 @@ void AnticheatMgr::_ClimbHackDetection(Player* player, MovementInfo const& movem
         if (movementInfo.pos.GetPositionZ() > playerPos.GetPositionZ() &&
             diffz > 1.87f && tanangle < 0.57735026919f) // 30 degrees
         {
-            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-            {
-                uint32 latency = 0;
-                latency = player->GetSession()->GetLatency();
-                std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-                TC_LOG_INFO("anticheat", "AnticheatMgr:: Climb-Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-            }
-
+            _LogInfo(player, "Climb-Hack detected");
             _BuildReport(player, CLIMB_HACK_REPORT);
         }
     }
@@ -1009,31 +935,9 @@ void AnticheatMgr::_IgnoreControlHackDetection(Player* player, MovementInfo cons
         {
             // we do this because we can not get the collumn count being propper when we add more collumns for the report, so we make a indvidual warning for Ignore Control
             if (_players[key].GetTotalReports() > _ingameNotificationThreshold)
-            {
-                if (++_counter % _alertFrequency == 0)
-                {
-                    // display warning at the center of the screen, hacky way?
-                    std::string str = "|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Possible Ignore Control Hack Detected!";
-                    WorldPacket data(SMSG_NOTIFICATION, (str.size() + 1));
-                    data << str;
-                    sWorld->SendGlobalGMMessage(&data);
-                    uint32 latency = 0;
-                    latency = player->GetSession()->GetLatency();
-                    // need better way to limit chat spam
-                    if (_players[key].GetTotalReports() >= sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORT_IN_CHAT_MIN) && _players[key].GetTotalReports() <= sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORT_IN_CHAT_MAX))
-                    {
-                        sWorld->SendGMText(LANG_ANTICHEAT_IGNORECONTROL, player->GetName().c_str(), latency);
-                    }
-                    _counter = 0;
-                }
-            }
-            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-            {
-                uint32 latency = 0;
-                latency = player->GetSession()->GetLatency();
-                std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-                TC_LOG_INFO("anticheat", "AnticheatMgr:: Ignore Control - Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-            }
+                _NotifyGameMasters(player, "Possible Ignore Control Hack Detected!", LANG_ANTICHEAT_IGNORECONTROL);
+
+            _LogInfo(player, "Ignore Control - Hack detected");
             _BuildReport(player, IGNORE_CONTROL_REPORT);
         }
     }
@@ -1052,13 +956,7 @@ void AnticheatMgr::_GravityHackDetection(Player* player, MovementInfo const& mov
     {
         if (!player->HasUnitMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY) && movementInfo.jump.zspeed < -10.0f)
         {
-            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-            {
-                uint32 latency = 0;
-                latency = player->GetSession()->GetLatency();
-                std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-                TC_LOG_INFO("anticheat", "AnticheatMgr:: Gravity-Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-            }
+            _LogInfo(player, "Gravity-Hack detected");
             _BuildReport(player, GRAVITY_HACK_REPORT);
         }
     }
@@ -1078,22 +976,6 @@ void AnticheatMgr::_WalkOnWaterHackDetection(Player* player, MovementInfo const&
     if (!distance2D)
         return;
 
-    // if the player is water walking on water then we are good.
-    if (player->GetLiquidStatus() == LIQUID_MAP_WATER_WALK && !player->IsFlying())
-    {
-        if (!_players[key].GetLastMovementInfo().HasMovementFlag(MOVEMENTFLAG_WATERWALKING) && !movementInfo.HasMovementFlag(MOVEMENTFLAG_WATERWALKING))
-        {
-            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-            {
-                uint32 latency = 0;
-                latency = player->GetSession()->GetLatency();
-                std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-                TC_LOG_INFO("anticheat", "AnticheatMgr:: Walk on Water - Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-            }
-            _BuildReport(player, WALK_WATER_HACK_REPORT);
-        }
-    }
-
     // if we are a ghost we can walk on water
     if (!player->IsAlive())
         return;
@@ -1109,20 +991,10 @@ void AnticheatMgr::_WalkOnWaterHackDetection(Player* player, MovementInfo const&
         if (player->HasAuraType(SPELL_AURA_WATER_WALK) || player->HasAuraType(SPELL_AURA_FEATHER_FALL) || player->HasAuraType(SPELL_AURA_SAFE_FALL))
             return;
     }
-    else if (!_players[key].GetLastMovementInfo().HasMovementFlag(MOVEMENTFLAG_WATERWALKING) && !movementInfo.HasMovementFlag(MOVEMENTFLAG_WATERWALKING))
-    {
-        //Boomer Review Time:
-        //Return stops code execution of the entire function
+    else if (player->GetLiquidStatus() != LIQUID_MAP_WATER_WALK)
         return;
-    }
 
-    if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-    {
-        uint32 latency = 0;
-        latency = player->GetSession()->GetLatency();
-        std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-        TC_LOG_INFO("anticheat", "AnticheatMgr:: Walk on Water - Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-    }
+    _LogInfo(player, "Walk on Water - Hack detected");
     _BuildReport(player, WALK_WATER_HACK_REPORT);
 }
 
@@ -1182,31 +1054,9 @@ void AnticheatMgr::_ZAxisHackDetection(Player* player, MovementInfo const& movem
    if (_players[key].GetLastMovementInfo().pos.GetPositionZ() == movementInfo.pos.GetPositionZ() && player->GetPositionZ() >= player->GetFloorZ() + 2.5f)
    {
        if (_players[key].GetTotalReports() > _ingameNotificationThreshold)
-       {
-           if (++_counter % _alertFrequency == 0)
-           {
-                // display warning at the center of the screen, hacky way?
-                std::string str = "|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Possible Ignore Zaxis Hack Detected!";
-                WorldPacket data(SMSG_NOTIFICATION, (str.size() + 1));
-                data << str;
-                sWorld->SendGlobalGMMessage(&data);
-                uint32 latency = 0;
-                latency = player->GetSession()->GetLatency();
-                // need better way to limit chat spam
-                if (_players[key].GetTotalReports() >= sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORT_IN_CHAT_MIN) && _players[key].GetTotalReports() <= sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORT_IN_CHAT_MAX))
-                {
-                    sWorld->SendGMText(LANG_ANTICHEAT_ALERT, player->GetName().c_str(), player->GetName().c_str(), latency);
-                }
-                _counter = 0;
-           }
-       }
-       if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-       {
-           uint32 latency = 0;
-           latency = player->GetSession()->GetLatency();
-           std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-           TC_LOG_INFO("anticheat", "AnticheatMgr:: Ignore Zaxis Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-       }
+           _NotifyGameMasters(player, "Possible Ignore Zaxis Hack Detected!", LANG_ANTICHEAT_ALERT);
+
+       _LogInfo(player, "Ignore Zaxis Hack detected");
        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_IGNOREZ))
        {   // display warning at the center of the screen, hacky way?
            std::string str = "|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] IGNORE-Z HACK COUNTER MEASURE ALERT";
@@ -1265,14 +1115,7 @@ void AnticheatMgr::_AntiSwimHackDetection(Player* player, MovementInfo const& mo
 
     if (player->GetLiquidStatus() == LIQUID_MAP_UNDER_WATER && !movementInfo.HasMovementFlag(MOVEMENTFLAG_SWIMMING))
     {
-        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-        {
-            uint32 latency = 0;
-            latency = player->GetSession()->GetLatency();
-            std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-            TC_LOG_INFO("anticheat", "AnticheatMgr:: Anti-Swim-Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-        }
-
+        _LogInfo(player, "Anti-Swim-Hack detected");
         _BuildReport(player, ANTISWIM_HACK_REPORT);
     }
 }
@@ -1291,13 +1134,7 @@ void AnticheatMgr::_AntiKnockBackHackDetection(Player* player, MovementInfo cons
     uint32 key = player->GetGUID().GetCounter();
     if (movementInfo.pos == _players[key].GetLastMovementInfo().pos)
     {
-        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-        {
-            uint32 latency = 0;
-            latency = player->GetSession()->GetLatency();
-            std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-            TC_LOG_INFO("anticheat", "AnticheatMgr:: Anti-Knock Back - Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-        }
+        _LogInfo(player, "Anti-Knock Back - Hack detected");
         _BuildReport(player, ANTIKNOCK_BACK_HACK_REPORT);
     }
     else if (player->CanKnockback())
@@ -1334,13 +1171,7 @@ void AnticheatMgr::_NoFallDamageDetection(Player* player, MovementInfo const& mo
         {
             if (damage == 0 && !player->IsImmunedToDamage(SPELL_SCHOOL_MASK_NORMAL))
             {
-                if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-                {
-                    uint32 latency = 0;
-                    latency = player->GetSession()->GetLatency();
-                    std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-                    TC_LOG_INFO("anticheat", "AnticheatMgr:: No Fall Damage - Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-                }
+                _LogInfo(player, "No Fall Damage - Hack detected");
                 _BuildReport(player, NO_FALL_DAMAGE_HACK_REPORT);
             }
         }
@@ -1430,41 +1261,11 @@ void AnticheatMgr::_BGStartExploitDetection(Player* player, MovementInfo const& 
     }
     if (report)
     {
-        _BGreport(player);
+        _NotifyGameMasters(player, "Player Outside of Starting SPOT before BG has started!", LANG_ANTICHEAT_BG_EXPLOIT);
+        _LogInfo(player, "BG Start Spot Exploit-Hack detected");
+        _BuildReport(player, TELEPORT_HACK_REPORT);
         _CheckBGOriginPositions(player);
     }
-}
-
-void AnticheatMgr::_BGreport(Player* player)
-{
-    uint32 key = player->GetGUID().GetCounter();
-
-    if (++_counter % _alertFrequency == 0)
-    {
-        // display warning at the center of the screen, hacky way?
-        std::string str = "|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Player Outside of Starting SPOT before BG has started!";
-        WorldPacket data(SMSG_NOTIFICATION, (str.size() + 1));
-        data << str;
-        sWorld->SendGlobalGMMessage(&data);
-        uint32 latency = 0;
-        latency = player->GetSession()->GetLatency();
-        // need better way to limit chat spam
-        if (_players[key].GetTotalReports() >= sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORT_IN_CHAT_MIN) && _players[key].GetTotalReports() <= sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORT_IN_CHAT_MAX))
-        {
-            sWorld->SendGMText(LANG_ANTICHEAT_BG_EXPLOIT, player->GetName().c_str(), player->GetName().c_str(), latency);
-        }
-        _counter = 0;
-    }
-
-    if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-    {
-        uint32 latency = 0;
-        latency = player->GetSession()->GetLatency();
-        std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
-        TC_LOG_INFO("anticheat", "AnticheatMgr:: BG Start Spot Exploit-Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
-    }
-
-    _BuildReport(player, TELEPORT_HACK_REPORT);
 }
 
 void AnticheatMgr::_CheckBGOriginPositions(Player* player)
@@ -1508,7 +1309,7 @@ void AnticheatMgr::_CheckBGOriginPositions(Player* player)
 // mistake that was here or not, please increment the
 // following counter as a warning to the next guy:
 //
-// total_hours_wasted_here = 44
+// total_hours_wasted_here = 46
 //
 void AnticheatMgr::_BuildReport(Player* player, AnticheatReportTypes reportType)
 {
@@ -1562,24 +1363,8 @@ void AnticheatMgr::_BuildReport(Player* player, AnticheatReportTypes reportType)
     }
 
     if (_players[key].GetTotalReports() > _ingameNotificationThreshold)
-    {
-        if (++_counter % _alertFrequency == 0)
-        {
-            // display warning at the center of the screen, hacky way?
-            std::string str = "|cFFFFFC00[Playername:]|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Possible cheater!";
-            WorldPacket data(SMSG_NOTIFICATION, (str.size() + 1));
-            data << str;
-            sWorld->SendGlobalGMMessage(&data);
-        }
-        // need better way to limit chat spam
-        if (_players[key].GetTotalReports() >= sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORT_IN_CHAT_MIN) && (_players[key].GetTotalReports() <= sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORT_IN_CHAT_MAX)))
-        {
-            uint32 latency = 0;
-            latency = player->GetSession()->GetLatency();
-            sWorld->SendGMText(LANG_ANTICHEAT_ALERT, player->GetName().c_str(), player->GetName().c_str(), latency);
-        }
-        _counter = 0;
-    }
+        _NotifyGameMasters(player, "Possible cheater!", LANG_ANTICHEAT_ALERT);
+
     // Automatic Moderation, not recommended but not hated
     // Auto Kick
     if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_AUTOKICK_ENABLE))
@@ -1587,9 +1372,8 @@ void AnticheatMgr::_BuildReport(Player* player, AnticheatReportTypes reportType)
         if (_players[key].GetTotalReports() > sWorld->getIntConfig(CONFIG_ANTICHEAT_MAX_REPORTS_FOR_KICKS))
         {
             if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-            {
                 TC_LOG_INFO("anticheat", "AnticheatMgr:: Reports reached assigned threshhold and counteracted by kicking player {} ({})", player->GetName(), player->GetGUID().ToString());
-            }
+
             // display warning at the center of the screen, hacky way?
             std::string str = "|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Auto Kicked for Reaching Cheat Threshhold!";
             WorldPacket data(SMSG_NOTIFICATION, (str.size() + 1));
@@ -1617,9 +1401,8 @@ void AnticheatMgr::_BuildReport(Player* player, AnticheatReportTypes reportType)
         if (_players[key].GetTotalReports() > sWorld->getIntConfig(CONFIG_ANTICHEAT_MAX_REPORTS_FOR_BANS))
         {
             if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-            {
                 TC_LOG_INFO("anticheat", "AnticheatMgr:: Reports reached assigned threshhold and counteracted by banning player {} ({})", player->GetName(), player->GetGUID().ToString());
-            }
+
             // display warning at the center of the screen, hacky way?
             std::string str = "|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Auto Banned Account for Reaching Cheat Threshhold!";
             WorldPacket data(SMSG_NOTIFICATION, (str.size() + 1));
@@ -1649,9 +1432,8 @@ void AnticheatMgr::_BuildReport(Player* player, AnticheatReportTypes reportType)
         if (_players[key].GetTotalReports() > sWorld->getIntConfig(CONFIG_ANTICHEAT_MAX_REPORTS_FOR_JAILS))
         {
             if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-            {
                 TC_LOG_INFO("anticheat", "AnticheatMgr:: Reports reached assigned threshhold and counteracted by jailing player {} ({})", player->GetName(), player->GetGUID().ToString());
-            }
+
             // display warning at the center of the screen, hacky way?
             std::string str = "|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Auto Jailed Account for Reaching Cheat Threshhold!";
             WorldPacket data(SMSG_NOTIFICATION, (str.size() + 1));
@@ -1695,4 +1477,45 @@ void AnticheatMgr::_BuildReport(Player* player, AnticheatReportTypes reportType)
             }
         }
     }
+}
+
+void AnticheatMgr::_NotifyGameMasters(Player* player, std::string text, uint32 trinityString)
+{
+    uint32 key = player->GetGUID().GetCounter();
+    if (++_counter % _alertFrequency == 0)
+    {
+        // display warning at the center of the screen, hacky way?
+        std::string str = "|cFFFFFC00[Playername:]|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] " + text;
+        WorldPacket data(SMSG_NOTIFICATION, (str.size() + 1));
+        data << str;
+        sWorld->SendGlobalGMMessage(&data);
+        _counter = 0;
+    }
+    // need better way to limit chat spam
+    if (_players[key].GetTotalReports() >= sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORT_IN_CHAT_MIN) && (_players[key].GetTotalReports() <= sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORT_IN_CHAT_MAX)))
+    {
+        uint32 latency = 0;
+        latency = player->GetSession()->GetLatency();
+        switch (trinityString)
+        {
+            case LANG_ANTICHEAT_IGNORECONTROL:
+            case LANG_ANTICHEAT_TELEPORT:
+            case LANG_ANTICHEAT_DUEL:
+                sWorld->SendGMText(trinityString, player->GetName().c_str(), latency);
+                break;
+            default:
+                sWorld->SendGMText(trinityString, player->GetName().c_str(), player->GetName().c_str(), latency);
+                break;
+        }
+    }
+}
+
+void AnticheatMgr::_LogInfo(Player* player, std::string text)
+{
+    if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
+        return;
+
+    uint32 latency = player->GetSession()->GetLatency();
+    std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
+    TC_LOG_INFO("anticheat", "AnticheatMgr:: {} detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged at: {}", text, player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress(), goXYZ);
 }

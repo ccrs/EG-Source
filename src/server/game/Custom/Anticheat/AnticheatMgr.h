@@ -96,7 +96,6 @@ class TC_GAME_API AnticheatMgr
         void _NoFallDamageDetection(Player* player, MovementInfo const& movementInfo);
         void _BGStartExploitDetection(Player* player, MovementInfo const& movementInfo);
 
-        void _BGreport(Player* player);
         void _CheckBGOriginPositions(Player* player);
 
         void _BuildReport(Player* player, AnticheatReportTypes reportType);
@@ -115,6 +114,8 @@ class TC_GAME_API AnticheatMgr
                     return true;
             }
         }
+        void _NotifyGameMasters(Player* player, std::string text, uint32 trinityString);
+        void _LogInfo(Player* player, std::string text);
 
         uint32 _counter = 0;
         uint32 _alertFrequency = 0;
