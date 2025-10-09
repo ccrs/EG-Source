@@ -120,6 +120,10 @@ void LoginDatabaseConnection::DoPrepareStatements()
 
     PrepareStatement(LOGIN_SEL_ACCOUNT_TOTP_SECRET, "SELECT totp_secret FROM account WHERE id = ?", CONNECTION_SYNCH);
     PrepareStatement(LOGIN_UPD_ACCOUNT_TOTP_SECRET, "UPDATE account SET totp_secret = ? WHERE id = ?", CONNECTION_ASYNC);
+
+    // Anticheat Lua Cheaters
+    PrepareStatement(LOGIN_INS_ANTICHEAT_LUA_CHEATERS, "INSERT IGNORE INTO `account_anticheat_lua` (id, realmid, guid, macro) VALUES (?, ?, ?, ?)", CONNECTION_ASYNC);
+    PrepareStatement(LOGIN_SEL_ANTICHEAT_LUA_CHEATERS, "SELECT id, realmid, guid, macro FROM account_anticheat_lua WHERE id = ?", CONNECTION_SYNCH);
 }
 
 LoginDatabaseConnection::LoginDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo)

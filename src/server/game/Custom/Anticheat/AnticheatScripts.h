@@ -15,12 +15,15 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-// This is where scripts' loading functions should be declared:
+#include "ScriptMgr.h"
 
-// The name of this function should match:
-void AddSC_anticheat_commandscript();
-
-void AddCustomScripts()
+class TC_GAME_API AnticheatScripts : public PlayerScript
 {
-    AddSC_anticheat_commandscript();
-}
+    public:
+        AnticheatScripts();
+
+        void OnLogout(Player* player);
+        void OnLogin(Player* player,bool);
+};
+
+void AddSC_AnticheatScripts();

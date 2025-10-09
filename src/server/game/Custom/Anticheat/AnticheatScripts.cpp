@@ -15,12 +15,25 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-// This is where scripts' loading functions should be declared:
+#include "AnticheatScripts.h"
+#include "AnticheatMgr.h"
+#include "ScriptMgr.h"
+#include "World.h"
 
-// The name of this function should match:
-void AddSC_anticheat_commandscript();
+AnticheatScripts::AnticheatScripts(): PlayerScript("AnticheatScripts") { }
 
-void AddCustomScripts()
+void AnticheatScripts::OnLogout(Player* player)
 {
-    AddSC_anticheat_commandscript();
+    sAnticheatMgr->HandlePlayerLogout(player);
+}
+
+void AnticheatScripts::OnLogin(Player* player, bool)
+{
+    sAnticheatMgr->HandlePlayerLogin(player);
+}
+
+void AddSC_AnticheatScripts()
+{
+    if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
+        new AnticheatScripts();
 }

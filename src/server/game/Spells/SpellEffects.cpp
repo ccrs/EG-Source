@@ -1032,6 +1032,11 @@ void Spell::EffectJumpDest()
     float speedXY, speedZ;
     CalculateJumpSpeeds(*effectInfo, unitCaster->GetExactDist2d(destTarget), speedXY, speedZ);
     unitCaster->GetMotionMaster()->MoveJump(*destTarget, speedXY, speedZ, EVENT_JUMP, !m_targets.GetObjectTargetGUID().IsEmpty());
+
+    if (Player* player = m_caster->ToPlayer())
+    {
+        player->SetCanTeleport(true);
+    }
 }
 
 void Spell::EffectTeleportUnits()
@@ -1047,6 +1052,11 @@ void Spell::EffectTeleportUnits()
     {
         TC_LOG_ERROR("spells", "Spell::EffectTeleportUnits - does not have a destination for spellId {}.", m_spellInfo->Id);
         return;
+    }
+
+    if (Player* player = m_caster->ToPlayer())
+    {
+        player->SetCanTeleport(true);
     }
 
     // Init dest coordinates
@@ -3349,6 +3359,20 @@ void Spell::EffectInterruptCast()
     {
         if (Spell* spell = unitTarget->GetCurrentSpell(CurrentSpellTypes(i)))
         {
+            // if player is lua cheater dont interrupt cast until timer reached 600ms
+            if (auto player = m_caster->ToPlayer())
+            {
+                if (player->GetSession()->IsLuaCheater())
+                {
+                    if (spell->GetCastTime() - spell->GetTimer() < 600)
+                    {
+                        std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
+                        TC_LOG_INFO("anticheat", "ANTICHEAT COUNTER MEASURE::Played {} attempted repeat LUA spell Casting - IP: {} - Flagged at: {}", player->GetName(), player->GetSession()->GetRemoteAddress(), goXYZ);
+                        return;
+                    }
+                }
+            }
+
             SpellInfo const* curSpellInfo = spell->m_spellInfo;
             // check if we can interrupt spell
             if ((spell->getState() == SPELL_STATE_CASTING
@@ -4796,6 +4820,11 @@ void Spell::EffectTransmitted()
         linkedTrap->SetOwnerGUID(unitCaster->GetGUID());
 
         ExecuteLogEffectSummonObject(effectInfo->EffectIndex, linkedTrap);
+    }
+
+    if (Player* player = m_caster->ToPlayer())
+    {
+        player->SetCanTeleport(true);
     }
 }
 
