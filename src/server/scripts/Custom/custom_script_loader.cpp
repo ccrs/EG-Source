@@ -16,6 +16,8 @@
  */
 
 // This is where scripts' loading functions should be declared:
+void AddSC_anticheat_commandscript();
+
 void AddSC_EG_gen_npc_scripts();
 void AddSC_EG_pet_scripts();
 void AddSC_EG_transmogrification();
@@ -28,10 +30,11 @@ void AddSC_EG_areatrigger_scripts();
 void AddSC_EG_commandscript();
 void AddSC_EG_go_scripts();
 
-// The name of this function should match:
-// void Add${NameOfDirectory}Scripts()
+
 void AddCustomScripts()
 {
+    AddSC_anticheat_commandscript();
+
     AddSC_EG_gen_npc_scripts();
     AddSC_EG_pet_scripts();
     AddSC_EG_transmogrification();
