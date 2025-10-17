@@ -237,13 +237,9 @@ enum TestDummyGossipOffsets : uint32
     GOSSIP_OFFSET_ATTEMPT_DPS_150SEC,
     GOSSIP_OFFSET_ATTEMPT_DPS_360SEC,
     GOSSIP_OFFSET_AURA_MENU,
-    GOSSIP_OFFSET_AURA_RESET_BUFFS,
     GOSSIP_OFFSET_AURA_RESET_DEBUFFS,
-    GOSSIP_OFFSET_AURA_MENU_BUFFS,
     GOSSIP_OFFSET_AURA_MENU_DEBUFFS,
-    GOSSIP_OFFSET_ALL_BUFFS,
     GOSSIP_OFFSET_ALL_DEBUFFS,
-    GOSSIP_OFFSET_FIRST_BUFF = 1000,
     GOSSIP_OFFSET_FIRST_DEBUFF = 2000
 };
 
@@ -255,27 +251,6 @@ struct TestDummyBuffInfo
     TestDummyBuffInfo(uint32 id) : spellId(id), castDummy(0) { }
 };
 
-std::vector<TestDummyBuffInfo> const buffs =
-{
-    58646, // strength of earth
-    48932, // blessing of might
-    { 48936,1 }, // blessing of wisdom
-    19506, // trueshot aura
-    31583, // arcane empowerment
-    { 20911,2 }, // blessing of sanctuary
-    54043, // retribution aura (swift retribution)
-    29801, // rampage
-    8515, // windfury totem
-    51470, // elemental oath
-    54648, // focus magic
-    48161, // power word: fortitude
-    48469, // mark of the wild
-    { 20217,3 }, // blessing of kings
-    57669, // replenishment
-    6562, // heroic presence
-    73828, // strength of wrynn
-    73822  // hellscream's warsong
-};
 std::vector<TestDummyBuffInfo> const debuffs =
 {
     8647, // expose armor
@@ -329,7 +304,7 @@ public:
             for (int8 i = 0; i < NUM_DUMMY; ++i)
             {
                 me->GetClosePoint(x, y, z, 1.0f, 0.0f, float((i + 1) * M_PI_2));
-                dummy[i] = me->SummonCreature(me->GetEntry(), x, y, z + 2.0f, me->GetOrientation())->GetGUID();
+                _Dummy[i] = me->SummonCreature(me->GetEntry(), x, y, z + 2.0f, me->GetOrientation())->GetGUID();
             }
             Reset();
         }
@@ -345,197 +320,9 @@ public:
             me->AddAura(17051, me); // Improved Mark of the Wild
         }
 
-        void UpdateAI(uint32 diff)
-        {
-            if (_timer <= diff)
-            {
-                _timer = 5000;
-                std::list<Player*> players;
-                me->GetPlayerListInGrid(players, 250.0f);
-                for (Player* player : players)
-                    RefreshBuffs(player);
-            }
-            else
-                _timer -= diff;
-        }
-
-        void GhettoSpellMod(Aura* /*buff*/, SpellEffIndex /*index*/)
-        {
-            /*SpellInfo const* buffInfo = buff->GetSpellInfo();
-            if (!buffInfo->IsAffectedBySpellMods())
-                return;
-            AuraEffect* effect = buff->GetEffect(index);
-            if (!effect)
-                return;
-            uint32 amount = effect->GetAmount();
-            uint32 flat = 0;
-            float mul = 1.0f;
-            for (auto const& pair : me->GetOwnedAuras())
-            {
-                if (SpellInfo const* ourInfo = pair.second->GetSpellInfo())
-                {
-                    for (int8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
-                        if (AuraEffect* effect = pair.second->GetEffect(i))
-                        {
-                            if (!((effect->GetMiscValue() == SPELLMOD_ALL_EFFECTS) ||
-                                ((index == EFFECT_0) && (effect->GetMiscValue() == SPELLMOD_EFFECT1)) &&
-                                ((index == EFFECT_1) && (effect->GetMiscValue() == SPELLMOD_EFFECT2)) &&
-                                ((index == EFFECT_2) && (effect->GetMiscValue() == SPELLMOD_EFFECT3))))
-                                continue;
-
-                            if (!effect->IsAffectedOnSpell(buffInfo))
-                                continue;
-
-                            switch (effect->GetAuraType())
-                            {
-                            case SPELL_AURA_ADD_PCT_MODIFIER:
-                                mul += float(effect->GetAmount()) * 0.01f;
-                                break;
-                            case SPELL_AURA_ADD_FLAT_MODIFIER:
-                                flat += effect->GetAmount();
-                                break;
-                            default:
-                                break;
-                            }
-                        }
-                }
-            }
-            effect->ChangeAmount(uint32(float(amount + flat) * mul));*/
-        }
-
-        void AddBuff(Unit* unit, TestDummyBuffInfo info)
-        {
-            Unit* caster = me;
-            if (info.castDummy && info.castDummy <= NUM_DUMMY)
-                caster = ObjectAccessor::GetUnit(*me, dummy[info.castDummy - 1]);
-            if (!caster)
-                return;
-            Aura* buff = caster->AddAura(info.spellId, unit);
-            if (!buff)
-                return;
-            GhettoSpellMod(buff, EFFECT_0);
-            GhettoSpellMod(buff, EFFECT_1);
-            GhettoSpellMod(buff, EFFECT_2);
-            buff->SetMaxDuration(17 * IN_MILLISECONDS);
-            buff->SetDuration(17 * IN_MILLISECONDS);
-            for (Unit* minion : unit->m_Controlled)
-                AddBuff(minion, info);
-        }
-
-        void RefreshBuffs(Unit* target)
-        {
-            for (auto const& pair : target->GetOwnedAuras())
-                if (iscasterguid(pair.second->GetCasterGUID()))
-                {
-                    uint32 duration = pair.second->GetDuration();
-                    while (duration < 16 * IN_MILLISECONDS)
-                        duration += 1 * IN_MILLISECONDS;
-                    pair.second->SetDuration(duration);
-                }
-            for (Unit* minion : target->m_Controlled)
-                RefreshBuffs(minion);
-        }
-
-        void ClearAllBuffs(Unit* target)
-        {
-            std::list<Aura*> toRemove;
-            for (auto const& pair : target->GetOwnedAuras())
-                if (iscasterguid(pair.second->GetCasterGUID()))
-                    toRemove.push_back(pair.second);
-            for (Aura* aura : toRemove)
-                aura->Remove();
-            for (Unit* minion : target->m_Controlled)
-                ClearAllBuffs(minion);
-        }
-
-        void AddDebuff(FriendAI* ai, TestDummyBuffInfo info)
-        {
-            Unit* caster = me;
-            if (info.castDummy && info.castDummy <= NUM_DUMMY)
-                caster = ObjectAccessor::GetUnit(*me, dummy[info.castDummy - 1]);
-            if (!caster)
-                return;
-            Aura* debuff = caster->AddAura(info.spellId, const_cast<Creature*>(ai->me));
-            if (!debuff)
-                return;
-            debuff->SetMaxDuration(-1);
-            debuff->SetDuration(-1);
-        }
-
-        void ClearAllDebuffs(FriendAI* ai)
-        {
-            std::list<Aura*> toRemove;
-            for (auto const& pair : ai->me->GetOwnedAuras())
-                if (iscasterguid(pair.second->GetCasterGUID()))
-                    toRemove.push_back(pair.second);
-            for (Aura* aura : toRemove)
-                aura->Remove();
-        }
-
-        void SendAuraMenu(Player* player, FriendAI* dummyAI)
-        {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Begin attempt]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_MENU));
-            //if (HasAnyBuff(player))
-                //AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset my buff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_RESET_BUFFS));
-            if (HasAnyDebuff(dummyAI))
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset debuff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_RESET_DEBUFFS));
-            //AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid buffs to yourself", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU_BUFFS));
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid debuffs to dummy", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU_DEBUFFS));
-            SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
-        }
-
-        void SendBuffMenu(Player* player, FriendAI* dummyAI)
-        {
-            if (!dummyAI->_currentPlayer)
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Go back]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU));
-            else if (HasAnyBuff(player))
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset my buff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_RESET_BUFFS));
-            bool main = false;
-            for (uint32 i = 0, n = buffs.size(); i < n; ++i)
-            {
-                uint32 const spellId = buffs[i].spellId;
-                if (UnavailableToTeam(player->GetTeamId(), spellId)) // heroic presence
-                    continue;
-                if (player->HasAura(spellId, casterguid(buffs[i])))
-                    continue;
-                SpellInfo const* spell = sSpellMgr->GetSpellInfo(spellId);
-                if (!spell)
-                    continue;
-                if (!main)
-                {
-                    AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Add all raid buffs", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ALL_BUFFS));
-                    main = true;
-                }
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, Trinity::StringFormat("Add '%s'", spell->SpellName[0]), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_BUFF) + i);
-            }
-            SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
-        }
-
-        void SendDebuffMenu(Player* player, FriendAI* dummyAI)
-        {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Go back]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU));
-            bool main = false;
-            for (uint32 i = 0, n = debuffs.size(); i < n; ++i)
-            {
-                uint32 const spellId = debuffs[i].spellId;
-                if (dummyAI->me->HasAura(spellId, casterguid(debuffs[i])))
-                    continue;
-                SpellInfo const* spell = sSpellMgr->GetSpellInfo(spellId);
-                if (!spell)
-                    continue;
-                if (!main)
-                {
-                    AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Add all raid debuffs", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ALL_DEBUFFS));
-                    main = true;
-                }
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, Trinity::StringFormat("Add '%s'", spell->SpellName[0]), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_DEBUFF) + i);
-            }
-            SendGossipMenuFor(player, 7381, me->GetGUID());
-        }
-
         bool OnGossipHello(Player* player) override
         {
-            FriendAI* dummyAI = GetFriendAI();
+            FriendAI* dummyAI = _GetFriendAI();
             if (!dummyAI)
             {
                 SendGossipMenuFor(player, player->GetTeam() == TEAM_ALLIANCE ? 13761 : 14172, me->GetGUID()); // Sorry, friend. Only certified officers of the H/A can authorize the purchase of a vehicle.
@@ -547,7 +334,6 @@ public:
             {
                 if (player->GetGUID() == current)
                     AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Cancel current attempt", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_CANCEL));
-                //AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid buffs to yourself", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU_BUFFS));
             }
             else
             {
@@ -564,7 +350,7 @@ public:
             uint32 const action = GetGossipActionFor(player, listId);
             ClearGossipMenuFor(player);
 
-            FriendAI* dummyAI = GetFriendAI();
+            FriendAI* dummyAI = _GetFriendAI();
             if (!dummyAI)
             {
                 SendGossipMenuFor(player, player->GetTeam() == TEAM_ALLIANCE ? 13761 : 14172, me->GetGUID()); // Sorry, friend. Only certified officers of the H/A can authorize the purchase of a vehicle.
@@ -607,55 +393,29 @@ public:
                 CloseGossipMenuFor(player);
                 dummyAI->BeginAttempt(player, TestDummyModes::MODE_DPS, Minutes(6));
                 break;
-            case GOSSIP_OFFSET_AURA_RESET_BUFFS:
-                ClearAllBuffs(player);
-                if (!dummyAI->_currentPlayer.IsEmpty())
-                    SendBuffMenu(player, dummyAI);
-                else
-                    SendAuraMenu(player, dummyAI);
-                break;
             case GOSSIP_OFFSET_AURA_RESET_DEBUFFS:
-                ClearAllDebuffs(dummyAI);
-                SendAuraMenu(player, dummyAI);
+                _ClearAllDebuffs(dummyAI);
+                _SendAuraMenu(player, dummyAI);
                 break;
             case GOSSIP_OFFSET_AURA_MENU:
-                SendAuraMenu(player, dummyAI);
-                break;
-            case GOSSIP_OFFSET_AURA_MENU_BUFFS:
-                SendBuffMenu(player, dummyAI);
+                _SendAuraMenu(player, dummyAI);
                 break;
             case GOSSIP_OFFSET_AURA_MENU_DEBUFFS:
-                SendDebuffMenu(player, dummyAI);
-                break;
-            case GOSSIP_OFFSET_ALL_BUFFS:
-                //for (TestDummyBuffInfo info : buffs)
-                    //if (!UnavailableToTeam(player->GetTeamId(), info.spellId)) // heroic presence
-                        //AddBuff(player, info);
-                SendAuraMenu(player, dummyAI);
+                _SendDebuffMenu(player, dummyAI);
                 break;
             case GOSSIP_OFFSET_ALL_DEBUFFS:
                 for (TestDummyBuffInfo info : debuffs)
-                    AddDebuff(dummyAI, info);
-                SendAuraMenu(player, dummyAI);
+                    _AddDebuff(dummyAI, info);
+                _SendAuraMenu(player, dummyAI);
                 break;
             default:
-                if (action >= GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_BUFF))
-                {
-                    uint32 const offset = action - GOSSIP_ACTION_INFO_DEF - GOSSIP_OFFSET_FIRST_BUFF;
-                    if (offset < buffs.size())
-                    {
-                        AddBuff(player, buffs[offset]);
-                        SendBuffMenu(player, dummyAI);
-                        break;
-                    }
-                }
                 if (action >= GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_DEBUFF))
                 {
                     uint32 const offset = action - GOSSIP_ACTION_INFO_DEF - GOSSIP_OFFSET_FIRST_DEBUFF;
                     if (offset < debuffs.size())
                     {
-                        AddDebuff(dummyAI, debuffs[offset]);
-                        SendDebuffMenu(player, dummyAI);
+                        _AddDebuff(dummyAI, debuffs[offset]);
+                        _SendDebuffMenu(player, dummyAI);
                         break;
                     }
                 }
@@ -666,43 +426,32 @@ public:
         }
 
     private:
-        ObjectGuid casterguid(TestDummyBuffInfo info) const
+        ObjectGuid _CasterGUID(TestDummyBuffInfo info) const
         {
-            return (info.castDummy && info.castDummy <= NUM_DUMMY) ? dummy[info.castDummy - 1] : me->GetGUID();
+            return (info.castDummy && info.castDummy <= NUM_DUMMY) ? _Dummy[info.castDummy - 1] : me->GetGUID();
         }
 
-        bool iscasterguid(ObjectGuid const& guid) const
+        bool _IsCasterGUID(ObjectGuid const& guid) const
         {
             if (guid == me->GetGUID())
                 return true;
 
             for (int8 i = 0; i < NUM_DUMMY; ++i)
-                if (guid == dummy[i])
+                if (guid == _Dummy[i])
                     return true;
 
             return false;
         }
 
-        bool HasAnyBuff(Unit* target) const
-        {
-            for (auto const& pair : target->GetOwnedAuras())
-                if (iscasterguid(pair.second->GetCasterGUID()))
-                    return true;
-            for (Unit* minion : target->m_Controlled)
-                if (HasAnyBuff(minion))
-                    return true;
-            return false;
-        }
-
-        bool HasAnyDebuff(FriendAI* ai) const
+        bool _HasAnyDebuff(FriendAI* ai) const
         {
             for (auto const& pair : ai->me->GetOwnedAuras())
-                if (iscasterguid(pair.second->GetCasterGUID()))
+                if (_IsCasterGUID(pair.second->GetCasterGUID()))
                     return true;
             return false;
         }
 
-        FriendAI* GetFriendAI() const
+        FriendAI* _GetFriendAI() const
         {
             std::list<Creature*> list;
             me->GetCreatureListWithEntryInGrid(list, 0);
@@ -713,22 +462,64 @@ public:
             return nullptr;
         }
 
-        bool UnavailableToTeam(TeamId team, uint32 spellId) const
+        void _AddDebuff(FriendAI* ai, TestDummyBuffInfo info)
         {
-            switch (spellId)
-            {
-            case  6562: // heroic presence
-            case 73828: // strength of wrynn
-                return (team != TEAM_ALLIANCE);
-            case 73822: // hellscream's warsong
-                return (team != TEAM_HORDE);
-            default:
-                return false;
-            }
+            Unit* caster = me;
+            if (info.castDummy && info.castDummy <= NUM_DUMMY)
+                caster = ObjectAccessor::GetUnit(*me, _Dummy[info.castDummy - 1]);
+            if (!caster)
+                return;
+            Aura* debuff = caster->AddAura(info.spellId, const_cast<Creature*>(ai->me));
+            if (!debuff)
+                return;
+            debuff->SetMaxDuration(-1);
+            debuff->SetDuration(-1);
         }
 
-        ObjectGuid dummy[NUM_DUMMY];
-        uint32 _timer = 5000;
+        void _ClearAllDebuffs(FriendAI* ai)
+        {
+            std::list<Aura*> toRemove;
+            for (auto const& pair : ai->me->GetOwnedAuras())
+                if (_IsCasterGUID(pair.second->GetCasterGUID()))
+                    toRemove.push_back(pair.second);
+            for (Aura* aura : toRemove)
+                aura->Remove();
+        }
+
+        void _SendAuraMenu(Player* player, FriendAI* dummyAI)
+        {
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Begin attempt]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_MENU));
+
+            if (_HasAnyDebuff(dummyAI))
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset debuff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_RESET_DEBUFFS));
+
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid debuffs to dummy", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU_DEBUFFS));
+            SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
+        }
+
+        void _SendDebuffMenu(Player* player, FriendAI* dummyAI)
+        {
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Go back]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU));
+            bool main = false;
+            for (uint32 i = 0, n = debuffs.size(); i < n; ++i)
+            {
+                uint32 const spellId = debuffs[i].spellId;
+                if (dummyAI->me->HasAura(spellId, _CasterGUID(debuffs[i])))
+                    continue;
+                SpellInfo const* spell = sSpellMgr->GetSpellInfo(spellId);
+                if (!spell)
+                    continue;
+                if (!main)
+                {
+                    AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Add all raid debuffs", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ALL_DEBUFFS));
+                    main = true;
+                }
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, Trinity::StringFormat("Add '%s'", spell->SpellName[0]), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_DEBUFF) + i);
+            }
+            SendGossipMenuFor(player, 7381, me->GetGUID());
+        }
+
+        ObjectGuid _Dummy[NUM_DUMMY];
     };
 
     struct npc_damage_test_buffdummyAI : public NullCreatureAI
