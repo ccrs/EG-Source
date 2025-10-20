@@ -29,14 +29,14 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (2001, 1002), -- Skip being charged for using transmogrification.
 -- Game Master
 (2002,  193), -- Role: Sec Level Gamemaster
-(2002, 2001), -- Role: Player
+(2002, 2001), -- Role: Moderator
 -- Senior Game Master
 (2003, 2002), -- Role: Game Master
 -- Developer
-(2004, 2002), -- Role: Game Master
+(2004, 2003), -- Role: Senior Game Master
 -- Administrator
 (2005,  192), -- Role: Sec Level Administrator
-(2005, 2003), -- Role: Senior Game Master
+(2005, 2004), -- Role: Developer
 -- PTR Player
 (2006, 2001), -- Role: Moderator
 -- PTR Tester

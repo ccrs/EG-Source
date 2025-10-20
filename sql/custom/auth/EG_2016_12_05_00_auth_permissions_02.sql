@@ -3,6 +3,7 @@ DELETE FROM `rbac_linked_permissions` WHERE `id` IN (194, 198);
 INSERT INTO `rbac_linked_permissions` VALUES
 (194,   1), -- Instant logout
 (194,   2), -- Skip Queue
+(194,   8), -- Cannot earn achievements
 (194,   9), -- Cannot earn realm first achievements
 (194,  11), -- Log GM trades
 (194,  13), -- Skip Instance required bosses check
