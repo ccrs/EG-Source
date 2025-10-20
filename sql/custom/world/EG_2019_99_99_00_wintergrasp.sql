@@ -99,3 +99,8 @@ INSERT INTO `spawn_group` (`groupId`,`spawnType`,`spawnId`) VALUES
 (@SPAWNGROUPID+0, 1, @GGUID+42),
 (@SPAWNGROUPID+0, 1, @GGUID+43),
 (@SPAWNGROUPID+0, 1, @GGUID+44);
+
+-- Add 'spell_wintergrasp_waiting_to_resurrect'
+DELETE FROM `spell_script_names` WHERE `ScriptName`='spell_wintergrasp_waiting_to_resurrect';
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(2584, 'spell_wintergrasp_waiting_to_resurrect');
