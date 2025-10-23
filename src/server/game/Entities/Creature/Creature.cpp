@@ -2680,7 +2680,7 @@ void Creature::UpdateMovementFlags()
     float a = GetPositionZ();
     float b = ground + (IsHovering() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f);
     float c = a - b;
-    bool isInAir = std::fabs(c) > 0.5f;
+    bool isInAir = std::fabs(c) > (0.5f + (IsHovering() || !IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER)) ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f);
     if (isInAir)
     {
         if (CanFly() && !IsFlying() && !IsFalling())

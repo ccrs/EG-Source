@@ -64,10 +64,10 @@ void HomeMovementGenerator<Creature>::SetTargetLocation(Creature* owner)
     Movement::MoveSplineInit init(owner);
 
     float const ground = owner->GetFloorZ();
-    bool const isInAir = std::fabs(owner->GetPositionZ() - (ground + (owner->IsHovering() ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f))) > 0.5f;
+    bool const isInAir = std::fabs(owner->GetPositionZ() - (ground + (owner->IsHovering() ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f))) > (0.5f + (owner->IsHovering() || !owner->IsHovering() && owner->HasStoredMovementFlag(MOVEMENTFLAG_HOVER)) ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f);
     if (isInAir && owner->IsFlying() && !owner->IsHovering())
     {
-        if (std::fabs((ground + (owner->IsHovering() ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f)) - destination.GetPositionZ() > 0.5f))
+        if (std::fabs((ground + (owner->IsHovering() ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f)) - destination.GetPositionZ() > (0.5f + (owner->IsHovering() || !owner->IsHovering() && owner->HasStoredMovementFlag(MOVEMENTFLAG_HOVER)) ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f)))
             init.SetAnimation(AnimTier::Ground);
     }
 
