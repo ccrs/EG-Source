@@ -63,6 +63,14 @@ void HomeMovementGenerator<Creature>::SetTargetLocation(Creature* owner)
     Position destination = owner->GetHomePosition();
     Movement::MoveSplineInit init(owner);
 
+    float const ground = owner->GetFloorZ();
+    bool const isInAir = G3D::fuzzyGt(owner->GetPositionZ(), ground + (owner->CanHover() ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f) + GROUND_HEIGHT_TOLERANCE);
+    if (isInAir && owner->IsFlying() && !owner->IsHovering())
+    {
+        if (!G3D::fuzzyGt(destination.GetPositionZ(), ground + (owner->CanHover() ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f) + GROUND_HEIGHT_TOLERANCE))
+            init.SetAnimation(AnimTier::Ground);
+    }
+
     /*
      * TODO: maybe this never worked, who knows, top is always this generator, so this code calls GetResetPosition on itself
      *
