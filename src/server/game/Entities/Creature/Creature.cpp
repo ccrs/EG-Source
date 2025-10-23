@@ -2667,7 +2667,7 @@ void Creature::InitializeMovementFlags()
     if (GetMovementTemplate().Flight == CreatureFlightMovementType::CanFly)
         AddStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
     if (IsAlive() && (CanHover() || HasAuraType(SPELL_AURA_HOVER)))
-        SetHover(true);
+        SetHover(true, false, true, true);
     if (CanEnterWater())
         AddStoredMovementFlag(MOVEMENTFLAG_SWIMMING);
 }
@@ -2686,24 +2686,31 @@ void Creature::UpdateMovementFlags()
     float const ground = GetFloorZ();
     bool const isInAir = (G3D::fuzzyGt(GetPositionZ(), ground + (CanHover() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f) + GROUND_HEIGHT_TOLERANCE) || G3D::fuzzyLt(GetPositionZ(), ground - GROUND_HEIGHT_TOLERANCE)); // Can be underground too, prevent the falling
 
-    if (isInAir && CanFly() && !IsFlying() && !IsFalling())
+    if (isInAir)
     {
-        if (HasStoredMovementFlag(MOVEMENTFLAG_CAN_FLY))
-            SetCanFly(true, false, true);
-        if (HasStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY))
-            SetDisableGravity(true, false, true, true);
+        if (CanFly() && !IsFlying() && !IsFalling())
+        {
+            if (HasStoredMovementFlag(MOVEMENTFLAG_CAN_FLY))
+                SetCanFly(true, false, true);
+            if (HasStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY))
+                SetDisableGravity(true, false, true, true);
+        }
+        if (IsHovering())
+            SetHover(false, false, true, true);
     }
-    if (!isInAir && IsFlying())
-    {
-        SetCanFly(false, false, true);
-        SetDisableGravity(false, false, true, true);
-    }
-
-    if (IsAlive() && (CanHover() || HasAuraType(SPELL_AURA_HOVER)))
-        SetHover(true);
-
     if (!isInAir)
+    {
+        if (IsFlying())
+        {
+            SetCanFly(false, false, true);
+            SetDisableGravity(false, false, true, true);
+        }
+
+        if (IsAlive() && !IsHovering() && (CanHover() || HasAuraType(SPELL_AURA_HOVER)))
+            SetHover(true, false, true, true);
+
         SetFall(false);
+    }
 
     SetSwim(CanSwim() && IsInWater());
 }
