@@ -858,7 +858,7 @@ void MotionMaster::MoveCirclePath(float x, float y, float z, float radius, bool 
             if (_owner->IsFlying())
                 point.z = z;
             else
-                point.z = _owner->GetMapHeight(point.x, point.y, z) + _owner->GetHoverOffset();
+                point.z = _owner->GetFloorZ() + _owner->GetHoverOffset();
 
             init.Path().push_back(point);
         }
