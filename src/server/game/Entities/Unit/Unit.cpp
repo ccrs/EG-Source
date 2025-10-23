@@ -12755,7 +12755,7 @@ void Unit::_ExitVehicle(Position const* exitPosition)
 
 void Unit::BuildMovementPacket(ByteBuffer *data) const
 {
-    Unit::BuildMovementPacket(*this, m_movementInfo.transport.pos, m_movementInfo, data);
+    Unit::BuildMovementPacket(Position(GetPositionX(), GetPositionY(), GetPositionZ() + GetHoverOffset(), GetOrientation()), m_movementInfo.transport.pos, m_movementInfo, data);
 }
 
 void Unit::BuildMovementPacket(Position const& pos, Position const& transportPos, MovementInfo const& movementInfo, ByteBuffer* data)
