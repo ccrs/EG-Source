@@ -2257,8 +2257,8 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         bool IsInWhisperWhiteList(ObjectGuid guid);
         void RemoveFromWhisperWhiteList(ObjectGuid guid) { WhisperList.remove(guid); }
 
-        bool SetDisableGravity(bool disable, bool packetOnly /* = false */, bool updateAnimTier = true) override;
-        bool SetCanFly(bool apply, bool packetOnly = false) override;
+        bool SetDisableGravity(bool disable, bool packetOnly /* = false */, bool updateAnimTier = true, bool temporally = false) override;
+        bool SetCanFly(bool apply, bool packetOnly = false, bool temporally = false) override;
         bool SetWaterWalking(bool apply, bool packetOnly = false) override;
         bool SetFeatherFall(bool apply, bool packetOnly = false) override;
         bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true) override;

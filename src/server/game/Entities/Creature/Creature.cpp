@@ -2964,7 +2964,7 @@ bool Creature::SetWalk(bool enable)
     return true;
 }
 
-bool Creature::SetDisableGravity(bool disable, bool packetOnly /*=false*/, bool updateAnimTier /*= true*/)
+bool Creature::SetDisableGravity(bool disable, bool packetOnly /*=false*/, bool updateAnimTier /*= true*/, bool temporally/* = false*/)
 {
     if (disable)
         AddStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
@@ -2995,7 +2995,7 @@ bool Creature::SetDisableGravity(bool disable, bool packetOnly /*=false*/, bool 
     return true;
 }
 
-bool Creature::SetSwim(bool enable)
+bool Creature::SetSwim(bool enable, bool temporally/* = false*/)
 {
     if (!Unit::SetSwim(enable))
         return false;
@@ -3009,7 +3009,7 @@ bool Creature::SetSwim(bool enable)
     return true;
 }
 
-bool Creature::SetCanFly(bool enable, bool /*packetOnly = false */)
+bool Creature::SetCanFly(bool enable, bool /*packetOnly = false */, bool temporally/* = false*/)
 {
     if (enable)
         AddStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);

@@ -13288,7 +13288,7 @@ bool Unit::SetWalk(bool enable)
     return true;
 }
 
-bool Unit::SetDisableGravity(bool disable, bool /*packetOnly = false*/, bool /*updateAnimTier = true*/)
+bool Unit::SetDisableGravity(bool disable, bool /*packetOnly = false*/, bool /*updateAnimTier = true*/, bool /*temporally = false*/)
 {
     if (disable == IsGravityDisabled())
         return false;
@@ -13320,7 +13320,7 @@ bool Unit::SetFall(bool enable)
     return true;
 }
 
-bool Unit::SetSwim(bool enable)
+bool Unit::SetSwim(bool enable, bool /*temporally = false*/)
 {
     if (enable == HasUnitMovementFlag(MOVEMENTFLAG_SWIMMING))
         return false;
@@ -13332,7 +13332,7 @@ bool Unit::SetSwim(bool enable)
     return true;
 }
 
-bool Unit::SetCanFly(bool enable, bool /*packetOnly = false */)
+bool Unit::SetCanFly(bool enable, bool /*packetOnly = false */, bool /*temporally = false*/)
 {
     if (enable == HasUnitMovementFlag(MOVEMENTFLAG_CAN_FLY))
         return false;
