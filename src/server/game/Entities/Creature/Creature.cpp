@@ -2663,13 +2663,13 @@ void Creature::InitializeMovementFlags()
         return;
 
     if (GetMovementTemplate().Flight == CreatureFlightMovementType::DisableGravity)
-        AddStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
+        SetDisableGravity(true, false, true, true);
     if (GetMovementTemplate().Flight == CreatureFlightMovementType::CanFly)
-        AddStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
+        SetCanFly(true, false, true);
     if (IsAlive() && (CanHover() || HasAuraType(SPELL_AURA_HOVER)))
         SetHover(true, false, true, true);
     if (CanEnterWater())
-        AddStoredMovementFlag(MOVEMENTFLAG_SWIMMING);
+        SetSwim(CanSwim() && IsInWater(), true);
 }
 
 void Creature::UpdateMovementFlags()
@@ -2712,7 +2712,7 @@ void Creature::UpdateMovementFlags()
         SetFall(false);
     }
 
-    SetSwim(CanSwim() && IsInWater());
+    SetSwim(CanSwim() && IsInWater(), true);
 }
 
 CreatureMovementData const& Creature::GetMovementTemplate() const
