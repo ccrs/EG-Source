@@ -2663,9 +2663,9 @@ void Creature::InitializeMovementFlags()
         return;
 
     if (GetMovementTemplate().Flight == CreatureFlightMovementType::DisableGravity)
-        SetDisableGravity(true);
+        AddStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
     if (GetMovementTemplate().Flight == CreatureFlightMovementType::CanFly)
-        SetCanFly(true);
+        AddStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
     if (IsAlive() && (CanHover() || HasAuraType(SPELL_AURA_HOVER)))
         SetHover(true);
     if (CanEnterWater())
@@ -2683,28 +2683,24 @@ void Creature::UpdateMovementFlags()
         return;
 
     // Set the movement flags if the creature is in that mode. (Only fly if actually in air, only swim if in water, etc)
-    float ground = GetFloorZ();
+    float const ground = GetFloorZ();
+    bool const isInAir = (G3D::fuzzyGt(GetPositionZ(), ground + (CanHover() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f) + GROUND_HEIGHT_TOLERANCE) || G3D::fuzzyLt(GetPositionZ(), ground - GROUND_HEIGHT_TOLERANCE)); // Can be underground too, prevent the falling
 
-    bool canHover = CanHover();
-    bool isInAir = (G3D::fuzzyGt(GetPositionZ(), ground + (canHover ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f) + GROUND_HEIGHT_TOLERANCE) || G3D::fuzzyLt(GetPositionZ(), ground - GROUND_HEIGHT_TOLERANCE)); // Can be underground too, prevent the falling
-
-    if (GetMovementTemplate().IsFlightAllowed() && isInAir && !IsFalling())
+    if (isInAir && CanFly() && !IsFlying() && !IsFalling())
     {
-        if (GetMovementTemplate().Flight == CreatureFlightMovementType::CanFly)
-            SetCanFly(true);
-        else
-            SetDisableGravity(true);
-
-        if (!HasAuraType(SPELL_AURA_HOVER))
-            SetHover(false);
+        if (HasStoredMovementFlag(MOVEMENTFLAG_CAN_FLY))
+            SetCanFly(true, false, true);
+        if (HasStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY))
+            SetDisableGravity(true, false, true, true);
     }
-    else
+    if (!isInAir && IsFlying())
     {
-        SetCanFly(false);
-        SetDisableGravity(false);
-        if (IsAlive() && (CanHover() || HasAuraType(SPELL_AURA_HOVER)))
-            SetHover(true);
+        SetCanFly(false, false, true);
+        SetDisableGravity(false, false, true, true);
     }
+
+    if (IsAlive() && (CanHover() || HasAuraType(SPELL_AURA_HOVER)))
+        SetHover(true);
 
     if (!isInAir)
         SetFall(false);
@@ -2722,6 +2718,9 @@ CreatureMovementData const& Creature::GetMovementTemplate() const
 
 bool Creature::CanSwim() const
 {
+    if (HasStoredMovementFlag(MOVEMENTFLAG_SWIMMING))
+        return true;
+
     if (Unit::CanSwim())
         return true;
 
