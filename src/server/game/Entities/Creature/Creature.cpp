@@ -1963,6 +1963,7 @@ float Creature::GetAttackDistance(Unit const* player) const
 
 void Creature::setDeathState(DeathState s)
 {
+    bool const needsFalling = (IsFlying() || IsHovering()) && !IsUnderWater();
     Unit::setDeathState(s);
 
     if (s == JUST_DIED)
@@ -1991,6 +1992,10 @@ void Creature::setDeathState(DeathState s)
 
         SaveRespawnTime();
 
+        SetDisableGravity(false, false);
+        SetCanFly(false, false);
+        SetHover(false, false);
+
         ReleaseSpellFocus(nullptr, false); // remove spellcast focus
         DoNotReacquireSpellFocusTarget();  // cancel delayed re-target
         SetTarget(ObjectGuid::Empty);      // drop target - dead mobs shouldn't ever target things
@@ -2006,11 +2011,6 @@ void Creature::setDeathState(DeathState s)
         //Dismiss group if is leader
         if (m_formation && m_formation->GetLeader() == this)
             m_formation->FormationReset(true);
-
-        bool needsFalling = (IsFlying() || IsHovering()) && !IsUnderWater();
-        SetHover(false, false);
-        SetDisableGravity(false, false);
-        SetCanFly(false, false);
 
         if (needsFalling)
             GetMotionMaster()->MoveFall();
