@@ -628,9 +628,8 @@ bool Creature::UpdateEntry(uint32 entry, CreatureData const* data /*= nullptr*/,
     SetIsCombatDisallowed((cInfo->flags_extra & CREATURE_FLAG_EXTRA_CANNOT_ENTER_COMBAT) != 0);
 
     LoadTemplateRoot();
-    InitializeMovementFlags();
-
     LoadCreaturesAddon();
+    InitializeMovementFlags();
     LoadTemplateImmunities();
 
     GetThreatManager().EvaluateSuppressed();
@@ -1992,10 +1991,6 @@ void Creature::setDeathState(DeathState s)
 
         SaveRespawnTime();
 
-        SetDisableGravity(false, false);
-        SetCanFly(false, false);
-        SetHover(false, false);
-
         ReleaseSpellFocus(nullptr, false); // remove spellcast focus
         DoNotReacquireSpellFocusTarget();  // cancel delayed re-target
         SetTarget(ObjectGuid::Empty);      // drop target - dead mobs shouldn't ever target things
@@ -2580,9 +2575,6 @@ bool Creature::LoadCreaturesAddon()
             TC_LOG_DEBUG("entities.unit", "Spell: {} added to creature {}", *itr, GetGUID().ToString());
         }
     }
-
-    if (GetAnimTier() == AnimTier::Hover)
-        SetHover(true);
 
     return true;
 }

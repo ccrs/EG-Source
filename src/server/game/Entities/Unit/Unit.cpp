@@ -8751,6 +8751,10 @@ void Unit::setDeathState(DeathState s)
         ClearAllReactives();
         ClearDiminishings();
 
+        SetDisableGravity(false, false);
+        SetCanFly(false, false);
+        SetHover(false, false);
+
         // Don't clear the movement if the Unit was on a vehicle as we are exiting now
         if (!isOnVehicle)
         {
