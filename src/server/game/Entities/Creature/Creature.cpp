@@ -1545,6 +1545,14 @@ float Creature::GetSpellDamageMod(int32 Rank) const
     }
 }
 
+bool Creature::IsInAir(Position const destination, float const destinationFloor) const
+{
+    float const a = destination.GetPositionZ();
+    float const b = destinationFloor + (IsHovering() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f);
+    float const c = a - b;
+    return std::fabs(c) > (0.5f + (IsHovering() || !IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER)) ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f);
+}
+
 bool Creature::CreateFromProto(ObjectGuid::LowType guidlow, uint32 entry, CreatureData const* data /*= nullptr*/, uint32 vehId /*= 0*/)
 {
     SetZoneScript();
@@ -2668,11 +2676,7 @@ void Creature::UpdateMovementFlags()
         return;
 
     // Set the movement flags if the creature is in that mode. (Only fly if actually in air, only swim if in water, etc)
-    float const ground = GetFloorZ();
-    float a = GetPositionZ();
-    float b = ground + (IsHovering() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f);
-    float c = a - b;
-    bool isInAir = std::fabs(c) > (0.5f + (IsHovering() || !IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER)) ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f);
+    bool const isInAir = IsInAir(*this, GetFloorZ());
     if (isInAir)
     {
         if (CanFly() && !IsFlying() && !IsFalling())
