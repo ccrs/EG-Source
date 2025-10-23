@@ -258,7 +258,7 @@ Creature::Creature(bool isWorldObject): Unit(isWorldObject), MapObject(), m_grou
     m_meleeDamageSchoolMask(SPELL_SCHOOL_MASK_NORMAL), m_originalEntry(0), m_homePosition(), m_transportHomePosition(),
     m_creatureInfo(nullptr), m_creatureData(nullptr), m_stringIds(), _waypointPathId(0), _currentWaypointNodeInfo(0, 0),
     m_formation(nullptr), m_triggerJustAppeared(true), m_respawnCompatibilityMode(false), _lastDamagedTime(0),
-    _regenerateHealth(true), _regenerateHealthLock(false), _isMissingCanSwimFlagOutOfCombat(false)
+    _regenerateHealth(true), _regenerateHealthLock(false), _isMissingCanSwimFlagOutOfCombat(false), _storedMovementFlags(0)
 {
     m_regenTimer = CREATURE_REGEN_INTERVAL;
     m_valuesCount = UNIT_END;
@@ -2654,8 +2654,22 @@ void Creature::GetRespawnPosition(float &x, float &y, float &z, float* ori, floa
 
 void Creature::InitializeMovementFlags()
 {
-    // It does the same, for now
-    UpdateMovementFlags();
+    // Do not update movement flags if creature is controlled by a player (charm/vehicle)
+    if (IsMovedByClient())
+        return;
+
+    // Creatures with CREATURE_FLAG_EXTRA_NO_MOVE_FLAGS_UPDATE should control MovementFlags in your own scripts
+    if (GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_NO_MOVE_FLAGS_UPDATE)
+        return;
+
+    if (GetMovementTemplate().Flight == CreatureFlightMovementType::DisableGravity)
+        SetDisableGravity(true);
+    if (GetMovementTemplate().Flight == CreatureFlightMovementType::CanFly)
+        SetCanFly(true);
+    if (IsAlive() && (CanHover() || HasAuraType(SPELL_AURA_HOVER)))
+        SetHover(true);
+    if (CanEnterWater())
+        AddStoredMovementFlag(MOVEMENTFLAG_SWIMMING);
 }
 
 void Creature::UpdateMovementFlags()
@@ -2963,6 +2977,11 @@ bool Creature::SetWalk(bool enable)
 
 bool Creature::SetDisableGravity(bool disable, bool packetOnly /*=false*/, bool updateAnimTier /*= true*/)
 {
+    if (disable)
+        AddStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
+    else
+        RemoveStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
+
     //! It's possible only a packet is sent but moveflags are not updated
     //! Need more research on this
     if (!packetOnly && !Unit::SetDisableGravity(disable, packetOnly, updateAnimTier))
@@ -3003,6 +3022,11 @@ bool Creature::SetSwim(bool enable)
 
 bool Creature::SetCanFly(bool enable, bool /*packetOnly = false */)
 {
+    if (enable)
+        AddStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
+    else
+        RemoveStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
+
     if (!Unit::SetCanFly(enable))
         return false;
 

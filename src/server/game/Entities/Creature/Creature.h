@@ -378,6 +378,10 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
 
         void ExitVehicle(Position const* exitPosition = nullptr) override;
 
+        // EG - Custom declarations
+        void AddStoredMovementFlag(uint32 flag) { _storedMovementFlags |= flag; }
+        void RemoveStoredMovementFlag(uint32 flag) { _storedMovementFlags &= ~flag; }
+        bool HasStoredMovementFlag(uint32 flag) const { return (_storedMovementFlags & flag) != 0; }
     protected:
         bool CreateFromProto(ObjectGuid::LowType guidlow, uint32 entry, CreatureData const* data = nullptr, uint32 vehId = 0);
         bool InitEntry(uint32 entry, CreatureData const* data = nullptr);
@@ -464,6 +468,8 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool _regenerateHealthLock; // Dynamically set
 
         bool _isMissingCanSwimFlagOutOfCombat;
+        // EG - Custom declarations
+        uint32 _storedMovementFlags;
 };
 
 class TC_GAME_API AssistDelayEvent : public BasicEvent
