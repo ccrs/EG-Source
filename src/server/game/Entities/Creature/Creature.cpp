@@ -1097,9 +1097,6 @@ bool Creature::Create(ObjectGuid::LowType guidlow, Map* map, uint32 phaseMask, u
             break;
     }
 
-    //! Need to be called after LoadCreaturesAddon - MOVEMENTFLAG_HOVER is set there
-    m_positionZ += GetHoverOffset();
-
     LastUsedScriptID = GetScriptId();
 
     if (IsSpiritHealer() || IsSpiritGuide() || (GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_GHOST_VISIBILITY))
@@ -2013,6 +2010,7 @@ void Creature::setDeathState(DeathState s)
         bool needsFalling = (IsFlying() || IsHovering()) && !IsUnderWater();
         SetHover(false, false);
         SetDisableGravity(false, false);
+        SetCanFly(false, false);
 
         if (needsFalling)
             GetMotionMaster()->MoveFall();
@@ -2582,6 +2580,9 @@ bool Creature::LoadCreaturesAddon()
             TC_LOG_DEBUG("entities.unit", "Spell: {} added to creature {}", *itr, GetGUID().ToString());
         }
     }
+
+    if (GetAnimTier() == AnimTier::Hover)
+        SetHover(true);
 
     return true;
 }
