@@ -3060,8 +3060,13 @@ bool Creature::SetFeatherFall(bool enable, bool packetOnly /* = false */)
     return true;
 }
 
-bool Creature::SetHover(bool enable, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/)
+bool Creature::SetHover(bool enable, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/, bool temporally = false)
 {
+    if (!enable && temporally)
+        AddStoredMovementFlag(MOVEMENTFLAG_HOVER);
+    else
+        RemoveStoredMovementFlag(MOVEMENTFLAG_HOVER);
+
     if (!packetOnly && !Unit::SetHover(enable, packetOnly, updateAnimTier))
         return false;
 

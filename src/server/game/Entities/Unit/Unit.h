@@ -1224,7 +1224,7 @@ class TC_GAME_API Unit : public WorldObject
         virtual bool SetCanFly(bool enable, bool packetOnly = false, bool temporally = false);
         virtual bool SetWaterWalking(bool enable, bool packetOnly = false);
         virtual bool SetFeatherFall(bool enable, bool packetOnly = false);
-        virtual bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true);
+        virtual bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true, bool temporally = false);
 
         void SetInFront(WorldObject const* target);
         void SetFacingTo(float const ori, bool force = true);

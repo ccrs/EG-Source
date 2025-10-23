@@ -159,7 +159,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool SetCanFly(bool enable, bool packetOnly = false, bool temporally = false) override;
         bool SetWaterWalking(bool enable, bool packetOnly = false) override;
         bool SetFeatherFall(bool enable, bool packetOnly = false) override;
-        bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true) override;
+        bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true, bool temporally = false) override;
 
         uint32 GetShieldBlockValue() const override;
 
