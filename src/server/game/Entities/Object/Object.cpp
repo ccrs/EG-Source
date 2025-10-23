@@ -329,7 +329,7 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint16 flags) const
 
             *data << float(object->GetPositionX());
             *data << float(object->GetPositionY());
-            *data << float(unit ? unit->GetPositionZ() + unit->GetHoverOffset() : object->GetPositionZ());
+            *data << float(object->GetPositionZ());
 
             if (transport)
             {
@@ -341,7 +341,7 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint16 flags) const
             {
                 *data << float(object->GetPositionX());
                 *data << float(object->GetPositionY());
-                *data << float(unit ? unit->GetPositionZ() + unit->GetHoverOffset() : object->GetPositionZ());
+                *data << float(object->GetPositionZ());
             }
 
             *data << object->GetOrientation();
@@ -359,7 +359,7 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint16 flags) const
                 ASSERT(object);
                 *data << float(object->GetStationaryX());
                 *data << float(object->GetStationaryY());
-                *data << float(unit ? unit->GetPositionZ() + unit->GetHoverOffset() : object->GetPositionZ());
+                *data << float(object->GetStationaryZ());
                 *data << float(object->GetStationaryO());
             }
         }
