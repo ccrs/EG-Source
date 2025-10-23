@@ -2694,11 +2694,10 @@ void Creature::UpdateMovementFlags()
     }
     if (!isInAir)
     {
-        if (IsFlying())
-        {
+        if (HasUnitMovementFlag(MOVEMENTFLAG_CAN_FLY))
             SetCanFly(false, false, true);
+        if (HasUnitMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY))
             SetDisableGravity(false, false, true, true);
-        }
 
         if (IsAlive() && !IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER))
             SetHover(true, false, true, true);
