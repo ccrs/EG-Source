@@ -2966,10 +2966,10 @@ bool Creature::SetWalk(bool enable)
 
 bool Creature::SetDisableGravity(bool disable, bool packetOnly /*=false*/, bool updateAnimTier /*= true*/, bool temporally/* = false*/)
 {
-    if (disable)
-        AddStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
+    if (!disable && temporally)
+        AddStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
     else
-        RemoveStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
+        RemoveStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
 
     //! It's possible only a packet is sent but moveflags are not updated
     //! Need more research on this
@@ -2997,6 +2997,11 @@ bool Creature::SetDisableGravity(bool disable, bool packetOnly /*=false*/, bool 
 
 bool Creature::SetSwim(bool enable, bool temporally/* = false*/)
 {
+    if (!enable && temporally)
+        AddStoredMovementFlag(MOVEMENTFLAG_SWIMMING);
+    else
+        RemoveStoredMovementFlag(MOVEMENTFLAG_SWIMMING);
+
     if (!Unit::SetSwim(enable))
         return false;
 
@@ -3011,10 +3016,10 @@ bool Creature::SetSwim(bool enable, bool temporally/* = false*/)
 
 bool Creature::SetCanFly(bool enable, bool /*packetOnly = false */, bool temporally/* = false*/)
 {
-    if (enable)
-        AddStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
+    if (!enable && temporally)
+        AddStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
     else
-        RemoveStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
+        RemoveStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
 
     if (!Unit::SetCanFly(enable))
         return false;
