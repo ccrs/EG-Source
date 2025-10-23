@@ -64,10 +64,10 @@ void HomeMovementGenerator<Creature>::SetTargetLocation(Creature* owner)
     Movement::MoveSplineInit init(owner);
 
     float const ground = owner->GetFloorZ();
-    bool const isInAir = std::fabs(owner->GetPositionZ() - (ground + (owner->IsHovering() ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f))) <= 0.1f;
+    bool const isInAir = std::fabs(owner->GetPositionZ() - (ground + (owner->IsHovering() ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f))) > 0.1f;
     if (isInAir && owner->IsFlying() && !owner->IsHovering())
     {
-        if (std::fabs((ground + (owner->IsHovering() ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f)) - destination.GetPositionZ() <= 0.1f))
+        if (std::fabs((ground + (owner->IsHovering() ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f)) - destination.GetPositionZ() > 0.1f))
             init.SetAnimation(AnimTier::Ground);
     }
 

@@ -2676,7 +2676,10 @@ void Creature::UpdateMovementFlags()
 
     // Set the movement flags if the creature is in that mode. (Only fly if actually in air, only swim if in water, etc)
     float const ground = GetFloorZ();
-    bool const isInAir = std::fabs(GetPositionZ() - (ground + (IsHovering() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f))) <= 0.1f;
+    float a = GetPositionZ();
+    float b = ground + (IsHovering() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f);
+    float c = a - b;
+    bool isInAir = std::fabs(c) > 0.1f;
     if (isInAir)
     {
         if (CanFly() && !IsFlying() && !IsFalling())
