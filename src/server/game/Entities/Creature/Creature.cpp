@@ -2544,14 +2544,6 @@ bool Creature::LoadCreaturesAddon()
     SetAnimTier(AnimTier(creatureAddon->animTier));
     ReplaceAllVisFlags(UnitVisFlags(creatureAddon->visFlags));
 
-    //! Suspected correlation between UNIT_FIELD_BYTES_1, offset 3, value 0x2:
-    //! If no inhabittype_fly (if no MovementFlag_DisableGravity or MovementFlag_CanFly flag found in sniffs)
-    //! Check using InhabitType as movement flags are assigned dynamically
-    //! basing on whether the creature is in air or not
-    //! Set MovementFlag_Hover. Otherwise do nothing.
-    if (CanHover())
-        AddUnitMovementFlag(MOVEMENTFLAG_HOVER);
-
     // UNIT_FIELD_BYTES_2 values
     SetSheath(SheathState(creatureAddon->sheathState));
     ReplaceAllPvpFlags(UnitPVPStateFlags(creatureAddon->pvpFlags));
@@ -2684,7 +2676,7 @@ void Creature::UpdateMovementFlags()
 
     // Set the movement flags if the creature is in that mode. (Only fly if actually in air, only swim if in water, etc)
     float const ground = GetFloorZ();
-    bool const isInAir = (G3D::fuzzyGt(GetPositionZ(), ground + (CanHover() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f) + 0.1f) || G3D::fuzzyLt(GetPositionZ(), ground - 0.1f)); // Can be underground too, prevent the falling
+    bool const isInAir = (G3D::fuzzyGt(GetPositionZ(), ground + (IsHovering() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f) + 0.1f) || G3D::fuzzyLt(GetPositionZ(), ground - 0.1f)); // Can be underground too, prevent the falling
     if (isInAir)
     {
         if (CanFly() && !IsFlying() && !IsFalling())
