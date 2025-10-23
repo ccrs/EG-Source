@@ -2659,7 +2659,7 @@ void Creature::InitializeMovementFlags()
         SetDisableGravity(true, false, true, true);
     if (GetMovementTemplate().Flight == CreatureFlightMovementType::CanFly)
         SetCanFly(true, false, true);
-    if (IsAlive() && (CanHover() || HasAuraType(SPELL_AURA_HOVER)))
+    if (IsAlive() && (GetMovementTemplate().Ground == CreatureGroundMovementType::Hover || HasAuraType(SPELL_AURA_HOVER)))
         SetHover(true, false, true, true);
     if (CanEnterWater() && CanSwim() && IsInWater())
         SetSwim(true, true);
