@@ -8757,19 +8757,15 @@ void Unit::setDeathState(DeathState s)
             if (GetMotionMaster()->StopOnDeath())
             {
                 bool disableSpline = true;
-                if (GetTypeId() == TYPEID_UNIT && ToCreature()->IsInAir(*this, GetFloorZ(), false) && !IsUnderWater())
+                if (!HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED) && GetTypeId() == TYPEID_UNIT && ToCreature()->IsInAir(*this, GetFloorZ(), false) && !IsUnderWater())
                 {
-                    float tz = GetFloorZ();
-                    if (std::fabs(GetPositionZ() - tz) > 0.1f && !HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED))
-                    {
-                        GetMotionMaster()->AddFlag(MOTIONMASTER_FLAG_STATIC_PREVENT_INITIALIZATION);
-                        SetFall(true);
-                        disableSpline = false;
-                        Movement::MoveSplineInit init(this);
-                        init.MoveTo(GetPositionX(), GetPositionY(), tz, false, true);
-                        init.SetFall();
-                        init.Launch();
-                    }
+                    GetMotionMaster()->AddFlag(MOTIONMASTER_FLAG_STATIC_PREVENT_INITIALIZATION);
+                    SetFall(true);
+                    disableSpline = false;
+                    Movement::MoveSplineInit init(this);
+                    init.MoveTo(GetPositionX(), GetPositionY(), GetFloorZ(), false, true);
+                    init.SetFall();
+                    init.Launch();
                 }
                 if (disableSpline)
                 {
@@ -8779,8 +8775,8 @@ void Unit::setDeathState(DeathState s)
             }
         }
 
-        SetDisableGravity(false, false);
-        SetCanFly(false, false);
+        SetDisableGravity(false);
+        SetCanFly(false);
         SetHover(false, false, true, false, false);
 
         // without this when removing IncreaseMaxHealth aura player may stuck with 1 hp
