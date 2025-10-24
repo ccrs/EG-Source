@@ -8751,30 +8751,24 @@ void Unit::setDeathState(DeathState s)
         ClearAllReactives();
         ClearDiminishings();
 
-        SetDisableGravity(false, false);
-        SetCanFly(false, false);
-        SetHover(false, false, true, false, false);
-
         // Don't clear the movement if the Unit was on a vehicle as we are exiting now
         if (!isOnVehicle)
         {
             if (GetMotionMaster()->StopOnDeath())
             {
                 bool disableSpline = true;
-                if (GetTypeId() == TYPEID_UNIT && ToCreature()->IsInAir(*this, GetFloorZ()) && !IsUnderWater())
+                if (GetTypeId() == TYPEID_UNIT && ToCreature()->IsInAir(*this, GetFloorZ(), false) && !IsUnderWater())
                 {
                     float tz = GetFloorZ();
                     if (std::fabs(GetPositionZ() - tz) > 0.1f && !HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED))
                     {
+                        GetMotionMaster()->AddFlag(MOTIONMASTER_FLAG_STATIC_PREVENT_INITIALIZATION);
                         SetFall(true);
                         disableSpline = false;
-                        std::function<void(Movement::MoveSplineInit&)> initializer = [=](Movement::MoveSplineInit& init)
-                        {
-                            init.MoveTo(GetPositionX(), GetPositionY(), tz, false, true);
-                            init.SetFall();
-                            init.Launch();
-                        };
-                        GetMotionMaster()->LaunchMoveSpline(std::move(initializer), 0, MOTION_PRIORITY_HIGHEST);
+                        Movement::MoveSplineInit init(this);
+                        init.MoveTo(GetPositionX(), GetPositionY(), tz, false, true);
+                        init.SetFall();
+                        init.Launch();
                     }
                 }
                 if (disableSpline)
@@ -8784,6 +8778,10 @@ void Unit::setDeathState(DeathState s)
                 }
             }
         }
+
+        SetDisableGravity(false, false);
+        SetCanFly(false, false);
+        SetHover(false, false, true, false, false);
 
         // without this when removing IncreaseMaxHealth aura player may stuck with 1 hp
         // do not why since in IncreaseMaxHealth currenthealth is checked

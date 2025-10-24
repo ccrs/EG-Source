@@ -1545,12 +1545,13 @@ float Creature::GetSpellDamageMod(int32 Rank) const
     }
 }
 
-bool Creature::IsInAir(Position const destination, float const destinationFloor) const
+bool Creature::IsInAir(Position const destination, float const destinationFloor, bool honorHover/* = true*/) const
 {
     float const a = destination.GetPositionZ();
     float const b = destinationFloor + (IsHovering() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f);
     float const c = a - b;
-    return std::fabs(c) > (0.5f + (IsHovering() || (!IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER))) ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f);
+    float const hoverHeight = (IsHovering() || (!IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER))) ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f;
+    return std::fabs(c) > (0.5f + honorHover ? hoverHeight : 0.f);
 }
 
 bool Creature::CreateFromProto(ObjectGuid::LowType guidlow, uint32 entry, CreatureData const* data /*= nullptr*/, uint32 vehId /*= 0*/)
