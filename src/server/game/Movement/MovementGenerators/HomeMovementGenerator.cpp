@@ -64,10 +64,10 @@ void HomeMovementGenerator<Creature>::SetTargetLocation(Creature* owner)
     Position destination = owner->GetHomePosition();
     Movement::MoveSplineInit init(owner);
 
-    bool const isInAir = owner->IsInAir(*owner, owner->GetFloorZ());
+    bool isInAir = owner->IsInAir(*owner, owner->GetFloorZ());
     if (isInAir && owner->IsFlying() && !owner->IsHovering())
     {
-        float const destinationGround = owner->GetMap()->GetHeight(owner->GetPhaseMask(), destination);
+        float destinationGround = owner->GetMap()->GetHeight(owner->GetPhaseMask(), destination);
         if (!owner->IsInAir(destination, destinationGround))
             init.SetAnimation(AnimTier::Ground);
     }
