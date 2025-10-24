@@ -8753,7 +8753,7 @@ void Unit::setDeathState(DeathState s)
 
         SetDisableGravity(false, false);
         SetCanFly(false, false);
-        SetHover(false, false);
+        SetHover(false, false, true, false, false);
 
         // Don't clear the movement if the Unit was on a vehicle as we are exiting now
         if (!isOnVehicle)
