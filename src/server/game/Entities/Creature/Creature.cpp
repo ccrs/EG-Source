@@ -1550,7 +1550,7 @@ bool Creature::IsInAir(Position const destination, float const destinationFloor)
     float const a = destination.GetPositionZ();
     float const b = destinationFloor + (IsHovering() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f);
     float const c = a - b;
-    return std::fabs(c) > (0.5f + (IsHovering() || !IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER)) ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f);
+    return std::fabs(c) > (0.5f + (IsHovering() || (!IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER))) ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f);
 }
 
 bool Creature::CreateFromProto(ObjectGuid::LowType guidlow, uint32 entry, CreatureData const* data /*= nullptr*/, uint32 vehId /*= 0*/)
@@ -1970,7 +1970,6 @@ float Creature::GetAttackDistance(Unit const* player) const
 
 void Creature::setDeathState(DeathState s)
 {
-    bool const needsFalling = (IsFlying() || IsHovering()) && !IsUnderWater();
     Unit::setDeathState(s);
 
     if (s == JUST_DIED)
@@ -2014,9 +2013,6 @@ void Creature::setDeathState(DeathState s)
         //Dismiss group if is leader
         if (m_formation && m_formation->GetLeader() == this)
             m_formation->FormationReset(true);
-
-        if (needsFalling)
-            GetMotionMaster()->MoveFall();
 
         Unit::setDeathState(CORPSE);
     }

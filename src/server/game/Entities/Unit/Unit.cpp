@@ -8751,16 +8751,31 @@ void Unit::setDeathState(DeathState s)
         ClearAllReactives();
         ClearDiminishings();
 
-        SetDisableGravity(false, false);
-        SetCanFly(false, false);
-        SetHover(false, false, true, false, false);
-
         // Don't clear the movement if the Unit was on a vehicle as we are exiting now
         if (!isOnVehicle)
         {
             if (GetMotionMaster()->StopOnDeath())
+            {
                 DisableSpline();
+
+                if (GetTypeId() == TYPEID_UNIT && (IsFlying() || IsHovering()) && !IsUnderWater())
+                {
+                    float tz = GetFloorZ();
+                    if (std::fabs(GetPositionZ() - tz) > 0.1f && !HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED))
+                    {
+                        SetFall(true);
+                        Movement::MoveSplineInit init(this);
+                        init.MoveTo(GetPositionX(), GetPositionY(), tz, false);
+                        init.SetFall();
+                        init.Launch();
+                    }
+                }
+            }
         }
+
+        SetDisableGravity(false, false);
+        SetCanFly(false, false);
+        SetHover(false, false, true, false, false);
 
         // without this when removing IncreaseMaxHealth aura player may stuck with 1 hp
         // do not why since in IncreaseMaxHealth currenthealth is checked
