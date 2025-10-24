@@ -3063,14 +3063,14 @@ bool Creature::SetFeatherFall(bool enable, bool packetOnly /* = false */)
     return true;
 }
 
-bool Creature::SetHover(bool enable, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/, bool temporally/* = false*/)
+bool Creature::SetHover(bool enable, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/, bool temporally/* = false*/, bool relocate/* = true*/)
 {
     if (!enable && temporally)
         AddStoredMovementFlag(MOVEMENTFLAG_HOVER);
     else
         RemoveStoredMovementFlag(MOVEMENTFLAG_HOVER);
 
-    if (!packetOnly && !Unit::SetHover(enable, packetOnly, updateAnimTier))
+    if (!packetOnly && !Unit::SetHover(enable, packetOnly, updateAnimTier, temporally, relocate))
         return false;
 
     if (updateAnimTier && IsAlive() && !HasUnitState(UNIT_STATE_ROOT) && !GetMovementTemplate().IsRooted())
