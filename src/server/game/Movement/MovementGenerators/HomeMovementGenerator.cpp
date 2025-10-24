@@ -19,6 +19,7 @@
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "G3DPosition.hpp"
+#include "Map.h"
 #include "MotionMaster.h"
 #include "MovementDefines.h"
 #include "MoveSpline.h"
@@ -63,11 +64,11 @@ void HomeMovementGenerator<Creature>::SetTargetLocation(Creature* owner)
     Position destination = owner->GetHomePosition();
     Movement::MoveSplineInit init(owner);
 
-    float const ground = owner->GetFloorZ();
-    bool const isInAir = std::fabs(owner->GetPositionZ() - (ground + (owner->IsHovering() ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f))) > (0.5f + (owner->IsHovering() || !owner->IsHovering() && owner->HasStoredMovementFlag(MOVEMENTFLAG_HOVER)) ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f);
+    bool const isInAir = owner->IsInAir(*owner, owner->GetFloorZ());
     if (isInAir && owner->IsFlying() && !owner->IsHovering())
     {
-        if (std::fabs((ground + (owner->IsHovering() ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f)) - destination.GetPositionZ() > (0.5f + (owner->IsHovering() || !owner->IsHovering() && owner->HasStoredMovementFlag(MOVEMENTFLAG_HOVER)) ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f)))
+        float const destinationGround = owner->GetMap()->GetHeight(owner->GetPhaseMask(), destination);
+        if (!owner->IsInAir(destination, destinationGround))
             init.SetAnimation(AnimTier::Ground);
     }
 
