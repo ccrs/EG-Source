@@ -3177,7 +3177,7 @@ bool Unit::IsInAir(Position const destination, float destinationFloor, bool hono
     if (a <= destinationFloor + GROUND_HEIGHT_TOLERANCE)
         return false;
     float c = a - destinationFloor;
-    return std::fabs(c) > 0.5f;
+    return std::fabs(c) > 0.7f;
 }
 
 void Unit::ProcessPositionDataChanged(PositionFullTerrainStatus const& data)

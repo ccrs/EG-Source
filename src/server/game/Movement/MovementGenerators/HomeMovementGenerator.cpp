@@ -62,14 +62,25 @@ void HomeMovementGenerator<Creature>::SetTargetLocation(Creature* owner)
     owner->AddUnitState(UNIT_STATE_ROAMING_MOVE);
 
     Position destination = owner->GetHomePosition();
+    owner->UpdateAllowedPositionZ(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
+
     Movement::MoveSplineInit init(owner);
 
     bool isInAir = owner->IsInAir(*owner, owner->GetFloorZ());
     if (isInAir && owner->IsFlying() && !owner->IsHovering())
     {
         float destinationGround = owner->GetMap()->GetHeight(owner->GetPhaseMask(), destination);
-        if (!owner->IsInAir(destination, destinationGround) && !owner->CanHover())
-            init.SetAnimation(AnimTier::Ground);
+        if (!owner->IsInAir(destination, destinationGround))
+        {
+            if (!owner->CanHover())
+                init.SetAnimation(AnimTier::Ground);
+            else if (owner->HasStoredMovementFlag(MOVEMENTFLAG_HOVER))
+            {
+                bool a = (std::fabs(destination.GetPositionZ() - destinationGround) <= 0.7f);
+                bool b = !(destination.GetPositionZ() < (destinationGround - GROUND_HEIGHT_TOLERANCE));
+                destination.m_positionZ += (a && b) ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f;
+            }
+        }
     }
 
     /*
@@ -82,7 +93,6 @@ void HomeMovementGenerator<Creature>::SetTargetLocation(Creature* owner)
      * }
      */
 
-    owner->UpdateAllowedPositionZ(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
     init.MoveTo(PositionToVector3(destination));
     init.SetFacing(destination.GetOrientation());
     init.SetWalk(false);
