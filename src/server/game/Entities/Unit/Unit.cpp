@@ -3164,20 +3164,19 @@ bool Unit::IsUnderWater() const
     return GetLiquidStatus() & LIQUID_MAP_UNDER_WATER;
 }
 
-bool Unit::IsInAir(Position const destination, float destinationFloor, bool honorHover/* = true*/) const
+bool Unit::IsInAir(Position const destination, float destinationFloor, bool honorHover/* = true*/, float tolerance/* = 0.5f*/) const
 {
-    float a = destination.GetPositionZ();
-    if (a < destinationFloor - 0.5f)
+    float z = destination.GetPositionZ();
+    if (z < destinationFloor - tolerance) // if really bellow ground, in air (caves,...)
         return true;
-    float hoverHeight = GetHoverOffset();
+    float hoverHeight = GetHoverOffset(); // height if currently hovering
     if (GetTypeId() == TYPEID_UNIT) {
-        hoverHeight = (IsHovering() || (!IsHovering() && ToCreature()->HasStoredMovementFlag(MOVEMENTFLAG_HOVER))) ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f;
+        hoverHeight = ToCreature()->CanHover() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f; // height if could hover
     }
-    a = destination.GetPositionZ() - (honorHover ? hoverHeight : 0.f);
-    if (a <= destinationFloor + 0.5f)
+    z = destination.GetPositionZ() - (honorHover ? hoverHeight : 0.f);
+    if (z <= destinationFloor + tolerance) // if is bellow ground or slightly above it, not in air - should hover too
         return false;
-    float c = a - destinationFloor;
-    return std::fabs(c) > 0.7f;
+    return std::fabs(z - destinationFloor) > 0.7f; // if the difference is higher than tolerance level, in air (todo: this should most likely take into account unit's "size")
 }
 
 void Unit::ProcessPositionDataChanged(PositionFullTerrainStatus const& data)
