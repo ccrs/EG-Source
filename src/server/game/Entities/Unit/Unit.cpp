@@ -13459,7 +13459,8 @@ void Unit::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player const* t
             ((updateType == UPDATETYPE_VALUES ? _changesMask.GetBit(index) : m_uint32Values[index]) && (flags[index] & visibleFlag)) ||
             (index == UNIT_FIELD_AURASTATE && HasFlag(UNIT_FIELD_AURASTATE, PER_CASTER_AURA_STATE_MASK)))
         {
-            updateMask.SetBit(index);
+            if (index != UNIT_FIELD_HOVERHEIGHT)
+                updateMask.SetBit(index);
 
             if (index == UNIT_NPC_FLAGS)
             {
@@ -13576,6 +13577,14 @@ void Unit::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player const* t
                 }
                 else
                     fieldBuffer << m_uint32Values[index];
+            }
+            else if (index == UNIT_FIELD_HOVERHEIGHT)
+            {
+                if (IsAlive())
+                {
+                    updateMask.SetBit(index);
+                    fieldBuffer << m_uint32Values[index];
+                }
             }
             else
             {
