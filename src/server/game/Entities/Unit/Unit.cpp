@@ -8755,8 +8755,29 @@ void Unit::setDeathState(DeathState s)
         if (!isOnVehicle)
         {
             if (GetMotionMaster()->StopOnDeath())
-                DisableSpline();
+            {
+                bool disableSpline = true;
+                if (!HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED) && GetTypeId() == TYPEID_UNIT && ToCreature()->IsInAir(*this, GetFloorZ(), false) && !IsUnderWater())
+                {
+                    GetMotionMaster()->AddFlag(MOTIONMASTER_FLAG_STATIC_PREVENT_INITIALIZATION);
+                    SetFall(true);
+                    disableSpline = false;
+                    Movement::MoveSplineInit init(this);
+                    init.MoveTo(GetPositionX(), GetPositionY(), GetFloorZ(), false, true);
+                    init.SetFall();
+                    init.Launch();
+                }
+                if (disableSpline)
+                {
+                    StopMoving();
+                    DisableSpline();
+                }
+            }
         }
+
+        SetDisableGravity(false);
+        SetCanFly(false);
+        SetHover(false, false, true, false, false);
 
         // without this when removing IncreaseMaxHealth aura player may stuck with 1 hp
         // do not why since in IncreaseMaxHealth currenthealth is checked
@@ -11640,9 +11661,6 @@ bool Unit::SetCharmedBy(Unit* charmer, CharmType type, AuraApplication const* au
 
     AddUnitState(UNIT_STATE_CHARMED);
 
-    if (Creature* creature = ToCreature())
-        creature->RefreshCanSwimFlag();
-
     if ((GetTypeId() != TYPEID_PLAYER) || (charmer->GetTypeId() != TYPEID_PLAYER))
     {
         // AI will schedule its own change if appropriate
@@ -13291,7 +13309,7 @@ bool Unit::SetWalk(bool enable)
     return true;
 }
 
-bool Unit::SetDisableGravity(bool disable, bool /*packetOnly = false*/, bool /*updateAnimTier = true*/)
+bool Unit::SetDisableGravity(bool disable, bool /*packetOnly = false*/, bool /*updateAnimTier = true*/, bool /*temporally = false*/)
 {
     if (disable == IsGravityDisabled())
         return false;
@@ -13323,7 +13341,7 @@ bool Unit::SetFall(bool enable)
     return true;
 }
 
-bool Unit::SetSwim(bool enable)
+bool Unit::SetSwim(bool enable, bool /*temporally = false*/)
 {
     if (enable == HasUnitMovementFlag(MOVEMENTFLAG_SWIMMING))
         return false;
@@ -13335,7 +13353,7 @@ bool Unit::SetSwim(bool enable)
     return true;
 }
 
-bool Unit::SetCanFly(bool enable, bool /*packetOnly = false */)
+bool Unit::SetCanFly(bool enable, bool /*packetOnly = false */, bool /*temporally = false*/)
 {
     if (enable == HasUnitMovementFlag(MOVEMENTFLAG_CAN_FLY))
         return false;
@@ -13374,7 +13392,7 @@ bool Unit::SetFeatherFall(bool enable, bool /*packetOnly = false */)
     return true;
 }
 
-bool Unit::SetHover(bool enable, bool /*packetOnly = false*/, bool /*updateAnimTier = true*/)
+bool Unit::SetHover(bool enable, bool /*packetOnly = false*/, bool /*updateAnimTier = true*/, bool /*temporally = false*/, bool relocate/* = true*/)
 {
     if (enable == HasUnitMovementFlag(MOVEMENTFLAG_HOVER))
         return false;
@@ -13385,14 +13403,14 @@ bool Unit::SetHover(bool enable, bool /*packetOnly = false*/, bool /*updateAnimT
     {
         //! No need to check height on ascent
         AddUnitMovementFlag(MOVEMENTFLAG_HOVER);
-        if (hoverHeight && GetPositionZ() - GetFloorZ() < hoverHeight)
+        if (relocate && hoverHeight && GetPositionZ() - GetFloorZ() < hoverHeight)
             UpdateHeight(GetPositionZ() + hoverHeight);
     }
     else
     {
         RemoveUnitMovementFlag(MOVEMENTFLAG_HOVER);
         //! Dying creatures will MoveFall from setDeathState
-        if (hoverHeight && (!isDying() || GetTypeId() != TYPEID_UNIT))
+        if (relocate && hoverHeight && (!isDying() || GetTypeId() != TYPEID_UNIT))
         {
             float newZ = std::max<float>(GetFloorZ(), GetPositionZ() - hoverHeight);
             UpdateAllowedPositionZ(GetPositionX(), GetPositionY(), newZ);
@@ -13441,7 +13459,8 @@ void Unit::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player const* t
             ((updateType == UPDATETYPE_VALUES ? _changesMask.GetBit(index) : m_uint32Values[index]) && (flags[index] & visibleFlag)) ||
             (index == UNIT_FIELD_AURASTATE && HasFlag(UNIT_FIELD_AURASTATE, PER_CASTER_AURA_STATE_MASK)))
         {
-            updateMask.SetBit(index);
+            if (index != UNIT_FIELD_HOVERHEIGHT)
+                updateMask.SetBit(index);
 
             if (index == UNIT_NPC_FLAGS)
             {
@@ -13558,6 +13577,14 @@ void Unit::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player const* t
                 }
                 else
                     fieldBuffer << m_uint32Values[index];
+            }
+            else if (index == UNIT_FIELD_HOVERHEIGHT)
+            {
+                if (IsAlive())
+                {
+                    updateMask.SetBit(index);
+                    fieldBuffer << m_uint32Values[index];
+                }
             }
             else
             {

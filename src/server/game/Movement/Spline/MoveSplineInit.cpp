@@ -196,6 +196,8 @@ namespace Movement
         args.flags.canswim = unit->CanSwim();
         args.walk = unit->HasUnitMovementFlag(MOVEMENTFLAG_WALKING);
         args.flags.flying = unit->m_movementInfo.HasMovementFlag(MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_DISABLE_GRAVITY);
+        if (unit->IsHovering())
+            SetAnimation(AnimTier::Hover);
     }
 
     MoveSplineInit::~MoveSplineInit() = default;

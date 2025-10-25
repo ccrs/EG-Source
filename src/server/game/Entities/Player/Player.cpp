@@ -26388,7 +26388,7 @@ bool Player::IsInWhisperWhiteList(ObjectGuid guid)
     return false;
 }
 
-bool Player::SetDisableGravity(bool disable, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/)
+bool Player::SetDisableGravity(bool disable, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/, bool/* temporally = false*/)
 {
     if (!packetOnly && !Unit::SetDisableGravity(disable, packetOnly, updateAnimTier))
         return false;
@@ -26405,7 +26405,7 @@ bool Player::SetDisableGravity(bool disable, bool packetOnly /*= false*/, bool u
     return true;
 }
 
-bool Player::SetCanFly(bool apply, bool packetOnly /*= false*/)
+bool Player::SetCanFly(bool apply, bool packetOnly /*= false*/, bool/* temporally = false*/)
 {
     if (!apply)
         SetFallInformation(0, GetPositionZ());
@@ -26427,9 +26427,9 @@ bool Player::SetCanFly(bool apply, bool packetOnly /*= false*/)
         return false;
 }
 
-bool Player::SetHover(bool apply, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/)
+bool Player::SetHover(bool apply, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/, bool temporally/* = false*/, bool relocate/* = true*/)
 {
-    if (!packetOnly && !Unit::SetHover(apply, packetOnly, updateAnimTier))
+    if (!packetOnly && !Unit::SetHover(apply, packetOnly, updateAnimTier, temporally, relocate))
         return false;
 
     WorldPacket data(apply ? SMSG_MOVE_SET_HOVER : SMSG_MOVE_UNSET_HOVER, 12);

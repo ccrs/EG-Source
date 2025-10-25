@@ -19,6 +19,7 @@
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "G3DPosition.hpp"
+#include "Map.h"
 #include "MotionMaster.h"
 #include "MoveSpline.h"
 #include "MoveSplineInit.h"
@@ -192,6 +193,11 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
 
             if (owner->IsHovering())
                 owner->UpdateAllowedPositionZ(x, y, z);
+            else if (owner->IsFlying() && owner->GetTypeId() == TYPEID_UNIT && owner->ToCreature()->HasStoredMovementFlag(MOVEMENTFLAG_HOVER) && !owner->ToCreature()->IsInAir(Position(x, y, z), owner->GetMap()->GetHeight(owner->GetPhaseMask(), Position(x, y, z))))
+            {
+                target->GetNearPoint(owner, x, y, z, -owner->GetCombatReach(), angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner));
+                shortenPath = false;
+            }
 
             bool success = _path->CalculatePath(x, y, z, owner->CanFly());
             if (!success || (_path->GetPathType() & (PATHFIND_NOPATH /* | PATHFIND_INCOMPLETE*/)))

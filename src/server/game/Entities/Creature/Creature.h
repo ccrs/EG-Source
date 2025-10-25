@@ -105,8 +105,8 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool CanWalk() const { return GetMovementTemplate().IsGroundAllowed(); }
         bool CanSwim() const override;
         bool CanEnterWater() const override;
-        bool CanFly()  const override { return GetMovementTemplate().IsFlightAllowed() || IsFlying(); }
-        bool CanHover() const { return GetMovementTemplate().Ground == CreatureGroundMovementType::Hover || IsHovering(); }
+        bool CanFly()  const override { return HasStoredMovementFlag(MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_DISABLE_GRAVITY) || IsFlying(); }
+        bool CanHover() const { return HasStoredMovementFlag(MOVEMENTFLAG_HOVER) || IsHovering(); }
 
         MovementGeneratorType GetDefaultMovementType() const override { return m_defaultMovementType; }
         void SetDefaultMovementType(MovementGeneratorType mgt) { m_defaultMovementType = mgt; }
@@ -154,12 +154,12 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         CreatureAI* AI() const { return reinterpret_cast<CreatureAI*>(GetAI()); }
 
         bool SetWalk(bool enable) override;
-        bool SetDisableGravity(bool disable, bool packetOnly = false, bool updateAnimTier = true) override;
-        bool SetSwim(bool enable) override;
-        bool SetCanFly(bool enable, bool packetOnly = false) override;
+        bool SetDisableGravity(bool disable, bool packetOnly = false, bool updateAnimTier = true, bool temporally = false) override;
+        bool SetSwim(bool enable, bool temporally = false) override;
+        bool SetCanFly(bool enable, bool packetOnly = false, bool temporally = false) override;
         bool SetWaterWalking(bool enable, bool packetOnly = false) override;
         bool SetFeatherFall(bool enable, bool packetOnly = false) override;
-        bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true) override;
+        bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true, bool temporally = false, bool relocate = true) override;
 
         uint32 GetShieldBlockValue() const override;
 
@@ -368,16 +368,17 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         void AtEngage(Unit* target) override;
         void AtDisengage() override;
 
-        bool HasCanSwimFlagOutOfCombat() const
-        {
-            return !_isMissingCanSwimFlagOutOfCombat;
-        }
-        void RefreshCanSwimFlag(bool recheck = false);
-
         std::string GetDebugInfo() const override;
 
         void ExitVehicle(Position const* exitPosition = nullptr) override;
 
+        // EG - Custom declarations
+        void AddStoredMovementFlag(uint32 flag) { _storedMovementFlags |= flag; }
+        void RemoveStoredMovementFlag(uint32 flag) { _storedMovementFlags &= ~flag; }
+        bool HasStoredMovementFlag(uint32 flag) const { return (_storedMovementFlags & flag) != 0; }
+        uint32 GetStoredMovementFlags() const { return _storedMovementFlags; }
+
+        bool IsInAir(Position const destination, float destinationFloor, bool honorHover = true) const;
     protected:
         bool CreateFromProto(ObjectGuid::LowType guidlow, uint32 entry, CreatureData const* data = nullptr, uint32 vehId = 0);
         bool InitEntry(uint32 entry, CreatureData const* data = nullptr);
@@ -463,7 +464,8 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool _regenerateHealth; // Set on creation
         bool _regenerateHealthLock; // Dynamically set
 
-        bool _isMissingCanSwimFlagOutOfCombat;
+        // EG - Custom declarations
+        uint32 _storedMovementFlags;
 };
 
 class TC_GAME_API AssistDelayEvent : public BasicEvent

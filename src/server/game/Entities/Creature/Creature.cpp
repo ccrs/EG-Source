@@ -258,7 +258,7 @@ Creature::Creature(bool isWorldObject): Unit(isWorldObject), MapObject(), m_grou
     m_meleeDamageSchoolMask(SPELL_SCHOOL_MASK_NORMAL), m_originalEntry(0), m_homePosition(), m_transportHomePosition(),
     m_creatureInfo(nullptr), m_creatureData(nullptr), m_stringIds(), _waypointPathId(0), _currentWaypointNodeInfo(0, 0),
     m_formation(nullptr), m_triggerJustAppeared(true), m_respawnCompatibilityMode(false), _lastDamagedTime(0),
-    _regenerateHealth(true), _regenerateHealthLock(false), _isMissingCanSwimFlagOutOfCombat(false)
+    _regenerateHealth(true), _regenerateHealthLock(false), _storedMovementFlags(0)
 {
     m_regenTimer = CREATURE_REGEN_INTERVAL;
     m_valuesCount = UNIT_END;
@@ -628,9 +628,8 @@ bool Creature::UpdateEntry(uint32 entry, CreatureData const* data /*= nullptr*/,
     SetIsCombatDisallowed((cInfo->flags_extra & CREATURE_FLAG_EXTRA_CANNOT_ENTER_COMBAT) != 0);
 
     LoadTemplateRoot();
-    InitializeMovementFlags();
-
     LoadCreaturesAddon();
+    InitializeMovementFlags();
     LoadTemplateImmunities();
 
     GetThreatManager().EvaluateSuppressed();
@@ -1097,9 +1096,6 @@ bool Creature::Create(ObjectGuid::LowType guidlow, Map* map, uint32 phaseMask, u
             break;
     }
 
-    //! Need to be called after LoadCreaturesAddon - MOVEMENTFLAG_HOVER is set there
-    m_positionZ += GetHoverOffset();
-
     LastUsedScriptID = GetScriptId();
 
     if (IsSpiritHealer() || IsSpiritGuide() || (GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_GHOST_VISIBILITY))
@@ -1547,6 +1543,15 @@ float Creature::GetSpellDamageMod(int32 Rank) const
         default:
             return sWorld->getRate(RATE_CREATURE_ELITE_ELITE_SPELLDAMAGE);
     }
+}
+
+bool Creature::IsInAir(Position const destination, float destinationFloor, bool honorHover/* = true*/) const
+{
+    float a = destination.GetPositionZ();
+    float b = destinationFloor + (honorHover ? (IsHovering() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f) : 0.f);
+    float c = a - b;
+    float hoverHeight = (IsHovering() || (!IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER))) ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f;
+    return std::fabs(c) > (0.5f + (honorHover ? hoverHeight : 0.f));
 }
 
 bool Creature::CreateFromProto(ObjectGuid::LowType guidlow, uint32 entry, CreatureData const* data /*= nullptr*/, uint32 vehId /*= 0*/)
@@ -2009,13 +2014,6 @@ void Creature::setDeathState(DeathState s)
         //Dismiss group if is leader
         if (m_formation && m_formation->GetLeader() == this)
             m_formation->FormationReset(true);
-
-        bool needsFalling = (IsFlying() || IsHovering()) && !IsUnderWater();
-        SetHover(false, false);
-        SetDisableGravity(false, false);
-
-        if (needsFalling)
-            GetMotionMaster()->MoveFall();
 
         Unit::setDeathState(CORPSE);
     }
@@ -2544,14 +2542,6 @@ bool Creature::LoadCreaturesAddon()
     SetAnimTier(AnimTier(creatureAddon->animTier));
     ReplaceAllVisFlags(UnitVisFlags(creatureAddon->visFlags));
 
-    //! Suspected correlation between UNIT_FIELD_BYTES_1, offset 3, value 0x2:
-    //! If no inhabittype_fly (if no MovementFlag_DisableGravity or MovementFlag_CanFly flag found in sniffs)
-    //! Check using InhabitType as movement flags are assigned dynamically
-    //! basing on whether the creature is in air or not
-    //! Set MovementFlag_Hover. Otherwise do nothing.
-    if (CanHover())
-        AddUnitMovementFlag(MOVEMENTFLAG_HOVER);
-
     // UNIT_FIELD_BYTES_2 values
     SetSheath(SheathState(creatureAddon->sheathState));
     ReplaceAllPvpFlags(UnitPVPStateFlags(creatureAddon->pvpFlags));
@@ -2654,8 +2644,22 @@ void Creature::GetRespawnPosition(float &x, float &y, float &z, float* ori, floa
 
 void Creature::InitializeMovementFlags()
 {
-    // It does the same, for now
-    UpdateMovementFlags();
+    // Do not update movement flags if creature is controlled by a player (charm/vehicle)
+    if (IsMovedByClient())
+        return;
+
+    // Creatures with CREATURE_FLAG_EXTRA_NO_MOVE_FLAGS_UPDATE should control MovementFlags in your own scripts
+    if (GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_NO_MOVE_FLAGS_UPDATE)
+        return;
+
+    if (GetMovementTemplate().Flight == CreatureFlightMovementType::DisableGravity)
+        SetDisableGravity(true, false, true, true);
+    if (GetMovementTemplate().Flight == CreatureFlightMovementType::CanFly)
+        SetCanFly(true, false, true);
+    if (IsAlive() && (GetMovementTemplate().Ground == CreatureGroundMovementType::Hover || HasAuraType(SPELL_AURA_HOVER)))
+        SetHover(true, false, true, true);
+    if (CanEnterWater() && CanSwim() && IsInWater())
+        SetSwim(true, true);
 }
 
 void Creature::UpdateMovementFlags()
@@ -2669,33 +2673,39 @@ void Creature::UpdateMovementFlags()
         return;
 
     // Set the movement flags if the creature is in that mode. (Only fly if actually in air, only swim if in water, etc)
-    float ground = GetFloorZ();
-
-    bool canHover = CanHover();
-    bool isInAir = (G3D::fuzzyGt(GetPositionZ(), ground + (canHover ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f) + GROUND_HEIGHT_TOLERANCE) || G3D::fuzzyLt(GetPositionZ(), ground - GROUND_HEIGHT_TOLERANCE)); // Can be underground too, prevent the falling
-
-    if (GetMovementTemplate().IsFlightAllowed() && isInAir && !IsFalling())
+    bool const isInAir = IsInAir(*this, GetFloorZ());
+    if (isInAir)
     {
-        if (GetMovementTemplate().Flight == CreatureFlightMovementType::CanFly)
-            SetCanFly(true);
-        else
-            SetDisableGravity(true);
-
-        if (!HasAuraType(SPELL_AURA_HOVER))
-            SetHover(false);
+        if (CanFly() && !IsFlying() && !IsFalling())
+        {
+            if (HasStoredMovementFlag(MOVEMENTFLAG_CAN_FLY))
+                SetCanFly(true, false, true);
+            if (HasStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY))
+                SetDisableGravity(true, false, true, true);
+        }
+        if (IsHovering())
+            SetHover(false, false, true, true);
     }
-    else
-    {
-        SetCanFly(false);
-        SetDisableGravity(false);
-        if (IsAlive() && (CanHover() || HasAuraType(SPELL_AURA_HOVER)))
-            SetHover(true);
-    }
-
     if (!isInAir)
-        SetFall(false);
+    {
+        if (HasUnitMovementFlag(MOVEMENTFLAG_CAN_FLY))
+            SetCanFly(false, false, true);
+        if (HasUnitMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY))
+            SetDisableGravity(false, false, true, true);
 
-    SetSwim(CanSwim() && IsInWater());
+        if (IsAlive() && !IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER))
+            SetHover(true, false, true, true);
+
+        SetFall(false);
+    }
+
+    if (IsInWater())
+    {
+        if (CanSwim() && !IsSwimming() && HasStoredMovementFlag(MOVEMENTFLAG_SWIMMING))
+            SetSwim(true, true);
+    }
+    else if (IsSwimming())
+        SetSwim(false, true);
 }
 
 CreatureMovementData const& Creature::GetMovementTemplate() const
@@ -2708,6 +2718,9 @@ CreatureMovementData const& Creature::GetMovementTemplate() const
 
 bool Creature::CanSwim() const
 {
+    if (HasStoredMovementFlag(MOVEMENTFLAG_SWIMMING))
+        return true;
+
     if (Unit::CanSwim())
         return true;
 
@@ -2723,17 +2736,6 @@ bool Creature::CanEnterWater() const
         return true;
 
     return GetMovementTemplate().IsSwimAllowed();
-}
-
-void Creature::RefreshCanSwimFlag(bool recheck)
-{
-    if (!_isMissingCanSwimFlagOutOfCombat || recheck)
-        _isMissingCanSwimFlagOutOfCombat = !HasUnitFlag(UNIT_FLAG_CAN_SWIM);
-
-    // Check if the creature has UNIT_FLAG_CAN_SWIM and add it if it's missing
-    // Creatures must be able to chase a target in water if they can enter water
-    if (_isMissingCanSwimFlagOutOfCombat && CanEnterWater())
-        SetUnitFlag(UNIT_FLAG_CAN_SWIM);
 }
 
 void Creature::AllLootRemovedFromCorpse()
@@ -2961,8 +2963,13 @@ bool Creature::SetWalk(bool enable)
     return true;
 }
 
-bool Creature::SetDisableGravity(bool disable, bool packetOnly /*=false*/, bool updateAnimTier /*= true*/)
+bool Creature::SetDisableGravity(bool disable, bool packetOnly /*=false*/, bool updateAnimTier /*= true*/, bool temporally/* = false*/)
 {
+    if (!disable && temporally)
+        AddStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
+    else
+        RemoveStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
+
     //! It's possible only a packet is sent but moveflags are not updated
     //! Need more research on this
     if (!packetOnly && !Unit::SetDisableGravity(disable, packetOnly, updateAnimTier))
@@ -2987,8 +2994,13 @@ bool Creature::SetDisableGravity(bool disable, bool packetOnly /*=false*/, bool 
     return true;
 }
 
-bool Creature::SetSwim(bool enable)
+bool Creature::SetSwim(bool enable, bool temporally/* = false*/)
 {
+    if (!enable && temporally)
+        AddStoredMovementFlag(MOVEMENTFLAG_SWIMMING);
+    else
+        RemoveStoredMovementFlag(MOVEMENTFLAG_SWIMMING);
+
     if (!Unit::SetSwim(enable))
         return false;
 
@@ -3001,8 +3013,13 @@ bool Creature::SetSwim(bool enable)
     return true;
 }
 
-bool Creature::SetCanFly(bool enable, bool /*packetOnly = false */)
+bool Creature::SetCanFly(bool enable, bool /*packetOnly = false */, bool temporally/* = false*/)
 {
+    if (!enable && temporally)
+        AddStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
+    else
+        RemoveStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
+
     if (!Unit::SetCanFly(enable))
         return false;
 
@@ -3043,9 +3060,14 @@ bool Creature::SetFeatherFall(bool enable, bool packetOnly /* = false */)
     return true;
 }
 
-bool Creature::SetHover(bool enable, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/)
+bool Creature::SetHover(bool enable, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/, bool temporally/* = false*/, bool relocate/* = true*/)
 {
-    if (!packetOnly && !Unit::SetHover(enable, packetOnly, updateAnimTier))
+    if (!enable && temporally)
+        AddStoredMovementFlag(MOVEMENTFLAG_HOVER);
+    else
+        RemoveStoredMovementFlag(MOVEMENTFLAG_HOVER);
+
+    if (!packetOnly && !Unit::SetHover(enable, packetOnly, updateAnimTier, temporally, relocate))
         return false;
 
     if (updateAnimTier && IsAlive() && !HasUnitState(UNIT_STATE_ROOT) && !GetMovementTemplate().IsRooted())
@@ -3357,8 +3379,6 @@ void Creature::AtEngage(Unit* target)
 
     if (!(GetCreatureTemplate()->type_flags & CREATURE_TYPE_FLAG_ALLOW_MOUNTED_COMBAT))
         Dismount();
-
-    RefreshCanSwimFlag();
 
     if (IsPet() || IsGuardian()) // update pets' speed for catchup OOC speed
     {

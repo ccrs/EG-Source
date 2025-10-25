@@ -1217,14 +1217,15 @@ class TC_GAME_API Unit : public WorldObject
         bool IsGravityDisabled() const { return m_movementInfo.HasMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY); }
         bool IsWalking() const { return m_movementInfo.HasMovementFlag(MOVEMENTFLAG_WALKING); }
         bool IsHovering() const { return m_movementInfo.HasMovementFlag(MOVEMENTFLAG_HOVER); }
+        bool IsSwimming() const { return m_movementInfo.HasMovementFlag(MOVEMENTFLAG_SWIMMING); }
         virtual bool SetWalk(bool enable);
-        virtual bool SetDisableGravity(bool disable, bool packetOnly = false, bool updateAnimTier = true);
+        virtual bool SetDisableGravity(bool disable, bool packetOnly = false, bool updateAnimTier = true, bool temporally = false);
         bool SetFall(bool enable);
-        virtual bool SetSwim(bool enable);
-        virtual bool SetCanFly(bool enable, bool packetOnly = false);
+        virtual bool SetSwim(bool enable, bool temporally = false);
+        virtual bool SetCanFly(bool enable, bool packetOnly = false, bool temporally = false);
         virtual bool SetWaterWalking(bool enable, bool packetOnly = false);
         virtual bool SetFeatherFall(bool enable, bool packetOnly = false);
-        virtual bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true);
+        virtual bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true, bool temporally = false, bool relocate = true);
 
         void SetInFront(WorldObject const* target);
         void SetFacingTo(float const ori, bool force = true);
@@ -1760,7 +1761,7 @@ class TC_GAME_API Unit : public WorldObject
         bool isMoving() const   { return m_movementInfo.HasMovementFlag(MOVEMENTFLAG_MASK_MOVING); }
         bool isTurning() const  { return m_movementInfo.HasMovementFlag(MOVEMENTFLAG_MASK_TURNING); }
         virtual bool CanFly() const = 0;
-        bool IsFlying() const   { return m_movementInfo.HasMovementFlag(MOVEMENTFLAG_FLYING | MOVEMENTFLAG_DISABLE_GRAVITY); }
+        bool IsFlying() const   { return m_movementInfo.HasMovementFlag(MOVEMENTFLAG_FLYING | MOVEMENTFLAG_DISABLE_GRAVITY | MOVEMENTFLAG_CAN_FLY); }
         bool IsFalling() const;
         virtual bool CanEnterWater() const = 0;
         virtual bool CanSwim() const;

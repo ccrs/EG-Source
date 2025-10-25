@@ -19,6 +19,7 @@
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "G3DPosition.hpp"
+#include "Map.h"
 #include "MotionMaster.h"
 #include "MovementDefines.h"
 #include "MoveSpline.h"
@@ -62,6 +63,14 @@ void HomeMovementGenerator<Creature>::SetTargetLocation(Creature* owner)
 
     Position destination = owner->GetHomePosition();
     Movement::MoveSplineInit init(owner);
+
+    bool isInAir = owner->IsInAir(*owner, owner->GetFloorZ());
+    if (isInAir && owner->IsFlying() && !owner->IsHovering())
+    {
+        float destinationGround = owner->GetMap()->GetHeight(owner->GetPhaseMask(), destination);
+        if (!owner->IsInAir(destination, destinationGround))
+            init.SetAnimation(AnimTier::Ground);
+    }
 
     /*
      * TODO: maybe this never worked, who knows, top is always this generator, so this code calls GetResetPosition on itself
@@ -144,9 +153,6 @@ void HomeMovementGenerator<Creature>::DoFinalize(Creature* owner, bool active, b
 
     if (movementInform && HasFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED))
     {
-        if (!owner->HasCanSwimFlagOutOfCombat())
-            owner->RemoveUnitFlag(UNIT_FLAG_CAN_SWIM);
-
         owner->SetSpawnHealth();
         owner->LoadCreaturesAddon();
         if (owner->IsVehicle())
