@@ -1171,6 +1171,7 @@ class TC_GAME_API Unit : public WorldObject
 
         bool IsInWater() const;
         bool IsUnderWater() const;
+        bool IsInAir(Position const destination, float destinationFloor, bool honorHover = true) const;
         bool isInAccessiblePlaceFor(Creature const* c) const;
 
         void SendHealSpellLog(HealInfo& healInfo, bool critical = false);
@@ -1225,7 +1226,7 @@ class TC_GAME_API Unit : public WorldObject
         virtual bool SetCanFly(bool enable, bool packetOnly = false, bool temporally = false);
         virtual bool SetWaterWalking(bool enable, bool packetOnly = false);
         virtual bool SetFeatherFall(bool enable, bool packetOnly = false);
-        virtual bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true, bool temporally = false, bool relocate = true);
+        virtual bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true, bool temporally = false);
 
         void SetInFront(WorldObject const* target);
         void SetFacingTo(float const ori, bool force = true);

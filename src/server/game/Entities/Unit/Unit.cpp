@@ -3164,6 +3164,17 @@ bool Unit::IsUnderWater() const
     return GetLiquidStatus() & LIQUID_MAP_UNDER_WATER;
 }
 
+bool Unit::IsInAir(Position const destination, float destinationFloor, bool honorHover/* = true*/) const
+{
+    float hoverHeight = GetHoverOffset();
+    if (GetTypeId() == TYPEID_UNIT) {
+        hoverHeight = (IsHovering() || (!IsHovering() && ToCreature()->HasStoredMovementFlag(MOVEMENTFLAG_HOVER))) ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f;
+    }
+    float a = destination.GetPositionZ() - (honorHover ? hoverHeight : 0.f);
+    float c = a - destinationFloor;
+    return std::fabs(c) > 0.5f;
+}
+
 void Unit::ProcessPositionDataChanged(PositionFullTerrainStatus const& data)
 {
     ZLiquidStatus oldLiquidStatus = GetLiquidStatus();
@@ -8756,18 +8767,16 @@ void Unit::setDeathState(DeathState s)
         {
             if (GetMotionMaster()->StopOnDeath())
             {
-                bool disableSpline = true;
-                if (!HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED) && GetTypeId() == TYPEID_UNIT && ToCreature()->IsInAir(*this, GetFloorZ(), false) && !IsUnderWater())
+                if (!HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED) && GetTypeId() == TYPEID_UNIT && IsInAir(*this, GetFloorZ(), false) && !IsUnderWater())
                 {
                     GetMotionMaster()->AddFlag(MOTIONMASTER_FLAG_STATIC_PREVENT_INITIALIZATION);
                     SetFall(true);
-                    disableSpline = false;
                     Movement::MoveSplineInit init(this);
                     init.MoveTo(GetPositionX(), GetPositionY(), GetFloorZ(), false, true);
                     init.SetFall();
                     init.Launch();
                 }
-                if (disableSpline)
+                else
                 {
                     StopMoving();
                     DisableSpline();
@@ -8777,7 +8786,7 @@ void Unit::setDeathState(DeathState s)
 
         SetDisableGravity(false);
         SetCanFly(false);
-        SetHover(false, false, true, false, false);
+        SetHover(false);
 
         // without this when removing IncreaseMaxHealth aura player may stuck with 1 hp
         // do not why since in IncreaseMaxHealth currenthealth is checked
@@ -13392,7 +13401,7 @@ bool Unit::SetFeatherFall(bool enable, bool /*packetOnly = false */)
     return true;
 }
 
-bool Unit::SetHover(bool enable, bool /*packetOnly = false*/, bool /*updateAnimTier = true*/, bool /*temporally = false*/, bool relocate/* = true*/)
+bool Unit::SetHover(bool enable, bool /*packetOnly = false*/, bool /*updateAnimTier = true*/, bool /*temporally = false*/)
 {
     if (enable == HasUnitMovementFlag(MOVEMENTFLAG_HOVER))
         return false;
@@ -13403,14 +13412,14 @@ bool Unit::SetHover(bool enable, bool /*packetOnly = false*/, bool /*updateAnimT
     {
         //! No need to check height on ascent
         AddUnitMovementFlag(MOVEMENTFLAG_HOVER);
-        if (relocate && hoverHeight && GetPositionZ() - GetFloorZ() < hoverHeight)
+        if (hoverHeight && GetPositionZ() - GetFloorZ() < hoverHeight)
             UpdateHeight(GetPositionZ() + hoverHeight);
     }
     else
     {
         RemoveUnitMovementFlag(MOVEMENTFLAG_HOVER);
         //! Dying creatures will MoveFall from setDeathState
-        if (relocate && hoverHeight && (!isDying() || GetTypeId() != TYPEID_UNIT))
+        if (hoverHeight && (!isDying() || GetTypeId() != TYPEID_UNIT))
         {
             float newZ = std::max<float>(GetFloorZ(), GetPositionZ() - hoverHeight);
             UpdateAllowedPositionZ(GetPositionX(), GetPositionY(), newZ);

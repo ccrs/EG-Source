@@ -1545,15 +1545,6 @@ float Creature::GetSpellDamageMod(int32 Rank) const
     }
 }
 
-bool Creature::IsInAir(Position const destination, float destinationFloor, bool honorHover/* = true*/) const
-{
-    float a = destination.GetPositionZ();
-    float b = destinationFloor + (honorHover ? (IsHovering() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.0f) : 0.f);
-    float c = a - b;
-    float hoverHeight = (IsHovering() || (!IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER))) ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f;
-    return std::fabs(c) > (0.5f + (honorHover ? hoverHeight : 0.f));
-}
-
 bool Creature::CreateFromProto(ObjectGuid::LowType guidlow, uint32 entry, CreatureData const* data /*= nullptr*/, uint32 vehId /*= 0*/)
 {
     SetZoneScript();
@@ -2673,7 +2664,7 @@ void Creature::UpdateMovementFlags()
         return;
 
     // Set the movement flags if the creature is in that mode. (Only fly if actually in air, only swim if in water, etc)
-    bool const isInAir = IsInAir(*this, GetFloorZ());
+    bool isInAir = IsInAir(*this, GetFloorZ() + GROUND_HEIGHT_TOLERANCE) || IsInAir(*this, GetFloorZ() - GROUND_HEIGHT_TOLERANCE);
     if (isInAir)
     {
         if (CanFly() && !IsFlying() && !IsFalling())
@@ -3060,14 +3051,14 @@ bool Creature::SetFeatherFall(bool enable, bool packetOnly /* = false */)
     return true;
 }
 
-bool Creature::SetHover(bool enable, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/, bool temporally/* = false*/, bool relocate/* = true*/)
+bool Creature::SetHover(bool enable, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/, bool temporally/* = false*/)
 {
     if (!enable && temporally)
         AddStoredMovementFlag(MOVEMENTFLAG_HOVER);
     else
         RemoveStoredMovementFlag(MOVEMENTFLAG_HOVER);
 
-    if (!packetOnly && !Unit::SetHover(enable, packetOnly, updateAnimTier, temporally, relocate))
+    if (!packetOnly && !Unit::SetHover(enable, packetOnly, updateAnimTier, temporally))
         return false;
 
     if (updateAnimTier && IsAlive() && !HasUnitState(UNIT_STATE_ROOT) && !GetMovementTemplate().IsRooted())

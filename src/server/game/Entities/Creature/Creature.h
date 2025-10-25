@@ -159,7 +159,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool SetCanFly(bool enable, bool packetOnly = false, bool temporally = false) override;
         bool SetWaterWalking(bool enable, bool packetOnly = false) override;
         bool SetFeatherFall(bool enable, bool packetOnly = false) override;
-        bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true, bool temporally = false, bool relocate = true) override;
+        bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true, bool temporally = false) override;
 
         uint32 GetShieldBlockValue() const override;
 
@@ -378,7 +378,6 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool HasStoredMovementFlag(uint32 flag) const { return (_storedMovementFlags & flag) != 0; }
         uint32 GetStoredMovementFlags() const { return _storedMovementFlags; }
 
-        bool IsInAir(Position const destination, float destinationFloor, bool honorHover = true) const;
     protected:
         bool CreateFromProto(ObjectGuid::LowType guidlow, uint32 entry, CreatureData const* data = nullptr, uint32 vehId = 0);
         bool InitEntry(uint32 entry, CreatureData const* data = nullptr);

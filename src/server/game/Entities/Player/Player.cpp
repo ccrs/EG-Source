@@ -26427,9 +26427,9 @@ bool Player::SetCanFly(bool apply, bool packetOnly /*= false*/, bool/* temporall
         return false;
 }
 
-bool Player::SetHover(bool apply, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/, bool temporally/* = false*/, bool relocate/* = true*/)
+bool Player::SetHover(bool apply, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/, bool temporally/* = false*/)
 {
-    if (!packetOnly && !Unit::SetHover(apply, packetOnly, updateAnimTier, temporally, relocate))
+    if (!packetOnly && !Unit::SetHover(apply, packetOnly, updateAnimTier, temporally))
         return false;
 
     WorldPacket data(apply ? SMSG_MOVE_SET_HOVER : SMSG_MOVE_UNSET_HOVER, 12);
