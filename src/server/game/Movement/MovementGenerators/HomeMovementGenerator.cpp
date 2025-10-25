@@ -68,7 +68,7 @@ void HomeMovementGenerator<Creature>::SetTargetLocation(Creature* owner)
     if (isInAir && owner->IsFlying() && !owner->IsHovering())
     {
         float destinationGround = owner->GetMap()->GetHeight(owner->GetPhaseMask(), destination);
-        if (!owner->IsInAir(destination, destinationGround))
+        if (!owner->IsInAir(destination, destinationGround) && !owner->CanHover())
             init.SetAnimation(AnimTier::Ground);
     }
 
