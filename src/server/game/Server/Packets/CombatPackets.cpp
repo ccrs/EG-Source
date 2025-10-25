@@ -37,7 +37,7 @@ WorldPackets::Combat::SAttackStop::SAttackStop(Unit const* attacker, Unit const*
     if (victim)
     {
         Victim = victim->GetPackGUID();
-        NowDead = victim->isDead();
+        NowDead = victim->isDead() || victim->isDying();
     }
 }
 
