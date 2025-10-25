@@ -3167,14 +3167,14 @@ bool Unit::IsUnderWater() const
 bool Unit::IsInAir(Position const destination, float destinationFloor, bool honorHover/* = true*/) const
 {
     float a = destination.GetPositionZ();
-    if (a < destinationFloor - GROUND_HEIGHT_TOLERANCE)
+    if (a < destinationFloor - 0.5f)
         return true;
     float hoverHeight = GetHoverOffset();
     if (GetTypeId() == TYPEID_UNIT) {
         hoverHeight = (IsHovering() || (!IsHovering() && ToCreature()->HasStoredMovementFlag(MOVEMENTFLAG_HOVER))) ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f;
     }
     a = destination.GetPositionZ() - (honorHover ? hoverHeight : 0.f);
-    if (a <= destinationFloor + GROUND_HEIGHT_TOLERANCE)
+    if (a <= destinationFloor + 0.5f)
         return false;
     float c = a - destinationFloor;
     return std::fabs(c) > 0.7f;
