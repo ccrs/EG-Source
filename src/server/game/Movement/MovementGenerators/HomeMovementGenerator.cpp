@@ -19,6 +19,7 @@
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "G3DPosition.hpp"
+#include "Map.h"
 #include "MotionMaster.h"
 #include "MovementDefines.h"
 #include "MoveSpline.h"
@@ -61,7 +62,26 @@ void HomeMovementGenerator<Creature>::SetTargetLocation(Creature* owner)
     owner->AddUnitState(UNIT_STATE_ROAMING_MOVE);
 
     Position destination = owner->GetHomePosition();
+    owner->UpdateAllowedPositionZ(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
+
     Movement::MoveSplineInit init(owner);
+
+    bool isInAir = owner->IsInAir(*owner, owner->GetFloorZ());
+    if (isInAir && owner->IsFlying() && !owner->IsHovering())
+    {
+        float destinationGround = owner->GetMap()->GetHeight(owner->GetPhaseMask(), destination);
+        if (!owner->IsInAir(destination, destinationGround))
+        {
+            if (!owner->CanHover())
+                init.SetAnimation(AnimTier::Ground);
+            else if (owner->HasStoredMovementFlag(MOVEMENTFLAG_HOVER))
+            {
+                bool a = (std::fabs(destination.GetPositionZ() - destinationGround) <= 0.7f);
+                bool b = !(destination.GetPositionZ() < (destinationGround - GROUND_HEIGHT_TOLERANCE));
+                destination.m_positionZ += (a && b) ? owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f;
+            }
+        }
+    }
 
     /*
      * TODO: maybe this never worked, who knows, top is always this generator, so this code calls GetResetPosition on itself
@@ -73,7 +93,6 @@ void HomeMovementGenerator<Creature>::SetTargetLocation(Creature* owner)
      * }
      */
 
-    owner->UpdateAllowedPositionZ(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
     init.MoveTo(PositionToVector3(destination));
     init.SetFacing(destination.GetOrientation());
     init.SetWalk(false);
@@ -144,9 +163,6 @@ void HomeMovementGenerator<Creature>::DoFinalize(Creature* owner, bool active, b
 
     if (movementInform && HasFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED))
     {
-        if (!owner->HasCanSwimFlagOutOfCombat())
-            owner->RemoveUnitFlag(UNIT_FLAG_CAN_SWIM);
-
         owner->SetSpawnHealth();
         owner->LoadCreaturesAddon();
         if (owner->IsVehicle())

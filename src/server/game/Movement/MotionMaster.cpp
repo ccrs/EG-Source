@@ -304,7 +304,10 @@ void MotionMaster::Update(uint32 diff)
     if (HasFlag(MOTIONMASTER_FLAG_STATIC_INITIALIZATION_PENDING) && IsStatic(top))
     {
         RemoveFlag(MOTIONMASTER_FLAG_STATIC_INITIALIZATION_PENDING);
-        top->Initialize(_owner);
+        if (!HasFlag(MOTIONMASTER_FLAG_STATIC_PREVENT_INITIALIZATION))
+            top->Initialize(_owner);
+        else
+            RemoveFlag(MOTIONMASTER_FLAG_STATIC_PREVENT_INITIALIZATION);
     }
     if (top->HasFlag(MOVEMENTGENERATOR_FLAG_INITIALIZATION_PENDING))
         top->Initialize(_owner);
@@ -559,8 +562,6 @@ bool MotionMaster::StopOnDeath()
         Clear();
         MoveIdle();
     }
-
-    _owner->StopMoving();
 
     return true;
 }
@@ -858,7 +859,7 @@ void MotionMaster::MoveCirclePath(float x, float y, float z, float radius, bool 
             if (_owner->IsFlying())
                 point.z = z;
             else
-                point.z = _owner->GetMapHeight(point.x, point.y, z) + _owner->GetHoverOffset();
+                point.z = _owner->GetFloorZ() + _owner->GetHoverOffset();
 
             init.Path().push_back(point);
         }

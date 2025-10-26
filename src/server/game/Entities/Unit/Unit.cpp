@@ -3164,6 +3164,21 @@ bool Unit::IsUnderWater() const
     return GetLiquidStatus() & LIQUID_MAP_UNDER_WATER;
 }
 
+bool Unit::IsInAir(Position const destination, float destinationFloor, bool honorHover/* = true*/, float tolerance/* = 0.5f*/) const
+{
+    float z = destination.GetPositionZ();
+    if (z < destinationFloor - tolerance) // if really bellow ground, in air (caves,...)
+        return true;
+    float hoverHeight = GetHoverOffset(); // height if currently hovering
+    if (GetTypeId() == TYPEID_UNIT) {
+        hoverHeight = ToCreature()->CanHover() ? GetFloatValue(UNIT_FIELD_HOVERHEIGHT) : 0.f; // height if could hover
+    }
+    z = destination.GetPositionZ() - (honorHover ? hoverHeight : 0.f);
+    if (z <= destinationFloor + tolerance) // if is bellow ground or slightly above it, not in air - should hover too
+        return false;
+    return std::fabs(z - destinationFloor) > 0.7f; // if the difference is higher than tolerance level, in air (todo: this should most likely take into account unit's "size")
+}
+
 void Unit::ProcessPositionDataChanged(PositionFullTerrainStatus const& data)
 {
     ZLiquidStatus oldLiquidStatus = GetLiquidStatus();
@@ -6101,10 +6116,7 @@ void Unit::SetCharm(Unit* charm, bool apply)
 
         _isWalkingBeforeCharm = charm->IsWalking();
         if (_isWalkingBeforeCharm)
-        {
             charm->SetWalk(false);
-            charm->SendMovementFlagUpdate();
-        }
 
         m_Controlled.insert(charm);
     }
@@ -6143,10 +6155,7 @@ void Unit::SetCharm(Unit* charm, bool apply)
         }
 
         if (charm->IsWalking() != _isWalkingBeforeCharm)
-        {
             charm->SetWalk(_isWalkingBeforeCharm);
-            charm->SendMovementFlagUpdate(true); // send packet to self, to update movement state on player.
-        }
 
         if (charm->GetTypeId() == TYPEID_PLAYER
             || !charm->ToCreature()->HasUnitTypeMask(UNIT_MASK_MINION)
@@ -8751,11 +8760,30 @@ void Unit::setDeathState(DeathState s)
         ClearAllReactives();
         ClearDiminishings();
 
+        SetDisableGravity(false);
+        SetCanFly(false);
+        SetHover(false);
+
         // Don't clear the movement if the Unit was on a vehicle as we are exiting now
         if (!isOnVehicle)
         {
             if (GetMotionMaster()->StopOnDeath())
-                DisableSpline();
+            {
+                if (!HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED) && GetTypeId() == TYPEID_UNIT && IsInAir(*this, GetFloorZ(), false) && !IsUnderWater())
+                {
+                    GetMotionMaster()->AddFlag(MOTIONMASTER_FLAG_STATIC_PREVENT_INITIALIZATION);
+                    SetFall(true);
+                    Movement::MoveSplineInit init(this);
+                    init.MoveTo(GetPositionX(), GetPositionY(), GetFloorZ(), false, true);
+                    init.SetFall();
+                    init.Launch();
+                }
+                else
+                {
+                    StopMoving();
+                    DisableSpline();
+                }
+            }
         }
 
         // without this when removing IncreaseMaxHealth aura player may stuck with 1 hp
@@ -11400,22 +11428,29 @@ void Unit::SetRooted(bool apply)
     else
         RemoveUnitMovementFlag(MOVEMENTFLAG_ROOT);
 
-    static OpcodeServer const rootOpcodeTable[2][2] =
+    static OpcodeServer const rootOpcodeTable[2][3] =
     {
-        { SMSG_SPLINE_MOVE_UNROOT, SMSG_FORCE_MOVE_UNROOT },
-        { SMSG_SPLINE_MOVE_ROOT, SMSG_FORCE_MOVE_ROOT }
+        { SMSG_SPLINE_MOVE_UNROOT, SMSG_FORCE_MOVE_UNROOT, MSG_MOVE_UNROOT },
+        { SMSG_SPLINE_MOVE_ROOT, SMSG_FORCE_MOVE_ROOT, MSG_MOVE_ROOT }
     };
 
-    if (GetTypeId() == TYPEID_PLAYER)
+    if (IsMovedByClient())
     {
+        Player* playerMover = GetGameClientMovingMe()->GetBasePlayer();
+
         WorldPacket data(rootOpcodeTable[apply][1], 10);
         data << GetPackGUID();
         data << GetMovementCounterAndInc();
-        SendMessageToSet(&data, true);
+        playerMover->SendDirectMessage(&data);
+
+        data.Initialize(rootOpcodeTable[apply][2], 64);
+        data << GetPackGUID();
+        BuildMovementPacket(&data);
+        SendMessageToSet(&data, playerMover);
     }
     else
     {
-        WorldPacket data(rootOpcodeTable[apply][0], 8);
+        WorldPacket data(rootOpcodeTable[apply][0], 9);
         data << GetPackGUID();
         SendMessageToSet(&data, true);
     }
@@ -11643,9 +11678,6 @@ bool Unit::SetCharmedBy(Unit* charmer, CharmType type, AuraApplication const* au
     }
 
     AddUnitState(UNIT_STATE_CHARMED);
-
-    if (Creature* creature = ToCreature())
-        creature->RefreshCanSwimFlag();
 
     if ((GetTypeId() != TYPEID_PLAYER) || (charmer->GetTypeId() != TYPEID_PLAYER))
     {
@@ -13292,10 +13324,16 @@ bool Unit::SetWalk(bool enable)
         AddUnitMovementFlag(MOVEMENTFLAG_WALKING);
     else
         RemoveUnitMovementFlag(MOVEMENTFLAG_WALKING);
+
+    static OpcodeServer const walkModeTable[2] = { SMSG_SPLINE_MOVE_SET_RUN_MODE, SMSG_SPLINE_MOVE_SET_WALK_MODE };
+
+    WorldPacket data(walkModeTable[enable], 9);
+    data << GetPackGUID();
+    SendMessageToSet(&data, true);
     return true;
 }
 
-bool Unit::SetDisableGravity(bool disable, bool /*packetOnly = false*/, bool /*updateAnimTier = true*/)
+bool Unit::SetDisableGravity(bool disable, bool updateAnimTier/* = true*/, bool /*temporally = false*/)
 {
     if (disable == IsGravityDisabled())
         return false;
@@ -13307,6 +13345,43 @@ bool Unit::SetDisableGravity(bool disable, bool /*packetOnly = false*/, bool /*u
     }
     else
         RemoveUnitMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
+
+    static OpcodeServer const gravityOpcodeTable[2][2] =
+    {
+        { SMSG_SPLINE_MOVE_GRAVITY_ENABLE,  SMSG_MOVE_GRAVITY_ENABLE  },
+        { SMSG_SPLINE_MOVE_GRAVITY_DISABLE, SMSG_MOVE_GRAVITY_DISABLE }
+    };
+
+    if (IsMovedByClient())
+    {
+        Player* playerMover = GetGameClientMovingMe()->GetBasePlayer();
+
+        WorldPacket data(gravityOpcodeTable[disable][1], 12);
+        data << GetPackGUID();
+        data << uint32(0);          //! movement counter
+        playerMover->SendDirectMessage(&data);
+
+        data.Initialize(MSG_MOVE_GRAVITY_CHNG, 64);
+        data << GetPackGUID();
+        BuildMovementPacket(&data);
+        SendMessageToSet(&data, playerMover);
+    }
+    else
+    {
+        WorldPacket data(gravityOpcodeTable[disable][0], 9);
+        data << GetPackGUID();
+        SendMessageToSet(&data, true);
+    }
+
+    if (IsCreature() && updateAnimTier && !HasUnitState(UNIT_STATE_ROOT) && !ToCreature()->GetMovementTemplate().IsRooted())
+    {
+        if (IsGravityDisabled())
+            SetAnimTier(AnimTier::Fly);
+        else if (IsHovering())
+            SetAnimTier(AnimTier::Hover);
+        else
+            SetAnimTier(AnimTier::Ground);
+    }
 
     return true;
 }
@@ -13327,7 +13402,7 @@ bool Unit::SetFall(bool enable)
     return true;
 }
 
-bool Unit::SetSwim(bool enable)
+bool Unit::SetSwim(bool enable, bool /*temporally = false*/)
 {
     if (enable == HasUnitMovementFlag(MOVEMENTFLAG_SWIMMING))
         return false;
@@ -13336,25 +13411,66 @@ bool Unit::SetSwim(bool enable)
         AddUnitMovementFlag(MOVEMENTFLAG_SWIMMING);
     else
         RemoveUnitMovementFlag(MOVEMENTFLAG_SWIMMING);
+
+    static OpcodeServer const swimOpcodeTable[2] = { SMSG_SPLINE_MOVE_STOP_SWIM, SMSG_SPLINE_MOVE_START_SWIM };
+
+    WorldPacket data(swimOpcodeTable[enable], 9);
+    data << GetPackGUID();
+    SendMessageToSet(&data, true);
+
     return true;
 }
 
-bool Unit::SetCanFly(bool enable, bool /*packetOnly = false */)
+bool Unit::SetCanFly(bool enable, bool packetOnly/* = false */, bool /*temporally = false*/)
 {
-    if (enable == HasUnitMovementFlag(MOVEMENTFLAG_CAN_FLY))
-        return false;
-
-    if (enable)
+    if (!packetOnly)
     {
-        AddUnitMovementFlag(MOVEMENTFLAG_CAN_FLY);
-        RemoveUnitMovementFlag(MOVEMENTFLAG_FALLING);
+        if (enable == HasUnitMovementFlag(MOVEMENTFLAG_CAN_FLY))
+            return false;
+
+        if (enable)
+        {
+            AddUnitMovementFlag(MOVEMENTFLAG_CAN_FLY);
+            RemoveUnitMovementFlag(MOVEMENTFLAG_FALLING);
+        }
+        else
+            RemoveUnitMovementFlag(MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_MASK_MOVING_FLY);
+    }
+
+    static OpcodeServer const flyOpcodeTable[2][2] =
+    {
+        { SMSG_SPLINE_MOVE_UNSET_FLYING, SMSG_MOVE_UNSET_CAN_FLY },
+        { SMSG_SPLINE_MOVE_SET_FLYING,   SMSG_MOVE_SET_CAN_FLY   }
+    };
+
+    if (!enable && GetTypeId() == TYPEID_PLAYER)
+        ToPlayer()->SetFallInformation(0, GetPositionZ());
+
+    if (IsMovedByClient())
+    {
+        Player* playerMover = GetGameClientMovingMe()->GetBasePlayer();
+
+        WorldPacket data(flyOpcodeTable[enable][1], 12);
+        data << GetPackGUID();
+        data << uint32(0);          //! movement counter
+        playerMover->SendDirectMessage(&data);
+
+        data.Initialize(MSG_MOVE_UPDATE_CAN_FLY, 64);
+        data << GetPackGUID();
+        BuildMovementPacket(&data);
+        SendMessageToSet(&data, playerMover);
     }
     else
-        RemoveUnitMovementFlag(MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_MASK_MOVING_FLY);
+    {
+        WorldPacket data(flyOpcodeTable[enable][0], 9);
+        data << GetPackGUID();
+        SendMessageToSet(&data, true);
+    }
+
     return true;
 }
 
-bool Unit::SetWaterWalking(bool enable, bool /*packetOnly = false */)
+bool Unit::SetWaterWalking(bool enable)
 {
     if (enable == HasUnitMovementFlag(MOVEMENTFLAG_WATERWALKING))
         return false;
@@ -13363,10 +13479,38 @@ bool Unit::SetWaterWalking(bool enable, bool /*packetOnly = false */)
         AddUnitMovementFlag(MOVEMENTFLAG_WATERWALKING);
     else
         RemoveUnitMovementFlag(MOVEMENTFLAG_WATERWALKING);
+
+    static OpcodeServer const waterWalkingOpcodeTable[2][2] =
+    {
+        { SMSG_SPLINE_MOVE_LAND_WALK,  SMSG_MOVE_LAND_WALK  },
+        { SMSG_SPLINE_MOVE_WATER_WALK, SMSG_MOVE_WATER_WALK }
+    };
+
+    if (IsMovedByClient())
+    {
+        Player* playerMover = GetGameClientMovingMe()->GetBasePlayer();
+
+        WorldPacket data(waterWalkingOpcodeTable[enable][1], 12);
+        data << GetPackGUID();
+        data << uint32(0);          //! movement counter
+        GetGameClientMovingMe()->GetBasePlayer()->SendDirectMessage(&data);
+
+        data.Initialize(MSG_MOVE_WATER_WALK, 64);
+        data << GetPackGUID();
+        BuildMovementPacket(&data);
+        SendMessageToSet(&data, playerMover);
+    }
+    else
+    {
+        WorldPacket data(waterWalkingOpcodeTable[enable][0], 9);
+        data << GetPackGUID();
+        SendMessageToSet(&data, true);
+    }
+
     return true;
 }
 
-bool Unit::SetFeatherFall(bool enable, bool /*packetOnly = false */)
+bool Unit::SetFeatherFall(bool enable)
 {
     if (enable == HasUnitMovementFlag(MOVEMENTFLAG_FALLING_SLOW))
         return false;
@@ -13375,10 +13519,38 @@ bool Unit::SetFeatherFall(bool enable, bool /*packetOnly = false */)
         AddUnitMovementFlag(MOVEMENTFLAG_FALLING_SLOW);
     else
         RemoveUnitMovementFlag(MOVEMENTFLAG_FALLING_SLOW);
+
+    static OpcodeServer const featherFallOpcodeTable[2][2] =
+    {
+        { SMSG_SPLINE_MOVE_NORMAL_FALL,  SMSG_MOVE_NORMAL_FALL  },
+        { SMSG_SPLINE_MOVE_FEATHER_FALL, SMSG_MOVE_FEATHER_FALL }
+    };
+
+    if (IsMovedByClient())
+    {
+        Player* playerMover = GetGameClientMovingMe()->GetBasePlayer();
+
+        WorldPacket data(featherFallOpcodeTable[enable][1], 12);
+        data << GetPackGUID();
+        data << uint32(0);          //! movement counter
+        playerMover->SendDirectMessage(&data);
+
+        data.Initialize(MSG_MOVE_FEATHER_FALL, 64);
+        data << GetPackGUID();
+        BuildMovementPacket(&data);
+        SendMessageToSet(&data, playerMover);
+    }
+    else
+    {
+        WorldPacket data(featherFallOpcodeTable[enable][0], 9);
+        data << GetPackGUID();
+        SendMessageToSet(&data, true);
+    }
+
     return true;
 }
 
-bool Unit::SetHover(bool enable, bool /*packetOnly = false*/, bool /*updateAnimTier = true*/)
+bool Unit::SetHover(bool enable, bool updateAnimTier /*= true*/, bool /*temporally = false*/)
 {
     if (enable == HasUnitMovementFlag(MOVEMENTFLAG_HOVER))
         return false;
@@ -13389,8 +13561,8 @@ bool Unit::SetHover(bool enable, bool /*packetOnly = false*/, bool /*updateAnimT
     {
         //! No need to check height on ascent
         AddUnitMovementFlag(MOVEMENTFLAG_HOVER);
-        if (hoverHeight && GetPositionZ() - GetFloorZ() < hoverHeight)
-            UpdateHeight(GetPositionZ() + hoverHeight);
+        if (hoverHeight && std::fabs(GetPositionZ() - GetFloorZ()) < hoverHeight)
+            UpdateHeight(std::max(GetFloorZ() + hoverHeight, GetPositionZ()));
     }
     else
     {
@@ -13403,6 +13575,44 @@ bool Unit::SetHover(bool enable, bool /*packetOnly = false*/, bool /*updateAnimT
             UpdateHeight(newZ);
         }
     }
+
+    static OpcodeServer const hoverOpcodeTable[2][2] =
+    {
+        { SMSG_SPLINE_MOVE_UNSET_HOVER, SMSG_MOVE_UNSET_HOVER },
+        { SMSG_SPLINE_MOVE_SET_HOVER,   SMSG_MOVE_SET_HOVER   }
+    };
+
+    if (IsMovedByClient())
+    {
+        Player* playerMover = GetGameClientMovingMe()->GetBasePlayer();
+
+        WorldPacket data(hoverOpcodeTable[enable][1], 12);
+        data << GetPackGUID();
+        data << uint32(0);          //! movement counter
+        playerMover->SendDirectMessage(&data);
+
+        data.Initialize(MSG_MOVE_HOVER, 64);
+        data << GetPackGUID();
+        BuildMovementPacket(&data);
+        SendMessageToSet(&data, playerMover);
+    }
+    else
+    {
+        WorldPacket data(hoverOpcodeTable[enable][0], 9);
+        data << GetPackGUID();
+        SendMessageToSet(&data, true);
+    }
+
+    if (IsCreature() && updateAnimTier && !HasUnitState(UNIT_STATE_ROOT) && !ToCreature()->GetMovementTemplate().IsRooted())
+    {
+        if (IsGravityDisabled())
+            SetAnimTier(AnimTier::Fly);
+        else if (IsHovering())
+            SetAnimTier(AnimTier::Hover);
+        else
+            SetAnimTier(AnimTier::Ground);
+    }
+
     return true;
 }
 

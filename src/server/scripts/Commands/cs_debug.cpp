@@ -1292,6 +1292,8 @@ public:
         {
             //! Display case
             handler->PSendSysMessage(LANG_MOVEFLAGS_GET, target->GetUnitMovementFlags(), target->GetExtraUnitMovementFlags());
+            if (Creature* targetCreature = target->ToCreature())
+                handler->PSendSysMessage(LANG_MOVEFLAGS_GET, targetCreature->GetStoredMovementFlags(), 0);
         }
         else
         {
