@@ -2644,11 +2644,11 @@ void Creature::InitializeMovementFlags()
         return;
 
     if (GetMovementTemplate().Flight == CreatureFlightMovementType::DisableGravity)
-        SetDisableGravity(true, false, true, true);
+        SetDisableGravity(true, true, true);
     if (GetMovementTemplate().Flight == CreatureFlightMovementType::CanFly)
         SetCanFly(true, false, true);
     if (IsAlive() && (GetMovementTemplate().Ground == CreatureGroundMovementType::Hover || HasAuraType(SPELL_AURA_HOVER)))
-        SetHover(true, false, true, true);
+        SetHover(true, true, true);
     if (CanEnterWater() && CanSwim() && IsInWater())
         SetSwim(true, true);
 }
@@ -2672,20 +2672,20 @@ void Creature::UpdateMovementFlags()
             if (HasStoredMovementFlag(MOVEMENTFLAG_CAN_FLY))
                 SetCanFly(true, false, true);
             if (HasStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY))
-                SetDisableGravity(true, false, true, true);
+                SetDisableGravity(true, true, true);
         }
         if (IsHovering())
-            SetHover(false, false, true, true);
+            SetHover(false, true, true);
     }
     if (!isInAir)
     {
         if (HasUnitMovementFlag(MOVEMENTFLAG_CAN_FLY))
             SetCanFly(false, false, true);
         if (HasUnitMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY))
-            SetDisableGravity(false, false, true, true);
+            SetDisableGravity(false, true, true);
 
         if (IsAlive() && !IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER))
-            SetHover(true, false, true, true);
+            SetHover(true, true, true);
 
         SetFall(false);
     }
@@ -2943,46 +2943,14 @@ void Creature::SetCannotReachTarget(bool cannotReach)
         TC_LOG_DEBUG("entities.unit.chase", "Creature::SetCannotReachTarget() called with true. Details: {}", GetDebugInfo());
 }
 
-bool Creature::SetWalk(bool enable)
-{
-    if (!Unit::SetWalk(enable))
-        return false;
-
-    WorldPacket data(enable ? SMSG_SPLINE_MOVE_SET_WALK_MODE : SMSG_SPLINE_MOVE_SET_RUN_MODE, 9);
-    data << GetPackGUID();
-    SendMessageToSet(&data, false);
-    return true;
-}
-
-bool Creature::SetDisableGravity(bool disable, bool packetOnly /*=false*/, bool updateAnimTier /*= true*/, bool temporally/* = false*/)
+bool Creature::SetDisableGravity(bool disable, bool updateAnimTier/* = true*/, bool temporally/* = false*/)
 {
     if (!disable && temporally)
         AddStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
     else
         RemoveStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
 
-    //! It's possible only a packet is sent but moveflags are not updated
-    //! Need more research on this
-    if (!packetOnly && !Unit::SetDisableGravity(disable, packetOnly, updateAnimTier))
-        return false;
-
-    if (updateAnimTier && IsAlive() && !HasUnitState(UNIT_STATE_ROOT) && !GetMovementTemplate().IsRooted())
-    {
-        if (IsGravityDisabled())
-            SetAnimTier(AnimTier::Fly);
-        else if (IsHovering())
-            SetAnimTier(AnimTier::Hover);
-        else
-            SetAnimTier(AnimTier::Ground);
-    }
-
-    if (!movespline->Initialized())
-        return true;
-
-    WorldPacket data(disable ? SMSG_SPLINE_MOVE_GRAVITY_DISABLE : SMSG_SPLINE_MOVE_GRAVITY_ENABLE, 9);
-    data << GetPackGUID();
-    SendMessageToSet(&data, false);
-    return true;
+    return Unit::SetDisableGravity(disable, updateAnimTier, temporally);
 }
 
 bool Creature::SetSwim(bool enable, bool temporally/* = false*/)
@@ -2992,93 +2960,27 @@ bool Creature::SetSwim(bool enable, bool temporally/* = false*/)
     else
         RemoveStoredMovementFlag(MOVEMENTFLAG_SWIMMING);
 
-    if (!Unit::SetSwim(enable))
-        return false;
-
-    if (!movespline->Initialized())
-        return true;
-
-    WorldPacket data(enable ? SMSG_SPLINE_MOVE_START_SWIM : SMSG_SPLINE_MOVE_STOP_SWIM);
-    data << GetPackGUID();
-    SendMessageToSet(&data, true);
-    return true;
+    return Unit::SetSwim(enable, temporally);
 }
 
-bool Creature::SetCanFly(bool enable, bool /*packetOnly = false */, bool temporally/* = false*/)
+bool Creature::SetCanFly(bool enable, bool packetOnly/* = false*/, bool temporally/* = false*/)
 {
     if (!enable && temporally)
         AddStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
     else
         RemoveStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
 
-    if (!Unit::SetCanFly(enable))
-        return false;
-
-    if (!movespline->Initialized())
-        return true;
-
-    WorldPacket data(enable ? SMSG_SPLINE_MOVE_SET_FLYING : SMSG_SPLINE_MOVE_UNSET_FLYING, 9);
-    data << GetPackGUID();
-    SendMessageToSet(&data, false);
-    return true;
+    return Unit::SetCanFly(enable, packetOnly, temporally);
 }
 
-bool Creature::SetWaterWalking(bool enable, bool packetOnly /* = false */)
-{
-    if (!packetOnly && !Unit::SetWaterWalking(enable))
-        return false;
-
-    if (!movespline->Initialized())
-        return true;
-
-    WorldPacket data(enable ? SMSG_SPLINE_MOVE_WATER_WALK : SMSG_SPLINE_MOVE_LAND_WALK);
-    data << GetPackGUID();
-    SendMessageToSet(&data, true);
-    return true;
-}
-
-bool Creature::SetFeatherFall(bool enable, bool packetOnly /* = false */)
-{
-    if (!packetOnly && !Unit::SetFeatherFall(enable))
-        return false;
-
-    if (!movespline->Initialized())
-        return true;
-
-    WorldPacket data(enable ? SMSG_SPLINE_MOVE_FEATHER_FALL : SMSG_SPLINE_MOVE_NORMAL_FALL);
-    data << GetPackGUID();
-    SendMessageToSet(&data, true);
-    return true;
-}
-
-bool Creature::SetHover(bool enable, bool packetOnly /*= false*/, bool updateAnimTier /*= true*/, bool temporally/* = false*/)
+bool Creature::SetHover(bool enable, bool updateAnimTier /*= true*/, bool temporally/* = false*/)
 {
     if (!enable && temporally)
         AddStoredMovementFlag(MOVEMENTFLAG_HOVER);
     else
         RemoveStoredMovementFlag(MOVEMENTFLAG_HOVER);
 
-    if (!packetOnly && !Unit::SetHover(enable, packetOnly, updateAnimTier, temporally))
-        return false;
-
-    if (updateAnimTier && IsAlive() && !HasUnitState(UNIT_STATE_ROOT) && !GetMovementTemplate().IsRooted())
-    {
-        if (IsGravityDisabled())
-            SetAnimTier(AnimTier::Fly);
-        else if (IsHovering())
-            SetAnimTier(AnimTier::Hover);
-        else
-            SetAnimTier(AnimTier::Ground);
-    }
-
-    if (!movespline->Initialized())
-        return true;
-
-    //! Not always a packet is sent
-    WorldPacket data(enable ? SMSG_SPLINE_MOVE_SET_HOVER : SMSG_SPLINE_MOVE_UNSET_HOVER, 9);
-    data << GetPackGUID();
-    SendMessageToSet(&data, false);
-    return true;
+    return Unit::SetHover(enable, updateAnimTier, temporally);
 }
 
 float Creature::GetAggroRange(Unit const* target) const

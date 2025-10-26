@@ -153,13 +153,10 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
 
         CreatureAI* AI() const { return reinterpret_cast<CreatureAI*>(GetAI()); }
 
-        bool SetWalk(bool enable) override;
-        bool SetDisableGravity(bool disable, bool packetOnly = false, bool updateAnimTier = true, bool temporally = false) override;
+        bool SetDisableGravity(bool disable, bool updateAnimTier = true, bool temporally = false) override;
         bool SetSwim(bool enable, bool temporally = false) override;
         bool SetCanFly(bool enable, bool packetOnly = false, bool temporally = false) override;
-        bool SetWaterWalking(bool enable, bool packetOnly = false) override;
-        bool SetFeatherFall(bool enable, bool packetOnly = false) override;
-        bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true, bool temporally = false) override;
+        bool SetHover(bool enable, bool updateAnimTier = true, bool temporally = false) override;
 
         uint32 GetShieldBlockValue() const override;
 

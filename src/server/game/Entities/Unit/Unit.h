@@ -1219,14 +1219,14 @@ class TC_GAME_API Unit : public WorldObject
         bool IsWalking() const { return m_movementInfo.HasMovementFlag(MOVEMENTFLAG_WALKING); }
         bool IsHovering() const { return m_movementInfo.HasMovementFlag(MOVEMENTFLAG_HOVER); }
         bool IsSwimming() const { return m_movementInfo.HasMovementFlag(MOVEMENTFLAG_SWIMMING); }
-        virtual bool SetWalk(bool enable);
-        virtual bool SetDisableGravity(bool disable, bool packetOnly = false, bool updateAnimTier = true, bool temporally = false);
+        bool SetWalk(bool enable);
+        virtual bool SetDisableGravity(bool disable, bool updateAnimTier = true, bool temporally = false);
         bool SetFall(bool enable);
         virtual bool SetSwim(bool enable, bool temporally = false);
         virtual bool SetCanFly(bool enable, bool packetOnly = false, bool temporally = false);
-        virtual bool SetWaterWalking(bool enable, bool packetOnly = false);
-        virtual bool SetFeatherFall(bool enable, bool packetOnly = false);
-        virtual bool SetHover(bool enable, bool packetOnly = false, bool updateAnimTier = true, bool temporally = false);
+        bool SetWaterWalking(bool enable);
+        bool SetFeatherFall(bool enable);
+        virtual bool SetHover(bool enable, bool updateAnimTier = true, bool temporally = false);
 
         void SetInFront(WorldObject const* target);
         void SetFacingTo(float const ori, bool force = true);
