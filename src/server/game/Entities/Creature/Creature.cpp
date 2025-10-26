@@ -2572,6 +2572,9 @@ bool Creature::LoadCreaturesAddon()
         }
     }
 
+    if (GetAnimTier() == AnimTier::Hover)
+        SetHover(true);
+
     return true;
 }
 
