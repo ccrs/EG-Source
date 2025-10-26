@@ -2994,7 +2994,7 @@ bool Creature::SetHover(bool enable, bool updateAnimTier /*= true*/, bool tempor
 
     float hoverHeight = GetFloatValue(UNIT_FIELD_HOVERHEIGHT);
     bool validHover = enable && hoverHeight && (!IsInAir(*this, GetFloorZ(), false) || std::fabs(GetPositionZ() - GetFloorZ()) < hoverHeight);
-    bool result;
+    bool result = false;
     if (enable && validHover)
         result = Unit::SetHover(enable, updateAnimTier, temporally);
     else if (enable && !validHover)

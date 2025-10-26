@@ -8760,6 +8760,10 @@ void Unit::setDeathState(DeathState s)
         ClearAllReactives();
         ClearDiminishings();
 
+        SetDisableGravity(false);
+        SetCanFly(false);
+        SetHover(false);
+
         // Don't clear the movement if the Unit was on a vehicle as we are exiting now
         if (!isOnVehicle)
         {
@@ -8781,10 +8785,6 @@ void Unit::setDeathState(DeathState s)
                 }
             }
         }
-
-        SetDisableGravity(false);
-        SetCanFly(false);
-        SetHover(false);
 
         // without this when removing IncreaseMaxHealth aura player may stuck with 1 hp
         // do not why since in IncreaseMaxHealth currenthealth is checked
