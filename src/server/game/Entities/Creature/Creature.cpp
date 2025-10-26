@@ -2643,8 +2643,13 @@ void Creature::InitializeMovementFlags()
     if (GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_NO_MOVE_FLAGS_UPDATE)
         return;
 
-    if (IsAlive() && (GetMovementTemplate().Ground == CreatureGroundMovementType::Hover || HasAuraType(SPELL_AURA_HOVER)))
-        SetHover(true, true, true);
+    if (GetMovementTemplate().Ground == CreatureGroundMovementType::Hover || HasAuraType(SPELL_AURA_HOVER))
+    {
+        if (IsAlive())
+            SetHover(true, true, true);
+        else
+            AddStoredMovementFlag(MOVEMENTFLAG_HOVER);
+    }
 
     bool isInAir = IsInAir(*this, GetFloorZ());
     if (GetMovementTemplate().Flight == CreatureFlightMovementType::DisableGravity)
