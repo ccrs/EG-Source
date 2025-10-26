@@ -13557,8 +13557,8 @@ bool Unit::SetHover(bool enable, bool updateAnimTier /*= true*/, bool /*temporal
     {
         //! No need to check height on ascent
         AddUnitMovementFlag(MOVEMENTFLAG_HOVER);
-        if (hoverHeight && GetPositionZ() - GetFloorZ() < hoverHeight)
-            UpdateHeight(GetPositionZ() + hoverHeight);
+        if (hoverHeight && std::fabs(GetPositionZ() - GetFloorZ()) < hoverHeight)
+            UpdateHeight(std::max(GetFloorZ() + hoverHeight, GetPositionZ()));
     }
     else
     {

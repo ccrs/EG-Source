@@ -2980,7 +2980,17 @@ bool Creature::SetHover(bool enable, bool updateAnimTier /*= true*/, bool tempor
     else
         RemoveStoredMovementFlag(MOVEMENTFLAG_HOVER);
 
-    return Unit::SetHover(enable, updateAnimTier, temporally);
+    float hoverHeight = GetFloatValue(UNIT_FIELD_HOVERHEIGHT);
+    bool validHover = enable && hoverHeight && (!IsInAir(*this, GetFloorZ(), false) || std::fabs(GetPositionZ() - GetFloorZ()) < hoverHeight);
+    bool result;
+    if (enable && validHover)
+        result = Unit::SetHover(enable, updateAnimTier, temporally);
+    else if (enable && !validHover)
+        AddStoredMovementFlag(MOVEMENTFLAG_HOVER);
+    else
+        result = Unit::SetHover(enable, updateAnimTier, temporally);
+
+    return result;
 }
 
 float Creature::GetAggroRange(Unit const* target) const
