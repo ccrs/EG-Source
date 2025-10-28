@@ -8396,7 +8396,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
     else
     {
         Creature* creature = GetMap()->GetCreature(guid);
-
+        bool aoeLoot = HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE);
         // must be in range and creature must be alive for pickpocket and must be dead for another loot
         if (!creature || creature->IsAlive() != (loot_type == LOOT_PICKPOCKETING) || !creature->IsWithinDistInMap(this, INTERACTION_DISTANCE))
         {
@@ -8521,7 +8521,10 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                         permission = NONE_PERMISSION;
                 }
                 else if (creature->GetLootRecipient() == this)
+                {
                     permission = OWNER_PERMISSION;
+                    aoeLoot = aoeLoot && !recipientGroup && !creature->GetLootRecipientGroup();
+                }
                 else
                     permission = NONE_PERMISSION;
             }
