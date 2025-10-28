@@ -299,9 +299,10 @@ struct LootView
 
 struct TC_GAME_API LootReference
 {
-    LootReference(uint8 itemIndex, Loot* loot) : ItemIndex(itemIndex), RelatedLoot(loot) { }
+    LootReference(uint8 itemIndex, Loot* loot, ObjectGuid containerEntityGUID) : ItemIndex(itemIndex), RelatedLoot(loot), ContainerEntityGUID(containerEntityGUID) { }
     uint8 ItemIndex;
     Loot* RelatedLoot;
+    ObjectGuid ContainerEntityGUID;
 };
 
 #endif // Loot_h__

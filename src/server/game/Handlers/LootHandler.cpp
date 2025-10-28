@@ -77,6 +77,20 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
 
         loot = &bones->loot;
     }
+    else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->AOELoot.contains(lootSlot))
+    {
+        LootReference const& relatedLootReference = (*player->AOELoot.find(lootSlot)).second;
+        Creature* creature = GetPlayer()->GetMap()->GetCreature(relatedLootReference.ContainerEntityGUID);
+
+        bool lootAllowed = creature && creature->IsAlive() == (player->GetClass() == CLASS_ROGUE && creature->loot.loot_type == LOOT_PICKPOCKETING);
+        if (!lootAllowed || !creature->IsWithinDistInMap(_player, 30.f))
+        {
+            player->SendLootError(lguid, lootAllowed ? LOOT_ERROR_TOO_FAR : LOOT_ERROR_DIDNT_KILL);
+            return;
+        }
+        lootSlot = relatedLootReference.ItemIndex;
+        loot = relatedLootReference.RelatedLoot;
+    }
     else
     {
         Creature* creature = GetPlayer()->GetMap()->GetCreature(lguid);
