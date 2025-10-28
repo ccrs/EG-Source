@@ -23,6 +23,7 @@ public:
         static ChatCommandTable customCharacterSettings =
         {
             { "transmogrification", transmogrificationSettings }, 
+            { "aoeloot",            HandleAOELoot, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
         };
 
         static ChatCommandTable commandTable =
@@ -73,6 +74,28 @@ public:
             player->AddCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY);
             player->UpdateObjectVisibility();
             handler->SendSysMessage("Hiding legendary transmoged items, disconnect and reconnect to see the applied changes.");
+            return true;
+        }
+    }
+
+    static bool HandleAOELoot(ChatHandler* handler, bool active)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        if (!player)
+            return false;
+
+        if (active)
+        {
+            player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_AOELOOT_ACTIVE);
+            player->AOELoot.clear();
+            handler->SendSysMessage("AOE Loot activated.");
+            return true;
+        }
+        else
+        {
+            player->AddCustomFlag(CustomFlagsIndex::CUSTOM_AOELOOT_FLAGS, CustomFlags::CUSTOM_FLAG_NONE);
+            player->AOELoot.clear();
+            handler->SendSysMessage("AOE Loot deactivated.");
             return true;
         }
     }
