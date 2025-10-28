@@ -273,10 +273,12 @@ struct TC_GAME_API Loot
 
 struct TC_GAME_API LootProcessResult
 {
-    LootProcessResult(uint8 itemIndex, LootItem* item, uint8 ItemSlotType) : ItemIndex(itemIndex), Item(item), ItemSlotType(ItemSlotType) { }
+    LootProcessResult(uint8 itemIndex, LootItem* item, uint8 ItemSlotType, Loot* loot) : ItemIndex(itemIndex), Item(item), ItemSlotType(ItemSlotType), RelatedLoot(loot) { }
     uint8 ItemIndex;
     LootItem* Item;
     uint8 ItemSlotType;
+
+    Loot* RelatedLoot;
 };
 
 struct LootView
@@ -297,8 +299,9 @@ struct LootView
 
 struct TC_GAME_API LootReference
 {
-    uint32 ItemSlot;
-    Loot* Loot;
+    LootReference(uint8 itemIndex, Loot* loot) : ItemIndex(itemIndex), RelatedLoot(loot) { }
+    uint8 ItemIndex;
+    Loot* RelatedLoot;
 };
 
 #endif // Loot_h__

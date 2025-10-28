@@ -615,8 +615,9 @@ ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
 
     b << lv.gold; // gold
     b << uint8(lv.processedList.size()); // item count
+    uint8 itemResultCounter = 0;
     for (LootProcessResult const& currentLoot : lv.processedList) {
-        b << currentLoot.ItemIndex;
+        b << ++itemResultCounter;
         b << currentLoot.Item;
         b << currentLoot.ItemSlotType;
     }
@@ -687,7 +688,7 @@ std::vector<LootProcessResult> LootView::Process()
                             // item shall not be displayed.
                             continue;
 
-                        processedList.emplace_back(i, &l.items[i], slot_type);
+                        processedList.emplace_back(i, &l.items[i], slot_type, &l);
                     }
                 }
                 break;
@@ -702,7 +703,7 @@ std::vector<LootProcessResult> LootView::Process()
                             // item shall not be displayed.
                             continue;
 
-                        processedList.emplace_back(i, &l.items[i], uint8(LOOT_SLOT_TYPE_ALLOW_LOOT));
+                        processedList.emplace_back(i, &l.items[i], uint8(LOOT_SLOT_TYPE_ALLOW_LOOT), &l);
                     }
                 }
                 break;
@@ -714,7 +715,7 @@ std::vector<LootProcessResult> LootView::Process()
                 for (uint8 i = 0; i < l.items.size(); ++i)
                 {
                     if (!l.items[i].is_looted && !l.items[i].freeforall && l.items[i].conditions.empty() && l.items[i].AllowedForPlayer(viewer, l.roundRobinPlayer))
-                        processedList.emplace_back(i, &l.items[i], slot_type);
+                        processedList.emplace_back(i, &l.items[i], slot_type, &l);
                 }
                 break;
             }
@@ -757,7 +758,7 @@ std::vector<LootProcessResult> LootView::Process()
                         }
                     }
 
-                    processedList.emplace_back(l.items.size() + (qi - q_list->begin()), &item, slot_type);
+                    processedList.emplace_back(l.items.size() + (qi - q_list->begin()), &item, slot_type, &l);
                 }
             }
         }
@@ -771,7 +772,7 @@ std::vector<LootProcessResult> LootView::Process()
             {
                 LootItem &item = l.items[fi->index];
                 if (!fi->is_looted && !item.is_looted)
-                    processedList.emplace_back(fi->index, &item, uint8(slotType));
+                    processedList.emplace_back(fi->index, &item, uint8(slotType), &l);
             }
         }
 
@@ -804,7 +805,7 @@ std::vector<LootProcessResult> LootView::Process()
                         default:
                             break;
                     }
-                    processedList.emplace_back(ci->index, &item, slot_type);
+                    processedList.emplace_back(ci->index, &item, slot_type, &l);
                 }
             }
         }

@@ -8555,11 +8555,6 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
         });
         if (!deadCreatures.empty())
         {
-            for (uint8 i = 0; i < loot->items.size(); ++i)
-            {
-                AOELoot.insert({ i, { .ItemSlot = i, .Loot = loot } });
-            };
-
             for (Creature* deadCreature : deadCreatures)
             {
                 if (deadCreature->GetGUID() == guid)
@@ -8572,16 +8567,15 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                 Loot* currentLoot = &deadCreature->loot;
                 if (loot->loot_type == LOOT_SKINNING)
                     continue;
-                uint32 lastIndex = (*AOELoot.end()).first + 1;
-                for (uint8 i = 0; i < currentLoot->items.size(); ++i)
-                    AOELoot.insert({ lastIndex + i, { .ItemSlot = i, .Loot = currentLoot } });
 
                 lootViewToSend.lootList.push_back(currentLoot);
             }
         }
     }
 
-    lootViewToSend.Process();
+    uint8 itemResultCounter = 0;
+    for (LootProcessResult const& currentResult : lootViewToSend.Process())
+        AOELoot.insert({ ++itemResultCounter, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot) });
 
     if (permission != NONE_PERMISSION)
     {
