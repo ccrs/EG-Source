@@ -86,14 +86,14 @@ public:
 
         if (active)
         {
-            player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_AOELOOT_ACTIVE);
+            player->AddCustomFlag(CustomFlagsIndex::CUSTOM_AOELOOT_FLAGS, CustomFlags::CUSTOM_FLAG_AOELOOT_ACTIVE);
             player->AOELoot.clear();
             handler->SendSysMessage("AOE Loot activated.");
             return true;
         }
         else
         {
-            player->AddCustomFlag(CustomFlagsIndex::CUSTOM_AOELOOT_FLAGS, CustomFlags::CUSTOM_FLAG_NONE);
+            player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_AOELOOT_FLAGS, CustomFlags::CUSTOM_FLAG_AOELOOT_ACTIVE);
             player->AOELoot.clear();
             handler->SendSysMessage("AOE Loot deactivated.");
             return true;
