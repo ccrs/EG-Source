@@ -45,7 +45,7 @@ void Player::_LoadTransmogrifications(PreparedQueryResult result)
             {
                 // Ignore, will be erased on next save.
                 // Additionally this can happen if an item was deleted from DB but still exists for the player
-                TC_LOG_DEBUG("transmogrification", "Item entry (Entry: %u, itemGUID: %s, playerGUID: %s) does not exist, ignoring.", fakeEntry, itemGUID.ToString().c_str(), GetGUID().ToString().c_str());
+                TC_LOG_DEBUG("transmogrification", "Item entry (Entry: {}, itemGUID: {}, playerGUID: {}) does not exist, ignoring.", fakeEntry, itemGUID.ToString(), GetGUID().ToString());
             }
         } while (result->NextRow());
     }
