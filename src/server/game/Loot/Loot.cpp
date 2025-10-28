@@ -615,10 +615,11 @@ ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
 
     b << lv.gold; // gold
     b << uint8(lv.processedList.size()); // item count
+
     uint8 itemResultCounter = 0;
     for (LootProcessResult const& currentLoot : lv.processedList) {
-        b << ++itemResultCounter;
-        b << currentLoot.Item;
+        b << itemResultCounter++;
+        b << *currentLoot.Item;
         b << currentLoot.ItemSlotType;
     }
 

@@ -288,7 +288,7 @@ struct LootView
     PermissionTypes permission;
     std::vector<Loot*> lootList;
     std::vector<LootProcessResult> processedList;
-    uint32 gold;
+    uint32 gold = 0;
     LootView(Loot &_loot, Player* _viewer, PermissionTypes _permission = ALL_PERMISSION)
         : loot(_loot), viewer(_viewer), permission(_permission) { lootList.push_back({ &_loot }); }
     LootView(Loot &_loot, std::vector<Loot*> _lootList, Player* _viewer, PermissionTypes _permission = ALL_PERMISSION)
