@@ -63,6 +63,7 @@
 #include "Language.h"
 #include "LFGMgr.h"
 #include "Log.h"
+#include "Loot.h"
 #include "LootItemStorage.h"
 #include "LootMgr.h"
 #include "Mail.h"
@@ -8398,7 +8399,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
     else
     {
         Creature* creature = GetMap()->GetCreature(guid);
-        aoeLoot = HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE);
+
         // must be in range and creature must be alive for pickpocket and must be dead for another loot
         if (!creature || creature->IsAlive() != (loot_type == LOOT_PICKPOCKETING) || !creature->IsWithinDistInMap(this, INTERACTION_DISTANCE))
         {
@@ -8413,7 +8414,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
         }
 
         loot = &creature->loot;
-
+        aoeLoot = HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE);
         if (loot_type == LOOT_PICKPOCKETING)
         {
             if (loot->loot_type != LOOT_PICKPOCKETING)
@@ -8545,6 +8546,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
     // need know merged fishing/corpse loot type for achievements
     loot->loot_type = loot_type;
 
+    LootView lootViewToSend(*loot, this, permission);
     if (aoeLoot)
     {
         std::vector<Creature*> deadCreatures;
@@ -8560,6 +8562,8 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
 
             for (Creature* deadCreature : deadCreatures)
             {
+                if (deadCreature->GetGUID() == guid)
+                    continue;
                 if (deadCreature->HasDynamicFlag(UNIT_DYNFLAG_LOOTABLE))
                     continue;
                 Player* recipient = deadCreature->GetLootRecipient();
@@ -8570,12 +8574,14 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                     continue;
                 uint32 lastIndex = (*AOELoot.end()).first + 1;
                 for (uint8 i = 0; i < currentLoot->items.size(); ++i)
-                {
                     AOELoot.insert({ lastIndex + i, { .ItemSlot = i, .Loot = currentLoot } });
-                };
+
+                lootViewToSend.lootList.push_back(currentLoot);
             }
         }
     }
+
+    lootViewToSend.Process();
 
     if (permission != NONE_PERMISSION)
     {
@@ -8584,7 +8590,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
         WorldPacket data(SMSG_LOOT_RESPONSE, (9 + 50));           // we guess size
         data << guid;
         data << uint8(loot_type);
-        data << LootView(*loot, this, permission);
+        data << lootViewToSend;
         SendDirectMessage(&data);
 
         // add 'this' player as one of the players that are looting 'loot'

@@ -271,16 +271,34 @@ struct TC_GAME_API Loot
         LootValidatorRefManager i_LootValidatorRefManager;
 };
 
+struct TC_GAME_API LootProcessResult
+{
+    LootProcessResult(uint8 itemIndex, LootItem* item, uint8 ItemSlotType) : ItemIndex(itemIndex), Item(item), ItemSlotType(ItemSlotType) { }
+    uint8 ItemIndex;
+    LootItem* Item;
+    uint8 ItemSlotType;
+};
+
 struct LootView
 {
     Loot &loot;
     Player* viewer;
     PermissionTypes permission;
     std::vector<Loot*> lootList;
+    std::vector<LootProcessResult> processedList;
+    uint32 gold;
     LootView(Loot &_loot, Player* _viewer, PermissionTypes _permission = ALL_PERMISSION)
-        : loot(_loot), viewer(_viewer), permission(_permission) { lootList.push_back(&_loot); }
+        : loot(_loot), viewer(_viewer), permission(_permission) { lootList.push_back({ &_loot }); }
     LootView(Loot &_loot, std::vector<Loot*> _lootList, Player* _viewer, PermissionTypes _permission = ALL_PERMISSION)
         : loot(_loot), viewer(_viewer), permission(_permission), lootList(_lootList) { }
+
+    std::vector<LootProcessResult> Process();
+};
+
+struct TC_GAME_API LootReference
+{
+    uint32 ItemSlot;
+    Loot* Loot;
 };
 
 #endif // Loot_h__
