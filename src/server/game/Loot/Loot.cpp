@@ -613,9 +613,6 @@ ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
         return b;
     }
 
-    uint8 itemsShown = 0;
-    uint32 gold = 0;
-
     b << lv.gold; // gold
     b << uint8(lv.processedList.size()); // item count
     for (LootProcessResult const& currentLoot : lv.processedList) {
@@ -630,7 +627,7 @@ ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
 std::vector<LootProcessResult> LootView::Process()
 {
     if (permission == NONE_PERMISSION)
-        return;
+        return processedList;
 
     for (Loot* currentLoot : lootList) {
         Loot &l = *currentLoot;
@@ -690,7 +687,7 @@ std::vector<LootProcessResult> LootView::Process()
                             // item shall not be displayed.
                             continue;
 
-                        processedList.emplace_back(i, l.items[i], slot_type);
+                        processedList.emplace_back(i, &l.items[i], slot_type);
                     }
                 }
                 break;
@@ -705,7 +702,7 @@ std::vector<LootProcessResult> LootView::Process()
                             // item shall not be displayed.
                             continue;
 
-                        processedList.emplace_back(i, l.items[i], uint8(LOOT_SLOT_TYPE_ALLOW_LOOT));
+                        processedList.emplace_back(i, &l.items[i], uint8(LOOT_SLOT_TYPE_ALLOW_LOOT));
                     }
                 }
                 break;
@@ -717,7 +714,7 @@ std::vector<LootProcessResult> LootView::Process()
                 for (uint8 i = 0; i < l.items.size(); ++i)
                 {
                     if (!l.items[i].is_looted && !l.items[i].freeforall && l.items[i].conditions.empty() && l.items[i].AllowedForPlayer(viewer, l.roundRobinPlayer))
-                        processedList.emplace_back(i, l.items[i], slot_type);
+                        processedList.emplace_back(i, &l.items[i], slot_type);
                 }
                 break;
             }
@@ -760,13 +757,13 @@ std::vector<LootProcessResult> LootView::Process()
                         }
                     }
 
-                    processedList.emplace_back(l.items.size() + (qi - q_list->begin()), item, slot_type);
+                    processedList.emplace_back(l.items.size() + (qi - q_list->begin()), &item, slot_type);
                 }
             }
         }
 
         NotNormalLootItemMap const& lootPlayerFFAItems = l.GetPlayerFFAItems();
-        NotNormalLootItemMap::const_iterator ffa_itr = lootPlayerFFAItems.find(lv.viewer->GetGUID());
+        NotNormalLootItemMap::const_iterator ffa_itr = lootPlayerFFAItems.find(viewer->GetGUID());
         if (ffa_itr != lootPlayerFFAItems.end())
         {
             NotNormalLootItemList* ffa_list = ffa_itr->second;
@@ -774,12 +771,12 @@ std::vector<LootProcessResult> LootView::Process()
             {
                 LootItem &item = l.items[fi->index];
                 if (!fi->is_looted && !item.is_looted)
-                    processedList.emplace_back(fi->index, item, uint8(slotType));
+                    processedList.emplace_back(fi->index, &item, uint8(slotType));
             }
         }
 
         NotNormalLootItemMap const& lootPlayerNonQuestNonFFAConditionalItems = l.GetPlayerNonQuestNonFFAConditionalItems();
-        NotNormalLootItemMap::const_iterator nn_itr = lootPlayerNonQuestNonFFAConditionalItems.find(lv.viewer->GetGUID());
+        NotNormalLootItemMap::const_iterator nn_itr = lootPlayerNonQuestNonFFAConditionalItems.find(viewer->GetGUID());
         if (nn_itr != lootPlayerNonQuestNonFFAConditionalItems.end())
         {
             NotNormalLootItemList* conditional_list = nn_itr->second;
@@ -807,7 +804,7 @@ std::vector<LootProcessResult> LootView::Process()
                         default:
                             break;
                     }
-                    processedList.emplace_back(ci->index, item, slot_type);
+                    processedList.emplace_back(ci->index, &item, slot_type);
                 }
             }
         }
