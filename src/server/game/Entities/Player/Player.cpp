@@ -8560,8 +8560,6 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
             {
                 if (deadCreature->GetGUID() == guid)
                     continue;
-                if (deadCreature->HasDynamicFlag(UNIT_DYNFLAG_LOOTABLE))
-                    continue;
                 Player* recipient = deadCreature->GetLootRecipient();
                 if (recipient != this || deadCreature->GetLootRecipientGroup())
                     continue;
