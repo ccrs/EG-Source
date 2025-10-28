@@ -8179,6 +8179,8 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
 
     TC_LOG_DEBUG("loot", "Player::SendLoot: Player: '{}' ({}), Loot: {}",
         GetName(), GetGUID().ToString(), guid.ToString());
+
+    bool aoeLoot = false;
     if (guid.IsGameObject())
     {
         GameObject* go = GetMap()->GetGameObject(guid);
@@ -8396,7 +8398,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
     else
     {
         Creature* creature = GetMap()->GetCreature(guid);
-        bool aoeLoot = HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE);
+        aoeLoot = HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE);
         // must be in range and creature must be alive for pickpocket and must be dead for another loot
         if (!creature || creature->IsAlive() != (loot_type == LOOT_PICKPOCKETING) || !creature->IsWithinDistInMap(this, INTERACTION_DISTANCE))
         {
@@ -8542,6 +8544,38 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
 
     // need know merged fishing/corpse loot type for achievements
     loot->loot_type = loot_type;
+
+    if (aoeLoot)
+    {
+        std::vector<Creature*> deadCreatures;
+        GetCreatureListWithOptionsInGrid(deadCreatures, 30.f, {
+            .IsAlive = false
+        });
+        if (!deadCreatures.empty())
+        {
+            for (uint8 i = 0; i < loot->items.size(); ++i)
+            {
+                AOELoot.insert({ i, { .ItemSlot = i, .Loot = loot } });
+            };
+
+            for (Creature* deadCreature : deadCreatures)
+            {
+                if (deadCreature->HasDynamicFlag(UNIT_DYNFLAG_LOOTABLE))
+                    continue;
+                Player* recipient = deadCreature->GetLootRecipient();
+                if (recipient != this || deadCreature->GetLootRecipientGroup())
+                    continue;
+                Loot* currentLoot = &deadCreature->loot;
+                if (loot->loot_type == LOOT_SKINNING)
+                    continue;
+                uint32 lastIndex = (*AOELoot.end()).first + 1;
+                for (uint8 i = 0; i < currentLoot->items.size(); ++i)
+                {
+                    AOELoot.insert({ lastIndex + i, { .ItemSlot = i, .Loot = currentLoot } });
+                };
+            }
+        }
+    }
 
     if (permission != NONE_PERMISSION)
     {

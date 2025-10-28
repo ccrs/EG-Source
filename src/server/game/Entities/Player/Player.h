@@ -48,6 +48,7 @@ struct ItemExtendedCostEntry;
 struct ItemSetEffect;
 struct ItemTemplate;
 struct Loot;
+struct LootReference;
 struct Mail;
 struct ScalingStatDistributionEntry;
 struct ScalingStatValuesEntry;
@@ -2300,6 +2301,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         std::unordered_map<ObjectGuid, uint32> GetTransmogrificationContainer() const { return _transmogrificationMap; }
         uint32 GetHiddenTransmogrificationEntry(uint8 itemIndex) const;
 
+        std::map<uint32/*lootSlot*/, LootReference> AOELoot;
     protected:
         // Gamemaster whisper whitelist
         GuidList WhisperList;
