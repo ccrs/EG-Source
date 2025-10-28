@@ -276,8 +276,11 @@ struct LootView
     Loot &loot;
     Player* viewer;
     PermissionTypes permission;
+    std::vector<Loot*> lootList;
     LootView(Loot &_loot, Player* _viewer, PermissionTypes _permission = ALL_PERMISSION)
-        : loot(_loot), viewer(_viewer), permission(_permission) { }
+        : loot(_loot), viewer(_viewer), permission(_permission) { lootList.push_back(&_loot); }
+    LootView(Loot &_loot, std::vector<Loot*> _lootList, Player* _viewer, PermissionTypes _permission = ALL_PERMISSION)
+        : loot(_loot), viewer(_viewer), permission(_permission), lootList(_lootList) { }
 };
 
 #endif // Loot_h__
