@@ -63,7 +63,6 @@
 #include "Language.h"
 #include "LFGMgr.h"
 #include "Log.h"
-#include "Loot.h"
 #include "LootItemStorage.h"
 #include "LootMgr.h"
 #include "Mail.h"

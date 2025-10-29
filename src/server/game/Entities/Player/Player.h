@@ -48,8 +48,6 @@ struct FactionEntry;
 struct ItemExtendedCostEntry;
 struct ItemSetEffect;
 struct ItemTemplate;
-struct Loot;
-struct LootReference;
 struct Mail;
 struct ScalingStatDistributionEntry;
 struct ScalingStatValuesEntry;
@@ -81,8 +79,6 @@ class TradeData;
 
 enum InventoryType : uint8;
 enum ItemClass : uint8;
-enum LootError : uint8;
-enum LootType : uint8;
 
 typedef std::deque<Mail*> PlayerMails;
 
