@@ -8572,8 +8572,10 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
         }
         uint8 itemResultCounter = 0;
         for (LootProcessResult const& currentResult : lootViewToSend.Process())
-            AOELoot.insert({ ++itemResultCounter, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot, guid) });
+            AOELoot.insert({ itemResultCounter++, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot, guid) });
     }
+    else
+        lootViewToSend.Process();
 
     if (permission != NONE_PERMISSION)
     {
