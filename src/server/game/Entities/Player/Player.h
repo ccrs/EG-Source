@@ -18,15 +18,16 @@
 #ifndef _PLAYER_H
 #define _PLAYER_H
 
-#include "GridObject.h"
 #include "Unit.h"
 #include "DatabaseEnvFwd.h"
 #include "DBCEnums.h"
 #include "EquipmentSet.h"
+#include "GridObject.h"
 #include "GroupReference.h"
 #include "ItemDefines.h"
 #include "ItemEnchantmentMgr.h"
 #include "MapReference.h"
+#include "Loot.h"
 #include "PetDefines.h"
 #include "PlayerTaxi.h"
 #include "QuestDef.h"
