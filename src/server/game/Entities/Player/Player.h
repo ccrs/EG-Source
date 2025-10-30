@@ -2300,6 +2300,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         uint32 GetHiddenTransmogrificationEntry(uint8 itemIndex) const;
 
         std::unordered_map<uint8/*lootIndex*/, LootReference> AOELoot;
+        Loot* GetLootFromAOELoot(ObjectGuid lootGUID) const;
     protected:
         // Gamemaster whisper whitelist
         GuidList WhisperList;

@@ -8552,7 +8552,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
         if (aoeLoot)
         {
             std::vector<Creature*> deadCreatures;
-            GetCreatureListWithOptionsInGrid(deadCreatures, 30.f, {
+            GetCreatureListWithOptionsInGrid(deadCreatures, 10.f, {
                 .IsAlive = false
             });
             if (!deadCreatures.empty())
@@ -8573,10 +8573,17 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
             }
             uint8 itemResultCounter = 0;
             for (LootProcessResult const& currentResult : lootViewToSend.Process())
+            {
                 AOELoot.insert({ itemResultCounter++, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot, guid) });
+                currentResult.RelatedLoot->AddLooter(GetGUID());
+            }
         }
         else
+        {
             lootViewToSend.Process();
+            // add 'this' player as one of the players that are looting 'loot'
+            loot->AddLooter(GetGUID());
+        }
 
         SetLootGUID(guid);
 
@@ -8585,9 +8592,6 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
         data << uint8(loot_type);
         data << lootViewToSend;
         SendDirectMessage(&data);
-
-        // add 'this' player as one of the players that are looting 'loot'
-        loot->AddLooter(GetGUID());
 
         if (loot_type == LOOT_CORPSE && !guid.IsItem())
             SetUnitFlag(UNIT_FLAG_LOOTING);

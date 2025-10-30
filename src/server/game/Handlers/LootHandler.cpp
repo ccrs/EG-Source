@@ -84,7 +84,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
         Creature* creature = GetPlayer()->GetMap()->GetCreature(relatedLootReference.ContainerEntityGUID);
 
         bool lootAllowed = creature && creature->IsAlive() == (player->GetClass() == CLASS_ROGUE && creature->loot.loot_type == LOOT_PICKPOCKETING);
-        if (!lootAllowed || !creature->IsWithinDistInMap(_player, 30.f))
+        if (!lootAllowed || !creature->IsWithinDistInMap(_player, 10.f))
         {
             player->SendLootError(lguid, lootAllowed ? LOOT_ERROR_TOO_FAR : LOOT_ERROR_DIDNT_KILL);
             return;
@@ -362,6 +362,31 @@ void WorldSession::DoLootRelease(ObjectGuid lguid)
                 player->DestroyItem(pItem->GetBagSlot(), pItem->GetSlot(), true);
         }
         return;                                             // item can be looted only single player
+    }
+    else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->GetLootFromAOELoot(lguid))
+    {
+        Creature* creature = GetPlayer()->GetMap()->GetCreature(lguid);
+
+        bool lootAllowed = creature && creature->IsAlive() == (player->GetClass() == CLASS_ROGUE && creature->loot.loot_type == LOOT_PICKPOCKETING);
+        if (!lootAllowed || !creature->IsWithinDistInMap(_player, 10.f))
+            return;
+
+        loot = &creature->loot;
+        if (loot->isLooted())
+        {
+            creature->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+
+            // skip pickpocketing loot for speed, skinning timer reduction is no-op in fact
+            if (!creature->IsAlive())
+                creature->AllLootRemovedFromCorpse();
+
+            loot->clear();
+        }
+        else
+        {
+            // force dynflag update to update looter and lootable info
+            creature->ForceValuesUpdateAtIndex(UNIT_DYNAMIC_FLAGS);
+        }
     }
     else
     {

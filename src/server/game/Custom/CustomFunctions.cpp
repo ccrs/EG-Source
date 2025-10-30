@@ -162,3 +162,12 @@ uint32 Player::GetHiddenTransmogrificationEntry(uint8 itemIndex) const
 
     return it->second;
 }
+
+Loot *Player::GetLootFromAOELoot(ObjectGuid lootGUID) const
+{
+    for (std::pair<uint8 const/*lootIndex*/, LootReference> pair : AOELoot) {
+        if (pair.second.ContainerEntityGUID == lootGUID)
+            return pair.second.RelatedLoot;
+    }
+    return nullptr;
+}
