@@ -28,6 +28,7 @@
 #include "ItemEnchantmentMgr.h"
 #include "MapReference.h"
 #include "Loot.h"
+#include "Optional.h"
 #include "PetDefines.h"
 #include "PlayerTaxi.h"
 #include "QuestDef.h"
@@ -1178,7 +1179,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         bool StoreNewItemInBestSlots(uint32 item_id, uint32 item_count);
         void AutoStoreLoot(uint8 bag, uint8 slot, uint32 loot_id, LootStore const& store, bool broadcast = false, bool createdByPlayer = false);
         void AutoStoreLoot(uint32 loot_id, LootStore const& store, bool broadcast = false, bool createdByPlayer = false) { AutoStoreLoot(NULL_BAG, NULL_SLOT, loot_id, store, broadcast, createdByPlayer); }
-        void StoreLootItem(uint8 lootSlot, Loot* loot);
+        void StoreLootItem(uint8 lootSlot, Loot* loot, Optional<uint8> lootViewSlot = {});
 
         InventoryResult CanTakeMoreSimilarItems(uint32 entry, uint32 count, Item* pItem, uint32* no_space_count = nullptr, uint32* itemLimitCategory = nullptr) const;
         InventoryResult CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& dest, uint32 entry, uint32 count, Item* pItem = nullptr, bool swap = false, uint32* no_space_count = nullptr) const;

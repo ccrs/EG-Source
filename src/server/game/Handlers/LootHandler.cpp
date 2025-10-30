@@ -41,6 +41,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
 
     recvData >> lootSlot;
 
+    uint8 lootViewSlot = lootSlot;
     if (lguid.IsGameObject())
     {
         GameObject* go = player->GetMap()->GetGameObject(lguid);
@@ -105,7 +106,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
         loot = &creature->loot;
     }
 
-    player->StoreLootItem(lootSlot, loot);
+    player->StoreLootItem(lootSlot, loot, lootViewSlot);
 
     // If player is removing the last LootItem, delete the empty container.
     if (loot->isLooted() && lguid.IsItem())
