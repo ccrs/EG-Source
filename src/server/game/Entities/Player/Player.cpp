@@ -8546,38 +8546,38 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
     // need know merged fishing/corpse loot type for achievements
     loot->loot_type = loot_type;
 
-    LootView lootViewToSend(*loot, this, permission);
-    if (aoeLoot)
-    {
-        std::vector<Creature*> deadCreatures;
-        GetCreatureListWithOptionsInGrid(deadCreatures, 30.f, {
-            .IsAlive = false
-        });
-        if (!deadCreatures.empty())
-        {
-            for (Creature* deadCreature : deadCreatures)
-            {
-                if (deadCreature->GetGUID() == guid)
-                    continue;
-                Player* recipient = deadCreature->GetLootRecipient();
-                if (recipient != this || deadCreature->GetLootRecipientGroup())
-                    continue;
-                Loot* currentLoot = &deadCreature->loot;
-                if (loot->loot_type == LOOT_SKINNING)
-                    continue;
-
-                lootViewToSend.lootList.push_back(currentLoot);
-            }
-        }
-        uint8 itemResultCounter = 0;
-        for (LootProcessResult const& currentResult : lootViewToSend.Process())
-            AOELoot.insert({ itemResultCounter++, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot, guid) });
-    }
-    else
-        lootViewToSend.Process();
-
     if (permission != NONE_PERMISSION)
     {
+        LootView lootViewToSend(*loot, this, permission);
+        if (aoeLoot)
+        {
+            std::vector<Creature*> deadCreatures;
+            GetCreatureListWithOptionsInGrid(deadCreatures, 30.f, {
+                .IsAlive = false
+            });
+            if (!deadCreatures.empty())
+            {
+                for (Creature* deadCreature : deadCreatures)
+                {
+                    if (deadCreature->GetGUID() == guid)
+                        continue;
+                    Player* recipient = deadCreature->GetLootRecipient();
+                    if (recipient != this || deadCreature->GetLootRecipientGroup())
+                        continue;
+                    Loot* currentLoot = &deadCreature->loot;
+                    if (loot->loot_type == LOOT_SKINNING)
+                        continue;
+
+                    lootViewToSend.lootList.push_back(currentLoot);
+                }
+            }
+            uint8 itemResultCounter = 0;
+            for (LootProcessResult const& currentResult : lootViewToSend.Process())
+                AOELoot.insert({ itemResultCounter++, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot, guid) });
+        }
+        else
+            lootViewToSend.Process();
+
         SetLootGUID(guid);
 
         WorldPacket data(SMSG_LOOT_RESPONSE, (9 + 50));           // we guess size
