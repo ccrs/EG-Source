@@ -177,7 +177,23 @@ void WorldSession::HandleLootMoneyOpcode(WorldPacket& /*recvData*/)
             return;                                         // unlootable type
     }
 
-    if (loot)
+    if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->GetLootFromAOELoot(guid))
+    {
+        uint32 totalGold = 0;
+        for (std::pair<uint8 const/*lootIndex*/, LootReference> pair : player->AOELoot) {
+            Loot* relatedLoot = pair.second.RelatedLoot;
+            totalGold += relatedLoot->gold;
+            relatedLoot->NotifyMoneyRemoved();
+            relatedLoot->gold = 0;
+        }
+        player->ModifyMoney(totalGold);
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_LOOT_MONEY, totalGold);
+        WorldPacket data(SMSG_LOOT_MONEY_NOTIFY, 4 + 1);
+        data << uint32(totalGold);
+        data << uint8(1);   // "You loot..."
+        SendPacket(&data);
+    }
+    else if (loot)
     {
         loot->NotifyMoneyRemoved();
         if (shareMoney && player->GetGroup())      //item, pickpocket and players can be looted only single player
