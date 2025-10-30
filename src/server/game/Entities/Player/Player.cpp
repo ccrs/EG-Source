@@ -24757,7 +24757,7 @@ void Player::StoreLootItem(uint8 lootSlot, Loot* loot, Optional<uint8> lootViewS
             qitem->is_looted = true;
             //freeforall is 1 if everyone's supposed to get the quest item.
             if (item->freeforall || loot->GetPlayerQuestItems().size() == 1)
-                SendNotifyLootItemRemoved(lootViewSlot.has_value() ? lootViewSlot : lootSlot);
+                SendNotifyLootItemRemoved(lootViewSlot.has_value() ? lootViewSlot.value() : lootSlot);
             else
                 loot->NotifyQuestItemRemoved(qitem->index);
         }
@@ -24767,14 +24767,14 @@ void Player::StoreLootItem(uint8 lootSlot, Loot* loot, Optional<uint8> lootViewS
             {
                 //freeforall case, notify only one player of the removal
                 ffaitem->is_looted = true;
-                SendNotifyLootItemRemoved(lootViewSlot.has_value() ? lootViewSlot : lootSlot);
+                SendNotifyLootItemRemoved(lootViewSlot.has_value() ? lootViewSlot.value() : lootSlot);
             }
             else
             {
                 //not freeforall, notify everyone
                 if (conditem)
                     conditem->is_looted = true;
-                loot->NotifyItemRemoved(lootViewSlot.has_value() ? lootViewSlot : lootSlot);
+                loot->NotifyItemRemoved(lootViewSlot.has_value() ? lootViewSlot.value() : lootSlot);
             }
         }
 
