@@ -87,6 +87,7 @@ public:
         if (active)
         {
             player->AddCustomFlag(CustomFlagsIndex::CUSTOM_AOELOOT_FLAGS, CustomFlags::CUSTOM_FLAG_AOELOOT_ACTIVE);
+            player->AOELootView.clear();
             player->AOELoot.clear();
             handler->SendSysMessage("AOE Loot activated.");
             return true;
@@ -94,6 +95,7 @@ public:
         else
         {
             player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_AOELOOT_FLAGS, CustomFlags::CUSTOM_FLAG_AOELOOT_ACTIVE);
+            player->AOELootView.clear();
             player->AOELoot.clear();
             handler->SendSysMessage("AOE Loot deactivated.");
             return true;

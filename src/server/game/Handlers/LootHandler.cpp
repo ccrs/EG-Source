@@ -78,9 +78,9 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
 
         loot = &bones->loot;
     }
-    else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->AOELoot.contains(lootSlot))
+    else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->AOELootView.contains(lootSlot))
     {
-        LootReference const& relatedLootReference = (*player->AOELoot.find(lootSlot)).second;
+        LootReference const& relatedLootReference = (*player->AOELootView.find(lootSlot)).second;
         Creature* creature = GetPlayer()->GetMap()->GetCreature(relatedLootReference.ContainerEntityGUID);
 
         bool lootAllowed = creature && creature->IsAlive() == (player->GetClass() == CLASS_ROGUE && creature->loot.loot_type == LOOT_PICKPOCKETING);
@@ -180,8 +180,8 @@ void WorldSession::HandleLootMoneyOpcode(WorldPacket& /*recvData*/)
     if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->GetLootFromAOELoot(guid))
     {
         uint32 totalGold = 0;
-        for (std::pair<uint8 const/*lootIndex*/, LootReference> pair : player->AOELoot) {
-            Loot* relatedLoot = pair.second.RelatedLoot;
+        for (LootReference reference : player->AOELoot) {
+            Loot* relatedLoot = reference.RelatedLoot;
             totalGold += relatedLoot->gold;
             relatedLoot->NotifyMoneyRemoved();
             relatedLoot->gold = 0;

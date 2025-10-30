@@ -300,6 +300,7 @@ struct LootView
 struct TC_GAME_API LootReference
 {
     LootReference(uint8 itemIndex, Loot* loot, ObjectGuid containerEntityGUID) : ItemIndex(itemIndex), RelatedLoot(loot), ContainerEntityGUID(containerEntityGUID) { }
+    LootReference(Loot* loot, ObjectGuid containerEntityGUID) : ItemIndex(0), RelatedLoot(loot), ContainerEntityGUID(containerEntityGUID) { }
     uint8 ItemIndex;
     Loot* RelatedLoot;
     ObjectGuid ContainerEntityGUID;

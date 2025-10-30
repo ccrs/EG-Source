@@ -8182,6 +8182,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
 
     bool aoeLoot = false;
     AOELoot.clear();
+    AOELootView.clear();
     if (guid.IsGameObject())
     {
         GameObject* go = GetMap()->GetGameObject(guid);
@@ -8569,12 +8570,13 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                         continue;
 
                     lootViewToSend.lootList.push_back(currentLoot);
+                    AOELoot.emplace_back(currentLoot, guid);
                 }
             }
             uint8 itemResultCounter = 0;
             for (LootProcessResult const& currentResult : lootViewToSend.Process())
             {
-                AOELoot.insert({ itemResultCounter++, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot, guid) });
+                AOELootView.insert({ itemResultCounter++, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot, guid) });
                 currentResult.RelatedLoot->AddLooter(GetGUID());
             }
         }
