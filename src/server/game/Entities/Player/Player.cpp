@@ -8570,13 +8570,17 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                         continue;
 
                     lootViewToSend.lootList.push_back(currentLoot);
-                    AOELoot.emplace_back(currentLoot, guid);
+                    AOELoot.emplace_back(currentLoot, deadCreature->GetGUID());
                 }
             }
             uint8 itemResultCounter = 0;
             for (LootProcessResult const& currentResult : lootViewToSend.Process())
             {
-                AOELootView.insert({ itemResultCounter++, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot, guid) });
+                auto itr = std::find_if(AOELoot.begin(), AOELoot.end(), [&currentResult](LootReference const& l)
+                {
+                    return l.RelatedLoot == currentResult.RelatedLoot;
+                });
+                AOELootView.insert({ itemResultCounter++, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot, (*itr).ContainerEntityGUID) });
                 currentResult.RelatedLoot->AddLooter(GetGUID());
             }
         }

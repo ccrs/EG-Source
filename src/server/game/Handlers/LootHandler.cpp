@@ -398,11 +398,8 @@ void WorldSession::DoLootRelease(ObjectGuid lguid)
 
             loot->clear();
         }
-        else
-        {
-            // force dynflag update to update looter and lootable info
-            creature->ForceValuesUpdateAtIndex(UNIT_DYNAMIC_FLAGS);
-        }
+        // force dynflag update to update looter and lootable info
+        creature->ForceValuesUpdateAtIndex(UNIT_DYNAMIC_FLAGS);
     }
     else
     {
