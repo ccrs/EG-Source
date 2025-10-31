@@ -381,25 +381,37 @@ void WorldSession::DoLootRelease(ObjectGuid lguid)
     }
     else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->GetLootFromAOELoot(lguid))
     {
-        Creature* creature = GetPlayer()->GetMap()->GetCreature(lguid);
-
-        bool lootAllowed = creature && creature->IsAlive() == (player->GetClass() == CLASS_ROGUE && creature->loot.loot_type == LOOT_PICKPOCKETING);
-        if (!lootAllowed || !creature->IsWithinDistInMap(_player, 10.f))
-            return;
-
-        loot = &creature->loot;
-        if (loot->isLooted())
+        for (LootReference currentLoot : player->AOELoot)
         {
-            creature->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+            Creature* creature = GetPlayer()->GetMap()->GetCreature(currentLoot.ContainerEntityGUID);
 
-            // skip pickpocketing loot for speed, skinning timer reduction is no-op in fact
-            if (!creature->IsAlive())
-                creature->AllLootRemovedFromCorpse();
+            bool lootAllowed = creature && creature->IsAlive() == (player->GetClass() == CLASS_ROGUE && creature->loot.loot_type == LOOT_PICKPOCKETING);
+            if (!lootAllowed || !creature->IsWithinDistInMap(_player, 10.f))
+            {
+                player->AOELootView.clear();
+                player->AOELoot.clear();
+                return;
+            }
 
-            loot->clear();
+            loot = &creature->loot;
+            if (loot->isLooted())
+            {
+                creature->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+
+                // skip pickpocketing loot for speed, skinning timer reduction is no-op in fact
+                if (!creature->IsAlive())
+                    creature->AllLootRemovedFromCorpse();
+
+                loot->clear();
+            }
+            else
+                creature->ForceValuesUpdateAtIndex(UNIT_DYNAMIC_FLAGS); // force dynflag update to update looter and lootable info
+
+            //Player is not looking at loot list, he doesn't need to see updates on the loot list
+            loot->RemoveLooter(player->GetGUID());
         }
-        // force dynflag update to update looter and lootable info
-        creature->ForceValuesUpdateAtIndex(UNIT_DYNAMIC_FLAGS);
+        player->AOELootView.clear();
+        player->AOELoot.clear();
     }
     else
     {
