@@ -8179,6 +8179,10 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
 
     TC_LOG_DEBUG("loot", "Player::SendLoot: Player: '{}' ({}), Loot: {}",
         GetName(), GetGUID().ToString(), guid.ToString());
+
+    bool aoeLoot = false;
+    AOELoot.clear();
+    AOELootView.clear();
     if (guid.IsGameObject())
     {
         GameObject* go = GetMap()->GetGameObject(guid);
@@ -8521,7 +8525,10 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                         permission = NONE_PERMISSION;
                 }
                 else if (creature->GetLootRecipient() == this)
+                {
                     permission = OWNER_PERMISSION;
+                    aoeLoot = HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && !recipientGroup && !creature->GetLootRecipientGroup();
+                }
                 else
                     permission = NONE_PERMISSION;
             }
@@ -8542,16 +8549,62 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
 
     if (permission != NONE_PERMISSION)
     {
+        LootView lootViewToSend(*loot, this, permission);
+        lootViewToSend.Store(lootViewToSend.Process(loot));
+        lootViewToSend.gold += loot->gold;
+        // add 'this' player as one of the players that are looting 'loot'
+        loot->AddLooter(GetGUID());
+        if (aoeLoot)
+        {
+            AOELoot.emplace_back(loot, guid);
+
+            std::vector<Creature*> deadCreatures;
+            GetCreatureListWithOptionsInGrid(deadCreatures, 10.f, {
+                .IsAlive = false
+            });
+            if (!deadCreatures.empty())
+            {
+                for (Creature* deadCreature : deadCreatures)
+                {
+                    if (deadCreature->GetGUID() == guid)
+                        continue;
+                    Player* recipient = deadCreature->GetLootRecipient();
+                    if (recipient != this || deadCreature->GetLootRecipientGroup())
+                        continue;
+                    Loot* currentLoot = &deadCreature->loot;
+                    if (currentLoot->loot_type == LOOT_SKINNING)
+                        continue;
+
+                    std::vector<LootProcessResult> processResult = lootViewToSend.Process(currentLoot);
+                    if (lootViewToSend.processedList.size() + processResult.size() > 255)
+                        break;
+
+                    lootViewToSend.Store(processResult);
+                    lootViewToSend.lootList.push_back(currentLoot);
+                    lootViewToSend.gold += currentLoot->gold;
+                    AOELoot.emplace_back(currentLoot, deadCreature->GetGUID());
+                    currentLoot->AddLooter(GetGUID());
+                }
+            }
+
+            uint8 itemResultCounter = 0;
+            for (LootProcessResult const& currentResult : lootViewToSend.processedList)
+            {
+                auto found = std::find_if(AOELoot.begin(), AOELoot.end(), [&currentResult](LootReference const& l)
+                {
+                    return l.RelatedLoot == currentResult.RelatedLoot;
+                });
+                AOELootView.insert({ itemResultCounter++, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot, found->ContainerEntityGUID) });
+            }
+        }
+
         SetLootGUID(guid);
 
         WorldPacket data(SMSG_LOOT_RESPONSE, (9 + 50));           // we guess size
         data << guid;
         data << uint8(loot_type);
-        data << LootView(*loot, this, permission);
+        data << lootViewToSend;
         SendDirectMessage(&data);
-
-        // add 'this' player as one of the players that are looting 'loot'
-        loot->AddLooter(GetGUID());
 
         if (loot_type == LOOT_CORPSE && !guid.IsItem())
             SetUnitFlag(UNIT_FLAG_LOOTING);
@@ -24676,7 +24729,7 @@ void Player::AutoStoreLoot(uint8 bag, uint8 slot, uint32 loot_id, LootStore cons
     }
 }
 
-void Player::StoreLootItem(uint8 lootSlot, Loot* loot)
+void Player::StoreLootItem(uint8 lootSlot, Loot* loot, Optional<uint8> lootViewSlot/* = {}*/)
 {
     NotNormalLootItem* qitem = nullptr;
     NotNormalLootItem* ffaitem = nullptr;
@@ -24721,7 +24774,7 @@ void Player::StoreLootItem(uint8 lootSlot, Loot* loot)
             qitem->is_looted = true;
             //freeforall is 1 if everyone's supposed to get the quest item.
             if (item->freeforall || loot->GetPlayerQuestItems().size() == 1)
-                SendNotifyLootItemRemoved(lootSlot);
+                SendNotifyLootItemRemoved(lootViewSlot.has_value() ? lootViewSlot.value() : lootSlot);
             else
                 loot->NotifyQuestItemRemoved(qitem->index);
         }
@@ -24731,14 +24784,14 @@ void Player::StoreLootItem(uint8 lootSlot, Loot* loot)
             {
                 //freeforall case, notify only one player of the removal
                 ffaitem->is_looted = true;
-                SendNotifyLootItemRemoved(lootSlot);
+                SendNotifyLootItemRemoved(lootViewSlot.has_value() ? lootViewSlot.value() : lootSlot);
             }
             else
             {
                 //not freeforall, notify everyone
                 if (conditem)
                     conditem->is_looted = true;
-                loot->NotifyItemRemoved(lootSlot);
+                loot->NotifyItemRemoved(lootViewSlot.has_value() ? lootViewSlot.value() : lootSlot);
             }
         }
 

@@ -41,6 +41,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
 
     recvData >> lootSlot;
 
+    Optional<uint8> lootViewSlot;
     if (lguid.IsGameObject())
     {
         GameObject* go = player->GetMap()->GetGameObject(lguid);
@@ -77,6 +78,21 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
 
         loot = &bones->loot;
     }
+    else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->AOELootView.contains(lootSlot))
+    {
+        lootViewSlot = lootSlot;
+        LootReference const& relatedLootReference = player->AOELootView.find(lootSlot)->second;
+        Creature* creature = GetPlayer()->GetMap()->GetCreature(relatedLootReference.ContainerEntityGUID);
+
+        bool lootAllowed = creature && creature->IsAlive() == (player->GetClass() == CLASS_ROGUE && creature->loot.loot_type == LOOT_PICKPOCKETING);
+        if (!lootAllowed || !creature->IsWithinDistInMap(_player, 10.f))
+        {
+            player->SendLootError(lguid, lootAllowed ? LOOT_ERROR_TOO_FAR : LOOT_ERROR_DIDNT_KILL);
+            return;
+        }
+        lootSlot = relatedLootReference.ItemIndex;
+        loot = relatedLootReference.RelatedLoot;
+    }
     else
     {
         Creature* creature = GetPlayer()->GetMap()->GetCreature(lguid);
@@ -91,7 +107,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
         loot = &creature->loot;
     }
 
-    player->StoreLootItem(lootSlot, loot);
+    player->StoreLootItem(lootSlot, loot, lootViewSlot);
 
     // If player is removing the last LootItem, delete the empty container.
     if (loot->isLooted() && lguid.IsItem())
@@ -162,7 +178,23 @@ void WorldSession::HandleLootMoneyOpcode(WorldPacket& /*recvData*/)
             return;                                         // unlootable type
     }
 
-    if (loot)
+    if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->GetLootFromAOELoot(guid))
+    {
+        uint32 totalGold = 0;
+        for (LootReference reference : player->AOELoot) {
+            Loot* relatedLoot = reference.RelatedLoot;
+            totalGold += relatedLoot->gold;
+            relatedLoot->NotifyMoneyRemoved();
+            relatedLoot->gold = 0;
+        }
+        player->ModifyMoney(totalGold);
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_LOOT_MONEY, totalGold);
+        WorldPacket data(SMSG_LOOT_MONEY_NOTIFY, 4 + 1);
+        data << uint32(totalGold);
+        data << uint8(1);   // "You loot..."
+        SendPacket(&data);
+    }
+    else if (loot)
     {
         loot->NotifyMoneyRemoved();
         if (shareMoney && player->GetGroup())      //item, pickpocket and players can be looted only single player
@@ -347,6 +379,40 @@ void WorldSession::DoLootRelease(ObjectGuid lguid)
                 player->DestroyItem(pItem->GetBagSlot(), pItem->GetSlot(), true);
         }
         return;                                             // item can be looted only single player
+    }
+    else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->GetLootFromAOELoot(lguid))
+    {
+        for (LootReference currentLoot : player->AOELoot)
+        {
+            Creature* creature = GetPlayer()->GetMap()->GetCreature(currentLoot.ContainerEntityGUID);
+
+            bool lootAllowed = creature && creature->IsAlive() == (player->GetClass() == CLASS_ROGUE && creature->loot.loot_type == LOOT_PICKPOCKETING);
+            if (!lootAllowed || !creature->IsWithinDistInMap(_player, 10.f))
+            {
+                player->AOELootView.clear();
+                player->AOELoot.clear();
+                return;
+            }
+
+            loot = &creature->loot;
+            if (loot->isLooted())
+            {
+                creature->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+
+                // skip pickpocketing loot for speed, skinning timer reduction is no-op in fact
+                if (!creature->IsAlive())
+                    creature->AllLootRemovedFromCorpse();
+
+                loot->clear();
+            }
+            else
+                creature->ForceValuesUpdateAtIndex(UNIT_DYNAMIC_FLAGS); // force dynflag update to update looter and lootable info
+
+            //Player is not looking at loot list, he doesn't need to see updates on the loot list
+            loot->RemoveLooter(player->GetGUID());
+        }
+        player->AOELootView.clear();
+        player->AOELoot.clear();
     }
     else
     {

@@ -18,15 +18,17 @@
 #ifndef _PLAYER_H
 #define _PLAYER_H
 
-#include "GridObject.h"
 #include "Unit.h"
 #include "DatabaseEnvFwd.h"
 #include "DBCEnums.h"
 #include "EquipmentSet.h"
+#include "GridObject.h"
 #include "GroupReference.h"
 #include "ItemDefines.h"
 #include "ItemEnchantmentMgr.h"
 #include "MapReference.h"
+#include "Loot.h"
+#include "Optional.h"
 #include "PetDefines.h"
 #include "PlayerTaxi.h"
 #include "QuestDef.h"
@@ -47,7 +49,6 @@ struct FactionEntry;
 struct ItemExtendedCostEntry;
 struct ItemSetEffect;
 struct ItemTemplate;
-struct Loot;
 struct Mail;
 struct ScalingStatDistributionEntry;
 struct ScalingStatValuesEntry;
@@ -79,8 +80,6 @@ class TradeData;
 
 enum InventoryType : uint8;
 enum ItemClass : uint8;
-enum LootError : uint8;
-enum LootType : uint8;
 
 typedef std::deque<Mail*> PlayerMails;
 
@@ -932,7 +931,8 @@ private:
 enum CustomFlagsIndex : uint16
 {
     CUSTOM_TRANSMOG_FLAGS = 0,
-    CUSTOM_FLAGS_MAX      = 1,
+    CUSTOM_AOELOOT_FLAGS = 1,
+    CUSTOM_FLAGS_MAX
 };
 
 enum CustomFlags : uint16
@@ -941,7 +941,9 @@ enum CustomFlags : uint16
 
     CUSTOM_FLAG_TRANSMOG_HIDE           = 0x01,
     CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY = 0x02,
-    CUSTOM_FLAG_TRANSMOG_FULL           = 0x03
+    CUSTOM_FLAG_TRANSMOG_FULL           = 0x03,
+
+    CUSTOM_FLAG_AOELOOT_ACTIVE          = 0x01
 };
 
 class TC_GAME_API Player : public Unit, public GridObject<Player>
@@ -1177,7 +1179,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         bool StoreNewItemInBestSlots(uint32 item_id, uint32 item_count);
         void AutoStoreLoot(uint8 bag, uint8 slot, uint32 loot_id, LootStore const& store, bool broadcast = false, bool createdByPlayer = false);
         void AutoStoreLoot(uint32 loot_id, LootStore const& store, bool broadcast = false, bool createdByPlayer = false) { AutoStoreLoot(NULL_BAG, NULL_SLOT, loot_id, store, broadcast, createdByPlayer); }
-        void StoreLootItem(uint8 lootSlot, Loot* loot);
+        void StoreLootItem(uint8 lootSlot, Loot* loot, Optional<uint8> lootViewSlot = {});
 
         InventoryResult CanTakeMoreSimilarItems(uint32 entry, uint32 count, Item* pItem, uint32* no_space_count = nullptr, uint32* itemLimitCategory = nullptr) const;
         InventoryResult CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& dest, uint32 entry, uint32 count, Item* pItem = nullptr, bool swap = false, uint32* no_space_count = nullptr) const;
@@ -2297,6 +2299,9 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         std::unordered_map<ObjectGuid, uint32> GetTransmogrificationContainer() const { return _transmogrificationMap; }
         uint32 GetHiddenTransmogrificationEntry(uint8 itemIndex) const;
 
+        std::unordered_map<uint8/*lootIndex*/, LootReference> AOELootView;
+        std::vector<LootReference> AOELoot;
+        Loot* GetLootFromAOELoot(ObjectGuid lootGUID) const;
     protected:
         // Gamemaster whisper whitelist
         GuidList WhisperList;

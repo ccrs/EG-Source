@@ -1946,6 +1946,13 @@ public:
                handler->PSendSysMessage(LANG_PINFO_CHR_MAILS, readmail, totalmail);
         }
 
+        if (target)
+        {
+            handler->SendSysMessage("| Custom Flags:");
+            handler->PSendSysMessage("| - Transmog flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS));
+            handler->PSendSysMessage("| - AOELoot flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_AOELOOT_FLAGS));
+        }
+
         return true;
     }
 
