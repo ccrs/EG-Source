@@ -8550,9 +8550,11 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
     if (permission != NONE_PERMISSION)
     {
         LootView lootViewToSend(*loot, this, permission);
+        lootViewToSend.Store(lootViewToSend.Process(loot));
         if (aoeLoot)
         {
             AOELoot.emplace_back(loot, guid);
+
             std::vector<Creature*> deadCreatures;
             GetCreatureListWithOptionsInGrid(deadCreatures, 10.f, {
                 .IsAlive = false
@@ -8570,13 +8572,18 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                     if (loot->loot_type == LOOT_SKINNING)
                         continue;
 
+                    std::vector<LootProcessResult> processResult = lootViewToSend.Process(loot);
+                    if (lootViewToSend.processedList.size() + processResult.size() > 255)
+                        break;
+
+                    lootViewToSend.Store(processResult);
                     lootViewToSend.lootList.push_back(currentLoot);
                     AOELoot.emplace_back(currentLoot, deadCreature->GetGUID());
                 }
             }
 
             uint8 itemResultCounter = 0;
-            for (LootProcessResult const& currentResult : lootViewToSend.Process())
+            for (LootProcessResult const& currentResult : lootViewToSend.processedList)
             {
                 auto found = std::find_if(AOELoot.begin(), AOELoot.end(), [&currentResult](LootReference const& l)
                 {
@@ -8588,7 +8595,6 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
         }
         else
         {
-            lootViewToSend.Process();
             // add 'this' player as one of the players that are looting 'loot'
             loot->AddLooter(GetGUID());
         }

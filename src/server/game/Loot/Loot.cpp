@@ -626,10 +626,11 @@ ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
     return b;
 }
 
-std::vector<LootProcessResult> LootView::Process()
+std::vector<LootProcessResult> LootView::Process(Loot* relatedLoot)
 {
+    std::vector<LootProcessResult> returnValue;
     if (permission == NONE_PERMISSION)
-        return processedList;
+        return returnValue;
 
     for (Loot* currentLoot : lootList) {
         Loot &l = *currentLoot;
@@ -689,7 +690,7 @@ std::vector<LootProcessResult> LootView::Process()
                             // item shall not be displayed.
                             continue;
 
-                        processedList.emplace_back(i, &l.items[i], slot_type, &l);
+                        returnValue.emplace_back(i, &l.items[i], slot_type, &l);
                     }
                 }
                 break;
@@ -704,7 +705,7 @@ std::vector<LootProcessResult> LootView::Process()
                             // item shall not be displayed.
                             continue;
 
-                        processedList.emplace_back(i, &l.items[i], uint8(LOOT_SLOT_TYPE_ALLOW_LOOT), &l);
+                        returnValue.emplace_back(i, &l.items[i], uint8(LOOT_SLOT_TYPE_ALLOW_LOOT), &l);
                     }
                 }
                 break;
@@ -716,12 +717,12 @@ std::vector<LootProcessResult> LootView::Process()
                 for (uint8 i = 0; i < l.items.size(); ++i)
                 {
                     if (!l.items[i].is_looted && !l.items[i].freeforall && l.items[i].conditions.empty() && l.items[i].AllowedForPlayer(viewer, l.roundRobinPlayer))
-                        processedList.emplace_back(i, &l.items[i], slot_type, &l);
+                        returnValue.emplace_back(i, &l.items[i], slot_type, &l);
                 }
                 break;
             }
             default:
-                return processedList;
+                return returnValue;
         }
 
         LootSlotType slotType = permission == OWNER_PERMISSION ? LOOT_SLOT_TYPE_OWNER : LOOT_SLOT_TYPE_ALLOW_LOOT;
@@ -759,7 +760,7 @@ std::vector<LootProcessResult> LootView::Process()
                         }
                     }
 
-                    processedList.emplace_back(l.items.size() + (qi - q_list->begin()), &item, slot_type, &l);
+                    returnValue.emplace_back(l.items.size() + (qi - q_list->begin()), &item, slot_type, &l);
                 }
             }
         }
@@ -773,7 +774,7 @@ std::vector<LootProcessResult> LootView::Process()
             {
                 LootItem &item = l.items[fi->index];
                 if (!fi->is_looted && !item.is_looted)
-                    processedList.emplace_back(fi->index, &item, uint8(slotType), &l);
+                    returnValue.emplace_back(fi->index, &item, uint8(slotType), &l);
             }
         }
 
@@ -806,11 +807,16 @@ std::vector<LootProcessResult> LootView::Process()
                         default:
                             break;
                     }
-                    processedList.emplace_back(ci->index, &item, slot_type, &l);
+                    returnValue.emplace_back(ci->index, &item, slot_type, &l);
                 }
             }
         }
     }
 
-    return processedList;
+    return returnValue;
+}
+
+void LootView::Store(std::vector<LootProcessResult> lootResult)
+{
+    processedList.insert(processedList.end(), lootResult.begin(), lootResult.end());
 }

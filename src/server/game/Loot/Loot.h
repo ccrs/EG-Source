@@ -291,10 +291,9 @@ struct LootView
     uint32 gold = 0;
     LootView(Loot &_loot, Player* _viewer, PermissionTypes _permission = ALL_PERMISSION)
         : loot(_loot), viewer(_viewer), permission(_permission) { lootList.push_back({ &_loot }); }
-    LootView(Loot &_loot, std::vector<Loot*> _lootList, Player* _viewer, PermissionTypes _permission = ALL_PERMISSION)
-        : loot(_loot), viewer(_viewer), permission(_permission), lootList(_lootList) { }
 
-    std::vector<LootProcessResult> Process();
+    std::vector<LootProcessResult> Process(Loot* relatedLoot);
+    void Store(std::vector<LootProcessResult> lootResult);
 };
 
 struct TC_GAME_API LootReference
