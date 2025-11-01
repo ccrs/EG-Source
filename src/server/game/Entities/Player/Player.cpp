@@ -8551,6 +8551,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
     {
         LootView lootViewToSend(*loot, this, permission);
         lootViewToSend.Store(lootViewToSend.Process(loot));
+        lootViewToSend.gold += loot->gold;
         if (aoeLoot)
         {
             AOELoot.emplace_back(loot, guid);
