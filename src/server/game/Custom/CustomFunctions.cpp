@@ -163,7 +163,7 @@ uint32 Player::GetHiddenTransmogrificationEntry(uint8 itemIndex) const
     return it->second;
 }
 
-Loot *Player::GetLootFromAOELoot(ObjectGuid lootGUID) const
+Loot* Player::GetLootFromAOELoot(ObjectGuid lootGUID) const
 {
     for (LootReference currentLoot : AOELoot)
     {
