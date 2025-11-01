@@ -8552,6 +8552,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
         LootView lootViewToSend(*loot, this, permission);
         if (aoeLoot)
         {
+            AOELoot.emplace_back(loot, guid);
             std::vector<Creature*> deadCreatures;
             GetCreatureListWithOptionsInGrid(deadCreatures, 10.f, {
                 .IsAlive = false
@@ -8573,7 +8574,6 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                     AOELoot.emplace_back(currentLoot, deadCreature->GetGUID());
                 }
             }
-            AOELoot.emplace_back(loot, guid);
 
             uint8 itemResultCounter = 0;
             for (LootProcessResult const& currentResult : lootViewToSend.Process())
