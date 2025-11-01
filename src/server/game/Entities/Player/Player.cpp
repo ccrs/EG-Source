@@ -8578,6 +8578,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
 
                     lootViewToSend.Store(processResult);
                     lootViewToSend.lootList.push_back(currentLoot);
+                    lootViewToSend.gold += currentLoot->gold;
                     AOELoot.emplace_back(currentLoot, deadCreature->GetGUID());
                 }
             }
