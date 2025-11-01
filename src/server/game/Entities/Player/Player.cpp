@@ -8570,10 +8570,10 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                     if (recipient != this || deadCreature->GetLootRecipientGroup())
                         continue;
                     Loot* currentLoot = &deadCreature->loot;
-                    if (loot->loot_type == LOOT_SKINNING)
+                    if (currentLoot->loot_type == LOOT_SKINNING)
                         continue;
 
-                    std::vector<LootProcessResult> processResult = lootViewToSend.Process(loot);
+                    std::vector<LootProcessResult> processResult = lootViewToSend.Process(currentLoot);
                     if (lootViewToSend.processedList.size() + processResult.size() > 255)
                         break;
 
