@@ -8415,7 +8415,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
         }
 
         loot = &creature->loot;
-        aoeLoot = HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE);
+
         if (loot_type == LOOT_PICKPOCKETING)
         {
             if (loot->loot_type != LOOT_PICKPOCKETING)
@@ -8527,7 +8527,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                 else if (creature->GetLootRecipient() == this)
                 {
                     permission = OWNER_PERMISSION;
-                    aoeLoot = aoeLoot && !recipientGroup && !creature->GetLootRecipientGroup();
+                    aoeLoot = HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && !recipientGroup && !creature->GetLootRecipientGroup();
                 }
                 else
                     permission = NONE_PERMISSION;
@@ -8552,6 +8552,8 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
         LootView lootViewToSend(*loot, this, permission);
         lootViewToSend.Store(lootViewToSend.Process(loot));
         lootViewToSend.gold += loot->gold;
+        // add 'this' player as one of the players that are looting 'loot'
+        loot->AddLooter(GetGUID());
         if (aoeLoot)
         {
             AOELoot.emplace_back(loot, guid);
@@ -8581,6 +8583,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                     lootViewToSend.lootList.push_back(currentLoot);
                     lootViewToSend.gold += currentLoot->gold;
                     AOELoot.emplace_back(currentLoot, deadCreature->GetGUID());
+                    currentLoot->AddLooter(GetGUID());
                 }
             }
 
@@ -8592,13 +8595,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                     return l.RelatedLoot == currentResult.RelatedLoot;
                 });
                 AOELootView.insert({ itemResultCounter++, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot, found->ContainerEntityGUID) });
-                currentResult.RelatedLoot->AddLooter(GetGUID());
             }
-        }
-        else
-        {
-            // add 'this' player as one of the players that are looting 'loot'
-            loot->AddLooter(GetGUID());
         }
 
         SetLootGUID(guid);

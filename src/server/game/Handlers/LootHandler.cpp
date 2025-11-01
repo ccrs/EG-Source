@@ -41,7 +41,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
 
     recvData >> lootSlot;
 
-    uint8 lootViewSlot = lootSlot;
+    Optional<uint8> lootViewSlot;
     if (lguid.IsGameObject())
     {
         GameObject* go = player->GetMap()->GetGameObject(lguid);
@@ -80,7 +80,8 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
     }
     else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->AOELootView.contains(lootSlot))
     {
-        LootReference const& relatedLootReference = (*player->AOELootView.find(lootSlot)).second;
+        lootViewSlot = lootSlot;
+        LootReference const& relatedLootReference = player->AOELootView.find(lootSlot)->second;
         Creature* creature = GetPlayer()->GetMap()->GetCreature(relatedLootReference.ContainerEntityGUID);
 
         bool lootAllowed = creature && creature->IsAlive() == (player->GetClass() == CLASS_ROGUE && creature->loot.loot_type == LOOT_PICKPOCKETING);
