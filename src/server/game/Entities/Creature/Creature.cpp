@@ -2692,7 +2692,9 @@ void Creature::UpdateMovementFlags()
 
     // Set the movement flags if the creature is in that mode. (Only fly if actually in air, only swim if in water, etc)
     bool isInAir = IsInAir(*this, GetFloorZ());
-    if (isInAir)
+    float hoverHeight = GetFloatValue(UNIT_FIELD_HOVERHEIGHT);
+    bool shouldHover = CanHover() && hoverHeight && (!isInAir || std::fabs(GetPositionZ() - GetFloorZ()) <= hoverHeight);
+    if (isInAir && !shouldHover)
     {
         if (CanFly() && !IsFlying() && !IsFalling())
         {
@@ -2711,11 +2713,12 @@ void Creature::UpdateMovementFlags()
         if (HasUnitMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY))
             SetDisableGravity(false, true, true);
 
-        if (IsAlive() && !IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER))
-            SetHover(true, true, true);
-
         SetFall(false);
     }
+
+    if ((isInAir && shouldHover) || !isInAir)
+        if (IsAlive() && !IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER))
+            SetHover(true, true, true);
 
     if (IsInWater())
     {
@@ -3008,7 +3011,8 @@ bool Creature::SetHover(bool enable, bool updateAnimTier /*= true*/, bool tempor
         RemoveStoredMovementFlag(MOVEMENTFLAG_HOVER);
 
     float hoverHeight = GetFloatValue(UNIT_FIELD_HOVERHEIGHT);
-    bool validHover = enable && hoverHeight && (!IsInAir(*this, GetFloorZ(), false) || std::fabs(GetPositionZ() - GetFloorZ()) < hoverHeight);
+    bool validHover = enable && hoverHeight && (!IsInAir(*this, GetFloorZ()) || std::fabs(GetPositionZ() - GetFloorZ()) <= hoverHeight);
+
     bool result = false;
     if (enable && validHover)
         result = Unit::SetHover(enable, updateAnimTier, temporally);

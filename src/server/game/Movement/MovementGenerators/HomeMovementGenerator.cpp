@@ -66,8 +66,7 @@ void HomeMovementGenerator<Creature>::SetTargetLocation(Creature* owner)
 
     Movement::MoveSplineInit init(owner);
 
-    bool isInAir = owner->IsInAir(*owner, owner->GetFloorZ());
-    if (isInAir && owner->IsFlying() && !owner->IsHovering())
+    if (owner->IsFlying() && !owner->IsHovering() && owner->IsInAir(*owner, owner->GetFloorZ()))
     {
         float destinationGround = owner->GetMap()->GetHeight(owner->GetPhaseMask(), destination);
         if (!owner->IsInAir(destination, destinationGround))
