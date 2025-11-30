@@ -222,7 +222,7 @@ UPDATE `gameobject_loot_template` SET `item` = 45624 WHERE `item` = 47241 AND `e
 26974); -- Gift of the Observer
 
 -- Arenas
-DELETE FROM `disables` WHERE (`sourceType` = 3) AND (`entry` IN (617,618));
+DELETE FROM `disables` WHERE (`sourceType` = 3) AND (`entry` IN (10,11));
 INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, `comment`) VALUES
-(3, 617, 15, '', '', 'Dalaran Sewers'),
-(3, 618, 15, '', '', 'The Ring of Valor');
+(3, 10, 0, '', '', 'Dalaran Sewers'),
+(3, 11, 0, '', '', 'The Ring of Valor');
