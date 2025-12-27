@@ -1133,7 +1133,6 @@ void ScriptMgr::Unload()
 
 void ScriptMgr::LoadDatabase()
 {
-    sScriptSystemMgr->LoadScriptWaypoints();
     sScriptSystemMgr->LoadScriptSplineChains();
 }
 
