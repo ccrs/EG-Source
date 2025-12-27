@@ -226,3 +226,7 @@ DELETE FROM `disables` WHERE (`sourceType` = 3) AND (`entry` IN (10,11));
 INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, `comment`) VALUES
 (3, 10, 0, '', '', 'Dalaran Sewers'),
 (3, 11, 0, '', '', 'The Ring of Valor');
+
+-- Arena vendors
+DELETE FROM `creature` WHERE `guid` IN (125693, 125691, 125689, 133917, 133919, 133920);
+DELETE FROM `creature_addon` WHERE `guid` IN (125693, 125691, 125689, 133917, 133919, 133920);
