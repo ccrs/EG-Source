@@ -1559,6 +1559,9 @@ void World::LoadConfigSettings(bool reload)
     // EG - Account wide mount learning
     m_bool_configs[CONFIG_ACCOUNT_MOUNTS] = sConfigMgr->GetBoolDefault("Account.Mounts", false);
 
+    // EG - Crossfaction World Chat
+    m_bool_configs[CONFIG_WORLD_CHAT] = sConfigMgr->GetBoolDefault("WorldChat.Enable", false);
+
     // Allow 5-man parties to use raid warnings
     m_bool_configs[CONFIG_CHAT_PARTY_RAID_WARNINGS] = sConfigMgr->GetBoolDefault("PartyRaidWarnings", false);
 
