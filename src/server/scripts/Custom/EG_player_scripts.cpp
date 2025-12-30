@@ -20,7 +20,7 @@ class EG_AccountMounts : public PlayerScript
                 uint32 playerAccountID = player->GetSession()->GetAccountId();
                 CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_EXISTING_CHARACTER_SPELLS);
                 stmt->setUInt32(0, playerAccountID);
-                stmt->setUInt32(1, Player::TeamForRace(GetPlayer()->GetRace()) == ALLIANCE ? RACEMASK_ALLIANCE : RACEMASK_HORDE);
+                stmt->setUInt32(1, Player::TeamForRace(player->GetRace()) == ALLIANCE ? RACEMASK_ALLIANCE : RACEMASK_HORDE);
                 stmt->setUInt32(2, player->GetGUID().GetCounter());
 
                 std::unordered_set<uint32> spellIds;
@@ -39,7 +39,7 @@ class EG_AccountMounts : public PlayerScript
                 {
                     SpellInfo const* relatedInfo = sSpellMgr->GetSpellInfo(spellId);
                     if (relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).Effect == SPELL_EFFECT_APPLY_AURA && relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).ApplyAuraName == SPELL_AURA_MOUNTED)
-                        player->learnSpell(sSpell->Id);
+                        player->LearnSpell(relatedInfo->Id, false);
                 }
             }
         }
