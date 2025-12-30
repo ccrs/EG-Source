@@ -38,7 +38,7 @@ class EG_AccountMounts : public PlayerScript
                 for (uint32 spellId : spellIds)
                 {
                     SpellInfo const* relatedInfo = sSpellMgr->GetSpellInfo(spellId);
-                    if (relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).Effect == SPELL_EFFECT_APPLY_AURA && relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).ApplyAuraName == SPELL_AURA_MOUNTED)
+                    if (relatedInfo && relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).Effect == SPELL_EFFECT_APPLY_AURA && relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).ApplyAuraName == SPELL_AURA_MOUNTED)
                         player->LearnSpell(relatedInfo->Id, false);
                 }
             }
