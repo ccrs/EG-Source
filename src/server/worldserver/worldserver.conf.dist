@@ -3388,6 +3388,15 @@ NoGrayAggro.Below = 0
 PreventRenameCharacterOnCustomization = 0
 
 #
+#    Account.Mounts
+#        Description: Enable Account wide mount spells learning
+#        Default:     0 - (Disabled)
+#                     1 - (Enabled)
+#
+
+Account.Mounts = 0
+
+#
 ###################################################################################################
 
 ###################################################################################################

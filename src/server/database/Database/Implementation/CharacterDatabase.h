@@ -518,6 +518,9 @@ enum CharacterDatabaseStatements : uint32
     CHAR_SEL_TRANSMOGRIFICATIONS,
     CHAR_DEL_TRANSMOGRIFICATIONS,
 
+    // EG - Account wide mount learning
+    CHAR_SEL_EXISTING_CHARACTER_SPELLS,
+
     MAX_CHARACTERDATABASE_STATEMENTS
 };
 
