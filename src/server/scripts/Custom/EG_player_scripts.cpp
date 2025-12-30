@@ -13,7 +13,7 @@ class EG_AccountMounts : public PlayerScript
     public:
         EG_AccountMounts() : PlayerScript("EG_AccountMounts") { }
         
-        void OnPlayerLogin(Player* player)
+        void OnLogin(Player* player, bool /*firstLogin*/) override
         {
             if (sWorld->getBoolConfig(CONFIG_ACCOUNT_MOUNTS))
             {
