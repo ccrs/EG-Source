@@ -24,6 +24,7 @@ public:
         {
             { "transmogrification", transmogrificationSettings }, 
             { "aoeloot",            HandleAOELoot, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "worldChat",          HandleWorldChat, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
         };
 
         static ChatCommandTable commandTable =
@@ -98,6 +99,26 @@ public:
             player->AOELootView.clear();
             player->AOELoot.clear();
             handler->SendSysMessage("AOE Loot deactivated.");
+            return true;
+        }
+    }
+
+    static bool HandleWorldChat(ChatHandler* handler, bool active)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        if (!player)
+            return false;
+
+        if (active)
+        {
+            player->AddCustomFlag(CustomFlagsIndex::CUSTOM_WORLDCHAT_FLAGS, CustomFlags::CUSTOM_FLAG_WORLDCHAT_ACTIVE);
+            handler->SendSysMessage("World Chat activated.");
+            return true;
+        }
+        else
+        {
+            player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_WORLDCHAT_FLAGS, CustomFlags::CUSTOM_FLAG_WORLDCHAT_ACTIVE);
+            handler->SendSysMessage("World Chat deactivated.");
             return true;
         }
     }
