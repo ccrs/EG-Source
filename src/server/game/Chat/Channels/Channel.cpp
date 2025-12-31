@@ -306,7 +306,7 @@ void Channel::KickOrBan(Player const* player, std::string const& badname, bool b
     }
 
     PlayerInfo& info = _playersStore.at(good);
-    if (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR))
+    if (GetName() == "world" || (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR)))
     {
         NotModeratorAppend appender;
         ChannelNameBuilder<NotModeratorAppend> builder(this, appender);
@@ -419,7 +419,7 @@ void Channel::Password(Player const* player, std::string const& pass)
     }
 
     PlayerInfo& info = _playersStore.at(guid);
-    if (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR))
+    if (GetName() == "world" || (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR)))
     {
         NotModeratorAppend appender;
         ChannelNameBuilder<NotModeratorAppend> builder(this, appender);
@@ -449,7 +449,7 @@ void Channel::SetMode(Player const* player, std::string const& p2n, bool mod, bo
     }
 
     PlayerInfo& info = _playersStore.at(guid);
-    if (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR))
+    if (GetName() == "world" || (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR)))
     {
         NotModeratorAppend appender;
         ChannelNameBuilder<NotModeratorAppend> builder(this, appender);
@@ -683,7 +683,7 @@ void Channel::Say(ObjectGuid guid, std::string const& what, uint32 lang) const
         return;
 
     // TODO: Add proper RBAC check
-    if (sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_CHANNEL))
+    if (sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_CHANNEL) || GetName() == "world")
         lang = LANG_UNIVERSAL;
 
     if (!IsOn(guid))
@@ -745,9 +745,10 @@ void Channel::Invite(Player const* player, std::string const& newname)
         return;
     }
 
-    if (newp->GetTeam() != player->GetTeam() &&
-        (!player->GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHANNEL) ||
-        !newp->GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHANNEL)))
+    if (GetName() != "world"
+        && newp->GetTeam() != player->GetTeam()
+        && (!player->GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHANNEL) || !newp->GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHANNEL))
+    )
     {
         InviteWrongFactionAppend appender;
         ChannelNameBuilder<InviteWrongFactionAppend> builder(this, appender);

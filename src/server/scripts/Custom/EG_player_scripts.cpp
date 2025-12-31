@@ -60,20 +60,21 @@ class EG_WorldChat : public PlayerScript
                 if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
                 {
                     if (Channel* channel = cMgr->GetCustomChannel("world"))
-                        channel->Invite(player, player->GetName());
+                        channel->JoinChannel(player);
                     else if (Channel* channel = cMgr->CreateCustomChannel("world"))
-                        channel->Invite(player, player->GetName());
+                        channel->JoinChannel(player);
                 }
             }
+            else if (sWorld->getBoolConfig(CONFIG_WORLD_CHAT) && !player->HasCustomFlag(CustomFlagsIndex::CUSTOM_WORLDCHAT_FLAGS, CustomFlags::CUSTOM_FLAG_WORLDCHAT_ACTIVE)) 
+                if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
+                    if (Channel* channel = cMgr->GetCustomChannel("world"))
+                        channel->Kick(player, player->GetName());
         }
 
         void OnChat(Player* player, uint32 type, uint32 lang, std::string& msg, Channel* channel) override
         {
             if (sWorld->getBoolConfig(CONFIG_WORLD_CHAT) && lang != LANG_ADDON && channel->GetName() == "world")
             {
-                if (!player->GetSession()->CanSpeak() || !player->HasCustomFlag(CustomFlagsIndex::CUSTOM_WORLDCHAT_FLAGS, CustomFlags::CUSTOM_FLAG_WORLDCHAT_ACTIVE))
-                    return;
-
                 if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
                 {
                     if (Channel* worldChannel = cMgr->GetCustomChannel("world"))

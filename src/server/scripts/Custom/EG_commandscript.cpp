@@ -114,24 +114,24 @@ public:
         if (active)
         {
             player->AddCustomFlag(CustomFlagsIndex::CUSTOM_WORLDCHAT_FLAGS, CustomFlags::CUSTOM_FLAG_WORLDCHAT_ACTIVE);
-            handler->SendSysMessage("World Chat activated.");
+            handler->SendSysMessage("LFG World Chat activated.");
             if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
             {
                 if (Channel* channel = cMgr->GetCustomChannel("world"))
-                    channel->Invite(player, player->GetName());
+                    channel->JoinChannel(player);
                 else if (Channel* channel = cMgr->CreateCustomChannel("world"))
-                    channel->Invite(player, player->GetName());
+                    channel->JoinChannel(player);
             }
             return true;
         }
         else
         {
             player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_WORLDCHAT_FLAGS, CustomFlags::CUSTOM_FLAG_WORLDCHAT_ACTIVE);
-            handler->SendSysMessage("World Chat deactivated.");
+            handler->SendSysMessage("LFG World Chat deactivated.");
             if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
             {
                 if (Channel* channel = cMgr->GetCustomChannel("world"))
-                    channel->LeaveChannel(player);
+                    channel->Kick(player, player->GetName());
             }
             return true;
         }
