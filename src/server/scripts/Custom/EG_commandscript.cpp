@@ -1,7 +1,9 @@
+#include "ScriptMgr.h"
 #include "Chat.h"
+#include "Channel.h"
+#include "ChannelMgr.h"
 #include "ObjectMgr.h"
 #include "Player.h"
-#include "ScriptMgr.h"
 #include "Language.h"
 #include "WorldSession.h"
 
@@ -113,12 +115,24 @@ public:
         {
             player->AddCustomFlag(CustomFlagsIndex::CUSTOM_WORLDCHAT_FLAGS, CustomFlags::CUSTOM_FLAG_WORLDCHAT_ACTIVE);
             handler->SendSysMessage("World Chat activated.");
+            if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
+            {
+                if (Channel* channel = cMgr->GetCustomChannel("world"))
+                    channel->Invite(player, player->GetName());
+                else if (Channel* channel = cMgr->CreateCustomChannel("world"))
+                    channel->Invite(player, player->GetName());
+            }
             return true;
         }
         else
         {
             player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_WORLDCHAT_FLAGS, CustomFlags::CUSTOM_FLAG_WORLDCHAT_ACTIVE);
             handler->SendSysMessage("World Chat deactivated.");
+            if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
+            {
+                if (Channel* channel = cMgr->GetCustomChannel("world"))
+                    channel->LeaveChannel(player);
+            }
             return true;
         }
     }

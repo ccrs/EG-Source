@@ -1951,6 +1951,7 @@ public:
             handler->SendSysMessage("| Custom Flags:");
             handler->PSendSysMessage("| - Transmog flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS));
             handler->PSendSysMessage("| - AOELoot flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_AOELOOT_FLAGS));
+            handler->PSendSysMessage("| - World Chat flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_WORLDCHAT_FLAGS));
         }
 
         return true;

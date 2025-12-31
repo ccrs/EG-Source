@@ -1,4 +1,6 @@
 #include "ScriptMgr.h"
+#include "Channel.h"
+#include "ChannelMgr.h"
 #include "DatabaseEnv.h"
 #include "Player.h"
 #include "SpellInfo.h"
@@ -45,7 +47,49 @@ class EG_AccountMounts : public PlayerScript
         }
 };
 
+class EG_WorldChat : public PlayerScript
+{
+    public:
+
+        EG_WorldChat() : PlayerScript("EG_WorldChat") {}
+
+        void OnLogin(Player* player, bool /*firstLogin*/) override
+        {
+            if (sWorld->getBoolConfig(CONFIG_WORLD_CHAT) && player->HasCustomFlag(CustomFlagsIndex::CUSTOM_WORLDCHAT_FLAGS, CustomFlags::CUSTOM_FLAG_WORLDCHAT_ACTIVE))
+            {
+                if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
+                {
+                    if (Channel* channel = cMgr->GetCustomChannel("world"))
+                        channel->Invite(player, player->GetName());
+                    else if (Channel* channel = cMgr->CreateCustomChannel("world"))
+                        channel->Invite(player, player->GetName());
+                }
+            }
+        }
+
+        void OnChat(Player* player, uint32 type, uint32 lang, std::string& msg, Channel* channel) override
+        {
+            if (sWorld->getBoolConfig(CONFIG_WORLD_CHAT) && lang != LANG_ADDON && channel->GetName() == "world")
+            {
+                if (!player->GetSession()->CanSpeak() || !player->HasCustomFlag(CustomFlagsIndex::CUSTOM_WORLDCHAT_FLAGS, CustomFlags::CUSTOM_FLAG_WORLDCHAT_ACTIVE))
+                    return;
+
+                if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
+                {
+                    if (Channel* worldChannel = cMgr->GetCustomChannel("world"))
+                    {
+                        if (!player->isGMChat())
+                            msg =  Trinity::StringFormat("{} {}", player->GetTeamId() == TeamId::TEAM_ALLIANCE ? "|cff3399FFAlliance|r" : "|cffCC0000Horde|r", msg);
+                    }
+                }
+            }
+        }
+};
+
 void AddSC_EG_player_scripts()
 {
-    new EG_AccountMounts();
+    if (sWorld->getBoolConfig(CONFIG_ACCOUNT_MOUNTS))
+        new EG_AccountMounts();
+    if (sWorld->getBoolConfig(CONFIG_WORLD_CHAT))
+        new EG_WorldChat();
 }
