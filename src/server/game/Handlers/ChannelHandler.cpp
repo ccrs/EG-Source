@@ -66,7 +66,17 @@ void WorldSession::HandleJoinChannel(WorldPacket& recvPacket)
     if (!DisallowHyperlinksAndMaybeKick(channelName))
         return;
 
-    if (ChannelMgr* cMgr = ChannelMgr::forTeam(GetPlayer()->GetTeam()))
+    if (!channelId && channelName == WORLD_CHAT)
+    {
+        if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
+        {
+            if (Channel* channel = cMgr->GetCustomChannel(std::string(WORLD_CHAT)))
+                channel->JoinChannel(GetPlayer());
+            else if (Channel* channel = cMgr->CreateCustomChannel(std::string(WORLD_CHAT)))
+                channel->JoinChannel(GetPlayer());
+        }
+    }
+    else if (ChannelMgr* cMgr = ChannelMgr::forTeam(GetPlayer()->GetTeam()))
     {
         if (channelId)
         { // system channel
@@ -115,7 +125,15 @@ void WorldSession::HandleLeaveChannel(WorldPacket& recvPacket)
             return;
     }
 
-    if (ChannelMgr* cMgr = ChannelMgr::forTeam(GetPlayer()->GetTeam()))
+    if (!channelId && channelName == WORLD_CHAT)
+    {
+        if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
+        {
+            if (Channel* channel = cMgr->GetCustomChannel(std::string(WORLD_CHAT)))
+                channel->LeaveChannel(GetPlayer(), true);
+        }
+    }
+    else if (ChannelMgr* cMgr = ChannelMgr::forTeam(GetPlayer()->GetTeam()))
     {
         if (Channel* channel = cMgr->GetChannel(channelId, channelName, GetPlayer(), true, zone))
             channel->LeaveChannel(GetPlayer(), true);

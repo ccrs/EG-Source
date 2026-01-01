@@ -3396,6 +3396,15 @@ PreventRenameCharacterOnCustomization = 0
 
 Account.Mounts = 0
 
+# These settings control WiiZZy's World Chat System
+#
+#    WorldChat.Enable
+#        Description: Enables WiiZZy's World Chat System
+#        Default:     1 - (Enabled)
+#                     0 - (Disabled)
+
+WorldChat.Enable = 0
+
 #
 ###################################################################################################
 
