@@ -70,9 +70,9 @@ void WorldSession::HandleJoinChannel(WorldPacket& recvPacket)
     {
         if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
         {
-            if (Channel* channel = cMgr->GetCustomChannel(WORLD_CHAT))
+            if (Channel* channel = cMgr->GetCustomChannel(std::string(WORLD_CHAT)))
                 channel->JoinChannel(GetPlayer());
-            else if (Channel* channel = cMgr->CreateCustomChannel(WORLD_CHAT))
+            else if (Channel* channel = cMgr->CreateCustomChannel(std::string(WORLD_CHAT)))
                 channel->JoinChannel(GetPlayer());
         }
     }
@@ -129,7 +129,7 @@ void WorldSession::HandleLeaveChannel(WorldPacket& recvPacket)
     {
         if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
         {
-            if (Channel* channel = cMgr->GetCustomChannel(WORLD_CHAT))
+            if (Channel* channel = cMgr->GetCustomChannel(std::string(WORLD_CHAT)))
                 channel->LeaveChannel(GetPlayer(), true);
         }
     }

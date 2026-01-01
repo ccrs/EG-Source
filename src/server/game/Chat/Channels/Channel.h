@@ -116,7 +116,7 @@ enum ChannelMemberFlags
     // 0x80
 };
 
-static constexpr std::string WORLD_CHAT = "world";
+static constexpr std::string_view WORLD_CHAT = "world";
 
 class TC_GAME_API Channel
 {
