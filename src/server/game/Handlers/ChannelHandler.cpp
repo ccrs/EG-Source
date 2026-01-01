@@ -66,7 +66,9 @@ void WorldSession::HandleJoinChannel(WorldPacket& recvPacket)
     if (!DisallowHyperlinksAndMaybeKick(channelName))
         return;
 
-    if (!channelId && channelName == WORLD_CHAT)
+    std::string worldChannelName = channelName;
+    strToLower(worldChannelName);
+    if (!channelId && worldChannelName == WORLD_CHAT)
     {
         if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
         {
@@ -125,7 +127,9 @@ void WorldSession::HandleLeaveChannel(WorldPacket& recvPacket)
             return;
     }
 
-    if (!channelId && channelName == WORLD_CHAT)
+    std::string worldChannelName = channelName;
+    strToLower(worldChannelName);
+    if (!channelId && worldChannelName == WORLD_CHAT)
     {
         if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
         {
