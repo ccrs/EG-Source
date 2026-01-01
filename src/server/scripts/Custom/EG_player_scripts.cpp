@@ -71,7 +71,8 @@ class EG_WorldChat : public PlayerScript
 
 void AddSC_EG_player_scripts()
 {
-    new EG_AccountMounts();
+    if (sWorld->getBoolConfig(CONFIG_ACCOUNT_MOUNTS))
+        new EG_AccountMounts();
     if (sWorld->getBoolConfig(CONFIG_WORLD_CHAT))
         new EG_WorldChat();
 }
