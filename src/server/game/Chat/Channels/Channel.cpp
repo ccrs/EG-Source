@@ -306,7 +306,7 @@ void Channel::KickOrBan(Player const* player, std::string const& badname, bool b
     }
 
     PlayerInfo& info = _playersStore.at(good);
-    if (GetName() == "world" || (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR)))
+    if (GetName() == WORLD_CHAT || (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR)))
     {
         NotModeratorAppend appender;
         ChannelNameBuilder<NotModeratorAppend> builder(this, appender);
@@ -377,7 +377,7 @@ void Channel::UnBan(Player const* player, std::string const& badname)
     }
 
     PlayerInfo& info = _playersStore.at(good);
-    if (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR))
+    if (GetName() == WORLD_CHAT || (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR)))
     {
         NotModeratorAppend appender;
         ChannelNameBuilder<NotModeratorAppend> builder(this, appender);
@@ -419,7 +419,7 @@ void Channel::Password(Player const* player, std::string const& pass)
     }
 
     PlayerInfo& info = _playersStore.at(guid);
-    if (GetName() == "world" || (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR)))
+    if (GetName() == WORLD_CHAT || (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR)))
     {
         NotModeratorAppend appender;
         ChannelNameBuilder<NotModeratorAppend> builder(this, appender);
@@ -449,7 +449,7 @@ void Channel::SetMode(Player const* player, std::string const& p2n, bool mod, bo
     }
 
     PlayerInfo& info = _playersStore.at(guid);
-    if (GetName() == "world" || (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR)))
+    if (GetName() == WORLD_CHAT || (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR)))
     {
         NotModeratorAppend appender;
         ChannelNameBuilder<NotModeratorAppend> builder(this, appender);
@@ -745,7 +745,7 @@ void Channel::Invite(Player const* player, std::string const& newname)
         return;
     }
 
-    if (GetName() != "world"
+    if (GetName() != WORLD_CHAT
         && newp->GetTeam() != player->GetTeam()
         && (!player->GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHANNEL) || !newp->GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHANNEL))
     )
