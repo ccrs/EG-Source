@@ -51,7 +51,9 @@ class EG_WorldChat : public PlayerScript
 {
     public:
 
-        EG_WorldChat() : PlayerScript("EG_WorldChat") {}
+        EG_WorldChat() : PlayerScript("EG_WorldChat") { }
+
+        using PlayerScript::OnChat;
 
         void OnChat(Player* player, uint32 /*type*/, uint32 lang, std::string& msg, Channel* channel) override
         {
