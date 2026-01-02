@@ -53,7 +53,7 @@ class EG_WorldChat : public PlayerScript
 
         EG_WorldChat() : PlayerScript("EG_WorldChat") {}
 
-        void OnChat(Player* player, uint32 type, uint32 lang, std::string& msg, Channel* channel) override
+        void OnChat(Player* player, uint32 /*type*/, uint32 lang, std::string& msg, Channel* channel) override
         {
             if (sWorld->getBoolConfig(CONFIG_WORLD_CHAT) && lang != LANG_ADDON && channel->GetName() == WORLD_CHAT)
             {
