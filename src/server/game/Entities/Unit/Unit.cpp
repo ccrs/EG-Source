@@ -8764,7 +8764,7 @@ void Unit::setDeathState(DeathState s)
         {
             if (GetMotionMaster()->StopOnDeath())
             {
-                if (!HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED) && GetTypeId() == TYPEID_UNIT && IsInAir(*this, GetFloorZ(), false) && !IsUnderWater())
+                if (!HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED) && GetTypeId() == TYPEID_UNIT && IsInAir(*this, GetFloorZ(), false, GROUND_HEIGHT_TOLERANCE) && !IsUnderWater())
                 {
                     GetMotionMaster()->AddFlag(MOTIONMASTER_FLAG_STATIC_PREVENT_INITIALIZATION);
                     SetFall(true);
