@@ -187,7 +187,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
             else
             {
                 // otherwise, we fall back to nearpoint finding
-                target->GetNearPoint(owner, x, y, z, (moveToward ? maxTarget : minTarget) - hitboxSum, angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner));
+                target->GetNearPoint(owner, x, y, z, minTarget - hitboxSum, angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner));
                 shortenPath = false;
             }
 
@@ -209,7 +209,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
             }
 
             if (shortenPath)
-                _path->ShortenPathUntilDist(PositionToVector3(target), maxTarget);
+                _path->ShortenPathUntilDist(PositionToVector3(target), minTarget);
 
             if (cOwner)
                 cOwner->SetCannotReachTarget(false);
