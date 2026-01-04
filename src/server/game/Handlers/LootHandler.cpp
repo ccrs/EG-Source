@@ -53,6 +53,12 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
             return;
         }
 
+        if (player->AOELootView.find(lootSlot) != player->AOELootView.end())
+        {
+            lootViewSlot = lootSlot;
+            LootReference const& relatedLootReference = player->AOELootView.find(lootSlot)->second;
+            lootSlot = relatedLootReference.ItemIndex;
+        }
         loot = &go->loot;
     }
     else if (lguid.IsItem())
@@ -65,6 +71,12 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
             return;
         }
 
+        if (player->AOELootView.find(lootSlot) != player->AOELootView.end())
+        {
+            lootViewSlot = lootSlot;
+            LootReference const& relatedLootReference = player->AOELootView.find(lootSlot)->second;
+            lootSlot = relatedLootReference.ItemIndex;
+        }
         loot = &pItem->loot;
     }
     else if (lguid.IsCorpse())
@@ -76,6 +88,12 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
             return;
         }
 
+        if (player->AOELootView.find(lootSlot) != player->AOELootView.end())
+        {
+            lootViewSlot = lootSlot;
+            LootReference const& relatedLootReference = player->AOELootView.find(lootSlot)->second;
+            lootSlot = relatedLootReference.ItemIndex;
+        }
         loot = &bones->loot;
     }
     else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->AOELootView.contains(lootSlot))
