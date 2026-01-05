@@ -439,11 +439,11 @@ void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movem
         return;
 
     // sometimes I believe the compiler ignores all my comments
-    uint32 distance2D = (uint32)movementInfo.pos.GetExactDist2d(&_players[key].GetLastMovementInfo().pos);
+    float distance2D = movementInfo.pos.GetExactDist2d(&_players[key].GetLastMovementInfo().pos);
 
     // We don't need to check for a speedhack if the player hasn't moved
     // This is necessary since MovementHandler fires if you rotate the camera in place
-    if (!distance2D)
+    if (distance2D >= 0.1f)
         return;
 
     uint8 moveType = 0;
@@ -496,7 +496,7 @@ void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movem
     }
 
     // this is the distance doable by the player in 1 sec, using the time done to move to this point.
-    uint32 clientSpeedRate = distance2D * 1000 / timeDiff;
+    uint32 clientSpeedRate = (uint32)distance2D * uint32(1000) / timeDiff;
 
     // we create a diff speed in uint32 for further precision checking to avoid legit fall and slide
 
@@ -674,15 +674,13 @@ void AnticheatMgr::_JumpHackDetection(Player* player, MovementInfo const& moveme
     // we pull the player's individual guid
     uint32 key = player->GetGUID().GetCounter();
 
-    const float ground_Z = movementInfo.pos.GetPositionZ() - player->GetMapHeight(movementInfo.pos.GetPositionX(), movementInfo.pos.GetPositionY(), movementInfo.pos.GetPositionZ());
+    float ground_Z = movementInfo.pos.GetPositionZ() - player->GetMapHeight(movementInfo.pos.GetPositionX(), movementInfo.pos.GetPositionY(), movementInfo.pos.GetPositionZ());
 
-    const bool no_fly_auras = !(player->HasAuraType(SPELL_AURA_FLY) || player->HasAuraType(SPELL_AURA_MOD_INCREASE_VEHICLE_FLIGHT_SPEED)
-        || player->HasAuraType(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED) || player->HasAuraType(SPELL_AURA_MOD_INCREASE_FLIGHT_SPEED)
-        || player->HasAuraType(SPELL_AURA_MOD_MOUNTED_FLIGHT_SPEED_ALWAYS));
-    const bool no_fly_flags = ((movementInfo.flags & (MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_FLYING)) == 0);
-    const bool no_swim_in_water = !player->IsInWater();
-    const bool no_swim_above_water = movementInfo.pos.GetPositionZ() - 7.0f >= player->GetMap()->GetWaterLevel(movementInfo.pos.GetPositionX(), movementInfo.pos.GetPositionY());
-    const bool no_swim_water = no_swim_in_water && no_swim_above_water;
+    bool no_fly_auras = !(player->HasAuraType(SPELL_AURA_FLY) || player->HasAuraType(SPELL_AURA_MOD_INCREASE_VEHICLE_FLIGHT_SPEED) || player->HasAuraType(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED) || player->HasAuraType(SPELL_AURA_MOD_INCREASE_FLIGHT_SPEED) || player->HasAuraType(SPELL_AURA_MOD_MOUNTED_FLIGHT_SPEED_ALWAYS));
+    bool no_fly_flags = ((movementInfo.flags & (MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_FLYING)) == 0);
+    bool no_swim_in_water = !player->IsInWater();
+    bool no_swim_above_water = movementInfo.pos.GetPositionZ() - 7.0f >= player->GetMap()->GetWaterLevel(movementInfo.pos.GetPositionX(), movementInfo.pos.GetPositionY());
+    bool no_swim_water = no_swim_in_water && no_swim_above_water;
 
     // Chain or double multi jumping is not a thing in 335
     if (_players[key].GetLastOpcode() == MSG_MOVE_JUMP && opcode == MSG_MOVE_JUMP)
@@ -717,10 +715,10 @@ void AnticheatMgr::_JumpHackDetection(Player* player, MovementInfo const& moveme
         if (_players[key].GetLastOpcode() == MSG_MOVE_JUMP && !player->IsFalling())
             return;
 
-        uint32 distance2D = (uint32)movementInfo.pos.GetExactDist2d(&_players[key].GetLastMovementInfo().pos);
+        float distance2D = movementInfo.pos.GetExactDist2d(&_players[key].GetLastMovementInfo().pos);
 
         // This is necessary since MovementHandler fires if you rotate the camera in place
-        if (!distance2D)
+        if (distance2D >= 0.1f)
             return;
 
         // The anticheat is disabled on transports, so we need to be sure that the player is indeed on a transport.
@@ -785,11 +783,11 @@ void AnticheatMgr::_TeleportPlaneHackDetection(Player* player, MovementInfo cons
 
     uint32 key = player->GetGUID().GetCounter();
 
-    uint32 distance2D = (uint32)movementInfo.pos.GetExactDist2d(&_players[key].GetLastMovementInfo().pos);
+    float distance2D = movementInfo.pos.GetExactDist2d(&_players[key].GetLastMovementInfo().pos);
 
     // We don't need to check for a water walking hack if the player hasn't moved
     // This is necessary since MovementHandler fires if you rotate the camera in place
-    if (!distance2D)
+    if (distance2D >= 0.1f)
         return;
 
     if (_players[key].GetLastOpcode() == MSG_MOVE_JUMP)
@@ -887,8 +885,7 @@ void AnticheatMgr::_IgnoreControlHackDetection(Player* player, MovementInfo cons
     if (movementInfo.HasMovementFlag(MOVEMENTFLAG_FALLING | MOVEMENTFLAG_SWIMMING))
         return;
 
-    uint32 latency = 0;
-    latency = player->GetSession()->GetLatency() >= 400;
+    bool latency = player->GetSession()->GetLatency() >= 400;
     //So here we check if hte player has a root state and not in a vehicle
     // except for lag, we can legitimately blame lag for false hits, so we see if they are above 400 then we exempt the check
     if (player->HasAuraType(SPELL_AURA_MOD_ROOT) && !player->GetVehicle() && !latency)
@@ -933,11 +930,11 @@ void AnticheatMgr::_WalkOnWaterHackDetection(Player* player, MovementInfo const&
 
     // we pull the player's individual guid
     uint32 key = player->GetGUID().GetCounter();
-    uint32 distance2D = (uint32)movementInfo.pos.GetExactDist2d(&_players[key].GetLastMovementInfo().pos);
+    float distance2D = movementInfo.pos.GetExactDist2d(&_players[key].GetLastMovementInfo().pos);
 
     // We don't need to check for a waterwalk hack if the player hasn't moved
     // This is necessary since MovementHandler fires if you rotate the camera in place
-    if (!distance2D)
+    if (distance2D >= 0.1f)
         return;
 
     // if we are a ghost we can walk on water
@@ -968,11 +965,11 @@ void AnticheatMgr::_ZAxisHackDetection(Player* player, MovementInfo const& movem
         return;
 
    uint32 key = player->GetGUID().GetCounter();
-   uint32 distance2D = (uint32)movementInfo.pos.GetExactDist2d(&_players[key].GetLastMovementInfo().pos);
+   float distance2D = movementInfo.pos.GetExactDist2d(&_players[key].GetLastMovementInfo().pos);
 
    // We don't need to check for a waterwalk hack if the player hasn't moved
    // This is necessary since MovementHandler fires if you rotate the camera in place
-   if (!distance2D)
+   if (distance2D >= 0.1f)
        return;
 
    // If he is flying we dont need to check
