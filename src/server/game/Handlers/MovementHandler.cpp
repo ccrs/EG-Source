@@ -375,9 +375,6 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
     if (opcode == MSG_MOVE_FALL_LAND || opcode == MSG_MOVE_START_SWIM)
         mover->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_LANDING); // Parachutes
 
-    if (plrMover)
-        sAnticheatMgr->OnPlayerMove(plrMover, movementInfo, opcode);
-
     /* process position-change */
     movementInfo.guid = mover->GetGUID();
     movementInfo.time = AdjustClientMovementTime(movementInfo.time);
@@ -435,6 +432,8 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
         }
         else
             plrMover->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_IS_OUT_OF_BOUNDS);
+
+        sAnticheatMgr->OnPlayerMove(plrMover, movementInfo, opcode);
     }
 }
 
