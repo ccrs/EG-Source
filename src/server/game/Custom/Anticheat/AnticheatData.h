@@ -29,7 +29,7 @@ class AnticheatData
         AnticheatData();
         ~AnticheatData();
 
-        bool IsDirty() { return _dirty; } const;
+        bool IsDirty() const { return _dirty; }
 
         void SetLastOpcode(uint32 opcode);
         uint32 GetLastOpcode() const;
