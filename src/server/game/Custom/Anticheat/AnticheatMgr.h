@@ -58,7 +58,6 @@ class TC_GAME_API AnticheatMgr
     public:
         static AnticheatMgr* instance();
         void Initialize();
-        void StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
         void SavePlayerData(Player* player);
         void OnPlayerMove(Player* player, MovementInfo const& movementInfo, uint32 opcode);
 
@@ -81,6 +80,7 @@ class TC_GAME_API AnticheatMgr
         void _LoadBlockedLuaFunctions();
         void _SaveLuaCheater(uint32 accountId, uint32 realmId, uint32 guid, std::string macro);
 
+        void _StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
         void _SpeedHackDetection(Player* player, MovementInfo const& movementInfo);
         void _FlyHackDetection(Player* player, MovementInfo const& movementInfo);
         void _TeleportHackDetection(Player* player, MovementInfo const& movementInfo);

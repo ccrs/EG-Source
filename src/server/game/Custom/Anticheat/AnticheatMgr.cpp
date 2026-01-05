@@ -88,63 +88,6 @@ void AnticheatMgr::Initialize()
     _LoadBlockedLuaFunctions();
 }
 
-void AnticheatMgr::StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode)
-{
-    if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
-        return;
-
-    // GMs are the enforcer of the server, they should be exempt.
-    if (player->IsGameMaster())
-        return;
-
-    uint32 key = player->GetGUID().GetCounter();
-
-    if (player->IsInFlight() || player->GetTransport() || player->GetVehicle())
-    {
-        _players[key].SetLastMovementInfo(movementInfo);
-        _players[key].SetLastOpcode(opcode);
-        return;
-    }
-
-    // Dear future me. Please forgive me.
-    // I can't even begin to express how sorry I am for this order
-    // If you bought this you have been scammed.
-    // Visit TC: https://discord.com/invite/HPP3wNh for help on the Open Source Anticheat
-    // The project compromised of various developers of the open source scene and we hang out there.
-    // We would never charge for modules or "lessons"
-    _SpeedHackDetection(player, movementInfo);
-    _FlyHackDetection(player, movementInfo);
-    _TeleportHackDetection(player, movementInfo);
-    _JumpHackDetection(player, movementInfo, opcode);
-    _TeleportPlaneHackDetection(player, movementInfo, opcode);
-    _ClimbHackDetection(player, movementInfo, opcode);
-    _IgnoreControlHackDetection(player, movementInfo, opcode);
-    _GravityHackDetection(player, movementInfo);
-    if (player->GetLiquidStatus() == LIQUID_MAP_WATER_WALK)
-    {
-        _WalkOnWaterHackDetection(player, movementInfo);
-    }
-    else
-    {
-        _ZAxisHackDetection(player, movementInfo);
-    }
-    if (player->GetLiquidStatus() == LIQUID_MAP_UNDER_WATER)
-    {
-        _AntiSwimHackDetection(player, movementInfo, opcode);
-    }
-    _AntiKnockBackHackDetection(player, movementInfo);
-    _NoFallDamageDetection(player, movementInfo);
-    if (Battleground* bg = player->GetBattleground())
-    {
-        if (bg->GetStatus() == STATUS_WAIT_JOIN)
-        {
-            _BGStartExploitDetection(player, movementInfo);
-        }
-    }
-    _players[key].SetLastMovementInfo(movementInfo);
-    _players[key].SetLastOpcode(opcode);
-}
-
 void AnticheatMgr::HandlePlayerLogin(Player* player)
 {
     // we initialize the pos of lastMovementPosition var.
@@ -204,7 +147,7 @@ void AnticheatMgr::OnPlayerMove(Player* player, MovementInfo const& movementInfo
         return;
 
     if (!AccountMgr::IsAdminAccount(player->GetSession()->GetSecurity()) || sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE_ON_GM))
-        StartHackDetection(player, movementInfo, opcode);
+        _StartHackDetection(player, movementInfo, opcode);
 }
 
 uint32 AnticheatMgr::GetTotalReports(uint32 lowGUID) const
@@ -420,6 +363,63 @@ void AnticheatMgr::_SaveLuaCheater(uint32 accountId, uint32 realmId, uint32 guid
     pstmt->setUInt32(2, guid);
     pstmt->setString(3, macro);
     LoginDatabase.Execute(pstmt);
+}
+
+void AnticheatMgr::_StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode)
+{
+    if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
+        return;
+
+    // GMs are the enforcer of the server, they should be exempt.
+    if (player->IsGameMaster())
+        return;
+
+    uint32 key = player->GetGUID().GetCounter();
+
+    if (player->IsInFlight() || player->GetTransport() || player->GetVehicle())
+    {
+        _players[key].SetLastMovementInfo(movementInfo);
+        _players[key].SetLastOpcode(opcode);
+        return;
+    }
+
+    // Dear future me. Please forgive me.
+    // I can't even begin to express how sorry I am for this order
+    // If you bought this you have been scammed.
+    // Visit TC: https://discord.com/invite/HPP3wNh for help on the Open Source Anticheat
+    // The project compromised of various developers of the open source scene and we hang out there.
+    // We would never charge for modules or "lessons"
+    _SpeedHackDetection(player, movementInfo);
+    _FlyHackDetection(player, movementInfo);
+    _TeleportHackDetection(player, movementInfo);
+    _JumpHackDetection(player, movementInfo, opcode);
+    _TeleportPlaneHackDetection(player, movementInfo, opcode);
+    _ClimbHackDetection(player, movementInfo, opcode);
+    _IgnoreControlHackDetection(player, movementInfo, opcode);
+    _GravityHackDetection(player, movementInfo);
+    if (player->GetLiquidStatus() == LIQUID_MAP_WATER_WALK)
+    {
+        _WalkOnWaterHackDetection(player, movementInfo);
+    }
+    else
+    {
+        _ZAxisHackDetection(player, movementInfo);
+    }
+    if (player->GetLiquidStatus() == LIQUID_MAP_UNDER_WATER)
+    {
+        _AntiSwimHackDetection(player, movementInfo, opcode);
+    }
+    _AntiKnockBackHackDetection(player, movementInfo);
+    _NoFallDamageDetection(player, movementInfo);
+    if (Battleground* bg = player->GetBattleground())
+    {
+        if (bg->GetStatus() == STATUS_WAIT_JOIN)
+        {
+            _BGStartExploitDetection(player, movementInfo);
+        }
+    }
+    _players[key].SetLastMovementInfo(movementInfo);
+    _players[key].SetLastOpcode(opcode);
 }
 
 void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movementInfo)
