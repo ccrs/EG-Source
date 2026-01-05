@@ -3207,13 +3207,8 @@ void Creature::ReleaseSpellFocus(Spell const* focusSpell, bool withDelay)
     if (_spellFocusInfo.Spell->GetSpellInfo()->HasAttribute(SPELL_ATTR5_DONT_TURN_DURING_CAST))
         ClearUnitState(UNIT_STATE_FOCUSING);
 
-    if (IsPet()) // player pets do not use delay system
-    {
-        if (!HasUnitFlag2(UNIT_FLAG2_CANNOT_TURN))
-            ReacquireSpellFocusTarget();
-    }
-    else // don't allow re-target right away to prevent visual bugs
-        _spellFocusInfo.Delay = withDelay ? 1000 : 1;
+    // don't allow re-target right away to prevent visual bugs
+    _spellFocusInfo.Delay = withDelay ? 1000 : 1;
 
     _spellFocusInfo.Spell = nullptr;
 }
@@ -3235,16 +3230,21 @@ void Creature::ReacquireSpellFocusTarget()
             if (WorldObject const* objTarget = ObjectAccessor::GetWorldObject(*this, _spellFocusInfo.Target))
                 SetFacingToObject(objTarget, false);
         }
-        else
-            SetFacingTo(_spellFocusInfo.Orientation, false);
+        else if (_spellFocusInfo.Orientation.has_value())
+            SetFacingTo(_spellFocusInfo.Orientation.value(), false);
     }
     _spellFocusInfo.Delay = 0;
+    _spellFocusInfo.Spell = nullptr;
+    _spellFocusInfo.Target.Clear();
+    _spellFocusInfo.Orientation.reset();
 }
 
 void Creature::DoNotReacquireSpellFocusTarget()
 {
     _spellFocusInfo.Delay = 0;
     _spellFocusInfo.Spell = nullptr;
+    _spellFocusInfo.Target.Clear();
+    _spellFocusInfo.Orientation.reset();
 }
 
 bool Creature::IsMovementPreventedByCasting() const
