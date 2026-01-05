@@ -148,6 +148,10 @@ void AnticheatMgr::OnPlayerMove(Player* player, MovementInfo const& movementInfo
 
     if (!AccountMgr::IsAdminAccount(player->GetSession()->GetSecurity()) || sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE_ON_GM))
         _StartHackDetection(player, movementInfo, opcode);
+
+    uint32 key = player->GetGUID().GetCounter();
+    _players[key].SetLastMovementInfo(movementInfo);
+    _players[key].SetLastOpcode(opcode);
 }
 
 uint32 AnticheatMgr::GetTotalReports(uint32 lowGUID) const
@@ -377,11 +381,7 @@ void AnticheatMgr::_StartHackDetection(Player* player, MovementInfo const& movem
     uint32 key = player->GetGUID().GetCounter();
 
     if (player->IsInFlight() || player->GetTransport() || player->GetVehicle())
-    {
-        _players[key].SetLastMovementInfo(movementInfo);
-        _players[key].SetLastOpcode(opcode);
         return;
-    }
 
     // Dear future me. Please forgive me.
     // I can't even begin to express how sorry I am for this order
@@ -418,8 +418,6 @@ void AnticheatMgr::_StartHackDetection(Player* player, MovementInfo const& movem
             _BGStartExploitDetection(player, movementInfo);
         }
     }
-    _players[key].SetLastMovementInfo(movementInfo);
-    _players[key].SetLastOpcode(opcode);
 }
 
 void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movementInfo)
