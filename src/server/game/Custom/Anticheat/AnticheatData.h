@@ -29,6 +29,8 @@ class AnticheatData
         AnticheatData();
         ~AnticheatData();
 
+        bool IsDirty() { return _dirty; } const;
+
         void SetLastOpcode(uint32 opcode);
         uint32 GetLastOpcode() const;
 
@@ -57,7 +59,9 @@ class AnticheatData
 
         void SetDailyReportState(bool b);
         bool GetDailyReportState() const;
+
     private:
+        bool _dirty;
         uint32 _lastOpcode;
         MovementInfo _lastMovementInfo;
         uint32 _totalReports;

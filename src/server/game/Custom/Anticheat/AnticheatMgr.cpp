@@ -146,10 +146,11 @@ void AnticheatMgr::OnPlayerMove(Player* player, MovementInfo const& movementInfo
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
         return;
 
-    if (!AccountMgr::IsAdminAccount(player->GetSession()->GetSecurity()) || sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE_ON_GM))
-        _StartHackDetection(player, movementInfo, opcode);
-
     uint32 key = player->GetGUID().GetCounter();
+    if (!_players[key].IsDirty())
+        if (!AccountMgr::IsAdminAccount(player->GetSession()->GetSecurity()) || sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE_ON_GM))
+            _StartHackDetection(player, movementInfo, opcode);
+
     _players[key].SetLastMovementInfo(movementInfo);
     _players[key].SetLastOpcode(opcode);
 }
@@ -377,8 +378,6 @@ void AnticheatMgr::_StartHackDetection(Player* player, MovementInfo const& movem
     // GMs are the enforcer of the server, they should be exempt.
     if (player->IsGameMaster())
         return;
-
-    uint32 key = player->GetGUID().GetCounter();
 
     if (player->IsInFlight() || player->GetTransport() || player->GetVehicle())
         return;

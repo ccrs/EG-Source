@@ -19,6 +19,7 @@
 
 AnticheatData::AnticheatData()
 {
+    _dirty = true;
     _lastOpcode = 0;
     _totalReports = 0;
     for (uint8 i = 0; i < MAX_REPORT_TYPES; i++)
@@ -68,6 +69,7 @@ const MovementInfo& AnticheatData::GetLastMovementInfo() const
 
 void AnticheatData::SetLastMovementInfo(MovementInfo const& moveInfo)
 {
+    _dirty = false;
     _lastMovementInfo = moveInfo;
 }
 
