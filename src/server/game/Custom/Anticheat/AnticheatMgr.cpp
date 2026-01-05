@@ -440,7 +440,7 @@ void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movem
 
     // We don't need to check for a speedhack if the player hasn't moved
     // This is necessary since MovementHandler fires if you rotate the camera in place
-    if (distance2D >= 0.1f)
+    if (distance2D < 0.1f)
         return;
 
     uint8 moveType = 0;
@@ -715,7 +715,7 @@ void AnticheatMgr::_JumpHackDetection(Player* player, MovementInfo const& moveme
         float distance2D = movementInfo.pos.GetExactDist2d(&_players[key].GetLastMovementInfo().pos);
 
         // This is necessary since MovementHandler fires if you rotate the camera in place
-        if (distance2D >= 0.1f)
+        if (distance2D < 0.1f)
             return;
 
         // The anticheat is disabled on transports, so we need to be sure that the player is indeed on a transport.
@@ -784,7 +784,7 @@ void AnticheatMgr::_TeleportPlaneHackDetection(Player* player, MovementInfo cons
 
     // We don't need to check for a water walking hack if the player hasn't moved
     // This is necessary since MovementHandler fires if you rotate the camera in place
-    if (distance2D >= 0.1f)
+    if (distance2D < 0.1f)
         return;
 
     if (_players[key].GetLastOpcode() == MSG_MOVE_JUMP)
@@ -931,7 +931,7 @@ void AnticheatMgr::_WalkOnWaterHackDetection(Player* player, MovementInfo const&
 
     // We don't need to check for a waterwalk hack if the player hasn't moved
     // This is necessary since MovementHandler fires if you rotate the camera in place
-    if (distance2D >= 0.1f)
+    if (distance2D < 0.1f)
         return;
 
     // if we are a ghost we can walk on water
@@ -966,7 +966,7 @@ void AnticheatMgr::_ZAxisHackDetection(Player* player, MovementInfo const& movem
 
    // We don't need to check for a waterwalk hack if the player hasn't moved
    // This is necessary since MovementHandler fires if you rotate the camera in place
-   if (distance2D >= 0.1f)
+   if (distance2D < 0.1f)
        return;
 
    // If he is flying we dont need to check
