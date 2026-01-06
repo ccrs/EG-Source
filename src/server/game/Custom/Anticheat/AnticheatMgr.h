@@ -118,7 +118,6 @@ class TC_GAME_API AnticheatMgr
         void _NotifyGameMasters(std::string text);
         void _LogInfo(Player* player, std::string text);
 
-        uint32 _counter = 0;
         uint32 _alertFrequency = 0;
         uint32 _assignedspeeddiff = 0;
         uint32 _ingameNotificationThreshold = 0;

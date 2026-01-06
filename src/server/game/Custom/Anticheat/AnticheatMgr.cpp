@@ -1412,10 +1412,10 @@ void AnticheatMgr::_BuildReport(Player* player, AnticheatReportTypes reportType)
 void AnticheatMgr::_NotifyGameMasters(Player* player, std::string text, uint32 trinityString)
 {
     uint32 key = player->GetGUID().GetCounter();
-    if (++_counter % _alertFrequency == 0)
+    if (++_players[key].AlertCounter % _alertFrequency == 0)
     {
         _NotifyGameMasters("|cFFFFFC00[Playername:]|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] " + text);
-        _counter = 0;
+        _players[key].AlertCounter = 0;
     }
     // need better way to limit chat spam
     if (_players[key].GetTotalReports() >= sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORT_IN_CHAT_MIN) && (_players[key].GetTotalReports() <= sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORT_IN_CHAT_MAX)))

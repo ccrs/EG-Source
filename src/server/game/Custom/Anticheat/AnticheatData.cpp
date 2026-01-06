@@ -19,6 +19,7 @@
 
 AnticheatData::AnticheatData()
 {
+    AlertCounter = 0;
     _dirty = true;
     _lastOpcode = 0;
     _totalReports = 0;
