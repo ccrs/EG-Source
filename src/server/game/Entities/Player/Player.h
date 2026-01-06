@@ -932,6 +932,7 @@ enum CustomFlagsIndex : uint16
 {
     CUSTOM_TRANSMOG_FLAGS = 0,
     CUSTOM_AOELOOT_FLAGS = 1,
+    CUSTOM_XPRATE_FLAGS = 2,
     CUSTOM_FLAGS_MAX
 };
 
@@ -943,7 +944,15 @@ enum CustomFlags : uint16
     CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY = 0x02,
     CUSTOM_FLAG_TRANSMOG_FULL           = 0x03,
 
-    CUSTOM_FLAG_AOELOOT_ACTIVE          = 0x01
+    CUSTOM_FLAG_AOELOOT_ACTIVE          = 0x01,
+
+    CUSTOM_FLAG_XPRATE_1                = 0x01,
+    CUSTOM_FLAG_XPRATE_2                = 0x02,
+    CUSTOM_FLAG_XPRATE_3                = 0x04,
+    CUSTOM_FLAG_XPRATE_4                = 0x08,
+    CUSTOM_FLAG_XPRATE_5                = 0x10,
+    CUSTOM_FLAG_XPRATE_6                = 0x20,
+    CUSTOM_FLAG_XPRATE_7                = 0x40
 };
 
 class TC_GAME_API Player : public Unit, public GridObject<Player>
