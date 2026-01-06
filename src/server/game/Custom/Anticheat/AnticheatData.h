@@ -60,6 +60,8 @@ class AnticheatData
         void SetDailyReportState(bool b);
         bool GetDailyReportState() const;
 
+        uint32 AlertCounter;
+
     private:
         bool _dirty;
         uint32 _lastOpcode;
