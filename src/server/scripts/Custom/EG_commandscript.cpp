@@ -24,6 +24,7 @@ public:
         {
             { "transmogrification", transmogrificationSettings }, 
             { "aoeloot",            HandleAOELoot, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "xpRate",             HandleXPRate, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
         };
 
         static ChatCommandTable commandTable =
@@ -100,6 +101,23 @@ public:
             handler->SendSysMessage("AOE Loot deactivated.");
             return true;
         }
+    }
+
+    static bool HandleXPRate(ChatHandler* handler, uint8 rate)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        if (!player)
+            return false;
+
+        if (!rate || rate > 8)
+        {
+            handler->SendSysMessage("Please use a rate value between 1 and 7.");
+            return true;
+        }
+
+        player->SetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS, CustomFlags(1 << (rate - 1)));
+        handler->SendSysMessage(Trinity::StringFormat("XP rate modified to {}.", rate));
+        return true;
     }
 };
 

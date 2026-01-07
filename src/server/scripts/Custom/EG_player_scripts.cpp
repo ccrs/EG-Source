@@ -65,10 +65,30 @@ class EG_WorldChat : public PlayerScript
         }
 };
 
+class EG_XPRate : public PlayerScript
+{
+    public:
+        EG_XPRate() : PlayerScript("EG_XPRate") { }
+
+        void OnGiveXP(Player* player, uint32& amount, Unit* /*unit*/) override
+        {
+            uint16 storedValue = player->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS);
+            if (storedValue > CustomFlags::CUSTOM_FLAG_XPRATE_1)
+            {
+                uint8 index = 0;
+                for (index = 0; index < 7; index++)
+                    if (storedValue & (1 << index))
+                        break;
+                amount *= ++index;
+            }
+        }
+};
+
 void AddSC_EG_player_scripts()
 {
     if (sWorld->getBoolConfig(CONFIG_ACCOUNT_MOUNTS))
         new EG_AccountMounts();
     if (sWorld->getBoolConfig(CONFIG_WORLD_CHAT))
         new EG_WorldChat();
+    new EG_XPRate();
 }
