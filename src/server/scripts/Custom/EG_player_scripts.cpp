@@ -76,10 +76,10 @@ class EG_XPRate : public PlayerScript
             if (storedValue > CustomFlags::CUSTOM_FLAG_XPRATE_1)
             {
                 uint8 index = 0;
-                for (index = 0; index < 8; index++)
+                for (index = 0; index < 7; index++)
                     if (storedValue & (1 << index))
                         break;
-                amount *= index;
+                amount *= ++index;
             }
         }
 };
