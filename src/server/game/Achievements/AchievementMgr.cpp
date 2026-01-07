@@ -1709,7 +1709,7 @@ bool AchievementMgr::CanUpdateCriteria(AchievementCriteriaEntry const* criteria,
     // EG - Disable First Reach if used XP rate command
     if (achievement->Flags & (ACHIEVEMENT_FLAG_REALM_FIRST_REACH))
         if (GetPlayer()->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS) > CustomFlags::CUSTOM_FLAG_NONE)
-            return;
+            return false;
 
     // don't update already completed criteria
     if (IsCompletedCriteria(criteria, achievement))
