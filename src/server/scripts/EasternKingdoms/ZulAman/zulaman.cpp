@@ -136,7 +136,7 @@ class npc_zulaman_hostage : public CreatureScript
 ## npc_harrison_jones
 ######*/
 
-enum Says
+enum HarrisonJonesSays
 {
     SAY_HARRISON_0                    = 0,
     SAY_HARRISON_1                    = 1,
@@ -144,14 +144,14 @@ enum Says
     SAY_HARRISON_3                    = 1
 };
 
-enum Spells
+enum HarrisonJonesSpells
 {
     SPELL_BANGING_THE_GONG            = 45225,
     SPELL_STEALTH                     = 34189,
     SPELL_COSMETIC_SPEAR_THROW        = 43647
 };
 
-enum Events
+enum HarrisonJonesEvents
 {
     GONG_EVENT_1                      = 1,
     GONG_EVENT_2                      = 2,
@@ -163,17 +163,18 @@ enum Events
     GONG_EVENT_8                      = 8,
     GONG_EVENT_9                      = 9,
     GONG_EVENT_10                     = 10,
-    GONG_EVENT_11                     = 11
+    GONG_EVENT_11                     = 11,
+    GONG_EVENT_12                     = 12
 };
 
-enum Waypoints
+enum HarrisonJonesWaypoints
 {
     HARRISON_MOVE_1                   = 6883520,
     HARRISON_MOVE_2                   = 6883528,
     HARRISON_MOVE_3                   = 6883536
 };
 
-enum DisplayIds
+enum HarrisonJonesDisplayIds
 {
     MODEL_HARRISON_JONES_0              = 22340,
     MODEL_HARRISON_JONES_1              = 22354,
@@ -187,10 +188,15 @@ enum EntryIds
     NPC_AMANISHI_GUARDIAN               = 23597,
 };
 
-enum Weapons
+enum HarrisonJonesWeapons
 {
     WEAPON_MACE                         = 5301,
     WEAPON_SPEAR                        = 13631
+};
+
+enum HarrisonJonesPoints
+{
+    POINT_HARRISON_FACE_1               = 1,
 };
 
 class npc_harrison_jones : public CreatureScript
@@ -253,6 +259,15 @@ class npc_harrison_jones : public CreatureScript
                 }
             }
 
+            void MovementInform(uint32 type, uint32 id) override
+            {
+                if (type == EFFECT_MOTION_TYPE)
+                {
+                    if (id == POINT_HARRISON_FACE_1)
+                        _gongEvent = GONG_EVENT_12;
+                }
+            }
+
             void UpdateAI(uint32 diff) override
             {
                 if (_gongEvent)
@@ -267,7 +282,11 @@ class npc_harrison_jones : public CreatureScript
                                 _gongTimer = 12000;
                                 break;
                             case GONG_EVENT_2:
-                                me->SetFacingTo(6.235659f);
+                                me->SetFacingTo(6.235659f, true, POINT_HARRISON_FACE_1);
+                                _gongEvent = 0;
+                                _gongTimer = 0;
+                                break;
+                            case GONG_EVENT_12:
                                 Talk(SAY_HARRISON_1);
                                 DoCast(me, SPELL_BANGING_THE_GONG);
                                 me->SetVirtualItem(0, uint32(WEAPON_MACE));
