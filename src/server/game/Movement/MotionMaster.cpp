@@ -1102,7 +1102,8 @@ void MotionMaster::MoveFace(WorldObject const* object, Milliseconds duration/* =
     movement->Priority = MOTION_PRIORITY_NORMAL;
     movement->Mode = MOTION_MODE_OVERRIDE;
     movement->BaseUnitState = UNIT_STATE_FACING;
-    movement->AddFlag(MOVEMENTGENERATOR_FLAG_FIXED_DURATION);
+    if (duration != Milliseconds::zero())
+        movement->AddFlag(MOVEMENTGENERATOR_FLAG_FIXED_DURATION);
     Add(movement);
 }
 
@@ -1125,7 +1126,8 @@ void MotionMaster::MoveFace(float const orientation, Milliseconds duration/* = 1
     movement->Priority = MOTION_PRIORITY_NORMAL;
     movement->Mode = MOTION_MODE_OVERRIDE;
     movement->BaseUnitState = UNIT_STATE_FACING;
-    movement->AddFlag(MOVEMENTGENERATOR_FLAG_FIXED_DURATION);
+    if (duration != Milliseconds::zero())
+        movement->AddFlag(MOVEMENTGENERATOR_FLAG_FIXED_DURATION);
     Add(movement);
 }
 
