@@ -81,7 +81,7 @@ void SplineChainMovementGenerator::SendSplineFor(Unit* owner, uint32 index, uint
     }
 }
 
-void SplineChainMovementGenerator::Initialize(Unit* owner)
+bool SplineChainMovementGenerator::Initialize(Unit* owner)
 {
     RemoveFlag(MOVEMENTGENERATOR_FLAG_INITIALIZATION_PENDING | MOVEMENTGENERATOR_FLAG_DEACTIVATED);
     AddFlag(MOVEMENTGENERATOR_FLAG_INITIALIZED);
@@ -89,20 +89,20 @@ void SplineChainMovementGenerator::Initialize(Unit* owner)
     if (!_chainSize)
     {
         TC_LOG_ERROR("movement", "SplineChainMovementGenerator::Initialize: couldn't initialize generator, referenced spline is empty! ({})", owner->GetGUID().ToString());
-        return;
+        return false;
     }
 
     if (_nextIndex >= _chainSize)
     {
         TC_LOG_WARN("movement", "SplineChainMovementGenerator::Initialize: couldn't initialize generator, _nextIndex is >= _chainSize ({})", owner->GetGUID().ToString());
         _msToNext = 0;
-        return;
+        return false;
     }
 
     if (_nextFirstWP) // this is a resumed movegen that has to start with a partial spline
     {
         if (HasFlag(MOVEMENTGENERATOR_FLAG_FINALIZED))
-            return;
+            return false;
 
         SplineChainLink const& thisLink = _chain[_nextIndex];
         if (_nextFirstWP >= thisLink.Points.size())
@@ -126,6 +126,7 @@ void SplineChainMovementGenerator::Initialize(Unit* owner)
     }
     else
     {
+        owner->AddUnitState(UNIT_STATE_ROAMING_MOVE);
         _msToNext = std::max(_chain[_nextIndex].TimeToNext, 1u);
         SendSplineFor(owner, _nextIndex, _msToNext);
 
@@ -133,19 +134,20 @@ void SplineChainMovementGenerator::Initialize(Unit* owner)
         if (_nextIndex >= _chainSize)
             _msToNext = 0;
     }
+    return true;
 }
 
-void SplineChainMovementGenerator::Reset(Unit* owner)
+bool SplineChainMovementGenerator::Reset(Unit* owner)
 {
     RemoveFlag(MOVEMENTGENERATOR_FLAG_DEACTIVATED);
 
     owner->StopMoving();
-    Initialize(owner);
+    return Initialize(owner);
 }
 
 bool SplineChainMovementGenerator::Update(Unit* owner, uint32 diff)
 {
-    if (!owner || HasFlag(MOVEMENTGENERATOR_FLAG_FINALIZED))
+    if (!owner || !_chainSize || HasFlag(MOVEMENTGENERATOR_FLAG_FINALIZED))
         return false;
 
     // _msToNext being zero here means we're on the final spline
