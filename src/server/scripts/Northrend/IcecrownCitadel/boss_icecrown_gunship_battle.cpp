@@ -201,7 +201,9 @@ enum GunshipMisc
     PHASE_COMBAT               = 0,
     PHASE_INTRO                = 1,
 
-    MUSIC_ENCOUNTER            = 17289
+    MUSIC_ENCOUNTER            = 17289,
+
+    POINT_FACE_MAGE_SPELL      = 1
 };
 
 enum GunshipActions
@@ -1668,27 +1670,32 @@ struct npc_gunship_mage : public gunship_npc_AI
 
     void MovementInform(uint32 type, uint32 pointId) override
     {
-        if (type != POINT_MOTION_TYPE)
-            return;
-
-        if (pointId == EVENT_CHARGE_PREPATH && Slot)
+        if (type == POINT_MOTION_TYPE)
         {
-            SlotInfo const* slots = Instance->GetData(DATA_TEAM_IN_INSTANCE) == HORDE ? SkybreakerSlotInfo : OrgrimsHammerSlotInfo;
-            me->SetFacingTo(slots[Index].TargetPosition.GetOrientation());
-            switch (Index)
+            if (pointId == EVENT_CHARGE_PREPATH && Slot)
             {
-                case SLOT_FREEZE_MAGE:
-                    DoCastAOE(SPELL_BELOW_ZERO);
-                    break;
-                case SLOT_MAGE_1:
-                case SLOT_MAGE_2:
-                    DoCastAOE(SPELL_SHADOW_CHANNELING);
-                    break;
-                default:
-                    break;
+                SlotInfo const* slots = Instance->GetData(DATA_TEAM_IN_INSTANCE) == HORDE ? SkybreakerSlotInfo : OrgrimsHammerSlotInfo;
+                me->SetFacingTo(slots[Index].TargetPosition.GetOrientation(), true, POINT_FACE_MAGE_SPELL);
             }
+        } else if (type == EFFECT_MOTION_TYPE)
+        {
+            if (pointId == POINT_FACE_MAGE_SPELL)
+            {
+                switch (Index)
+                {
+                    case SLOT_FREEZE_MAGE:
+                        DoCastAOE(SPELL_BELOW_ZERO);
+                        break;
+                    case SLOT_MAGE_1:
+                    case SLOT_MAGE_2:
+                        DoCastAOE(SPELL_SHADOW_CHANNELING);
+                        break;
+                    default:
+                        break;
+                }
 
-            me->SetControlled(true, UNIT_STATE_ROOT);
+                me->SetControlled(true, UNIT_STATE_ROOT);
+            }
         }
     }
 
