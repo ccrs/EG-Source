@@ -213,6 +213,17 @@ struct boss_onyxia : public BossAI
         {
             switch (id)
             {
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                case 4:
+                case 5:
+                case 6:
+                case 7:
+                    if (Creature* trigger = ObjectAccessor::GetCreature(*me, triggerGUID))
+                        me->SetFacingToObject(trigger, true, 13);
+                    break;
                 case 8:
                     PointData = GetMoveData();
                     if (PointData)
@@ -239,9 +250,23 @@ struct boss_onyxia : public BossAI
                     events.ScheduleEvent(EVENT_WING_BUFFET, 15s, 30s);
                     break;
                 case 10:
+                    me->SetFacingTo(me->GetOrientation() + float(M_PI), true, 12);
+                    break;
+                default:
+                    break;
+            }
+        } else if (type == EFFECT_MOTION_TYPE)
+        {
+            switch (id)
+            {
+                case 11:
+                    if (PointData)
+                        me->GetMotionMaster()->MovePoint(PointData->LocId, PointData->fX, PointData->fY, PointData->fZ);
+                    me->GetMotionMaster()->MoveIdle();
+                    break;
+                case 12:
                     me->SetCanFly(true);
                     me->SetDisableGravity(true);
-                    me->SetFacingTo(me->GetOrientation() + float(M_PI));
                     if (Creature * trigger = me->SummonCreature(NPC_TRIGGER, MiddleRoomLocation, TEMPSUMMON_CORPSE_DESPAWN))
                         triggerGUID = trigger->GetGUID();
                     me->GetMotionMaster()->MoveTakeoff(11, Phase2Floating);
@@ -254,13 +279,9 @@ struct boss_onyxia : public BossAI
                     events.ScheduleEvent(EVENT_MOVEMENT, 10s);
                     events.ScheduleEvent(EVENT_FIREBALL, 18s);
                     break;
-                case 11:
-                    if (PointData)
-                        me->GetMotionMaster()->MovePoint(PointData->LocId, PointData->fX, PointData->fY, PointData->fZ);
-                    me->GetMotionMaster()->MoveIdle();
-                    break;
-                default:
+                case 13:
                     IsMoving = false;
+                default:
                     break;
             }
         }
@@ -396,10 +417,6 @@ struct boss_onyxia : public BossAI
                 events.ScheduleEvent(EVENT_BELLOWING_ROAR, 30s);
                 return;
             }
-
-            if (!me->isMoving())
-                if (Creature* trigger = ObjectAccessor::GetCreature(*me, triggerGUID))
-                    me->SetFacingToObject(trigger);
 
             events.Update(diff);
 
