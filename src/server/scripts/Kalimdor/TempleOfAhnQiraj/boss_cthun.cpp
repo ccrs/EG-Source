@@ -22,13 +22,14 @@ SDComment: Darkglare tracking issue
 SDCategory: Temple of Ahn'Qiraj
 EndScriptData */
 
-#include "ScriptMgr.h"
+#include "temple_of_ahnqiraj.h"
 #include "InstanceScript.h"
 #include "Map.h"
+#include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
-#include "temple_of_ahnqiraj.h"
+#include "ScriptMgr.h"
 #include "TemporarySummon.h"
 
 /*
