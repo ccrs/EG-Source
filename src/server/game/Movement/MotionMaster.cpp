@@ -300,24 +300,27 @@ void MotionMaster::Update(uint32 diff)
 
     AddFlag(MOTIONMASTER_FLAG_UPDATE);
 
+    InitializationState initializationState = InitializationState::AlreadyInitialized;
+
     MovementGenerator* top = GetCurrentMovementGenerator();
-    bool initialized = false;
     if (HasFlag(MOTIONMASTER_FLAG_STATIC_INITIALIZATION_PENDING) && IsStatic(top))
     {
         RemoveFlag(MOTIONMASTER_FLAG_STATIC_INITIALIZATION_PENDING);
-        if (!HasFlag(MOTIONMASTER_FLAG_STATIC_PREVENT_INITIALIZATION))
-            initialized = top->Initialize(_owner);
-        else
-            RemoveFlag(MOTIONMASTER_FLAG_STATIC_PREVENT_INITIALIZATION);
+        initializationState = top->Initialize(_owner) ? InitializationState::Success : InitializationState::No;
     }
     if (top->HasFlag(MOVEMENTGENERATOR_FLAG_INITIALIZATION_PENDING))
-        initialized = top->Initialize(_owner);
+        initializationState = top->Initialize(_owner) ? InitializationState::Success : InitializationState::No;
     if (top->HasFlag(MOVEMENTGENERATOR_FLAG_DEACTIVATED))
-        initialized = top->Reset(_owner);
+        initializationState = top->Reset(_owner) ? InitializationState::Success : InitializationState::No;
 
     ASSERT(!top->HasFlag(MOVEMENTGENERATOR_FLAG_INITIALIZATION_PENDING | MOVEMENTGENERATOR_FLAG_DEACTIVATED), "MotionMaster:Update: update called on an uninitialized top! (%s) (type: %u, flags: %u)", _owner->GetGUID().ToString().c_str(), top->GetMovementGeneratorType(), top->Flags);
 
-    if (!initialized && !top->Update(_owner, diff))
+    bool popMovement = false;
+    uint32 diff = initializationState == InitializationState::AlreadyInitialized ? diff : 0;
+    if (initializationState == InitializationState::No || initializationState == InitializationState::AlreadyInitialized)
+        popMovement = !top->Update(_owner, diff);
+
+    if (popMovement)
     {
         ASSERT(top == GetCurrentMovementGenerator(), "MotionMaster::Update: top was modified while updating! (%s)", _owner->GetGUID().ToString().c_str());
 

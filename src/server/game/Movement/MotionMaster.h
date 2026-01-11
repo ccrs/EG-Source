@@ -94,6 +94,13 @@ static bool EmptyValidator()
 class TC_GAME_API MotionMaster
 {
     public:
+        enum class InitializationState : uint8
+        {
+            No,
+            Success,
+            AlreadyInitialized
+        };
+
         typedef std::function<void()> DelayedActionDefine;
         typedef std::function<bool()> DelayedActionValidator;
 
