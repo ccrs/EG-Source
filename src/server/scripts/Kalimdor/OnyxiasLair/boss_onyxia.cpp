@@ -137,7 +137,6 @@ struct boss_onyxia : public BossAI
         MovePoint = urand(0, 5);
         PointData = GetMoveData();
         SummonWhelpCount = 0;
-        triggerGUID.Clear();
         tankGUID.Clear();
         IsMoving = false;
     }
@@ -221,8 +220,8 @@ struct boss_onyxia : public BossAI
                 case 5:
                 case 6:
                 case 7:
-                    if (Creature* trigger = ObjectAccessor::GetCreature(*me, triggerGUID))
-                        me->SetFacingToObject(trigger, true, 13);
+                    me->SetFacingTo(me->GetAbsoluteAngle(MiddleRoomLocation), true);
+                    IsMoving = false;
                     break;
                 case 8:
                     PointData = GetMoveData();
@@ -235,8 +234,6 @@ struct boss_onyxia : public BossAI
                 case 9:
                     me->SetCanFly(false);
                     me->SetDisableGravity(false);
-                    if (Creature* trigger = ObjectAccessor::GetCreature(*me, triggerGUID))
-                        Unit::Kill(me, trigger);
                     me->SetReactState(REACT_AGGRESSIVE);
                     // tank selection based on phase one. If tank is not there i take nearest one
                     if (Unit* tank = ObjectAccessor::GetUnit(*me, tankGUID))
@@ -262,13 +259,10 @@ struct boss_onyxia : public BossAI
                 case 11:
                     if (PointData)
                         me->GetMotionMaster()->MovePoint(PointData->LocId, PointData->fX, PointData->fY, PointData->fZ);
-                    me->GetMotionMaster()->MoveIdle();
                     break;
                 case 12:
                     me->SetCanFly(true);
                     me->SetDisableGravity(true);
-                    if (Creature * trigger = me->SummonCreature(NPC_TRIGGER, MiddleRoomLocation, TEMPSUMMON_CORPSE_DESPAWN))
-                        triggerGUID = trigger->GetGUID();
                     me->GetMotionMaster()->MoveTakeoff(11, Phase2Floating);
                     me->SetSpeedRate(MOVE_FLIGHT, 1.0f);
                     Talk(SAY_PHASE_2_TRANS);
@@ -279,8 +273,6 @@ struct boss_onyxia : public BossAI
                     events.ScheduleEvent(EVENT_MOVEMENT, 10s);
                     events.ScheduleEvent(EVENT_FIREBALL, 18s);
                     break;
-                case 13:
-                    IsMoving = false;
                 default:
                     break;
             }
@@ -442,7 +434,7 @@ struct boss_onyxia : public BossAI
                             events.ScheduleEvent(EVENT_DEEP_BREATH, 1s);
                         break;
                     case EVENT_MOVEMENT:         // Phase PHASE_BREATH
-                        if (!IsMoving && !(me->HasUnitState(UNIT_STATE_CASTING)))
+                        if (!IsMoving && !me->HasUnitState(UNIT_STATE_CASTING))
                         {
                             SetNextRandomPoint();
                             PointData = GetMoveData();
@@ -497,7 +489,6 @@ struct boss_onyxia : public BossAI
         uint8 Phase;
         uint8 MovePoint;
         uint8 SummonWhelpCount;
-        ObjectGuid triggerGUID;
         ObjectGuid tankGUID;
         bool IsMoving;
 };
