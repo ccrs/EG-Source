@@ -899,10 +899,7 @@ struct npc_rimefang_icc : public ScriptedAI
                     if (--_icyBlastCounter)
                     {
                         if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
-                        {
-                            me->SetFacingToObject(target);
                             DoCast(target, SPELL_ICY_BLAST);
-                        }
                         _events.ScheduleEvent(EVENT_ICY_BLAST_CAST, 3s);
                     }
                     else if (Unit* victim = me->SelectVictim())
