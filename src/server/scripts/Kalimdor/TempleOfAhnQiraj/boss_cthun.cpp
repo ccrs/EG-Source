@@ -61,7 +61,7 @@ EndScriptData */
  * - the current phase is stored in the instance data to be easily shared between the eye and cthun.
  */
 
-enum Phases
+enum CthunPhases
 {
     PHASE_NOT_STARTED                           = 0,
 
@@ -77,7 +77,7 @@ enum Phases
     PHASE_CTHUN_DONE                            = 6,
 };
 
-enum Spells
+enum CthunSpells
 {
     // ***** Main Phase 1 ********
     //Eye Spells
@@ -117,12 +117,12 @@ enum Spells
     SPELL_DIGESTIVE_ACID                        = 26476,
 };
 
-enum Actions
+enum CthunActions
 {
     ACTION_FLESH_TENTACLE_KILLED                = 1,
 };
 
-enum Yells
+enum CthunYells
 {
     //Text emote
     EMOTE_WEAKENED                              = 0,
@@ -133,6 +133,11 @@ enum Yells
     RANDOM_SOUND_WHISPER                        = 8663,
 };
 
+enum CthunPoints
+{
+    POINT_FACE_DARK_GLARE = 1
+};
+
 //Stomach Teleport positions
 #define STOMACH_X                           -8562.0f
 #define STOMACH_Y                           2037.0f
@@ -140,14 +145,14 @@ enum Yells
 #define STOMACH_O                           5.05f
 
 //Flesh tentacle positions
-const Position FleshTentaclePos[2] =
+const Position CthunFleshTentaclePos[2] =
 {
     { -8571.0f, 1990.0f, -98.0f, 1.22f},
     { -8525.0f, 1994.0f, -98.0f, 2.12f},
 };
 
 //Kick out position
-const Position KickPos = { -8545.0f, 1984.0f, -96.0f, 0.0f};
+const Position CthunKickPos = { -8545.0f, 1984.0f, -96.0f, 0.0f};
 
 class boss_eye_of_cthun : public CreatureScript
 {
@@ -233,6 +238,15 @@ public:
                 if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
                     if (Spawned->AI())
                         Spawned->AI()->AttackStart(target);
+        }
+
+        void MovementInform(uint32 type, uint32 id) override
+        {
+            if (type == EFFECT_MOTION_TYPE)
+            {
+                if (id == POINT_FACE_DARK_GLARE)
+                    DoCastSelf(SPELL_DARK_GLARE);
+            }
         }
 
         void UpdateAI(uint32 diff) override
@@ -343,14 +357,7 @@ public:
                         {
                             //Set angle and cast
                             float angle = ClockWise ? DarkGlareAngle + DarkGlareTick * float(M_PI) / 35 : DarkGlareAngle - DarkGlareTick * float(M_PI) / 35;
-
-                            me->SetOrientation(angle);
-                            me->SetFacingTo(angle);
-
-                            me->StopMoving();
-
-                            //Actual dark glare cast, maybe something missing here?
-                            DoCast(me, SPELL_DARK_GLARE, false);
+                            me->SetFacingTo(angle, true, POINT_FACE_DARK_GLARE);
 
                             //Increase tick
                             ++DarkGlareTick;
@@ -650,7 +657,7 @@ public:
                         //Spawn flesh tentacle
                         for (uint8 i = 0; i < 2; i++)
                         {
-                            Creature* spawned = me->SummonCreature(NPC_FLESH_TENTACLE, FleshTentaclePos[i], TEMPSUMMON_CORPSE_DESPAWN);
+                            Creature* spawned = me->SummonCreature(NPC_FLESH_TENTACLE, CthunFleshTentaclePos[i], TEMPSUMMON_CORPSE_DESPAWN);
                             if (!spawned)
                                 ++FleshTentaclesKilled;
                         }
@@ -721,7 +728,7 @@ public:
                                 DoCast(unit, SPELL_DIGESTIVE_ACID, true);
 
                                 //Check if player should be kicked from stomach
-                                if (unit->IsWithinDist3d(&KickPos, 15.0f))
+                                if (unit->IsWithinDist3d(&CthunKickPos, 15.0f))
                                 {
                                     //Teleport each player out
                                     DoTeleportPlayer(unit, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() + 10, float(rand32() % 6));
@@ -823,7 +830,7 @@ public:
                         //Spawn flesh tentacle
                         for (uint8 i = 0; i < 2; i++)
                         {
-                            Creature* spawned = me->SummonCreature(NPC_FLESH_TENTACLE, FleshTentaclePos[i], TEMPSUMMON_CORPSE_DESPAWN);
+                            Creature* spawned = me->SummonCreature(NPC_FLESH_TENTACLE, CthunFleshTentaclePos[i], TEMPSUMMON_CORPSE_DESPAWN);
                             if (!spawned)
                                 ++FleshTentaclesKilled;
                         }
