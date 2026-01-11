@@ -1677,7 +1677,8 @@ struct npc_gunship_mage : public gunship_npc_AI
                 SlotInfo const* slots = Instance->GetData(DATA_TEAM_IN_INSTANCE) == HORDE ? SkybreakerSlotInfo : OrgrimsHammerSlotInfo;
                 me->SetFacingTo(slots[Index].TargetPosition.GetOrientation(), true, POINT_FACE_MAGE_SPELL);
             }
-        } else if (type == EFFECT_MOTION_TYPE)
+        }
+        else if (type == EFFECT_MOTION_TYPE)
         {
             if (pointId == POINT_FACE_MAGE_SPELL)
             {
