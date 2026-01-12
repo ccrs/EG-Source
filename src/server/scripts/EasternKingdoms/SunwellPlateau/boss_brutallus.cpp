@@ -137,6 +137,7 @@ enum BrutallusEvents
     EVENT_INTRO_25,
     EVENT_INTRO_26,
     EVENT_INTRO_27,
+    EVENT_INTRO_28,
 
     EVENT_FROSTBOLT,
 
@@ -160,7 +161,8 @@ enum BrutallusPoints
     POINT_BRUTALLUS_OFFSET              = 4,
     POINT_BRUTALLUS_COMBAT              = 5,
     POINT_MADRIGOSA_FACE_1              = 6,
-    POINT_BRUTALLUS_FACE_1              = 7
+    POINT_MADRIGOSA_FACE_2              = 7,
+    POINT_BRUTALLUS_FACE_1              = 8
 };
 
 Position const MadrigosaSpawnPos        = { 1470.3624f, 738.1818f, 64.166770f, 4.625122547149658203f };
@@ -321,6 +323,8 @@ struct npc_madrigosa : public ScriptedAI
         {
             if (id == POINT_MADRIGOSA_FACE_1)
                 _events.ScheduleEvent(EVENT_INTRO_27, 0ms);
+            else if (id == POINT_MADRIGOSA_FACE_2)
+                _events.ScheduleEvent(EVENT_INTRO_28, 0ms);
         }
     }
 
@@ -362,8 +366,12 @@ struct npc_madrigosa : public ScriptedAI
                 case EVENT_INTRO_2:
                     Talk(SAY_MADR_ICE_BARRIER);
                     if (Creature* trigger = _instance->GetCreature(DATA_WORLD_TRIGGER))
-                        me->SetFacingToObject(trigger);
-                    DoCastSelf(SPELL_FREEZE);
+                        me->SetFacingToObject(trigger, true, POINT_MADRIGOSA_FACE_2);
+                    else
+                        _events.ScheduleEvent(EVENT_INTRO_28, 0ms);
+                    break;
+                case EVENT_INTRO_28:
+                    DoCastAOE(SPELL_FREEZE);
                     _events.ScheduleEvent(EVENT_INTRO_3, 7s);
                     break;
                 case EVENT_INTRO_3:
