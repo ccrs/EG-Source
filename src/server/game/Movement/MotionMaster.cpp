@@ -331,9 +331,9 @@ void MotionMaster::Update(uint32 diff)
     ASSERT(!top->HasFlag(MOVEMENTGENERATOR_FLAG_INITIALIZATION_PENDING | MOVEMENTGENERATOR_FLAG_DEACTIVATED), "MotionMaster:Update: update called on an uninitialized top! (%s) (type: %u, flags: %u)", _owner->GetGUID().ToString().c_str(), top->GetMovementGeneratorType(), top->Flags);
 
     bool popMovement = false;
-    uint32 diff = initializationState == InitializationState::AlreadyInitialized ? diff : 0;
+    uint32 updateDiff = initializationState == InitializationState::AlreadyInitialized ? diff : 0;
     if (initializationState == InitializationState::No || initializationState == InitializationState::AlreadyInitialized)
-        popMovement = !top->Update(_owner, diff);
+        popMovement = !top->Update(_owner, updateDiff);
 
     if (popMovement)
     {
