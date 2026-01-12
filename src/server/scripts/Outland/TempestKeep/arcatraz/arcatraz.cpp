@@ -89,7 +89,8 @@ enum MillhouseEvents
 
 enum MillhouseMisc
 {
-    POINT_CENTER               = 1
+    POINT_CENTER               = 1,
+    POINT_FACE_SEAL_SPHERE     = 2
 };
 
 Position const CenterPos = { 445.88043f, -158.70554f, 43.068977f, 0.0f };
@@ -501,6 +502,20 @@ struct npc_warden_mellichar : public ScriptedAI
         }
     }
 
+    void MovementInform(uint32 type, uint32 point) override
+    {
+        if (type == EFFECT_MOTION_TYPE)
+        {
+            if (point == POINT_FACE_SEAL_SPHERE)
+            {
+                // Apparently casting this spell makes him reset orientation to default
+                DoCastSelf(SPELL_SEAL_SPHERE);
+                Talk(SAY_RELEASE_1);
+                _events.ScheduleEvent(EVENT_RELEASE_1_3, 23s);
+            }
+        }
+    }
+
     void UpdateAI(uint32 diff) override
     {
         _events.Update(diff);
@@ -522,11 +537,7 @@ struct npc_warden_mellichar : public ScriptedAI
                     _events.ScheduleEvent(EVENT_RELEASE_1_2, 2s);
                     break;
                 case EVENT_RELEASE_1_2:
-                    me->SetFacingTo(1.605702877044677734f);
-                    // Apparently casting this spell makes him reset orientation to default
-                    DoCastSelf(SPELL_SEAL_SPHERE);
-                    Talk(SAY_RELEASE_1);
-                    _events.ScheduleEvent(EVENT_RELEASE_1_3, 23s);
+                    me->SetFacingTo(1.605702877044677734f, true, POINT_FACE_SEAL_SPHERE);
                     break;
                 case EVENT_RELEASE_1_3:
                     Talk(SAY_RELEASE_2);

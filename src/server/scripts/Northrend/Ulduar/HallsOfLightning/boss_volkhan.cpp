@@ -95,7 +95,8 @@ enum VolkhanPhases
 enum VolkhanMovePoints
 {
     // Volkhan
-    POINT_ID_ANVIL = 0
+    POINT_ID_ANVIL = 0,
+    POINT_FACE_ANVIL = 1
 };
 
 enum VolkhanMisc
@@ -148,16 +149,20 @@ struct boss_volkhan : public BossAI
 
     void MovementInform(uint32 motionType, uint32 id) override
     {
-        if (motionType != POINT_MOTION_TYPE)
-            return;
-
-        switch (id)
+        if (motionType == POINT_MOTION_TYPE)
         {
-            case POINT_ID_ANVIL:
+            if (id == POINT_ID_ANVIL)
                 events.ScheduleEvent(EVENT_TEMPER, 1s, 0, PHASE_COMBAT);
-                break;
-            default:
-                break;
+        }
+        else if (motionType == EFFECT_MOTION_TYPE)
+        {
+            if (id == POINT_FACE_ANVIL)
+            {
+                DoCastAOE(SPELL_TEMPER_SUMMON_OBJECT);
+                DoCastAOE(SPELL_TEMPER_DUMMY_COMBAT);
+                me->SetReactState(REACT_AGGRESSIVE);
+                events.ScheduleEvent(EVENT_HEAT, 8s + 500ms, 0, PHASE_COMBAT);
+            }
         }
     }
 
@@ -257,13 +262,7 @@ struct boss_volkhan : public BossAI
                     break;
                 case EVENT_TEMPER:
                     if (Creature const* anvil = instance->GetCreature(DATA_VOLKHANS_ANVIL))
-                    {
-                        me->SetFacingToObject(anvil);
-                        DoCastAOE(SPELL_TEMPER_SUMMON_OBJECT);
-                        DoCastAOE(SPELL_TEMPER_DUMMY_COMBAT);
-                        me->SetReactState(REACT_AGGRESSIVE);
-                        events.ScheduleEvent(EVENT_HEAT, 8s + 500ms, 0, PHASE_COMBAT);
-                    }
+                        me->SetFacingToObject(anvil, true, POINT_FACE_ANVIL);
                     break;
                 case EVENT_HEAT:
                     DoCastAOE(SPELL_HEAT);

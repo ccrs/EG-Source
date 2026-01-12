@@ -158,7 +158,8 @@ enum PutricidePoints
 {
     POINT_FESTERGUT = 366260,
     POINT_ROTFACE   = 366270,
-    POINT_TABLE     = 366780
+    POINT_TABLE     = 366780,
+    POINT_FACE_TABLE = 1
 };
 
 Position const festergutWatchPos = {4324.820f, 3166.03f, 389.3831f, 3.316126f}; //emote 432 (release gas)
@@ -370,29 +371,61 @@ struct boss_professor_putricide : public BossAI
 
     void MovementInform(uint32 type, uint32 id) override
     {
-        if (type != POINT_MOTION_TYPE)
-            return;
-        switch (id)
+        if (type == POINT_MOTION_TYPE)
         {
-            case POINT_FESTERGUT:
-                instance->SetBossState(DATA_FESTERGUT, IN_PROGRESS); // needed here for delayed gate close
-                me->SetSpeedRate(MOVE_RUN, _baseSpeed);
-                DoAction(ACTION_FESTERGUT_GAS);
-                if (Creature* festergut = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_FESTERGUT)))
-                    festergut->CastSpell(festergut, SPELL_GASEOUS_BLIGHT_LARGE, CastSpellExtraArgs().SetOriginalCaster(festergut->GetGUID()));
-                break;
-            case POINT_ROTFACE:
-                instance->SetBossState(DATA_ROTFACE, IN_PROGRESS);   // needed here for delayed gate close
-                me->SetSpeedRate(MOVE_RUN, _baseSpeed);
-                DoAction(ACTION_ROTFACE_OOZE);
-                events.ScheduleEvent(EVENT_ROTFACE_OOZE_FLOOD, 25s, 0, PHASE_ROTFACE);
-                break;
-            case POINT_TABLE:
-                // stop attack
-                me->GetMotionMaster()->MoveIdle();
-                me->SetSpeedRate(MOVE_RUN, _baseSpeed);
-                if (GameObject* table = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(DATA_PUTRICIDE_TABLE)))
-                    me->SetFacingToObject(table);
+            switch (id)
+            {
+                case POINT_FESTERGUT:
+                    instance->SetBossState(DATA_FESTERGUT, IN_PROGRESS); // needed here for delayed gate close
+                    me->SetSpeedRate(MOVE_RUN, _baseSpeed);
+                    DoAction(ACTION_FESTERGUT_GAS);
+                    if (Creature* festergut = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_FESTERGUT)))
+                        festergut->CastSpell(festergut, SPELL_GASEOUS_BLIGHT_LARGE, CastSpellExtraArgs().SetOriginalCaster(festergut->GetGUID()));
+                    break;
+                case POINT_ROTFACE:
+                    instance->SetBossState(DATA_ROTFACE, IN_PROGRESS);   // needed here for delayed gate close
+                    me->SetSpeedRate(MOVE_RUN, _baseSpeed);
+                    DoAction(ACTION_ROTFACE_OOZE);
+                    events.ScheduleEvent(EVENT_ROTFACE_OOZE_FLOOD, 25s, 0, PHASE_ROTFACE);
+                    break;
+                case POINT_TABLE:
+                    // stop attack
+                    me->GetMotionMaster()->MoveIdle();
+                    me->SetSpeedRate(MOVE_RUN, _baseSpeed);
+                    if (GameObject* table = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(DATA_PUTRICIDE_TABLE)))
+                        me->SetFacingToObject(table, true, POINT_FACE_TABLE);
+                    else
+                    {
+                        // operating on new phase already
+                        switch (_phase)
+                        {
+                            case PHASE_COMBAT_2:
+                            {
+                                SpellInfo const* spell = sSpellMgr->GetSpellInfo(SPELL_CREATE_CONCOCTION);
+                                DoCast(me, SPELL_CREATE_CONCOCTION);
+                                events.ScheduleEvent(EVENT_PHASE_TRANSITION, Milliseconds(sSpellMgr->GetSpellForDifficultyFromSpell(spell, me)->CalcCastTime()) + 100ms);
+                                break;
+                            }
+                            case PHASE_COMBAT_3:
+                            {
+                                SpellInfo const* spell = sSpellMgr->GetSpellInfo(SPELL_GUZZLE_POTIONS);
+                                DoCast(me, SPELL_GUZZLE_POTIONS);
+                                events.ScheduleEvent(EVENT_PHASE_TRANSITION, Milliseconds(sSpellMgr->GetSpellForDifficultyFromSpell(spell, me)->CalcCastTime()) + 100ms);
+                                break;
+                            }
+                            default:
+                                break;
+                        }
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        else if (type == EFFECT_MOTION_TYPE)
+        {
+            if (id == POINT_FACE_TABLE)
+            {
                 // operating on new phase already
                 switch (_phase)
                 {
@@ -413,9 +446,7 @@ struct boss_professor_putricide : public BossAI
                     default:
                         break;
                 }
-                break;
-            default:
-                break;
+            }
         }
     }
 
