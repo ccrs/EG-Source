@@ -137,7 +137,8 @@ void AnticheatMgr::SavePlayerData(Player* player)
     if (playerData.GetDailyReportState()) {
         time_t gameTime = GameTime::GetGameTime();
         time_t today = (gameTime / DAY) * DAY;
-        LoginDatabase.PExecute("REPLACE INTO account_anticheat_reports (id, realmid, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, counter_measures_reports) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});", player->GetSession()->GetAccountId(), realm.Id.Realm, lowGUID, today, _players[lowGUID].GetCreationTime(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT));
+        LoginDatabase.PExecute("REPLACE INTO account_anticheat_reports (id, realmid, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, counter_measures_reports) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});",
+            player->GetSession()->GetAccountId(), realm.Id.Realm, lowGUID, today, _players[lowGUID].GetCreationTime(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT));
     }
 }
 
@@ -268,8 +269,8 @@ void AnticheatMgr::ResetDailyReportStates()
         return;
 
     // this resets the daily reports to zero
-    for (AnticheatPlayersDataMap::iterator it = _players.begin(); it != _players.end(); ++it)
-        _players[(*it).first].SetDailyReportState(false);
+    for (AnticheatPlayersDataMap::value_type& pair : _players)
+        pair.second.SetDailyReportState(false);
 }
 
 bool AnticheatMgr::CheckIsLuaCheater(uint32 accountId)
