@@ -380,7 +380,7 @@ struct boss_hadronox : public BossAI
 
 struct npc_hadronox_crusherPackAI : public ScriptedAI
 {
-    npc_hadronox_crusherPackAI(Creature* creature, Position const* positions) : ScriptedAI(creature), _instance(creature->GetInstanceScript()), _positions(positions), _myPack(SummonGroups(0)), _doFacing(false) { }
+    npc_hadronox_crusherPackAI(Creature* creature, Position const* positions) : ScriptedAI(creature), _instance(creature->GetInstanceScript()), _positions(positions), _myPack(SummonGroups(0)) { }
 
     void DoAction(int32 action) override
     {
@@ -402,7 +402,7 @@ struct npc_hadronox_crusherPackAI : public ScriptedAI
     void MovementInform(uint32 type, uint32 id) override
     {
         if (type == POINT_MOTION_TYPE && id == ACTION_PACK_WALK)
-            _doFacing = true;
+            me->SetFacingTo(_positions[_myPack - SUMMON_GROUP_CRUSHER_1].GetOrientation());
     }
 
     void EnterEvadeMode(EvadeReason /*why*/) override
@@ -461,12 +461,6 @@ struct npc_hadronox_crusherPackAI : public ScriptedAI
 
     void UpdateAI(uint32 diff) override
     {
-        if (_doFacing)
-        {
-            _doFacing = false;
-            me->SetFacingTo(_positions[_myPack - SUMMON_GROUP_CRUSHER_1].GetOrientation());
-        }
-
         if (!UpdateVictim())
             return;
 
@@ -483,8 +477,6 @@ struct npc_hadronox_crusherPackAI : public ScriptedAI
         EventMap _events;
         Position const* const _positions;
         SummonGroups _myPack;
-        bool _doFacing;
-
 };
 
 static const Position crusherWaypoints[] =

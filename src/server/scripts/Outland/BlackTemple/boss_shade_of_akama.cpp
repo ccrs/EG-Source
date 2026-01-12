@@ -139,9 +139,11 @@ enum AkamaEvents
 
 enum AkamaMisc
 {
-    AKAMA_CHANNEL_WAYPOINT = 0,
-    AKAMA_INTRO_WAYPOINT   = 1,
-    SUMMON_GROUP_RESET     = 1
+    AKAMA_CHANNEL_WAYPOINT         = 0,
+    AKAMA_INTRO_WAYPOINT           = 1,
+    SUMMON_GROUP_RESET             = 1,
+    POINT_ASHTONGUE_SORCERER_SHADE = 1,
+    POINT_FACE_ASHTONGUE_SORCERER  = 2
 };
 
 Position const AkamaWP[2] =
@@ -428,10 +430,10 @@ struct npc_akama_shade : public ScriptedAI
 
         if (pointId == AKAMA_CHANNEL_WAYPOINT)
             _events.ScheduleEvent(EVENT_SHADE_CHANNEL, 1s);
-
         else if (pointId == AKAMA_INTRO_WAYPOINT)
         {
             me->SetWalk(false);
+            me->SetFacingTo(FACE_THE_DOOR);
             _events.ScheduleEvent(EVENT_START_SOUL_RETRIEVE, 1s);
         }
     }
@@ -483,7 +485,6 @@ struct npc_akama_shade : public ScriptedAI
                     _events.Repeat(3s, 7s);
                     break;
                 case EVENT_START_SOUL_RETRIEVE:
-                    me->SetFacingTo(FACE_THE_DOOR);
                     DoCast(SPELL_AKAMA_SOUL_RETRIEVE);
                     _events.ScheduleEvent(EVENT_START_BROKEN_FREE, 15s);
                     break;
@@ -698,8 +699,13 @@ struct npc_ashtongue_sorcerer : public ScriptedAI
         if (Creature* shade = _instance->GetCreature(DATA_SHADE_OF_AKAMA))
         {
             if (shade->HasUnitFlag(UNIT_FLAG_UNINTERACTIBLE))
-                me->GetMotionMaster()->MovePoint(0, shade->GetPosition());
-
+            {
+                if (!_CheckChanneling())
+                {
+                    Position destionation = shade->GetNearPosition(20.f, me->GetAbsoluteAngle(shade) + frand(-0.5f, 0.5f) - float(M_PI));
+                    me->GetMotionMaster()->MovePoint(POINT_ASHTONGUE_SORCERER_SHADE, destionation);
+                }
+            }
             else if (Creature* akama = _instance->GetCreature(DATA_AKAMA_SHADE))
                 AttackStart(akama);
         }
@@ -722,34 +728,17 @@ struct npc_ashtongue_sorcerer : public ScriptedAI
         ScriptedAI::AttackStart(who);
     }
 
-    void MoveInLineOfSight(Unit* who) override
+    void MovementInform(uint32 type, uint32 point) override
     {
-        if (!_inBanish && who->GetGUID() == _instance->GetGuidData(DATA_SHADE_OF_AKAMA) && me->IsWithinDist(who, 20.0f, false))
+        if (type == POINT_MOTION_TYPE)
         {
-            _inBanish = true;
-            me->StopMoving();
-            me->GetMotionMaster()->Clear();
-            me->GetMotionMaster()->MovePoint(1, me->GetPositionX() + frand(-8.0f, 8.0f), me->GetPositionY() + frand(-8.0f, 8.0f), me->GetPositionZ());
-
-            _scheduler.Schedule(1s + 500ms, [this](TaskContext sorcer_channel)
-            {
-                if (Creature* shade = _instance->GetCreature(DATA_SHADE_OF_AKAMA))
-                {
-                    if (shade->HasUnitFlag(UNIT_FLAG_UNINTERACTIBLE))
-                    {
-                        me->SetFacingToObject(shade);
-                        DoCastSelf(SPELL_SHADE_SOUL_CHANNEL);
-                        sorcer_channel.Repeat(2s);
-                    }
-                    else
-                    {
-                        me->InterruptSpell(CURRENT_CHANNELED_SPELL);
-                        _switchToCombat = true;
-                        if (Creature* akama = _instance->GetCreature(DATA_AKAMA_SHADE))
-                            AttackStart(akama);
-                    }
-                }
-            });
+            if (point == POINT_ASHTONGUE_SORCERER_SHADE)
+                _CheckChanneling();
+        }
+        else if (type == EFFECT_MOTION_TYPE)
+        {
+            if (point == POINT_FACE_ASHTONGUE_SORCERER)
+                DoCastSelf(SPELL_SHADE_SOUL_CHANNEL);
         }
     }
 
@@ -767,6 +756,32 @@ struct npc_ashtongue_sorcerer : public ScriptedAI
     }
 
 private:
+    bool _CheckChanneling()
+    {
+        if (!_inBanish && !me->IsWithinDist(_instance->GetCreature(DATA_SHADE_OF_AKAMA), 20.0f, false))
+            return false;
+        _inBanish = true;
+        _scheduler.Schedule(1s + 500ms, [this](TaskContext sorcer_channel)
+        {
+            if (Creature* shade = _instance->GetCreature(DATA_SHADE_OF_AKAMA))
+            {
+                if (shade->HasUnitFlag(UNIT_FLAG_UNINTERACTIBLE))
+                {
+                    me->SetFacingToObject(shade, true, POINT_FACE_ASHTONGUE_SORCERER);
+                    sorcer_channel.Repeat(2s);
+                }
+                else
+                {
+                    me->InterruptSpell(CURRENT_CHANNELED_SPELL);
+                    _switchToCombat = true;
+                    if (Creature* akama = _instance->GetCreature(DATA_AKAMA_SHADE))
+                        AttackStart(akama);
+                }
+            }
+        });
+        return true;
+    }
+
     InstanceScript* _instance;
     TaskScheduler _scheduler;
     bool _switchToCombat;

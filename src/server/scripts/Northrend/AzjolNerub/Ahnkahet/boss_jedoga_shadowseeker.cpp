@@ -166,13 +166,14 @@ struct boss_jedoga_shadowseeker : public BossAI
 
     void JustEngagedWith(Unit* who) override
     {
-        me->RemoveAurasDueToSpell(SPELL_SPHERE_VISUAL);
-        me->RemoveAurasDueToSpell(SPELL_RANDOM_LIGHTNING_VISUAL);
         me->SummonCreatureGroup(SUMMON_GROUP_WORSHIPPERS);
 
         BossAI::JustEngagedWith(who);
         Talk(SAY_AGGRO);
         events.SetPhase(PHASE_ONE);
+        events.ScheduleEvent(EVENT_CYCLONE_STRIKE, 3s);
+        events.ScheduleEvent(EVENT_LIGHTNING_BOLT, 7s);
+        events.ScheduleEvent(EVENT_THUNDERSHOCK, 12s);
 
         for (JedogaVolunteerPositionPair const& posPair : JedogaVolunteerSpotPositions)
         {
@@ -280,12 +281,13 @@ struct boss_jedoga_shadowseeker : public BossAI
         switch (pointId)
         {
             case POINT_GROUND:
+                me->RemoveAurasDueToSpell(SPELL_SPHERE_VISUAL);
+                me->RemoveAurasDueToSpell(SPELL_RANDOM_LIGHTNING_VISUAL);
+                me->SetDisableGravity(false);
+                me->SetImmuneToAll(false);
                 me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                 me->SetReactState(REACT_AGGRESSIVE);
                 DoZoneInCombat();
-                events.ScheduleEvent(EVENT_CYCLONE_STRIKE, 3s);
-                events.ScheduleEvent(EVENT_LIGHTNING_BOLT, 7s);
-                events.ScheduleEvent(EVENT_THUNDERSHOCK, 12s);
                 break;
             case POINT_PHASE_TWO:
                 events.ScheduleEvent(EVENT_FLY_DELAY, 2s);
@@ -323,7 +325,6 @@ struct boss_jedoga_shadowseeker : public BossAI
                     break;
                 case EVENT_START_FIGHT_2:
                     summons.DespawnEntry(NPC_JEDOGA_CONTROLLER);
-                    me->SetDisableGravity(false);
                     me->GetMotionMaster()->MoveLand(POINT_GROUND, JedogaGroundPosition);
                     break;
                 case EVENT_START_PHASE_TWO:

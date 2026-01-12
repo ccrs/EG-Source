@@ -34,7 +34,7 @@
  * - Fix outro npc movement
  */
 
-enum Yells
+enum DevourerOfSoulsYells
 {
     SAY_FACE_AGGRO                              = 0,
     SAY_FACE_ANGER_SLAY                         = 1,
@@ -51,7 +51,7 @@ enum Yells
     SAY_SYLVANAS_OUTRO                          = 0
 };
 
-enum Spells
+enum DevourerOfSoulsSpells
 {
     SPELL_PHANTOM_BLAST                         = 68982,
     H_SPELL_PHANTOM_BLAST                       = 70322,
@@ -69,7 +69,7 @@ enum Spells
 // 68899 trigger 68871
 };
 
-enum Events
+enum DevourerOfSoulsEvents
 {
     EVENT_PHANTOM_BLAST         = 1,
     EVENT_MIRRORED_SOUL         = 2,
@@ -80,14 +80,14 @@ enum Events
     EVENT_FACE_ANGER            = 7,
 };
 
-enum Models
+enum DevourerOfSoulsModels
 {
     DISPLAY_ANGER               = 30148,
     DISPLAY_SORROW              = 30149,
     DISPLAY_DESIRE              = 30150,
 };
 
-struct outroPosition
+struct DevourerOfSoulsOutroPosition
 {
     uint32 entry[2];
     Position movePosition;
@@ -119,11 +119,12 @@ struct outroPosition
     { { 0, 0 }, { 0.0f, 0.0f, 0.0f, 0.0f } }
 };
 
-Position const CrucibleSummonPos = {5672.294f, 2520.686f, 713.4386f, 0.9599311f};
+Position const DevourerOfSoulsCrucibleSummonPos = {5672.294f, 2520.686f, 713.4386f, 0.9599311f};
 
-enum Misc
+enum DevourerOfSoulsMisc
 {
-    DATA_THREE_FACED                = 1
+    DATA_THREE_FACED                = 1,
+    POINT_FACE_WAILING_SOULS        = 2
 };
 
 struct boss_devourer_of_souls : public BossAI
@@ -157,7 +158,7 @@ struct boss_devourer_of_souls : public BossAI
         Talk(SAY_FACE_AGGRO);
 
         if (!me->FindNearestCreature(NPC_CRUCIBLE_OF_SOULS, 60)) // Prevent double spawn
-            instance->instance->SummonCreature(NPC_CRUCIBLE_OF_SOULS, CrucibleSummonPos);
+            instance->instance->SummonCreature(NPC_CRUCIBLE_OF_SOULS, DevourerOfSoulsCrucibleSummonPos);
         events.ScheduleEvent(EVENT_PHANTOM_BLAST, 5s);
         events.ScheduleEvent(EVENT_MIRRORED_SOUL, 8s);
         events.ScheduleEvent(EVENT_WELL_OF_SOULS, 30s);
@@ -230,6 +231,15 @@ struct boss_devourer_of_souls : public BossAI
             return threeFaced;
 
         return 0;
+    }
+
+    void MovementInform(uint32 type, uint32 id) override
+    {
+        if (type == EFFECT_MOTION_TYPE)
+        {
+            if (id == POINT_FACE_WAILING_SOULS)
+                DoCastSelf(SPELL_WAILING_SOULS);
+        }
     }
 
     void UpdateAI(uint32 diff) override
@@ -307,9 +317,7 @@ struct boss_devourer_of_souls : public BossAI
 
                 case EVENT_WAILING_SOULS_TICK:
                     beamAngle += beamAngleDiff;
-                    me->SetFacingTo(beamAngle);
-
-                    DoCast(me, SPELL_WAILING_SOULS);
+                    me->SetFacingTo(beamAngle, true, POINT_FACE_WAILING_SOULS);
 
                     if (--wailingSoulTick)
                         events.ScheduleEvent(EVENT_WAILING_SOULS_TICK, 1s);

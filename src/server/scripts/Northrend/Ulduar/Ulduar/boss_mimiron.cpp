@@ -1049,12 +1049,12 @@ class boss_vx_001 : public CreatureScript
                 events.Update(diff);
 
                 // Handle rotation during SPELL_SPINNING_UP, SPELL_P3WX2_LASER_BARRAGE, SPELL_RAPID_BURST, and SPELL_HAND_PULSE_LEFT/RIGHT
-                if (me->HasUnitState(UNIT_STATE_CASTING))
+                /*if (me->HasUnitState(UNIT_STATE_CASTING))
                 {
                     if (Creature* channelTarget = ObjectAccessor::GetCreature(*me, me->GetChannelObjectGuid()))
                         me->SetFacingToObject(channelTarget);
                     return;
-                }
+                }*/
 
                 while (uint32 eventId = events.ExecuteEvent())
                 {
