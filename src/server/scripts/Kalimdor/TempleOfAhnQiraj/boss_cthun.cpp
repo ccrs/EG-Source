@@ -243,7 +243,7 @@ public:
 
         void MovementInform(uint32 type, uint32 id) override
         {
-            if (type == EFFECT_MOTION_TYPE)
+            if (type == FACE_MOTION_TYPE)
             {
                 if (id == POINT_FACE_DARK_GLARE)
                     DoCastSelf(SPELL_DARK_GLARE);

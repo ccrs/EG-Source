@@ -247,7 +247,7 @@ struct boss_victor_nefarius : public BossAI
 
     void MovementInform(uint32 type, uint32 id) override
     {
-        if (type != EFFECT_MOTION_TYPE)
+        if (type != FACE_MOTION_TYPE)
             return;
 
         if (id == POINT_FACING_CHROMATIC_CHAOS)

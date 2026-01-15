@@ -235,7 +235,7 @@ struct boss_devourer_of_souls : public BossAI
 
     void MovementInform(uint32 type, uint32 id) override
     {
-        if (type == EFFECT_MOTION_TYPE)
+        if (type == FACE_MOTION_TYPE)
         {
             if (id == POINT_FACE_WAILING_SOULS)
                 DoCastSelf(SPELL_WAILING_SOULS);

@@ -154,7 +154,7 @@ struct boss_volkhan : public BossAI
             if (id == POINT_ID_ANVIL)
                 events.ScheduleEvent(EVENT_TEMPER, 1s, 0, PHASE_COMBAT);
         }
-        else if (motionType == EFFECT_MOTION_TYPE)
+        else if (motionType == FACE_MOTION_TYPE)
         {
             if (id == POINT_FACE_ANVIL)
             {
