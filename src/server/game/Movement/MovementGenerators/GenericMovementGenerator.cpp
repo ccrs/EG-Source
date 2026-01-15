@@ -49,10 +49,11 @@ bool GenericMovementGenerator::Initialize(Unit* owner)
 
     Movement::MoveSplineInit init(owner);
     _splineInit(init);
+    int32 duration = init.Launch();
+
     if (!HasFlag(MOVEMENTGENERATOR_FLAG_FIXED_DURATION))
-        _duration.Reset(init.Launch());
-    else
-        init.Launch();
+        _duration.Reset(duration);
+
     return true;
 }
 

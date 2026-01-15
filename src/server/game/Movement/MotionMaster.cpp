@@ -1084,7 +1084,7 @@ void MotionMaster::MoveFormation(Unit* leader, float range, float angle, uint32 
     }
 }
 
-void MotionMaster::MoveFace(WorldObject const* object, Milliseconds duration/* = 1s*/, uint32 id/* = EVENT_FACE*/)
+void MotionMaster::MoveFace(WorldObject const* object, uint32 id/* = EVENT_FACE*/, Milliseconds duration/* = 1s*/)
 {
     if (!object || GetCurrentMovementGeneratorPriority() == MOTION_PRIORITY_HIGHEST)
         return;
@@ -1107,7 +1107,7 @@ void MotionMaster::MoveFace(WorldObject const* object, Milliseconds duration/* =
     Add(movement);
 }
 
-void MotionMaster::MoveFace(float const orientation, Milliseconds duration/* = 1s*/, uint32 id/* = EVENT_FACE*/)
+void MotionMaster::MoveFace(float const orientation, uint32 id/* = EVENT_FACE*/, Milliseconds duration/* = 1s*/)
 {
     if (GetCurrentMovementGeneratorPriority() == MOTION_PRIORITY_HIGHEST)
         return;

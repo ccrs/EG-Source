@@ -13288,7 +13288,7 @@ void Unit::SetFacingTo(float ori, bool force/* = true*/, uint32 id/* = EVENT_FAC
     if (!force && (!IsStopped() || !movespline->Finalized() || GetMotionMaster()->GetCurrentMovementGeneratorPriority() == MOTION_PRIORITY_HIGHEST))
         return;
 
-    GetMotionMaster()->MoveFace(ori, duration, id);
+    GetMotionMaster()->MoveFace(ori, id, duration);
 }
 
 void Unit::SetFacingToObject(WorldObject const* object, bool force/* = true*/, uint32 id/* = EVENT_FACE*/, Milliseconds duration/* = 0ms*/)
@@ -13297,7 +13297,7 @@ void Unit::SetFacingToObject(WorldObject const* object, bool force/* = true*/, u
     if (!force && (!IsStopped() || !movespline->Finalized() || GetMotionMaster()->GetCurrentMovementGeneratorPriority() == MOTION_PRIORITY_HIGHEST))
         return;
 
-    GetMotionMaster()->MoveFace(object, duration, id);
+    GetMotionMaster()->MoveFace(object, id, duration);
 }
 
 bool Unit::SetWalk(bool enable)
