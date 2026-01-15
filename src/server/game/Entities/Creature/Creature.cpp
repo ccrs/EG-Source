@@ -3207,8 +3207,13 @@ void Creature::ReleaseSpellFocus(Spell const* focusSpell, bool withDelay)
     if (_spellFocusInfo.Spell->GetSpellInfo()->HasAttribute(SPELL_ATTR5_DONT_TURN_DURING_CAST))
         ClearUnitState(UNIT_STATE_FOCUSING);
 
-    // don't allow re-target right away to prevent visual bugs
-    _spellFocusInfo.Delay = withDelay ? 1000 : 1;
+    if (IsPet()) // player pets do not use delay system
+    {
+        if (!HasUnitFlag2(UNIT_FLAG2_CANNOT_TURN))
+            ReacquireSpellFocusTarget();
+    }
+    else // don't allow re-target right away to prevent visual bugs
+        _spellFocusInfo.Delay = withDelay ? 1000 : 1;
 
     _spellFocusInfo.Spell = nullptr;
 }

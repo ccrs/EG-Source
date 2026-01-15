@@ -3190,7 +3190,7 @@ SpellCastResult Spell::prepare(SpellCastTargets const& targets, AuraEffect const
         movementResult = CheckMovement();
 
     // Creatures focus their target when possible
-    if (m_casttime && m_caster->IsCreature() && !m_spellInfo->IsNextMeleeSwingSpell() && !m_caster->ToUnit()->HasUnitFlag(UNIT_FLAG_POSSESSED))
+    if (m_casttime && m_caster->IsCreature() && !m_spellInfo->IsNextMeleeSwingSpell() && !IsAutoRepeat() && !m_caster->ToUnit()->HasUnitFlag(UNIT_FLAG_POSSESSED))
     {
         // Channeled spells and some triggered spells do not focus a cast target. They face their target later on via channel object guid and via spell attribute or not at all
         bool const focusTarget = !m_spellInfo->IsChanneled() && !(_triggeredCastFlags & TRIGGERED_IGNORE_SET_FACING);
