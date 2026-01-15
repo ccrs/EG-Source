@@ -31,7 +31,6 @@ class GenericMovementGenerator : public MovementGenerator
 {
     public:
         explicit GenericMovementGenerator(std::function<void(Movement::MoveSplineInit& init)>&& initializer, MovementGeneratorType type, uint32 id);
-        GenericMovementGenerator(std::function<void(Movement::MoveSplineInit& init)>&& initializer, MovementGeneratorType type, uint32 id, Milliseconds duration);
 
         bool Initialize(Unit*) override;
         bool Reset(Unit*) override;
@@ -39,9 +38,10 @@ class GenericMovementGenerator : public MovementGenerator
         void Deactivate(Unit*) override;
         void Finalize(Unit*, bool, bool) override;
         MovementGeneratorType GetMovementGeneratorType() const override { return _type; }
+        void SetDuration(Milliseconds duration);
 
     private:
-        void MovementInform(Unit*);
+        void _MovementInform(Unit*);
 
         std::function<void(Movement::MoveSplineInit& init)> _splineInit;
         MovementGeneratorType _type;
