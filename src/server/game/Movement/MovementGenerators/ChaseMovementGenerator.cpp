@@ -24,6 +24,7 @@
 #include "MoveSpline.h"
 #include "MoveSplineInit.h"
 #include "PathGenerator.h"
+#include "SmartAI.h"
 #include "Unit.h"
 #include "Util.h"
 
@@ -190,6 +191,17 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
             {
                 target->GetNearPoint(owner, destination.m_positionX, destination.m_positionY, destination.m_positionZ, calculationDistance, calculationAngle);
                 shortenPath = false;
+            }
+
+            if (owner->GetTypeId() == TYPEID_UNIT && owner->IsAIEnabled() && !dynamic_cast<SmartAI*>(owner->ToCreature()->AI()) && !owner->IsWithinLOSInMap(&destination, target))
+            {
+                target->GetNearPoint(owner, destination.m_positionX, destination.m_positionY, destination.m_positionZ, calculationDistance / 2.f, calculationAngle);
+                shortenPath = false;
+                if (!owner->IsWithinLOSInMap(&destination, target))
+                {
+                    target->GetPosition(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
+                    shortenPath = true;
+                }
             }
 
             bool success = _path->CalculatePath(destination.m_positionX, destination.m_positionY, destination.m_positionZ, owner->CanFly());
