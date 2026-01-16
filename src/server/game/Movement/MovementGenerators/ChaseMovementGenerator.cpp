@@ -277,5 +277,8 @@ bool ChaseMovementGenerator::_UseChaseAngle(Unit* owner, Unit* target)
         if (ChaseMovementGenerator* movement = dynamic_cast<ChaseMovementGenerator*>(target->GetMotionMaster()->GetCurrentMovementGenerator()))
             return movement->GetTarget() != owner;
 
-    return targetMovementType == IDLE_MOTION_TYPE;
+    if (targetMovementType == IDLE_MOTION_TYPE || targetMovementType == RANDOM_MOTION_TYPE || targetMovementType == WAYPOINT_MOTION_TYPE)
+        return target->GetVictim() != owner;
+
+    return false;
 }
