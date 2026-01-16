@@ -165,31 +165,24 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
             if (!_path)
                 _path = std::make_unique<PathGenerator>(owner);
 
-            float x, y, z;
-            bool shortenPath;
+            Position destination;
+            bool shortenPath = false;
             // if we want to move toward the target and there's no fixed angle...
             if (moveToward && !angle)
             {
                 // ...we'll pathfind to the center, then shorten the path
-                target->GetPosition(x, y, z);
+                target->GetPosition(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
                 shortenPath = true;
             }
-            else
-            {
-                // otherwise, we fall back to nearpoint finding
-                target->GetNearPoint(owner, x, y, z, (moveToward ? maxTarget : minTarget) - hitboxSum, angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner));
-                shortenPath = false;
-            }
+            else // otherwise, we fall back to nearpoint finding
+                target->GetNearPoint(owner, destination.m_positionX, destination.m_positionY, destination.m_positionZ, (moveToward ? maxTarget : minTarget) - hitboxSum, angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner));
 
             if (owner->IsHovering())
-                owner->UpdateAllowedPositionZ(x, y, z);
-            else if (owner->IsFlying() && owner->GetTypeId() == TYPEID_UNIT && owner->ToCreature()->HasStoredMovementFlag(MOVEMENTFLAG_HOVER) && !owner->ToCreature()->IsInAir(Position(x, y, z), owner->GetMap()->GetHeight(owner->GetPhaseMask(), Position(x, y, z))))
-            {
-                target->GetNearPoint(owner, x, y, z, -owner->GetCombatReach(), angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner));
-                shortenPath = false;
-            }
+                owner->UpdateAllowedPositionZ(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
+            else if (owner->IsFlying() && owner->GetTypeId() == TYPEID_UNIT && owner->ToCreature()->HasStoredMovementFlag(MOVEMENTFLAG_HOVER) && !owner->ToCreature()->IsInAir(destination, owner->GetMap()->GetHeight(owner->GetPhaseMask(), destination)))
+                target->GetNearPoint(owner, destination.m_positionX, destination.m_positionY, destination.m_positionZ, -owner->GetCombatReach(), angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner));
 
-            bool success = _path->CalculatePath(x, y, z, owner->CanFly());
+            bool success = _path->CalculatePath(destination.m_positionX, destination.m_positionY, destination.m_positionZ, owner->CanFly());
             if (!success || (_path->GetPathType() & (PATHFIND_NOPATH /* | PATHFIND_INCOMPLETE*/)))
             {
                 if (cOwner)
