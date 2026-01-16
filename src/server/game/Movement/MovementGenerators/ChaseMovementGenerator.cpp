@@ -55,8 +55,7 @@ static void DoMovementInform(Unit* owner, Unit* target)
         AI->MovementInform(CHASE_MOTION_TYPE, target->GetGUID().GetCounter());
 }
 
-ChaseMovementGenerator::ChaseMovementGenerator(Unit *target, Optional<ChaseRange> range, Optional<ChaseAngle> angle) : AbstractFollower(ASSERT_NOTNULL(target)), _range(range),
-    _angle(angle), _rangeCheckTimer(RANGE_CHECK_INTERVAL)
+ChaseMovementGenerator::ChaseMovementGenerator(Unit *target, Optional<ChaseRange> range, Optional<ChaseAngle> angle) : AbstractFollower(ASSERT_NOTNULL(target)), _range(range), _angle(angle), _rangeCheckTimer(0)
 {
     Mode = MOTION_MODE_DEFAULT;
     Priority = MOTION_PRIORITY_NORMAL;
@@ -72,6 +71,7 @@ bool ChaseMovementGenerator::Initialize(Unit* /*owner*/)
 
     _path = nullptr;
     _lastTargetPosition.reset();
+    _rangeCheckTimer.Reset(0);
     return false;
 }
 
