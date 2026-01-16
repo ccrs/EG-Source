@@ -142,7 +142,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
     }
 
     // if the target moved, we have to consider whether to adjust
-    if (!_lastTargetPosition || target->GetPosition() != _lastTargetPosition.value() || useChaseAngle != _useChaseAngle)
+    if (!_lastTargetPosition || !target->GetPosition().IsInDist(_lastTargetPosition.value(), 0.01f) || useChaseAngle != _useChaseAngle)
     {
         _lastTargetPosition = target->GetPosition();
         _useChaseAngle = useChaseAngle;
@@ -162,7 +162,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
             bool const moveToward = !owner->IsInDist(target, maxRange);
 
             // make a new path if we have to...
-            if (!_path || moveToward != _movingTowards)
+            if (!_path)
                 _path = std::make_unique<PathGenerator>(owner);
 
             float x, y, z;
