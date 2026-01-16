@@ -32,17 +32,6 @@ static bool HasLostTarget(Unit* owner, Unit* target)
     return owner->GetVictim() != target;
 }
 
-static bool IsMutualChase(Unit* owner, Unit* target)
-{
-    if (target->GetMotionMaster()->GetCurrentMovementGeneratorType() != CHASE_MOTION_TYPE)
-        return false;
-
-    if (ChaseMovementGenerator* movement = dynamic_cast<ChaseMovementGenerator*>(target->GetMotionMaster()->GetCurrentMovementGenerator()))
-        return movement->GetTarget() == owner;
-
-    return false;
-}
-
 static bool PositionOkay(Unit* owner, Unit* target, Optional<float> minDistance, Optional<float> maxDistance, Optional<ChaseAngle> angle)
 {
     float const distSq = owner->GetExactDistSq(target);
@@ -114,13 +103,13 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
         return true;
     }
 
-    bool const mutualChase = IsMutualChase(owner, target);
+    bool const useChaseAngle = _UseChaseAngle(owner, target);
     float const hitboxSum = owner->GetCombatReach() + target->GetCombatReach();
     float const minRange = _range ? _range->MinRange + hitboxSum : CONTACT_DISTANCE;
     float const minTarget = (_range ? _range->MinTolerance : 0.0f) + hitboxSum;
     float const maxRange = _range ? _range->MaxRange + hitboxSum : owner->GetMeleeRange(target); // melee range already includes hitboxes
     float const maxTarget = _range ? _range->MaxTolerance + hitboxSum : CONTACT_DISTANCE + hitboxSum;
-    Optional<ChaseAngle> angle = mutualChase ? Optional<ChaseAngle>() : _angle;
+    Optional<ChaseAngle> angle = useChaseAngle ? _angle : Optional<ChaseAngle>();
 
     // periodically check if we're already in the expected range...
     _rangeCheckTimer.Update(diff);
@@ -153,10 +142,10 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
     }
 
     // if the target moved, we have to consider whether to adjust
-    if (!_lastTargetPosition || target->GetPosition() != _lastTargetPosition.value() || mutualChase != _mutualChase)
+    if (!_lastTargetPosition || target->GetPosition() != _lastTargetPosition.value() || useChaseAngle != _useChaseAngle)
     {
         _lastTargetPosition = target->GetPosition();
-        _mutualChase = mutualChase;
+        _useChaseAngle = useChaseAngle;
         if (owner->HasUnitState(UNIT_STATE_CHASE_MOVE) || !PositionOkay(owner, target, minRange, maxRange, angle))
         {
             Creature* const cOwner = owner->ToCreature();
@@ -264,4 +253,15 @@ void ChaseMovementGenerator::Finalize(Unit* owner, bool active, bool/* movementI
         if (Creature* cOwner = owner->ToCreature())
             cOwner->SetCannotReachTarget(false);
     }
+}
+
+bool ChaseMovementGenerator::_UseChaseAngle(Unit* owner, Unit* target)
+{
+    if (owner->GetMotionMaster()->GetCurrentMovementGeneratorType() != CHASE_MOTION_TYPE)
+        return false;
+
+    if (ChaseMovementGenerator* movement = dynamic_cast<ChaseMovementGenerator*>(target->GetMotionMaster()->GetCurrentMovementGenerator()))
+        return movement->GetTarget() != owner;
+
+    return false;
 }
