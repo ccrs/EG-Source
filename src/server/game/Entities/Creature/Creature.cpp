@@ -3171,7 +3171,7 @@ void Creature::SetSpellFocus(Spell const* focusSpell, WorldObject const* target)
 
     // If we are not allowed to turn during cast but have a focus target, face the target
     if (!turnDisabled && noTurnDuringCast && target)
-        SetFacingToObject(target, false, EVENT_SPELL_FOCUS, Milliseconds(focusSpell->GetCastTime()));
+        SetFacingToObject(target, false, EVENT_SPELL_FOCUS);
 
     if (noTurnDuringCast)
         AddUnitState(UNIT_STATE_FOCUSING);
@@ -3207,8 +3207,13 @@ void Creature::ReleaseSpellFocus(Spell const* focusSpell, bool withDelay)
     if (_spellFocusInfo.Spell->GetSpellInfo()->HasAttribute(SPELL_ATTR5_DONT_TURN_DURING_CAST))
         ClearUnitState(UNIT_STATE_FOCUSING);
 
-    // don't allow re-target right away to prevent visual bugs
-    _spellFocusInfo.Delay = withDelay ? 1000 : 1;
+    if (IsPet()) // player pets do not use delay system
+    {
+        if (!HasUnitFlag2(UNIT_FLAG2_CANNOT_TURN))
+            ReacquireSpellFocusTarget();
+    }
+    else // don't allow re-target right away to prevent visual bugs
+        _spellFocusInfo.Delay = withDelay ? 1000 : 1;
 
     _spellFocusInfo.Spell = nullptr;
 }

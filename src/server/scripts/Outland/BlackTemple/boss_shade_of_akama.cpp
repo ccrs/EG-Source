@@ -735,7 +735,7 @@ struct npc_ashtongue_sorcerer : public ScriptedAI
             if (point == POINT_ASHTONGUE_SORCERER_SHADE)
                 _CheckChanneling();
         }
-        else if (type == EFFECT_MOTION_TYPE)
+        else if (type == FACE_MOTION_TYPE)
         {
             if (point == POINT_FACE_ASHTONGUE_SORCERER)
                 DoCastSelf(SPELL_SHADE_SOUL_CHANNEL);

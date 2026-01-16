@@ -786,7 +786,7 @@ struct boss_the_lich_king : public BossAI
 
     void MovementInform(uint32 type, uint32 pointId) override
     {
-        if (type != POINT_MOTION_TYPE && type != EFFECT_MOTION_TYPE)
+        if (type != POINT_MOTION_TYPE && type != EFFECT_MOTION_TYPE && type != FACE_MOTION_TYPE)
             return;
 
         switch (pointId)

@@ -1084,7 +1084,7 @@ void MotionMaster::MoveFormation(Unit* leader, float range, float angle, uint32 
     }
 }
 
-void MotionMaster::MoveFace(WorldObject const* object, Milliseconds duration/* = 1s*/, uint32 id/* = EVENT_FACE*/)
+void MotionMaster::MoveFace(WorldObject const* object, uint32 id/* = EVENT_FACE*/, Milliseconds duration/* = 0ms*/)
 {
     if (!object || GetCurrentMovementGeneratorPriority() == MOTION_PRIORITY_HIGHEST)
         return;
@@ -1098,16 +1098,19 @@ void MotionMaster::MoveFace(WorldObject const* object, Milliseconds duration/* =
             init.SetFacing(_owner->GetAbsoluteAngle(object));   // when on transport, GetAbsoluteAngle will still return global coordinates (and angle) that needs transforming
     };
 
-    GenericMovementGenerator* movement = new GenericMovementGenerator(std::move(initializer), EFFECT_MOTION_TYPE, id, duration);
+    GenericMovementGenerator* movement = new GenericMovementGenerator(std::move(initializer), FACE_MOTION_TYPE, id);
     movement->Priority = MOTION_PRIORITY_NORMAL;
     movement->Mode = MOTION_MODE_OVERRIDE;
     movement->BaseUnitState = UNIT_STATE_FACING;
-    if (duration != Milliseconds::zero())
+    if (duration != 0ms)
+    {
         movement->AddFlag(MOVEMENTGENERATOR_FLAG_FIXED_DURATION);
+        movement->SetDuration(duration);
+    }
     Add(movement);
 }
 
-void MotionMaster::MoveFace(float const orientation, Milliseconds duration/* = 1s*/, uint32 id/* = EVENT_FACE*/)
+void MotionMaster::MoveFace(float const orientation, uint32 id/* = EVENT_FACE*/, Milliseconds duration/* = 0ms*/)
 {
     if (GetCurrentMovementGeneratorPriority() == MOTION_PRIORITY_HIGHEST)
         return;
@@ -1122,12 +1125,15 @@ void MotionMaster::MoveFace(float const orientation, Milliseconds duration/* = 1
         init.SetFacing(orientation);
     };
 
-    GenericMovementGenerator* movement = new GenericMovementGenerator(std::move(initializer), EFFECT_MOTION_TYPE, id, duration);
+    GenericMovementGenerator* movement = new GenericMovementGenerator(std::move(initializer), FACE_MOTION_TYPE, id);
     movement->Priority = MOTION_PRIORITY_NORMAL;
     movement->Mode = MOTION_MODE_OVERRIDE;
     movement->BaseUnitState = UNIT_STATE_FACING;
-    if (duration != Milliseconds::zero())
+    if (duration != 0ms)
+    {
         movement->AddFlag(MOVEMENTGENERATOR_FLAG_FIXED_DURATION);
+        movement->SetDuration(duration);
+    }
     Add(movement);
 }
 

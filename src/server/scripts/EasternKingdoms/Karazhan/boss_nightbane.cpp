@@ -248,7 +248,7 @@ public:
                 else if (pointId == POINT_PHASE_TWO_PRE_FLY)
                     events.ScheduleEvent(EVENT_PRE_FLY_END, Milliseconds(1));
             }
-            else if (type == EFFECT_MOTION_TYPE)
+            else if (type == FACE_MOTION_TYPE)
             {
                 if (pointId == POINT_FACE_RAIN_OF_BONES)
                     if (Unit* target = ObjectAccessor::GetUnit(*me, _rainOfBonesTarget))

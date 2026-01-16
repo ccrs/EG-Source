@@ -24,23 +24,13 @@
 #include "MoveSpline.h"
 #include "MoveSplineInit.h"
 #include "PathGenerator.h"
+#include "SmartAI.h"
 #include "Unit.h"
 #include "Util.h"
 
 static bool HasLostTarget(Unit* owner, Unit* target)
 {
     return owner->GetVictim() != target;
-}
-
-static bool IsMutualChase(Unit* owner, Unit* target)
-{
-    if (target->GetMotionMaster()->GetCurrentMovementGeneratorType() != CHASE_MOTION_TYPE)
-        return false;
-
-    if (ChaseMovementGenerator* movement = dynamic_cast<ChaseMovementGenerator*>(target->GetMotionMaster()->GetCurrentMovementGenerator()))
-        return movement->GetTarget() == owner;
-
-    return false;
 }
 
 static bool PositionOkay(Unit* owner, Unit* target, Optional<float> minDistance, Optional<float> maxDistance, Optional<ChaseAngle> angle)
@@ -66,8 +56,7 @@ static void DoMovementInform(Unit* owner, Unit* target)
         AI->MovementInform(CHASE_MOTION_TYPE, target->GetGUID().GetCounter());
 }
 
-ChaseMovementGenerator::ChaseMovementGenerator(Unit *target, Optional<ChaseRange> range, Optional<ChaseAngle> angle) : AbstractFollower(ASSERT_NOTNULL(target)), _range(range),
-    _angle(angle), _rangeCheckTimer(RANGE_CHECK_INTERVAL)
+ChaseMovementGenerator::ChaseMovementGenerator(Unit *target, Optional<ChaseRange> range, Optional<ChaseAngle> angle) : AbstractFollower(ASSERT_NOTNULL(target)), _range(range), _angle(angle), _rangeCheckTimer(0)
 {
     Mode = MOTION_MODE_DEFAULT;
     Priority = MOTION_PRIORITY_NORMAL;
@@ -83,6 +72,7 @@ bool ChaseMovementGenerator::Initialize(Unit* /*owner*/)
 
     _path = nullptr;
     _lastTargetPosition.reset();
+    _rangeCheckTimer.Reset(0);
     return false;
 }
 
@@ -114,13 +104,13 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
         return true;
     }
 
-    bool const mutualChase = IsMutualChase(owner, target);
+    bool const useChaseAngle = _UseChaseAngle(owner, target);
     float const hitboxSum = owner->GetCombatReach() + target->GetCombatReach();
     float const minRange = _range ? _range->MinRange + hitboxSum : CONTACT_DISTANCE;
     float const minTarget = (_range ? _range->MinTolerance : 0.0f) + hitboxSum;
     float const maxRange = _range ? _range->MaxRange + hitboxSum : owner->GetMeleeRange(target); // melee range already includes hitboxes
     float const maxTarget = _range ? _range->MaxTolerance + hitboxSum : CONTACT_DISTANCE + hitboxSum;
-    Optional<ChaseAngle> angle = mutualChase ? Optional<ChaseAngle>() : _angle;
+    Optional<ChaseAngle> angle = useChaseAngle ? _angle : Optional<ChaseAngle>();
 
     // periodically check if we're already in the expected range...
     _rangeCheckTimer.Update(diff);
@@ -153,10 +143,10 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
     }
 
     // if the target moved, we have to consider whether to adjust
-    if (!_lastTargetPosition || target->GetPosition() != _lastTargetPosition.value() || mutualChase != _mutualChase)
+    if (!_lastTargetPosition || !target->GetPosition().IsInDist(_lastTargetPosition.value(), 0.01f) || useChaseAngle != _useChaseAngle)
     {
         _lastTargetPosition = target->GetPosition();
-        _mutualChase = mutualChase;
+        _useChaseAngle = useChaseAngle;
         if (owner->HasUnitState(UNIT_STATE_CHASE_MOVE) || !PositionOkay(owner, target, minRange, maxRange, angle))
         {
             Creature* const cOwner = owner->ToCreature();
@@ -173,34 +163,48 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
             bool const moveToward = !owner->IsInDist(target, maxRange);
 
             // make a new path if we have to...
-            if (!_path || moveToward != _movingTowards)
+            if (!_path)
                 _path = std::make_unique<PathGenerator>(owner);
 
-            float x, y, z;
-            bool shortenPath;
+            Position destination;
+            bool shortenPath = false;
+            float calculationDistance = (moveToward ? maxTarget : minTarget) - hitboxSum;
+            float calculationAngle = angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner);
             // if we want to move toward the target and there's no fixed angle...
             if (moveToward && !angle)
             {
                 // ...we'll pathfind to the center, then shorten the path
-                target->GetPosition(x, y, z);
+                target->GetPosition(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
                 shortenPath = true;
             }
-            else
-            {
-                // otherwise, we fall back to nearpoint finding
-                target->GetNearPoint(owner, x, y, z, minTarget - hitboxSum, angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner));
-                shortenPath = false;
-            }
+            else // otherwise, we fall back to nearpoint finding
+                target->GetNearPoint(owner, destination.m_positionX, destination.m_positionY, destination.m_positionZ, calculationDistance, calculationAngle);
 
             if (owner->IsHovering())
-                owner->UpdateAllowedPositionZ(x, y, z);
-            else if (owner->IsFlying() && owner->GetTypeId() == TYPEID_UNIT && owner->ToCreature()->HasStoredMovementFlag(MOVEMENTFLAG_HOVER) && !owner->ToCreature()->IsInAir(Position(x, y, z), owner->GetMap()->GetHeight(owner->GetPhaseMask(), Position(x, y, z))))
+                owner->UpdateAllowedPositionZ(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
+            else if (owner->IsFlying()
+                && owner->GetTypeId() == TYPEID_UNIT
+                && owner->ToCreature()->HasStoredMovementFlag(MOVEMENTFLAG_HOVER)
+                && owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT)
+                && !owner->ToCreature()->IsInAir(destination, owner->GetMap()->GetHeight(owner->GetPhaseMask(), destination))
+            )
             {
-                target->GetNearPoint(owner, x, y, z, -owner->GetCombatReach(), angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner));
+                target->GetNearPoint(owner, destination.m_positionX, destination.m_positionY, destination.m_positionZ, calculationDistance, calculationAngle);
                 shortenPath = false;
             }
 
-            bool success = _path->CalculatePath(x, y, z, owner->CanFly());
+            if (owner->GetTypeId() == TYPEID_UNIT && owner->IsAIEnabled() && !dynamic_cast<SmartAI*>(owner->ToCreature()->AI()) && !owner->IsWithinLOSInMap(&destination, target))
+            {
+                target->GetNearPoint(owner, destination.m_positionX, destination.m_positionY, destination.m_positionZ, calculationDistance / 2.f, calculationAngle);
+                shortenPath = false;
+                if (!owner->IsWithinLOSInMap(&destination, target))
+                {
+                    target->GetPosition(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
+                    shortenPath = true;
+                }
+            }
+
+            bool success = _path->CalculatePath(destination.m_positionX, destination.m_positionY, destination.m_positionZ, owner->CanFly());
             if (!success || (_path->GetPathType() & (PATHFIND_NOPATH /* | PATHFIND_INCOMPLETE*/)))
             {
                 if (cOwner)
@@ -210,7 +214,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
             }
 
             if (shortenPath)
-                _path->ShortenPathUntilDist(PositionToVector3(target), minTarget);
+                _path->ShortenPathUntilDist(PositionToVector3(target), maxTarget);
 
             if (cOwner)
                 cOwner->SetCannotReachTarget(false);
@@ -264,4 +268,17 @@ void ChaseMovementGenerator::Finalize(Unit* owner, bool active, bool/* movementI
         if (Creature* cOwner = owner->ToCreature())
             cOwner->SetCannotReachTarget(false);
     }
+}
+
+bool ChaseMovementGenerator::_UseChaseAngle(Unit* owner, Unit* target)
+{
+    MovementGeneratorType targetMovementType = target->GetMotionMaster()->GetCurrentMovementGeneratorType();
+    if (targetMovementType == CHASE_MOTION_TYPE)
+        if (ChaseMovementGenerator* movement = dynamic_cast<ChaseMovementGenerator*>(target->GetMotionMaster()->GetCurrentMovementGenerator()))
+            return movement->GetTarget() != owner;
+
+    if (targetMovementType == IDLE_MOTION_TYPE || targetMovementType == RANDOM_MOTION_TYPE || targetMovementType == WAYPOINT_MOTION_TYPE)
+        return target->GetVictim() != owner;
+
+    return false;
 }

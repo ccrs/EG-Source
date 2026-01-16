@@ -422,7 +422,7 @@ struct boss_professor_putricide : public BossAI
                     break;
             }
         }
-        else if (type == EFFECT_MOTION_TYPE)
+        else if (type == FACE_MOTION_TYPE)
         {
             if (id == POINT_FACE_TABLE)
             {

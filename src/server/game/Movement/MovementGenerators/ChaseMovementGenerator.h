@@ -46,6 +46,8 @@ class ChaseMovementGenerator : public MovementGenerator, public AbstractFollower
     private:
         static constexpr uint32 RANGE_CHECK_INTERVAL = 100; // time (ms) until we attempt to recalculate
 
+        bool _UseChaseAngle(Unit* owner, Unit* target);
+
         Optional<ChaseRange> const _range;
         Optional<ChaseAngle> const _angle;
 
@@ -53,7 +55,7 @@ class ChaseMovementGenerator : public MovementGenerator, public AbstractFollower
         Optional<Position> _lastTargetPosition;
         TimeTracker _rangeCheckTimer;
         bool _movingTowards = true;
-        bool _mutualChase = true;
+        bool _useChaseAngle = false;
 };
 
 #endif

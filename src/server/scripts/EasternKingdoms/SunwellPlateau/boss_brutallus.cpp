@@ -236,7 +236,7 @@ struct boss_brutallus : public BossAI
 
     void MovementInform(uint32 type, uint32 id) override
     {
-        if (type == EFFECT_MOTION_TYPE)
+        if (type == FACE_MOTION_TYPE)
         {
             if (id == POINT_BRUTALLUS_FACE_1)
             {
@@ -319,7 +319,8 @@ struct npc_madrigosa : public ScriptedAI
                 default:
                     break;
             }
-        } else if (type == EFFECT_MOTION_TYPE)
+        }
+        else if (type == FACE_MOTION_TYPE)
         {
             if (id == POINT_MADRIGOSA_FACE_1)
                 _events.ScheduleEvent(EVENT_INTRO_27, 0ms);

@@ -1,5 +1,5 @@
 -- Stuck Jedoga
-UPDATE `creature_template_movement` SET `Ground` = '1' WHERE (`CreatureId` = '29310');
+UPDATE `creature_template_movement` SET `Ground` = '1' WHERE `CreatureId` IN ('29310','31465');
 
  -- Mo'arg Extractor with guid 97839 smart ai
 SET @ENTRY := -97839;

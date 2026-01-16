@@ -504,7 +504,7 @@ struct npc_warden_mellichar : public ScriptedAI
 
     void MovementInform(uint32 type, uint32 point) override
     {
-        if (type == EFFECT_MOTION_TYPE)
+        if (type == FACE_MOTION_TYPE)
         {
             if (point == POINT_FACE_SEAL_SPHERE)
             {

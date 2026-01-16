@@ -261,7 +261,7 @@ class npc_harrison_jones : public CreatureScript
 
             void MovementInform(uint32 type, uint32 id) override
             {
-                if (type == EFFECT_MOTION_TYPE)
+                if (type == FACE_MOTION_TYPE)
                 {
                     if (id == POINT_HARRISON_FACE_1)
                         _gongEvent = GONG_EVENT_12;

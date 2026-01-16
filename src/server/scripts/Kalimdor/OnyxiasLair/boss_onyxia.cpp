@@ -252,29 +252,30 @@ struct boss_onyxia : public BossAI
                 default:
                     break;
             }
-        } else if (type == EFFECT_MOTION_TYPE)
+        }
+        else if (type == EFFECT_MOTION_TYPE)
         {
-            switch (id)
+            if (id == 11)
             {
-                case 11:
-                    if (PointData)
-                        me->GetMotionMaster()->MovePoint(PointData->LocId, PointData->fX, PointData->fY, PointData->fZ);
-                    break;
-                case 12:
-                    me->SetCanFly(true);
-                    me->SetDisableGravity(true);
-                    me->GetMotionMaster()->MoveTakeoff(11, Phase2Floating);
-                    me->SetSpeedRate(MOVE_FLIGHT, 1.0f);
-                    Talk(SAY_PHASE_2_TRANS);
-                    instance->SetData(DATA_ONYXIA_PHASE, Phase);
-                    events.ScheduleEvent(EVENT_WHELP_SPAWN, 5s);
-                    events.ScheduleEvent(EVENT_LAIR_GUARD, 15s);
-                    events.ScheduleEvent(EVENT_DEEP_BREATH, 75s);
-                    events.ScheduleEvent(EVENT_MOVEMENT, 10s);
-                    events.ScheduleEvent(EVENT_FIREBALL, 18s);
-                    break;
-                default:
-                    break;
+                if (PointData)
+                    me->GetMotionMaster()->MovePoint(PointData->LocId, PointData->fX, PointData->fY, PointData->fZ);
+            }
+        }
+        else if (type == FACE_MOTION_TYPE)
+        {
+            if (id == 12)
+            {
+                me->SetCanFly(true);
+                me->SetDisableGravity(true);
+                me->GetMotionMaster()->MoveTakeoff(11, Phase2Floating);
+                me->SetSpeedRate(MOVE_FLIGHT, 1.0f);
+                Talk(SAY_PHASE_2_TRANS);
+                instance->SetData(DATA_ONYXIA_PHASE, Phase);
+                events.ScheduleEvent(EVENT_WHELP_SPAWN, 5s);
+                events.ScheduleEvent(EVENT_LAIR_GUARD, 15s);
+                events.ScheduleEvent(EVENT_DEEP_BREATH, 75s);
+                events.ScheduleEvent(EVENT_MOVEMENT, 10s);
+                events.ScheduleEvent(EVENT_FIREBALL, 18s);
             }
         }
     }

@@ -1678,7 +1678,7 @@ struct npc_gunship_mage : public gunship_npc_AI
                 me->SetFacingTo(slots[Index].TargetPosition.GetOrientation(), true, POINT_FACE_MAGE_SPELL);
             }
         }
-        else if (type == EFFECT_MOTION_TYPE)
+        else if (type == FACE_MOTION_TYPE)
         {
             if (pointId == POINT_FACE_MAGE_SPELL)
             {
