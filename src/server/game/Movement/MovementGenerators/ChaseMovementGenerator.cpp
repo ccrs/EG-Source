@@ -272,11 +272,10 @@ void ChaseMovementGenerator::Finalize(Unit* owner, bool active, bool/* movementI
 
 bool ChaseMovementGenerator::_UseChaseAngle(Unit* owner, Unit* target)
 {
-    if (owner->GetMotionMaster()->GetCurrentMovementGeneratorType() != CHASE_MOTION_TYPE)
-        return false;
+    MovementGeneratorType targetMovementType = target->GetMotionMaster()->GetCurrentMovementGeneratorType();
+    if (targetMovementType == CHASE_MOTION_TYPE)
+        if (ChaseMovementGenerator* movement = dynamic_cast<ChaseMovementGenerator*>(target->GetMotionMaster()->GetCurrentMovementGenerator()))
+            return movement->GetTarget() != owner;
 
-    if (ChaseMovementGenerator* movement = dynamic_cast<ChaseMovementGenerator*>(target->GetMotionMaster()->GetCurrentMovementGenerator()))
-        return movement->GetTarget() != owner;
-
-    return false;
+    return targetMovementType == IDLE_MOTION_TYPE;
 }
