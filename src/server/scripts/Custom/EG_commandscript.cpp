@@ -103,7 +103,7 @@ public:
         }
     }
 
-    static bool HandleXPRate(ChatHandler* handler, uint8 rate)
+    static bool HandleXPRate(ChatHandler* /*handler*/, uint8 /*rate*/)
     {
         /*Player* player = handler->GetSession()->GetPlayer();
         if (!player)
