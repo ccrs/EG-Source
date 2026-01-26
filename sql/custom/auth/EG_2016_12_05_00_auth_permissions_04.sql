@@ -245,7 +245,6 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (196, 697), -- Command: reload spell_pet_auras
 (196, 698), -- Command: character changeaccount
 (196, 699), -- Command: reload spell_proc
-(196, 700), -- Command: reload spell_scripts
 (196, 701), -- Command: reload spell_target_position
 (196, 702), -- Command: reload spell_threats
 (196, 703), -- Command: reload spell_group_stack_rules
