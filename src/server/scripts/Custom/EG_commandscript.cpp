@@ -109,9 +109,9 @@ public:
         if (!player)
             return false;
 
-        if (!rate || rate > 8)
+        if (!rate || rate > 6)
         {
-            handler->SendSysMessage("Please use a rate value between 1 and 7.");
+            handler->SendSysMessage("Please use a rate value between 1 and 5.");
             return true;
         }
 
