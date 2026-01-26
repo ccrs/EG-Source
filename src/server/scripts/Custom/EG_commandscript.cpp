@@ -24,6 +24,7 @@ public:
         {
             { "transmogrification", transmogrificationSettings }, 
             { "aoeloot",            HandleAOELoot, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "accountMount",       HandleAccountMount, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "xpRate",             HandleXPRate, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
         };
 
@@ -117,6 +118,25 @@ public:
 
         player->SetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS, CustomFlags(1 << (rate - 1)));
         handler->SendSysMessage(Trinity::StringFormat("XP rate modified to {}.", rate));*/
+        return true;
+    }
+
+    static bool HandleAccountMount(ChatHandler* handler, bool active)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        if (!player)
+            return false;
+
+        if (active)
+        {
+            player->AddCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT, CustomFlags::CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE);
+            handler->SendSysMessage("Account mounts transfering activated, mounts will be transfered on next character login.");
+        }
+        else
+        {
+            player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT, CustomFlags::CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE);
+            handler->SendSysMessage("Account mounts transfering deactivated.");
+        }
         return true;
     }
 };
