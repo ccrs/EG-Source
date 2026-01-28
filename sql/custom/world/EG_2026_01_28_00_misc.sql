@@ -15,3 +15,5 @@ DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` 
 DELETE FROM `creature_template_movement` WHERE `CreatureId`= @ENTRY;
 INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`, `Chase`, `Random`, `InteractionPauseTimer`) VALUES
 (@ENTRY, 1, 0, 0, 0, 0, 0, 0);
+
+UPDATE `creature_template` SET `speed_run` = 1.14286 WHERE `entry` = 28821;
