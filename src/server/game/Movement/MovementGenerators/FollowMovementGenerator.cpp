@@ -35,7 +35,7 @@ static void DoMovementInform(Unit* owner, Unit* target)
         AI->MovementInform(FOLLOW_MOTION_TYPE, target->GetGUID().GetCounter());
 }
 
-FollowMovementGenerator::FollowMovementGenerator(Unit* target, float range, ChaseAngle angle) : AbstractFollower(ASSERT_NOTNULL(target)), _range(range), _angle(angle), _checkTimer(CHECK_INTERVAL)
+FollowMovementGenerator::FollowMovementGenerator(Unit* target, float range, ChaseAngle angle, Optional<bool> run/* = {}*/) : AbstractFollower(ASSERT_NOTNULL(target)), _range(range), _angle(angle), _checkTimer(CHECK_INTERVAL), _run(run)
 {
     Mode = MOTION_MODE_DEFAULT;
     Priority = MOTION_PRIORITY_NORMAL;
@@ -159,7 +159,7 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
 
             Movement::MoveSplineInit init(owner);
             init.MovebyPath(_path->GetPath());
-            init.SetWalk(target->IsWalking());
+            init.SetWalk(_run.has_value() ? !_run.value() : owner->IsWalking());
             init.SetFacing(target->GetOrientation());
             init.Launch();
         }
