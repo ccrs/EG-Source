@@ -123,3 +123,5 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 18944 AND `SourceId` = 0;
+
+UPDATE `waypoint_data` SET `position_x` = -250.17, `position_y` = 1849.67, `position_z` = 94.48, `delay` = 2000 WHERE (`id` = 546513) and (`point` = 12);
