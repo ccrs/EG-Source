@@ -28,6 +28,7 @@
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "SpellAuras.h"
+#include "TemporarySummon.h"
 #include "Vehicle.h"
 #include "WaypointManager.h"
 
@@ -426,11 +427,20 @@ void SmartAI::EnterEvadeMode(EvadeReason /*why*/)
         AddEscortState(SMART_ESCORT_RETURNING);
         ReturnToLastOOCPos();
     }
-    else if (Unit* target = !_followGUID.IsEmpty() ? ObjectAccessor::GetUnit(*me, _followGUID) : nullptr)
+    else if (!_followGUID.IsEmpty())
     {
-        me->GetMotionMaster()->MoveFollow(target, _followDistance, _followAngle);
-        // evade is not cleared in MoveFollow, so we can't keep it
-        me->ClearUnitState(UNIT_STATE_EVADE);
+        if (Unit* target = ObjectAccessor::GetUnit(*me, _followGUID))
+        {
+            me->GetMotionMaster()->MoveFollow(target, _followDistance, _followAngle);
+            // evade is not cleared in MoveFollow, so we can't keep it
+            me->ClearUnitState(UNIT_STATE_EVADE);
+        }
+        else 
+        {
+            if (TempSummon* summon = me->ToTempSummon())
+                summon->SetFollowerDespawnActive(true);
+            me->GetMotionMaster()->MoveTargetedHome();
+        }
     }
     else
         me->GetMotionMaster()->MoveTargetedHome();
@@ -854,8 +864,11 @@ void SmartAI::StopFollow(bool complete)
     _followArrivedTimer = 1000;
     _followArrivedEntry = 0;
     _followCreditType = 0;
-    me->GetMotionMaster()->Clear();
+    me->GetMotionMaster()->Remove(FOLLOW_MOTION_TYPE);
     me->GetMotionMaster()->MoveIdle();
+
+    if (TempSummon* summon = me->ToTempSummon())
+        summon->SetFollowerDespawnActive(true);
 
     if (!complete)
         return;
