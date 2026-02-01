@@ -54,6 +54,7 @@ class TC_GAME_API TempSummon : public Creature
         uint32 GetTimer() const { return m_timer; }
         bool CanFollowOwner() const { return m_canFollowOwner; }
         void SetCanFollowOwner(bool can) { m_canFollowOwner = can; }
+        bool IsFollowerDespawnActive() const { return _followerDespawnActive; }
         void SetFollowerDespawnActive(bool value) { _followerDespawnActive = value; }
         SummonPropertiesEntry const* const m_Properties;
 
