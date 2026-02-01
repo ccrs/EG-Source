@@ -417,8 +417,9 @@ void SmartAI::EnterEvadeMode(EvadeReason /*why*/)
 
     SetRun(_run);
 
-    if (Unit* owner = me->GetCharmerOrOwner())
+    if (me->IsCharmed() && me->GetCharmerOrOwner())
     {
+        Unit* owner = me->GetCharmerOrOwner();
         me->GetMotionMaster()->MoveFollow(owner, PET_FOLLOW_DIST, PET_FOLLOW_ANGLE);
         me->ClearUnitState(UNIT_STATE_EVADE);
     }
@@ -439,8 +440,20 @@ void SmartAI::EnterEvadeMode(EvadeReason /*why*/)
         {
             if (TempSummon* summon = me->ToTempSummon())
                 summon->SetFollowerDespawnActive(true);
-            me->GetMotionMaster()->MoveTargetedHome();
+
+            if (Unit* owner = me->GetCharmerOrOwner())
+            {
+                me->GetMotionMaster()->MoveFollow(owner, PET_FOLLOW_DIST, PET_FOLLOW_ANGLE);
+                me->ClearUnitState(UNIT_STATE_EVADE);
+            }
+            else
+                me->GetMotionMaster()->MoveTargetedHome();
         }
+    }
+    else if (Unit* owner = me->GetCharmerOrOwner())
+    {
+        me->GetMotionMaster()->MoveFollow(owner, PET_FOLLOW_DIST, PET_FOLLOW_ANGLE);
+        me->ClearUnitState(UNIT_STATE_EVADE);
     }
     else
         me->GetMotionMaster()->MoveTargetedHome();
