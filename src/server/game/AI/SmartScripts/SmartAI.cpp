@@ -1005,11 +1005,15 @@ void SmartAI::UpdateFollow(uint32 diff)
     {
         if (_followArrivedTimer < diff)
         {
-            if (me->FindNearestCreature(_followArrivedEntry, INTERACTION_DISTANCE, true))
+            if (_followArrivedEntry && me->FindNearestCreature(_followArrivedEntry, INTERACTION_DISTANCE, true))
             {
                 StopFollow(true);
                 return;
             }
+
+            if (TempSummon* summon = me->ToTempSummon())
+                if (!summon->IsFollowerDespawnActive() && !ObjectAccessor::GetUnit(*me, _followGUID))
+                    summon->SetFollowerDespawnActive(true);
 
             _followArrivedTimer = 1000;
         }
