@@ -28,7 +28,7 @@
 
 TempSummon::TempSummon(SummonPropertiesEntry const* properties, WorldObject* owner, bool isWorldObject) :
 Creature(isWorldObject), m_Properties(properties), m_type(TEMPSUMMON_MANUAL_DESPAWN),
-m_timer(0), m_lifetime(0), m_canFollowOwner(true)
+m_timer(0), m_lifetime(0), m_canFollowOwner(true), _followerDespawnActive(true)
 {
     if (owner)
         m_summonerGUID = owner->GetGUID();
@@ -102,7 +102,6 @@ void TempSummon::Update(uint32 diff)
 
             break;
         }
-
         case TEMPSUMMON_CORPSE_TIMED_DESPAWN:
         {
             if (m_deathState == CORPSE)
@@ -166,6 +165,20 @@ void TempSummon::Update(uint32 diff)
                 m_timer = m_lifetime;
             break;
         }
+        case TEMPSUMMON_FOLLOWER_DESPAWN:
+            if (IsAlive() && _followerDespawnActive && !IsInCombat())
+            {
+                if (m_timer <= diff)
+                {
+                    UnSummon();
+                    return;
+                }
+                else
+                    m_timer -= diff;
+            }
+            else if (m_timer != m_lifetime)
+                m_timer = m_lifetime;
+            break;
         default:
             UnSummon();
             TC_LOG_ERROR("entities.unit", "Temporary summoned creature (entry: {}) have unknown type {} of ", GetEntry(), m_type);
