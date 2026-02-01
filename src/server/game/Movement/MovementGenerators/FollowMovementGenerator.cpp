@@ -112,7 +112,8 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
         DoMovementInform(owner, target);
     }
 
-    if (!_lastTargetPosition || _lastTargetPosition->GetExactDistSq(target->GetPosition()) > 0.0f)
+    float const curAngle = target->GetRelativeAngle(owner);
+    if (!_lastTargetPosition || target->GetPosition().IsInDist(_lastTargetPosition.value(), 0.1f) || !_angle.IsAngleOkay(curAngle))
     {
         _lastTargetPosition = target->GetPosition();
         if (owner->HasUnitState(UNIT_STATE_FOLLOW_MOVE) || !PositionOkay(owner, target, _range + FOLLOW_RANGE_TOLERANCE))
@@ -124,7 +125,6 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
 
             // select angle
             float tAngle;
-            float const curAngle = target->GetRelativeAngle(owner);
             if (_angle.IsAngleOkay(curAngle))
                 tAngle = curAngle;
             else
