@@ -46,7 +46,7 @@ class FollowMovementGenerator : public MovementGenerator, public AbstractFollowe
         void UnitSpeedChanged() override { _lastTargetPosition.reset(); }
 
     private:
-        static constexpr uint32 CHECK_INTERVAL = 100;
+        static constexpr uint32 CHECK_INTERVAL = 300;
 
         void UpdatePetSpeed(Unit* owner);
 
