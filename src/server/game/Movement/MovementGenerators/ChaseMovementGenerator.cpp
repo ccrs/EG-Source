@@ -128,6 +128,111 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
             DoMovementInform(owner, target);
             return true;
         }
+
+        // if the target moved, we have to consider whether to adjust
+        if (!_lastTargetPosition || !target->GetPosition().IsInDist(_lastTargetPosition.value(), 0.01f) || useChaseAngle != _useChaseAngle)
+        {
+            _lastTargetPosition = target->GetPosition();
+            _useChaseAngle = useChaseAngle;
+            if (owner->HasUnitState(UNIT_STATE_CHASE_MOVE) || !PositionOkay(owner, target, minRange, maxRange, angle))
+            {
+                Creature* const cOwner = owner->ToCreature();
+                // can we get to the target?
+                if (cOwner && !target->isInAccessiblePlaceFor(cOwner))
+                {
+                    cOwner->SetCannotReachTarget(true);
+                    cOwner->StopMoving();
+                    _path = nullptr;
+                    return true;
+                }
+
+                // figure out which way we want to move
+                bool const moveToward = !owner->IsInDist(target, maxRange);
+
+                // make a new path if we have to...
+                if (!_path)
+                    _path = std::make_unique<PathGenerator>(owner);
+
+                Position destination;
+                bool shortenPath = false;
+                float calculationDistance = (moveToward ? maxTarget : minTarget) - hitboxSum;
+                float calculationAngle = angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner);
+                // if we want to move toward the target and there's no fixed angle...
+                if (moveToward && !angle)
+                {
+                    // ...we'll pathfind to the center, then shorten the path
+                    target->GetPosition(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
+                    shortenPath = true;
+                }
+                else // otherwise, we fall back to nearpoint finding
+                    target->GetNearPoint(owner, destination.m_positionX, destination.m_positionY, destination.m_positionZ, calculationDistance, calculationAngle);
+
+                if (owner->IsHovering())
+                    owner->UpdateAllowedPositionZ(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
+                else if (owner->IsFlying()
+                    && owner->GetTypeId() == TYPEID_UNIT
+                    && owner->ToCreature()->HasStoredMovementFlag(MOVEMENTFLAG_HOVER)
+                    && owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT)
+                    && !owner->ToCreature()->IsInAir(destination, owner->GetMap()->GetHeight(owner->GetPhaseMask(), destination))
+                )
+                {
+                    target->GetNearPoint(owner, destination.m_positionX, destination.m_positionY, destination.m_positionZ, calculationDistance, calculationAngle);
+                    shortenPath = false;
+                }
+
+                if (owner->GetTypeId() == TYPEID_UNIT && owner->IsAIEnabled() && !dynamic_cast<SmartAI*>(owner->ToCreature()->AI()) && !owner->IsWithinLOSInMap(&destination, target))
+                {
+                    target->GetNearPoint(owner, destination.m_positionX, destination.m_positionY, destination.m_positionZ, calculationDistance / 2.f, calculationAngle);
+                    shortenPath = false;
+                    if (!owner->IsWithinLOSInMap(&destination, target))
+                    {
+                        target->GetPosition(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
+                        shortenPath = true;
+                    }
+                }
+
+                bool success = _path->CalculatePath(destination.m_positionX, destination.m_positionY, destination.m_positionZ, owner->CanFly());
+                if (!success || (_path->GetPathType() & (PATHFIND_NOPATH /* | PATHFIND_INCOMPLETE*/)))
+                {
+                    if (cOwner)
+                        cOwner->SetCannotReachTarget(true);
+                    owner->StopMoving();
+                    return true;
+                }
+
+                if (shortenPath)
+                    _path->ShortenPathUntilDist(PositionToVector3(target), maxTarget);
+
+                if (cOwner)
+                    cOwner->SetCannotReachTarget(false);
+
+                bool walk = false;
+                if (cOwner && !cOwner->IsPet())
+                {
+                    switch (cOwner->GetMovementTemplate().GetChase())
+                    {
+                        case CreatureChaseMovementType::CanWalk:
+                            walk = owner->IsWalking();
+                            break;
+                        case CreatureChaseMovementType::AlwaysWalk:
+                            walk = true;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                owner->AddUnitState(UNIT_STATE_CHASE_MOVE);
+                AddFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED);
+
+                Movement::MoveSplineInit init(owner);
+                init.MovebyPath(_path->GetPath());
+                init.SetWalk(walk);
+                init.SetFacing(target);
+                init.Launch();
+                return true;
+            }
+        }
     }
 
     // if we're done moving, we want to clean up
@@ -140,110 +245,6 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
         owner->ClearUnitState(UNIT_STATE_CHASE_MOVE);
         owner->SetInFront(target);
         DoMovementInform(owner, target);
-    }
-
-    // if the target moved, we have to consider whether to adjust
-    if (!_lastTargetPosition || !target->GetPosition().IsInDist(_lastTargetPosition.value(), 0.01f) || useChaseAngle != _useChaseAngle)
-    {
-        _lastTargetPosition = target->GetPosition();
-        _useChaseAngle = useChaseAngle;
-        if (owner->HasUnitState(UNIT_STATE_CHASE_MOVE) || !PositionOkay(owner, target, minRange, maxRange, angle))
-        {
-            Creature* const cOwner = owner->ToCreature();
-            // can we get to the target?
-            if (cOwner && !target->isInAccessiblePlaceFor(cOwner))
-            {
-                cOwner->SetCannotReachTarget(true);
-                cOwner->StopMoving();
-                _path = nullptr;
-                return true;
-            }
-
-            // figure out which way we want to move
-            bool const moveToward = !owner->IsInDist(target, maxRange);
-
-            // make a new path if we have to...
-            if (!_path)
-                _path = std::make_unique<PathGenerator>(owner);
-
-            Position destination;
-            bool shortenPath = false;
-            float calculationDistance = (moveToward ? maxTarget : minTarget) - hitboxSum;
-            float calculationAngle = angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner);
-            // if we want to move toward the target and there's no fixed angle...
-            if (moveToward && !angle)
-            {
-                // ...we'll pathfind to the center, then shorten the path
-                target->GetPosition(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
-                shortenPath = true;
-            }
-            else // otherwise, we fall back to nearpoint finding
-                target->GetNearPoint(owner, destination.m_positionX, destination.m_positionY, destination.m_positionZ, calculationDistance, calculationAngle);
-
-            if (owner->IsHovering())
-                owner->UpdateAllowedPositionZ(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
-            else if (owner->IsFlying()
-                && owner->GetTypeId() == TYPEID_UNIT
-                && owner->ToCreature()->HasStoredMovementFlag(MOVEMENTFLAG_HOVER)
-                && owner->GetFloatValue(UNIT_FIELD_HOVERHEIGHT)
-                && !owner->ToCreature()->IsInAir(destination, owner->GetMap()->GetHeight(owner->GetPhaseMask(), destination))
-            )
-            {
-                target->GetNearPoint(owner, destination.m_positionX, destination.m_positionY, destination.m_positionZ, calculationDistance, calculationAngle);
-                shortenPath = false;
-            }
-
-            if (owner->GetTypeId() == TYPEID_UNIT && owner->IsAIEnabled() && !dynamic_cast<SmartAI*>(owner->ToCreature()->AI()) && !owner->IsWithinLOSInMap(&destination, target))
-            {
-                target->GetNearPoint(owner, destination.m_positionX, destination.m_positionY, destination.m_positionZ, calculationDistance / 2.f, calculationAngle);
-                shortenPath = false;
-                if (!owner->IsWithinLOSInMap(&destination, target))
-                {
-                    target->GetPosition(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
-                    shortenPath = true;
-                }
-            }
-
-            bool success = _path->CalculatePath(destination.m_positionX, destination.m_positionY, destination.m_positionZ, owner->CanFly());
-            if (!success || (_path->GetPathType() & (PATHFIND_NOPATH /* | PATHFIND_INCOMPLETE*/)))
-            {
-                if (cOwner)
-                    cOwner->SetCannotReachTarget(true);
-                owner->StopMoving();
-                return true;
-            }
-
-            if (shortenPath)
-                _path->ShortenPathUntilDist(PositionToVector3(target), maxTarget);
-
-            if (cOwner)
-                cOwner->SetCannotReachTarget(false);
-
-            bool walk = false;
-            if (cOwner && !cOwner->IsPet())
-            {
-                switch (cOwner->GetMovementTemplate().GetChase())
-                {
-                    case CreatureChaseMovementType::CanWalk:
-                        walk = owner->IsWalking();
-                        break;
-                    case CreatureChaseMovementType::AlwaysWalk:
-                        walk = true;
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-            owner->AddUnitState(UNIT_STATE_CHASE_MOVE);
-            AddFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED);
-
-            Movement::MoveSplineInit init(owner);
-            init.MovebyPath(_path->GetPath());
-            init.SetWalk(walk);
-            init.SetFacing(target);
-            init.Launch();
-        }
     }
 
     // and then, finally, we're done for the tick

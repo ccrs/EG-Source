@@ -102,6 +102,60 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
             DoMovementInform(owner, target);
             return true;
         }
+
+        float const curAngle = target->GetRelativeAngle(owner);
+        if (!_lastTargetPosition || !target->GetPosition().IsInDist(_lastTargetPosition.value(), 0.1f) || !_angle.IsAngleOkay(curAngle))
+        {
+            _lastTargetPosition = target->GetPosition();
+            if (owner->HasUnitState(UNIT_STATE_FOLLOW_MOVE) || !PositionOkay(owner, target, _range + FOLLOW_RANGE_TOLERANCE))
+            {
+                if (!_path)
+                    _path = std::make_unique<PathGenerator>(owner);
+
+                float x, y, z;
+
+                // select angle
+                float tAngle;
+                if (_angle.IsAngleOkay(curAngle))
+                    tAngle = curAngle;
+                else
+                {
+                    float const diffUpper = Position::NormalizeOrientation(curAngle - _angle.UpperBound());
+                    float const diffLower = Position::NormalizeOrientation(_angle.LowerBound() - curAngle);
+                    if (diffUpper < diffLower)
+                        tAngle = _angle.UpperBound();
+                    else
+                        tAngle = _angle.LowerBound();
+                }
+
+                target->GetNearPoint(owner, x, y, z, _range, target->ToAbsoluteAngle(tAngle));
+
+                // pets are allowed to "cheat" on pathfinding when following their master
+                bool allowShortcut = false;
+                if (Pet* oPet = owner->ToPet())
+                {
+                    if (target->GetGUID() == oPet->GetOwnerGUID())
+                        allowShortcut = true;
+                }
+
+                bool success = _path->CalculatePath(x, y, z, allowShortcut);
+                if (!success || (_path->GetPathType() & PATHFIND_NOPATH))
+                {
+                    owner->StopMoving();
+                    return true;
+                }
+
+                owner->AddUnitState(UNIT_STATE_FOLLOW_MOVE);
+                AddFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED);
+
+                Movement::MoveSplineInit init(owner);
+                init.MovebyPath(_path->GetPath());
+                init.SetWalk(_run.has_value() ? !_run.value() : owner->IsWalking());
+                init.SetFacing(target->GetOrientation());
+                init.Launch();
+                return true;
+            }
+        }
     }
 
     if (owner->HasUnitState(UNIT_STATE_FOLLOW_MOVE) && owner->movespline->Finalized())
@@ -112,58 +166,6 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
         DoMovementInform(owner, target);
     }
 
-    float const curAngle = target->GetRelativeAngle(owner);
-    if (!_lastTargetPosition || !target->GetPosition().IsInDist(_lastTargetPosition.value(), 0.1f) || !_angle.IsAngleOkay(curAngle))
-    {
-        _lastTargetPosition = target->GetPosition();
-        if (owner->HasUnitState(UNIT_STATE_FOLLOW_MOVE) || !PositionOkay(owner, target, _range + FOLLOW_RANGE_TOLERANCE))
-        {
-            if (!_path)
-                _path = std::make_unique<PathGenerator>(owner);
-
-            float x, y, z;
-
-            // select angle
-            float tAngle;
-            if (_angle.IsAngleOkay(curAngle))
-                tAngle = curAngle;
-            else
-            {
-                float const diffUpper = Position::NormalizeOrientation(curAngle - _angle.UpperBound());
-                float const diffLower = Position::NormalizeOrientation(_angle.LowerBound() - curAngle);
-                if (diffUpper < diffLower)
-                    tAngle = _angle.UpperBound();
-                else
-                    tAngle = _angle.LowerBound();
-            }
-
-            target->GetNearPoint(owner, x, y, z, _range, target->ToAbsoluteAngle(tAngle));
-
-            // pets are allowed to "cheat" on pathfinding when following their master
-            bool allowShortcut = false;
-            if (Pet* oPet = owner->ToPet())
-            {
-                if (target->GetGUID() == oPet->GetOwnerGUID())
-                    allowShortcut = true;
-            }
-
-            bool success = _path->CalculatePath(x, y, z, allowShortcut);
-            if (!success || (_path->GetPathType() & PATHFIND_NOPATH))
-            {
-                owner->StopMoving();
-                return true;
-            }
-
-            owner->AddUnitState(UNIT_STATE_FOLLOW_MOVE);
-            AddFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED);
-
-            Movement::MoveSplineInit init(owner);
-            init.MovebyPath(_path->GetPath());
-            init.SetWalk(_run.has_value() ? !_run.value() : owner->IsWalking());
-            init.SetFacing(target->GetOrientation());
-            init.Launch();
-        }
-    }
     return true;
 }
 
