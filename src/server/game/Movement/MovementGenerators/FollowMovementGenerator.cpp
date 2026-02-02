@@ -60,6 +60,7 @@ bool FollowMovementGenerator::Initialize(Unit* owner)
     UpdatePetSpeed(owner);
     _path = nullptr;
     _lastTargetPosition.reset();
+    _checkTimer.Reset(0);
     return false;
 }
 
