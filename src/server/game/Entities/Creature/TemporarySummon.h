@@ -57,6 +57,7 @@ class TC_GAME_API TempSummon : public Creature
         bool IsFollowerDespawnActive() const { return _followerDespawnActive; }
         void SetFollowerDespawnActive(bool value) { _followerDespawnActive = value; }
         SummonPropertiesEntry const* const m_Properties;
+        static bool ShouldFollowOnSpawn(SummonPropertiesEntry const* properties);
 
         std::string GetDebugInfo() const override;
     private:
