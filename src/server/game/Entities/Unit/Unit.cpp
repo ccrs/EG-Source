@@ -6267,7 +6267,7 @@ void Unit::RemoveAllControlled(bool onDeath/* = false*/)
         else if (target->GetOwnerGUID() == GetGUID() && target->IsSummon())
         {
             TempSummon* summon = target->ToTempSummon();
-            if (onDeath && summon->HasUnitTypeMask(UNIT_MASK_GUARDIAN | UNIT_MASK_MINION) && TempSummon::ShouldFollowOnSpawn(summon->m_Properties))
+            if (onDeath && GetTypeId() == TYPEID_UNIT && summon->HasUnitTypeMask(UNIT_MASK_GUARDIAN | UNIT_MASK_MINION) && TempSummon::ShouldFollowOnSpawn(summon->m_Properties))
             {
                 if (summon->IsInCombat() && summon->CanHaveThreatList() && summon->GetCombatManager().HasPvECombatWithPlayers())
                 {
@@ -6406,16 +6406,30 @@ void Unit::RemoveCharmAuras()
     RemoveAurasByType(SPELL_AURA_AOE_CHARM);
 }
 
-void Unit::UnsummonAllTotems()
+void Unit::UnsummonAllTotems(bool onDeath/* = false*/)
 {
     for (uint8 i = 0; i < MAX_SUMMON_SLOT; ++i)
     {
         if (!m_SummonSlot[i])
             continue;
 
-        if (Creature* OldTotem = GetMap()->GetCreature(m_SummonSlot[i]))
-            if (OldTotem->IsSummon())
-                OldTotem->ToTempSummon()->UnSummon();
+        if (Creature* summonCreature = GetMap()->GetCreature(m_SummonSlot[i]))
+            if (summonCreature->IsSummon())
+            {
+                TempSummon* summon = summonCreature->ToTempSummon();
+                if (onDeath && GetTypeId() == TYPEID_UNIT && i == SUMMON_SLOT_PET && summon->HasUnitTypeMask(UNIT_MASK_GUARDIAN | UNIT_MASK_MINION) && TempSummon::ShouldFollowOnSpawn(summon->m_Properties))
+                {
+                    if (summon->IsInCombat() && summon->CanHaveThreatList() && summon->GetCombatManager().HasPvECombatWithPlayers())
+                    {
+                        summon->SetTimer(1000);
+                        summon->SetTempSummonType(TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT);
+                    }
+                    else
+                        summon->UnSummon();
+                }
+                else
+                    summon->UnSummon();
+            }
     }
 }
 
@@ -8760,7 +8774,7 @@ void Unit::setDeathState(DeathState s)
         ExitVehicle();                                      // Exit vehicle before calling RemoveAllControlled
                                                             // vehicles use special type of charm that is not removed by the next function
                                                             // triggering an assert
-        UnsummonAllTotems();
+        UnsummonAllTotems(true);
         RemoveAllControlled(true);
         RemoveAllAurasOnDeath();
     }
