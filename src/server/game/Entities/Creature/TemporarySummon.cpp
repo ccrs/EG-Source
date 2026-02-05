@@ -312,6 +312,38 @@ void TempSummon::RemoveFromWorld()
     Creature::RemoveFromWorld();
 }
 
+// adapted from logic in Spell:EffectSummonType before commit 8499434
+/*static */bool TempSummon::ShouldFollowOnSpawn(SummonPropertiesEntry const* properties)
+{
+    // Summons without SummonProperties are generally scripted summons that don't belong to any owner
+    if (!properties)
+        return false;
+
+    switch (properties->Control)
+    {
+        case SUMMON_CATEGORY_PET:
+            return true;
+        case SUMMON_CATEGORY_WILD:
+        case SUMMON_CATEGORY_ALLY:
+        case SUMMON_CATEGORY_UNK:
+            if (properties->Flags & 512)
+                return true;
+            switch (properties->Title)
+            {
+                case SUMMON_TYPE_PET:
+                case SUMMON_TYPE_GUARDIAN:
+                case SUMMON_TYPE_GUARDIAN2:
+                case SUMMON_TYPE_MINION:
+                case SUMMON_TYPE_MINIPET:
+                    return true;
+                default:
+                    return false;
+            }
+        default:
+            return false;
+    }
+}
+
 std::string TempSummon::GetDebugInfo() const
 {
     std::stringstream sstr;

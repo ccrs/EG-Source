@@ -154,38 +154,6 @@ void CreatureAI::TriggerAlert(Unit const* who) const
     me->GetMotionMaster()->MoveDistract(5 * IN_MILLISECONDS, me->GetAbsoluteAngle(who));
 }
 
-// adapted from logic in Spell:EffectSummonType before commit 8499434
-static bool ShouldFollowOnSpawn(SummonPropertiesEntry const* properties)
-{
-    // Summons without SummonProperties are generally scripted summons that don't belong to any owner
-    if (!properties)
-        return false;
-
-    switch (properties->Control)
-    {
-        case SUMMON_CATEGORY_PET:
-            return true;
-        case SUMMON_CATEGORY_WILD:
-        case SUMMON_CATEGORY_ALLY:
-        case SUMMON_CATEGORY_UNK:
-            if (properties->Flags & 512)
-                return true;
-            switch (properties->Title)
-            {
-                case SUMMON_TYPE_PET:
-                case SUMMON_TYPE_GUARDIAN:
-                case SUMMON_TYPE_GUARDIAN2:
-                case SUMMON_TYPE_MINION:
-                case SUMMON_TYPE_MINIPET:
-                    return true;
-                default:
-                    return false;
-            }
-        default:
-            return false;
-    }
-}
-
 void CreatureAI::JustAppeared()
 {
     if (!IsEngaged())
@@ -193,7 +161,7 @@ void CreatureAI::JustAppeared()
         if (TempSummon* summon = me->ToTempSummon())
         {
             // Only apply this to specific types of summons
-            if (!summon->GetVehicle() && ShouldFollowOnSpawn(summon->m_Properties) && summon->CanFollowOwner())
+            if (!summon->GetVehicle() && TempSummon::ShouldFollowOnSpawn(summon->m_Properties) && summon->CanFollowOwner())
             {
                 if (Unit* owner = summon->GetCharmerOrOwner())
                 {
