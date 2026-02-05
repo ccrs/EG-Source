@@ -1279,7 +1279,7 @@ class TC_GAME_API Unit : public WorldObject
 
         ControlList m_Controlled;
         Unit* GetFirstControlled() const;
-        void RemoveAllControlled();
+        void RemoveAllControlled(bool onDeath = false);
 
         bool IsCharmed() const { return !GetCharmerGUID().IsEmpty(); }
         bool IsCharming() const { return !GetCharmedGUID().IsEmpty(); }

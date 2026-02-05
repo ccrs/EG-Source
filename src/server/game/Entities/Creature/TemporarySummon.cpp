@@ -278,7 +278,7 @@ void TempSummon::UnSummon(uint32 msTime)
         return;
     }
 
-    if (WorldObject * owner = GetSummoner())
+    if (WorldObject* owner = GetSummoner())
     {
         if (owner->GetTypeId() == TYPEID_UNIT && owner->ToCreature()->IsAIEnabled())
             owner->ToCreature()->AI()->SummonedCreatureDespawn(this);
@@ -354,8 +354,7 @@ std::string TempSummon::GetDebugInfo() const
     return sstr.str();
 }
 
-Minion::Minion(SummonPropertiesEntry const* properties, Unit* owner, bool isWorldObject)
-    : TempSummon(properties, owner, isWorldObject), m_owner(owner)
+Minion::Minion(SummonPropertiesEntry const* properties, Unit* owner, bool isWorldObject) : TempSummon(properties, owner, isWorldObject), m_owner(owner)
 {
     ASSERT(m_owner);
     m_unitTypeMask |= UNIT_MASK_MINION;
@@ -379,7 +378,9 @@ void Minion::RemoveFromWorld()
     if (!IsInWorld())
         return;
 
-    GetOwner()->SetMinion(this, false);
+    if (GetOwner())
+        GetOwner()->SetMinion(this, false);
+
     TempSummon::RemoveFromWorld();
 }
 
@@ -419,8 +420,7 @@ std::string Minion::GetDebugInfo() const
     return sstr.str();
 }
 
-Guardian::Guardian(SummonPropertiesEntry const* properties, Unit* owner, bool isWorldObject) : Minion(properties, owner, isWorldObject)
-, m_bonusSpellDamage(0)
+Guardian::Guardian(SummonPropertiesEntry const* properties, Unit* owner, bool isWorldObject) : Minion(properties, owner, isWorldObject), m_bonusSpellDamage(0)
 {
     memset(m_statFromOwner, 0, sizeof(float)*MAX_STATS);
     m_unitTypeMask |= UNIT_MASK_GUARDIAN;
@@ -462,8 +462,7 @@ std::string Guardian::GetDebugInfo() const
     return sstr.str();
 }
 
-Puppet::Puppet(SummonPropertiesEntry const* properties, Unit* owner)
-    : Minion(properties, owner, false) //maybe true?
+Puppet::Puppet(SummonPropertiesEntry const* properties, Unit* owner) : Minion(properties, owner, false) //maybe true?
 {
     ASSERT(m_owner->GetTypeId() == TYPEID_PLAYER);
     m_unitTypeMask |= UNIT_MASK_PUPPET;
