@@ -57,7 +57,7 @@ class EG_spell_destroy_deathforged_infernal : public SpellScript
         return ValidateSpellInfo({ SPELL_RANDOM_ROCKET_MISSILE });
     }
 
-    void HandleScript(SpellEffIndex effIndex)
+    void HandleScript(SpellEffIndex /*effIndex*/)
     {
         GetHitUnit()->CastSpell(nullptr, SPELL_RANDOM_ROCKET_MISSILE, CastSpellExtraArgs(TriggerCastFlags(TRIGGERED_IGNORE_GCD | TRIGGERED_IGNORE_SPELL_AND_CATEGORY_CD | TRIGGERED_IGNORE_CAST_IN_PROGRESS)));
     }
