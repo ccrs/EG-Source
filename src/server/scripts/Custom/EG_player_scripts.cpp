@@ -54,11 +54,84 @@ class EG_AccountSpells : public PlayerScript
                     switch (relatedInfo->Id)
                     {
                         case 33388: // Apprentice Riding (Apprentice)
+                            if (player->GetLevel() >= 20)
+                                player->LearnSpell(relatedInfo->Id, false);
+                            break;
                         case 33391: // Journeyman Riding (Journeyman)
+                            if (player->GetLevel() >= 40)
+                                player->LearnSpell(relatedInfo->Id, false);
+                            break;
                         case 34090: // Expert Riding (Expert)
+                            if (player->GetLevel() >= 60)
+                                player->LearnSpell(relatedInfo->Id, false);
+                            break;
                         case 34091: // Artisan Riding (Artisan)
+                            if (player->GetLevel() >= 70)
+                                player->LearnSpell(relatedInfo->Id, false);
+                            break;
                         case 54197: // Cold Weather Flying (Passive)
-                            player->LearnSpell(relatedInfo->Id, false);
+                            if (player->GetLevel() >= 77)
+                                player->LearnSpell(relatedInfo->Id, false);
+                            break;
+                    }
+                }
+            }
+        }
+
+        void OnLevelChanged(Player* player, uint8/* oldLevel*/) override
+        {
+            if (!player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE)
+                || (player->HasSpell(34091) /*Artisan Riding (Artisan)*/ && player->HasSpell(54197) /*Cold Weather Flying (Passive)*/)  // Lets try to be efficient here...
+            )
+                return;
+
+            uint32 playerAccountID = player->GetSession()->GetAccountId();
+            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_EXISTING_CHARACTER_SPELLS);
+            stmt->setUInt32(0, playerAccountID);
+            stmt->setUInt32(1, Player::TeamForRace(player->GetRace()) == ALLIANCE ? RACEMASK_ALLIANCE : RACEMASK_HORDE);
+            stmt->setUInt32(2, player->GetGUID().GetCounter());
+
+            std::unordered_set<uint32> spellIds;
+            if (PreparedQueryResult resultCharacterSpells = CharacterDatabase.Query(stmt))
+            {
+                do
+                {
+                    Field* fields = resultCharacterSpells->Fetch();
+                    uint32 spellId = fields[0].GetUInt32();
+                    spellIds.insert(spellId);
+                }
+                while (resultCharacterSpells->NextRow());
+            }
+
+            bool searchForRiding = player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE);
+            for (uint32 spellId : spellIds)
+            {
+                SpellInfo const* relatedInfo = sSpellMgr->GetSpellInfo(spellId);
+                if (!relatedInfo)
+                    continue;
+                if (searchForRiding)
+                {
+                    switch (relatedInfo->Id)
+                    {
+                        case 33388: // Apprentice Riding (Apprentice)
+                            if (player->GetLevel() >= 20)
+                                player->LearnSpell(relatedInfo->Id, false);
+                            break;
+                        case 33391: // Journeyman Riding (Journeyman)
+                            if (player->GetLevel() >= 40)
+                                player->LearnSpell(relatedInfo->Id, false);
+                            break;
+                        case 34090: // Expert Riding (Expert)
+                            if (player->GetLevel() >= 60)
+                                player->LearnSpell(relatedInfo->Id, false);
+                            break;
+                        case 34091: // Artisan Riding (Artisan)
+                            if (player->GetLevel() >= 70)
+                                player->LearnSpell(relatedInfo->Id, false);
+                            break;
+                        case 54197: // Cold Weather Flying (Passive)
+                            if (player->GetLevel() >= 77)
+                                player->LearnSpell(relatedInfo->Id, false);
                             break;
                     }
                 }

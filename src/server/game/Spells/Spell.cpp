@@ -6103,6 +6103,15 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* param1 /*= nullptr*/, uint
                 }
                 break;
             }
+            case SPELL_AURA_MOD_INCREASE_MOUNTED_SPEED:
+            {
+                Player* playerCaster = m_caster->ToPlayer();
+                if (playerCaster && spellEffectInfo.BasePoints == 59 && playerCaster->HasSpell(m_spellInfo->Id) && !playerCaster->HasSpell(33388)) // Apprentice Riding (Apprentice))
+                    return SPELL_FAILED_LOWLEVEL;
+                if (playerCaster && spellEffectInfo.BasePoints == 99 && playerCaster->HasSpell(m_spellInfo->Id) && !playerCaster->HasSpell(33391)) // Journeyman Riding (Journeyman)
+                    return SPELL_FAILED_LOWLEVEL;
+                break;
+            }
             case SPELL_AURA_RANGED_ATTACK_POWER_ATTACKER_BONUS:
             {
                 if (!m_targets.GetUnitTarget())
@@ -6113,8 +6122,15 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* param1 /*= nullptr*/, uint
                     return SPELL_FAILED_TARGET_FRIENDLY;
                 break;
             }
-            case SPELL_AURA_FLY:
             case SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED:
+            {
+                Player* playerCaster = m_caster->ToPlayer();
+                if (playerCaster && spellEffectInfo.BasePoints == 149 && playerCaster->HasSpell(m_spellInfo->Id) && !playerCaster->HasSpell(34090)) // Expert Riding (Expert)
+                    return SPELL_FAILED_LOWLEVEL;
+                if (playerCaster&& spellEffectInfo.BasePoints >= 279 && playerCaster->HasSpell(m_spellInfo->Id) && !playerCaster->HasSpell(34091)) // Artisan Riding (Artisan)
+                    return SPELL_FAILED_LOWLEVEL;
+            }
+            case SPELL_AURA_FLY:
             {
                 // not allow cast fly spells if not have req. skills  (all spells is self target)
                 // allow always ghost flight spells
