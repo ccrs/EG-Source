@@ -518,7 +518,7 @@ enum CharacterDatabaseStatements : uint32
     CHAR_SEL_TRANSMOGRIFICATIONS,
     CHAR_DEL_TRANSMOGRIFICATIONS,
 
-    // EG - Account wide mount learning
+    // EG - Account wide spell search (faction locked)
     CHAR_SEL_EXISTING_CHARACTER_SPELLS,
 
     MAX_CHARACTERDATABASE_STATEMENTS

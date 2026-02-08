@@ -10,14 +10,16 @@
 #include <unordered_set>
 
 
-class EG_AccountMounts : public PlayerScript
+class EG_AccountSpells : public PlayerScript
 {
     public:
-        EG_AccountMounts() : PlayerScript("EG_AccountMounts") { }
+        EG_AccountSpells() : PlayerScript("EG_AccountSpells") { }
         
         void OnLogin(Player* player, bool /*firstLogin*/) override
         {
-            if (!sWorld->getBoolConfig(CONFIG_ACCOUNT_MOUNTS) || !player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT, CustomFlags::CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE))
+            if ((!sWorld->getBoolConfig(CONFIG_ACCOUNT_MOUNTS) || !player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT, CustomFlags::CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE))
+                && !player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE)
+            )
                 return;
 
             uint32 playerAccountID = player->GetSession()->GetAccountId();
@@ -38,11 +40,28 @@ class EG_AccountMounts : public PlayerScript
                 while (resultCharacterSpells->NextRow());
             }
 
+            bool searchForMounts = player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT, CustomFlags::CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE);
+            bool searchForRiding = player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE);
             for (uint32 spellId : spellIds)
             {
                 SpellInfo const* relatedInfo = sSpellMgr->GetSpellInfo(spellId);
-                if (relatedInfo && relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).Effect == SPELL_EFFECT_APPLY_AURA && relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).ApplyAuraName == SPELL_AURA_MOUNTED)
+                if (!relatedInfo)
+                    continue;
+                if (searchForMounts && relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).Effect == SPELL_EFFECT_APPLY_AURA && relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).ApplyAuraName == SPELL_AURA_MOUNTED)
                     player->LearnSpell(relatedInfo->Id, false);
+                if (searchForRiding)
+                {
+                    switch (relatedInfo->Id)
+                    {
+                        case 33388: // Apprentice Riding (Apprentice)
+                        case 33391: // Journeyman Riding (Journeyman)
+                        case 34090: // Expert Riding (Expert)
+                        case 34091: // Artisan Riding (Artisan)
+                        case 54197: // Cold Weather Flying (Passive)
+                            player->LearnSpell(relatedInfo->Id, false);
+                            break;
+                    }
+                }
             }
         }
 };
@@ -86,8 +105,7 @@ class EG_XPRate : public PlayerScript
 
 void AddSC_EG_player_scripts()
 {
-    if (sWorld->getBoolConfig(CONFIG_ACCOUNT_MOUNTS))
-        new EG_AccountMounts();
+    new EG_AccountSpells();
     if (sWorld->getBoolConfig(CONFIG_WORLD_CHAT))
         new EG_WorldChat();
     new EG_XPRate();

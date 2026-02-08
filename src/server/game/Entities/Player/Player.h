@@ -934,6 +934,7 @@ enum CustomFlagsIndex : uint16
     CUSTOM_AOELOOT_FLAGS = 1,
     CUSTOM_XPRATE_FLAGS = 2,
     CUSTOM_ACCOUNT_MOUNT = 3,
+    CUSTOM_ACCOUNT_RIDING = 4,
     CUSTOM_FLAGS_MAX
 };
 
@@ -954,6 +955,8 @@ enum CustomFlags : uint16
     CUSTOM_FLAG_XPRATE_5                = 0x10,
 
     CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE    = 0x01,
+
+    CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE    = 0x01,
 };
 
 class TC_GAME_API Player : public Unit, public GridObject<Player>
