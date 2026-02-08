@@ -60,14 +60,26 @@ class EG_AccountSpells : public PlayerScript
                         case 33391: // Journeyman Riding (Journeyman)
                             if (player->GetLevel() >= 40)
                                 player->LearnSpell(relatedInfo->Id, false);
+                            else if (player->GetLevel() >= 20)
+                                player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
                             break;
                         case 34090: // Expert Riding (Expert)
                             if (player->GetLevel() >= 60)
                                 player->LearnSpell(relatedInfo->Id, false);
+                            else if (player->GetLevel() >= 40)
+                                player->LearnSpell(33391, false); // Journeyman Riding (Journeyman)
+                            else if (player->GetLevel() >= 20)
+                                player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
                             break;
                         case 34091: // Artisan Riding (Artisan)
                             if (player->GetLevel() >= 70)
                                 player->LearnSpell(relatedInfo->Id, false);
+                            else if (player->GetLevel() >= 60)
+                                player->LearnSpell(34090, false); // Expert Riding (Expert)
+                            else if (player->GetLevel() >= 40)
+                                player->LearnSpell(33391, false); // Journeyman Riding (Journeyman)
+                            else if (player->GetLevel() >= 20)
+                                player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
                             break;
                         case 54197: // Cold Weather Flying (Passive)
                             if (player->GetLevel() >= 77)
@@ -120,14 +132,26 @@ class EG_AccountSpells : public PlayerScript
                         case 33391: // Journeyman Riding (Journeyman)
                             if (player->GetLevel() >= 40)
                                 player->LearnSpell(relatedInfo->Id, false);
+                            else if (player->GetLevel() >= 20)
+                                player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
                             break;
                         case 34090: // Expert Riding (Expert)
                             if (player->GetLevel() >= 60)
                                 player->LearnSpell(relatedInfo->Id, false);
+                            else if (player->GetLevel() >= 40)
+                                player->LearnSpell(33391, false); // Journeyman Riding (Journeyman)
+                            else if (player->GetLevel() >= 20)
+                                player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
                             break;
                         case 34091: // Artisan Riding (Artisan)
                             if (player->GetLevel() >= 70)
                                 player->LearnSpell(relatedInfo->Id, false);
+                            else if (player->GetLevel() >= 60)
+                                player->LearnSpell(34090, false); // Expert Riding (Expert)
+                            else if (player->GetLevel() >= 40)
+                                player->LearnSpell(33391, false); // Journeyman Riding (Journeyman)
+                            else if (player->GetLevel() >= 20)
+                                player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
                             break;
                         case 54197: // Cold Weather Flying (Passive)
                             if (player->GetLevel() >= 77)
