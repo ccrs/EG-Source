@@ -6129,6 +6129,7 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* param1 /*= nullptr*/, uint
                     return SPELL_FAILED_LOWLEVEL;
                 if (playerCaster&& spellEffectInfo.BasePoints >= 279 && playerCaster->HasSpell(m_spellInfo->Id) && !playerCaster->HasSpell(34091)) // Artisan Riding (Artisan)
                     return SPELL_FAILED_LOWLEVEL;
+                [[fallthrough]];
             }
             case SPELL_AURA_FLY:
             {
