@@ -25,3 +25,7 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 28006 AND `SourceId` = 0;
+
+DELETE FROM `vehicle_template_accessory` WHERE `entry` = 28018;
+INSERT INTO `vehicle_template_accessory` (`entry`, `accessory_entry`, `seat_id`, `minion`, `summontype`, `summontimer`, `description`) VALUES
+(28018, 28006, 0, 0, 6, 30000, 'Thiassi the Lightning Bringer seat 0: Grand Necrolord Antiok // Thiassi the Light Bringer');
