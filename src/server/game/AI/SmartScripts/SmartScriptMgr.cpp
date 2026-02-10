@@ -868,6 +868,7 @@ bool SmartAIMgr::CheckUnusedActionParams(SmartScriptHolder const& e)
             case SMART_ACTION_ACTIVATE_GAMEOBJECT: return sizeof(SmartAction::activateGameObject);
             case SMART_ACTION_ADD_TO_STORED_TARGET_LIST: return sizeof(SmartAction::addToStoredTargets);
             case SMART_ACTION_RESUME_MOVEMENT: return sizeof(SmartAction::resumeMovement);
+            case SMART_ACTION_SET_NOT_ATTACKABLE: return sizeof(SmartAction::setNotAttackable);
             default:
                 TC_LOG_WARN("sql.sql", "SmartAIMgr: Entry {} SourceType {} Event {} Action {} is using an action with no unused params specified in SmartAIMgr::CheckUnusedActionParams(), please report this.",
                     e.entryOrGuid, e.GetScriptType(), e.event_id, e.GetActionType());
@@ -2001,6 +2002,11 @@ bool SmartAIMgr::IsEventValid(SmartScriptHolder& e)
                     e.entryOrGuid, e.GetScriptType(), e.event_id, e.GetActionType(), uint32(GameObjectActions::Max) - 1, e.action.activateGameObject.gameObjectAction);
                 return false;
             }
+            break;
+        }
+        case SMART_ACTION_SET_NOT_ATTACKABLE:
+        {
+            TC_SAI_IS_BOOLEAN_VALID(e, e.action.setNotAttackable.apply);
             break;
         }
         case SMART_ACTION_FOLLOW:
