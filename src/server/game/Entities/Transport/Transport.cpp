@@ -120,7 +120,7 @@ void Transport::CleanupsBeforeDelete(bool finalCleanup /*= true*/)
 
 void Transport::Update(uint32 diff)
 {
-    uint32 const positionUpdateDelay = 50;
+    uint32 const positionUpdateDelay = 1;
 
     if (AI())
         AI()->UpdateAI(diff);
