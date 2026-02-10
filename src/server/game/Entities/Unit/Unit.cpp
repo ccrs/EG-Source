@@ -12803,7 +12803,6 @@ void Unit::_ExitVehicle(Position const* exitPosition)
         toCreature->LoadCreaturesAddon();
         if (toCreature->IsVehicle())
             toCreature->GetVehicleKit()->Reset(true);
-        toCreature->AI()->JustReachedHome();
     }
 }
 
