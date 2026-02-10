@@ -21,7 +21,11 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 (@ENTRY, 0, 6, 0, 0, 2, 100, 0, 0, 0, 5000, 5000, 11, 55984, 64, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 5 seconds (0s initially) (IC) - Self: Cast spell  Shadow Bolt (55984) with flags combat move on Victim'),
 (@ENTRY, 0, 7, 0, 0, 2, 100, 0, 5000, 15000, 25000, 35000, 11, 50497, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Every 25 - 35 seconds (5 - 15s initially) (IC) - Self: Cast spell  Scream of Chaos (50497) on Self'),
 (@ENTRY, 0, 8, 0, 6, 0, 100, 0, 0, 0, 0, 0, 11, 50472, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On death - Self: Cast spell  Drop Scythe of Antiok (50472) on Self'),
-(@ENTRY, 0, 9, 0, 6, 0, 100, 0, 0, 0, 0, 0, 1, 3, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On death - Self: Talk 3 to invoker');
+(@ENTRY, 0, 9, 0, 6, 0, 100, 0, 0, 0, 0, 0, 1, 3, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On death - Self: Talk 3 to invoker'),
+(@ENTRY, 0, 10, 11, 25, 2, 100, 0, 0, 0, 0, 0, 22, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Set event phase to phase 2'),
+(@ENTRY, 0, 11, 12, 61, 0, 100, 0, 0, 0, 0, 0, 8, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Set react state to Aggressive'),
+(@ENTRY, 0, 12, 13, 61, 0, 100, 0, 0, 0, 0, 0, 28, 50494, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Remove aura due to spell  Shroud of Lightning (50494)'),
+(@ENTRY, 0, 13, 0, 61, 0, 100, 0, 0, 0, 0, 0, 159, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Set attackable');
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 28006 AND `SourceId` = 0;
