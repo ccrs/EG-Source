@@ -612,7 +612,8 @@ enum SMART_ACTION
     SMART_ACTION_BOARD_PASSENGER                    = 156,    // seat id (RESERVED, PENDING CHERRYPICK)
     SMART_ACTION_EXIT_VEHICLE                       = 157,    // (RESERVED, PENDING CHERRYPICK)
     SMART_ACTION_RESUME_MOVEMENT                    = 158,    // MovementSlot (default = 0, active = 1, controlled = 2), ResumeTime (ms)
-    SMART_ACTION_END                                = 159
+    SMART_ACTION_SET_NOT_ATTACKABLE                 = 159,
+    SMART_ACTION_END                                = 160
 };
 
 enum class SmartActionSummonCreatureFlags
@@ -1195,6 +1196,11 @@ struct SmartAction
             uint32 movementSlot;
             uint32 resumeTimer;
         } resumeMovement;
+
+        struct
+        {
+            SAIBool apply;
+        } setNotAttackable;
 
         //! Note for any new future actions
         //! All parameters must have type uint32

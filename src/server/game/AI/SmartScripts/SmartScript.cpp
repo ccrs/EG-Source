@@ -2330,6 +2330,20 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                     target->ToUnit()->ResumeMovement(e.action.resumeMovement.resumeTimer, e.action.resumeMovement.movementSlot);
             break;
         }
+        case SMART_ACTION_SET_NOT_ATTACKABLE:
+        {
+            for (WorldObject* const target : targets)
+            {
+                if (IsUnit(target))
+                {
+                    if (e.action.setNotAttackable.apply)
+                        target->ToUnit()->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
+                    else
+                        target->ToUnit()->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
+                }
+            }
+            break;
+        }
         default:
             TC_LOG_ERROR("sql.sql", "SmartScript::ProcessAction: Entry {} SourceType {}, Event {}, Unhandled Action type {}", e.entryOrGuid, e.GetScriptType(), e.event_id, e.GetActionType());
             break;
