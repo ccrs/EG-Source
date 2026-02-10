@@ -12725,6 +12725,9 @@ void Unit::_ExitVehicle(Position const* exitPosition)
     SetControlled(false, UNIT_STATE_ROOT);      // SMSG_MOVE_FORCE_UNROOT, ~MOVEMENTFLAG_ROOT
 
     AddUnitState(UNIT_STATE_MOVE);
+    bool wasEvading = HasUnitState(UNIT_STATE_EVADE);
+    if (wasEvading)
+        ClearUnitState(UNIT_STATE_EVADE);
 
     if (player)
         player->SetFallInformation(0, GetPositionZ());
@@ -12788,10 +12791,9 @@ void Unit::_ExitVehicle(Position const* exitPosition)
         else
             ToTempSummon()->UnSummon(2000); // Approximation
     }
-    else if (HasUnitState(UNIT_STATE_EVADE) && GetTypeId() == TYPEID_UNIT)
+    else if (wasEvading && GetTypeId() == TYPEID_UNIT)
     {
         Creature* toCreature = ToCreature();
-        toCreature->ClearUnitState(UNIT_STATE_EVADE);
         toCreature->SetSpawnHealth();
         toCreature->LoadCreaturesAddon();
         if (toCreature->IsVehicle())
