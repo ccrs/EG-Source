@@ -36,9 +36,9 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 (@ENTRY, 0, 26, 0, 9, 2, 100, 0, 0, 40, 13000, 14000, 11, 52502, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'When victim in range 0 - 40 yards (cooldown 13000 - 14000 ms) - Self: Cast spell  Moonfire (52502) on Victim'),
 (@ENTRY, 0, 27, 28, 21, 4, 100, 0, 0, 0, 0, 0, 11, 48371, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On home reached - Self: Cast spell  Tree of Life (48371) on Self'),
 (@ENTRY, 0, 28, 0, 61, 0, 100, 0, 0, 0, 0, 0, 11, 52553, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On home reached - Self: Cast spell  Empowered Tree of Life (52553) on Self'),
-(@ENTRY, 0, 29, 0, 0, 4, 100, 0, 2000, 2000, 0, 0, 79, 15, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Time = 2 seconds (IC) - Self: Chase its victim in 15 yards (angle 0)'),
-(@ENTRY, 0, 30, 0, 0, 4, 100, 0, 0, 1000, 1500, 1500, 11, 52554, 0, 0, 0, 0, 0, 31, 40, 1, 0, 0, 0, 0, 0, 'Every 1.5 - 1.5 seconds (0 - 1s initially) (IC) - Self: Cast spell  Nourish (52554) on Lowest HP friendly player in 40 yards'),
-(@ENTRY, 0, 31, 0, 0, 4, 100, 0, 0, 1000, 1700, 1700, 11, 52551, 0, 0, 0, 0, 0, 31, 40, 1, 0, 0, 0, 0, 0, 'Every 1.7 - 1.7 seconds (0 - 1s initially) (IC) - Self: Cast spell  Lifebloom (52551) on Lowest HP friendly player in 40 yards'),
+(@ENTRY, 0, 29, 0, 0, 4, 100, 1, 2000, 2000, 0, 0, 79, 15, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Time = 2 seconds (IC) - Self: Chase its victim in 15 yards (angle 0)'),
+(@ENTRY, 0, 30, 0, 0, 4, 100, 0, 0, 1000, 1500, 1500, 11, 52554, 1, 0, 0, 0, 0, 31, 40, 1, 0, 0, 0, 0, 0, 'Every 1.5 - 1.5 seconds (0 - 1s initially) (IC) - Self: Cast spell  Nourish (52554) on Lowest HP friendly player in 40 yards'),
+(@ENTRY, 0, 31, 0, 0, 4, 100, 0, 0, 1000, 1000, 2000, 11, 52551, 0, 0, 0, 0, 0, 31, 40, 1, 0, 0, 0, 0, 0, 'Every 1 - 2 seconds (0 - 1s initially) (IC) - Self: Cast spell  Lifebloom (52551) on Lowest HP friendly player in 40 yards'),
 (@ENTRY, 0, 32, 0, 75, 4, 100, 0, 0, 26633, 40, 2000, 49, 0, 0, 0, 0, 0, 0, 7, 26633, 0, 0, 0, 0, 0, 0, 'When creature Ursoc (26633) in range 40 (cooldown 2 sec) - Self: Attack Found creature'),
 (@ENTRY, 0, 33, 0, 38, 0, 100, 0, 0, 1, 0, 0, 41, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[0] set to 1 - Self: Despawn instantly');
 
