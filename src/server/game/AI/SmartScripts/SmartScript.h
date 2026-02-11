@@ -69,7 +69,7 @@ class TC_GAME_API SmartScript
         void DoFindFriendlyCC(std::vector<Creature*>& creatures, float range) const;
         void DoFindFriendlyMissingBuff(std::vector<Creature*>& creatures, float range, uint32 spellid) const;
         Unit* DoFindClosestFriendlyInRange(float range, bool playerOnly) const;
-        Unit* DoFindLowestHPFriendlyInRange(float range, bool playerOnly) const;
+        Unit* DoFindLowestHPFriendlyInRange(float range, bool playerOnly, bool includeSelf) const;
 
         bool IsSmart(Creature* c, bool silent = false) const;
         bool IsSmart(GameObject* g, bool silent = false) const;

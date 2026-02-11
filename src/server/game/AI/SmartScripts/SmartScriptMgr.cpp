@@ -487,6 +487,7 @@ bool SmartAIMgr::IsTargetValid(SmartScriptHolder const& e)
             break;
         case SMART_TARGET_LOWEST_HP_FRIENDLY:
             TC_SAI_IS_BOOLEAN_VALID(e, e.target.lowestHPFriendly.playerOnly);
+            TC_SAI_IS_BOOLEAN_VALID(e, e.target.lowestHPFriendly.includeSelf);
             break;
         case SMART_TARGET_CLOSEST_GAMEOBJECT:
         case SMART_TARGET_PLAYER_RANGE:
