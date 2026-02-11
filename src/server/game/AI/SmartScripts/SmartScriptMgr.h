@@ -1258,8 +1258,9 @@ enum SMARTAI_TARGETS
     SMART_TARGET_FARTHEST                       = 28,   // maxDist, playerOnly, isInLos
     SMART_TARGET_VEHICLE_PASSENGER              = 29,   // seatMask (0 - all seats)
     SMART_TARGET_CLOSEST_UNSPAWNED_GAMEOBJECT   = 30,   // entry(0any), maxDist
+    SMART_TARGET_LOWEST_HP_FRIENDLY             = 31,   // maxDist, playerOnly
 
-    SMART_TARGET_END                            = 31
+    SMART_TARGET_END                            = 32
 };
 
 struct SmartTarget
@@ -1391,6 +1392,12 @@ struct SmartTarget
         {
             uint32 maxDist;
         } threatList;
+
+        struct
+        {
+            uint32 maxDist;
+            SAIBool playerOnly;
+        } lowestHPFriendly;
 
         struct
         {

@@ -22,6 +22,7 @@
 #include "Creature.h"
 #include "CreatureTextMgr.h"
 #include "CreatureTextMgrImpl.h"
+#include "CustomFunctions.h"
 #include "GameEventMgr.h"
 #include "GameObject.h"
 #include "GossipDef.h"
@@ -1914,7 +1915,7 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                              e.GetTargetType() == SMART_TARGET_CLOSEST_CREATURE || e.GetTargetType() == SMART_TARGET_CLOSEST_GAMEOBJECT ||
                              e.GetTargetType() == SMART_TARGET_OWNER_OR_SUMMONER || e.GetTargetType() == SMART_TARGET_ACTION_INVOKER ||
                              e.GetTargetType() == SMART_TARGET_CLOSEST_ENEMY || e.GetTargetType() == SMART_TARGET_CLOSEST_FRIENDLY ||
-                             e.GetTargetType() == SMART_TARGET_CLOSEST_UNSPAWNED_GAMEOBJECT)
+                             e.GetTargetType() == SMART_TARGET_CLOSEST_UNSPAWNED_GAMEOBJECT || e.GetTargetType() == SMART_TARGET_LOWEST_HP_FRIENDLY)
                     {
                         target->ToCreature()->SetHomePosition(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), target->GetOrientation());
                     }
@@ -2755,6 +2756,13 @@ void SmartScript::GetTargets(ObjectVector& targets, SmartScriptHolder const& e, 
         {
             if (GameObject* target = baseObject->FindNearestUnspawnedGameObject(e.target.goClosest.entry, float(e.target.goClosest.dist ? e.target.goClosest.dist : 100)))
                 targets.push_back(target);
+            break;
+        }
+        case SMART_TARGET_LOWEST_HP_FRIENDLY:
+        {
+            if (me)
+                if (Unit* target = DoFindLowestHPFriendlyInRange(e.target.closestFriendly.maxDist, e.target.closestFriendly.playerOnly != 0))
+                    targets.push_back(target);
             break;
         }
         case SMART_TARGET_POSITION:
@@ -3807,6 +3815,18 @@ Unit* SmartScript::DoFindClosestFriendlyInRange(float range, bool playerOnly) co
     Unit* unit = nullptr;
     Trinity::AnyFriendlyUnitInObjectRangeCheck u_check(me, me, range, playerOnly);
     Trinity::UnitLastSearcher<Trinity::AnyFriendlyUnitInObjectRangeCheck> searcher(me, unit, u_check);
+    Cell::VisitAllObjects(me, searcher, range);
+    return unit;
+}
+
+Unit* SmartScript::DoFindLowestHPFriendlyInRange(float range, bool playerOnly) const
+{
+    if (!me)
+        return nullptr;
+
+    Unit* unit = nullptr;
+    EG::MostHPMissingFriendlyUnitInRangeSearcher u_check(me, range, playerOnly);
+    Trinity::UnitLastSearcher<EG::MostHPMissingFriendlyUnitInRangeSearcher> searcher(me, unit, u_check);
     Cell::VisitAllObjects(me, searcher, range);
     return unit;
 }
