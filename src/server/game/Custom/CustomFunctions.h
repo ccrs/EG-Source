@@ -10,14 +10,14 @@ namespace EG
     class TC_GAME_API MostHPMissingFriendlyUnitInRangeSearcher
     {
     public:
-        MostHPMissingFriendlyUnitInRangeSearcher(Unit const* source, float range, bool playerOnly = false) : _source(source), _range(range), _playerOnly(playerOnly), _hp(0) { }
+        MostHPMissingFriendlyUnitInRangeSearcher(Unit const* source, float range, bool playerOnly = false) : _source(source), _range(range), _playerOnly(playerOnly), _hp(100.f) { }
         bool operator()(Unit* unit);
 
     private:
         Unit const* _source;
         float _range;
         bool _playerOnly;
-        uint32 _hp;
+        float _hp;
     };
 }
 
