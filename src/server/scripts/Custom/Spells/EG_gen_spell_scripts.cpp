@@ -126,10 +126,53 @@ class EG_spell_fel_reaver_controller : public SpellScript
     }
 };
 
+enum CharmChannel
+{
+    SPELL_CHARM_DRAKURU_SERVANT = 52390,
+    NPC_SERVANT_OF_DRAKURU = 28802
+};
+
+// 52389 - Charm Channel
+class EG_spell_charm_channel : public AuraScript
+{
+    PrepareAuraScript(EG_spell_charm_channel);
+
+    void PeriodicTick(AuraEffect const* /*aurEff*/)
+    {
+        PreventDefaultAction();
+        if (Unit* caster = GetCaster())
+            caster->CastSpell(GetOwner(), SPELL_CHARM_DRAKURU_SERVANT, true);
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_charm_channel::PeriodicTick, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+    }
+};
+
+// 52390 - Charm Drakuru Servant
+class EG_spell_charm_drakuru_servant : public AuraScript
+{
+    PrepareAuraScript(EG_spell_charm_drakuru_servant);
+
+    void OnApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        if (GetOwner()->GetEntry() == NPC_SERVANT_OF_DRAKURU)
+            PreventDefaultAction();
+    }
+
+    void Register() override
+    {
+        OnEffectApply += AuraEffectApplyFn(EG_spell_charm_drakuru_servant::OnApply, EFFECT_0, SPELL_AURA_MOD_CHARM, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_Cosmetic___Divine_Shield_Blue);
     RegisterSpellScript(EG_spell_destroy_deathforged_infernal);
     RegisterSpellScript(EG_spell_fel_reaver_sentinel_tag);
     RegisterSpellScript(EG_spell_fel_reaver_controller);
+    RegisterSpellScript(EG_spell_charm_channel);
+    RegisterSpellScript(EG_spell_charm_drakuru_servant);
 }

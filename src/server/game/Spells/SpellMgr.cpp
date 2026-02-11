@@ -4943,6 +4943,12 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->RecoveryTime = 30000;
     });
 
+    // Charm Drakuru Servant
+    ApplySpellFix({ 52390 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];
