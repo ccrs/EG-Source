@@ -34,14 +34,20 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 (@ENTRY, 0, 24, 0, 21, 2, 100, 0, 0, 0, 0, 0, 11, 48369, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On home reached - Self: Cast spell  Moonkin Form (48369) on Self'),
 (@ENTRY, 0, 25, 0, 9, 2, 100, 0, 0, 40, 2500, 4000, 11, 52501, 64, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'When victim in range 0 - 40 yards (cooldown 2500 - 4000 ms) - Self: Cast spell  Wrath (52501) with flags combat move on Victim'),
 (@ENTRY, 0, 26, 0, 9, 2, 100, 0, 0, 40, 13000, 14000, 11, 52502, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'When victim in range 0 - 40 yards (cooldown 13000 - 14000 ms) - Self: Cast spell  Moonfire (52502) on Victim'),
-(@ENTRY, 0, 27, 0, 21, 4, 100, 0, 0, 0, 0, 0, 11, 48371, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On home reached - Self: Cast spell  Tree of Life (48371) on Self'),
-(@ENTRY, 0, 28, 0, 4, 4, 100, 0, 0, 0, 0, 0, 79, 15, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On aggro - Self: Chase its victim in 15 yards (angle 0)'),
-(@ENTRY, 0, 29, 0, 0, 4, 100, 0, 0, 0, 1500, 1500, 11, 52554, 0, 0, 0, 0, 0, 17, 0, 40, 0, 0, 0, 0, 0, 'Every 1.5 seconds (0s initially) (IC) - Self: Cast spell  Nourish (52554) on Players in 0 - 40 yards'),
-(@ENTRY, 0, 30, 0, 0, 4, 100, 0, 50, 50, 1700, 1700, 11, 52551, 0, 0, 0, 0, 0, 17, 0, 40, 0, 0, 0, 0, 0, 'Every 1.7 seconds (0.05s initially) (IC) - Self: Cast spell  Lifebloom (52551) on Players in 0 - 40 yards'),
-(@ENTRY, 0, 31, 0, 38, 0, 100, 0, 0, 1, 0, 0, 41, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[0] set to 1 - Self: Despawn instantly');
+(@ENTRY, 0, 27, 28, 21, 4, 100, 0, 0, 0, 0, 0, 11, 48371, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On home reached - Self: Cast spell  Tree of Life (48371) on Self'),
+(@ENTRY, 0, 28, 0, 61, 0, 100, 0, 0, 0, 0, 0, 11, 52553, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On home reached - Self: Cast spell  Empowered Tree of Life (52553) on Self'),
+(@ENTRY, 0, 29, 0, 0, 4, 100, 0, 2000, 2000, 0, 0, 79, 15, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Time = 2 seconds (IC) - Self: Chase its victim in 15 yards (angle 0)'),
+(@ENTRY, 0, 30, 0, 0, 4, 100, 0, 0, 1000, 1500, 1500, 11, 52554, 0, 0, 0, 0, 0, 31, 40, 1, 0, 0, 0, 0, 0, 'Every 1.5 - 1.5 seconds (0 - 1s initially) (IC) - Self: Cast spell  Nourish (52554) on Lowest HP friendly player in 40 yards'),
+(@ENTRY, 0, 31, 0, 0, 4, 100, 0, 0, 1000, 1700, 1700, 11, 52551, 0, 0, 0, 0, 0, 31, 40, 1, 0, 0, 0, 0, 0, 'Every 1.7 - 1.7 seconds (0 - 1s initially) (IC) - Self: Cast spell  Lifebloom (52551) on Lowest HP friendly player in 40 yards'),
+(@ENTRY, 0, 32, 0, 75, 4, 100, 0, 0, 26633, 40, 2000, 49, 0, 0, 0, 0, 0, 0, 7, 26633, 0, 0, 0, 0, 0, 0, 'When creature Ursoc (26633) in range 40 (cooldown 2 sec) - Self: Attack Found creature'),
+(@ENTRY, 0, 33, 0, 38, 0, 100, 0, 0, 1, 0, 0, 41, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[0] set to 1 - Self: Despawn instantly');
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 27328 AND `SourceId` = 0;
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+(22, 33, 27328, 0, 0, 21, 0, 32, 0, 0, 0, 'Action invoker has unit state UNIT_STATE_CHASE'),
+(22, 33, 27328, 0, 0, 36, 1, 0, 0, 0, 0, 'Object is alive'),
+(22, 33, 27328, 0, 0, 21, 1, 32, 0, 0, 1, 'Object doesn\'t have unit state UNIT_STATE_CHASE');
 
  -- Timed list 2732800 smart ai
 SET @ENTRY := 2732800;
@@ -83,7 +89,8 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 (@ENTRY, 9, 2, 0, 0, 0, 100, 0, 0, 0, 0, 0, 2, 113, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 0 seconds - Self: Set faction to Escortee (113)'),
 (@ENTRY, 9, 3, 0, 0, 0, 100, 0, 0, 0, 0, 0, 91, 8, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 0 seconds - Self: Remove stand state KNEEL'),
 (@ENTRY, 9, 4, 0, 0, 0, 100, 0, 2600, 2600, 0, 0, 1, 2, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 'After 2.6 seconds - Last action invoker: Talk 2 to invoker'),
-(@ENTRY, 9, 5, 0, 0, 0, 100, 0, 4700, 4700, 0, 0, 53, 1, 218625, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 4.7 seconds - Self: Start path #218625, run, do not repeat, Passive');
+(@ENTRY, 9, 5, 0, 0, 0, 100, 0, 4700, 4700, 0, 0, 53, 1, 218625, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 4.7 seconds - Self: Start path #218625, run, do not repeat, Passive'),
+(@ENTRY, 9, 6, 0, 0, 0, 100, 0, 0, 0, 0, 0, 8, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 0 seconds - Self: Set react state to Aggressive');
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 2732802 AND `SourceId` = 9;
