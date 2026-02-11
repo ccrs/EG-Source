@@ -1951,7 +1951,8 @@ public:
             handler->SendSysMessage("| Custom Flags:");
             handler->PSendSysMessage("| - Transmog flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS));
             handler->PSendSysMessage("| - AOELoot flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_AOELOOT_FLAGS));
-            handler->PSendSysMessage("| - AcccountMount flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT));
+            handler->PSendSysMessage("| - Acccount Mount flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT));
+            handler->PSendSysMessage("| - Acccount Riding flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING));
             handler->PSendSysMessage("| - XPRate flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS));
         }
 
