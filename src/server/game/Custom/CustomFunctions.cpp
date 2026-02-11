@@ -176,7 +176,7 @@ Loot* Player::GetLootFromAOELoot(ObjectGuid lootGUID) const
 
 bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
 {
-    if (_source == unit && unit->GetHealthPct() < _hp)
+    if (_includeSelf && _source == unit && unit->GetHealthPct() < _hp)
     {
         _hp = unit->GetHealthPct();
         return true;

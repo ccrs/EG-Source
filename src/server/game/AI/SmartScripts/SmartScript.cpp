@@ -2761,7 +2761,7 @@ void SmartScript::GetTargets(ObjectVector& targets, SmartScriptHolder const& e, 
         case SMART_TARGET_LOWEST_HP_FRIENDLY:
         {
             if (me)
-                if (Unit* target = DoFindLowestHPFriendlyInRange(e.target.closestFriendly.maxDist, e.target.closestFriendly.playerOnly != 0))
+                if (Unit* target = DoFindLowestHPFriendlyInRange(e.target.lowestHPFriendly.maxDist, e.target.lowestHPFriendly.playerOnly != 0, e.target.lowestHPFriendly.includeSelf != 0))
                     targets.push_back(target);
             break;
         }
@@ -3819,13 +3819,13 @@ Unit* SmartScript::DoFindClosestFriendlyInRange(float range, bool playerOnly) co
     return unit;
 }
 
-Unit* SmartScript::DoFindLowestHPFriendlyInRange(float range, bool playerOnly) const
+Unit* SmartScript::DoFindLowestHPFriendlyInRange(float range, bool playerOnly, bool includeSelf) const
 {
     if (!me)
         return nullptr;
 
     Unit* unit = nullptr;
-    EG::MostHPMissingFriendlyUnitInRangeSearcher u_check(me, range, playerOnly);
+    EG::MostHPMissingFriendlyUnitInRangeSearcher u_check(me, range, playerOnly, includeSelf);
     Trinity::UnitLastSearcher<EG::MostHPMissingFriendlyUnitInRangeSearcher> searcher(me, unit, u_check);
     Cell::VisitAllObjects(me, searcher, range);
     return unit;

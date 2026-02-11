@@ -1397,6 +1397,7 @@ struct SmartTarget
         {
             uint32 maxDist;
             SAIBool playerOnly;
+            SAIBool includeSelf;
         } lowestHPFriendly;
 
         struct
