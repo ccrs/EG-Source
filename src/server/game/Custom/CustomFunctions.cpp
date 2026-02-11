@@ -1,8 +1,14 @@
 #include "Unit.h"
 #include "CustomFunctions.h"
 
-bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit *unit)
+bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
 {
+    if (_source == unit && (unit->GetMaxHealth() - unit->GetHealth() > _hp))
+    {
+        _hp = unit->GetMaxHealth() - unit->GetHealth();
+        return true;
+    }
+
     if ((_playerOnly && unit->IsPlayer() || !_playerOnly)
         && unit->IsAlive()
         && unit->IsInCombat()
