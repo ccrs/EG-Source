@@ -3,9 +3,9 @@
 
 bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
 {
-    if (_source == unit && (unit->GetMaxHealth() - unit->GetHealth() > _hp))
+    if (_source == unit && unit->GetHealthPct() < _hp)
     {
-        _hp = unit->GetMaxHealth() - unit->GetHealth();
+        _hp = unit->GetHealthPct();
         return true;
     }
 
@@ -14,10 +14,10 @@ bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
         && unit->IsInCombat()
         && _source->IsValidAssistTarget(unit)
         && _source->IsWithinDistInMap(unit, _range)
-        && (unit->GetMaxHealth() - unit->GetHealth() > _hp)
+        && unit->GetHealthPct() < _hp
     )
     {
-        _hp = unit->GetMaxHealth() - unit->GetHealth();
+        _hp = unit->GetHealthPct();
         return true;
     }
 
