@@ -246,7 +246,7 @@ class TC_GAME_API CreatureAI : public UnitAI
         // If a PlayerAI* is returned, that AI is placed on the player instead of the default charm AI
         // Object destruction is handled by Unit::RemoveCharmedBy
         virtual PlayerAI* GetAIForCharmedPlayer(Player* /*who*/) { return nullptr; }
-        virtual CreatureAI* GetAIForCharm(Creature* /*who*/) { return nullptr; }
+        virtual CreatureAI* GetAIForCharm(Unit* /*who*/) { return nullptr; }
 
         // intended for encounter design/debugging. do not use for other purposes. expensive.
         int32 VisualizeBoundary(Seconds duration, Unit* owner = nullptr, bool fill = false) const;
