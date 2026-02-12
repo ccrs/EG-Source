@@ -5,7 +5,20 @@
 
 enum HandOfDrakuru
 {
-    SPELL_CHARM_DRAKURU_SERVANT = 52390
+    SPELL_CHARM_DRAKURU_SERVANT = 52390,
+    AREA_RELIQUARY_OF_PAIN = 4315
+};
+
+struct EG_npc_pet_hand_of_drakuru_petAI : public PetAI
+{
+    EG_npc_pet_hand_of_drakuru_petAI(Creature* creature) : PetAI(creature) { }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (me->GetMap() && me->GetMap()->GetAreaId(me->GetPhaseMask(), *me) != AREA_RELIQUARY_OF_PAIN)
+            me->DespawnOrUnsummon();
+        PetAI::UpdateAI(diff);
+    }
 };
 
 struct EG_npc_pet_hand_of_drakuru : public ScriptedAI
@@ -32,7 +45,14 @@ struct EG_npc_pet_hand_of_drakuru : public ScriptedAI
 
     CreatureAI* GetAIForCharm(Unit* /*who*/) override
     {
-        return new PetAI(me);
+        return new EG_npc_pet_hand_of_drakuru_petAI(me);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (me->GetMap() && me->GetMap()->GetAreaId(me->GetPhaseMask(), *me) != AREA_RELIQUARY_OF_PAIN)
+            me->DespawnOrUnsummon();
+        ScriptedAI::UpdateAI(diff);
     }
 };
 
@@ -40,7 +60,8 @@ enum BlightbloodTroll
 {
     SPELL_SCOURGE_SPOTLIGHT = 53104,
     NPC_TOTALLY_GENERIC_BUNNY_x80__JSB = 29100,
-    SPELL_DRAKARU_DESPAWN_BLIGHTBLOOD = 61492
+    SPELL_DRAKARU_DESPAWN_BLIGHTBLOOD = 61492,
+    AREA_VOLTARUS = 4314
 };
 
 struct EG_npc_pet_blightblood_troll_petAI : public PetAI
@@ -51,6 +72,13 @@ struct EG_npc_pet_blightblood_troll_petAI : public PetAI
     {
         if (spellInfo->Id == SPELL_DRAKARU_DESPAWN_BLIGHTBLOOD)
             me->DespawnOrUnsummon();
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (me->GetMap() && me->GetMap()->GetAreaId(me->GetPhaseMask(), *me) != AREA_VOLTARUS)
+            me->DespawnOrUnsummon();
+        PetAI::UpdateAI(diff);
     }
 };
 
@@ -97,6 +125,13 @@ struct EG_npc_pet_blightblood_troll : public ScriptedAI
             me->SetImmuneToNPC(false);
             me->SetImmuneToPC(false);
         }
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (me->GetMap() && me->GetMap()->GetAreaId(me->GetPhaseMask(), *me) != AREA_VOLTARUS)
+            me->DespawnOrUnsummon();
+        ScriptedAI::UpdateAI(diff);
     }
 };
 
