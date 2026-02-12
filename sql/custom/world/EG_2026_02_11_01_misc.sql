@@ -32,3 +32,8 @@ DELETE FROM `spell_script_names` WHERE `ScriptName` IN ('EG_spell_charm_channel'
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (52389, 'EG_spell_charm_channel'),
 (52390, 'EG_spell_charm_drakuru_servant');
+
+ -- Blightblood Troll smart ai
+SET @ENTRY := 28931;
+UPDATE `creature_template` SET `AIName` = '', `ScriptName` = 'EG_npc_pet_blightblood_troll' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
