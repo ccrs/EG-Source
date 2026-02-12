@@ -9597,7 +9597,15 @@ void Unit::RestoreDisabledAI()
 UnitAI* Unit::GetScheduledChangeAI()
 {
     if (Creature* creature = ToCreature())
-        return new ScheduledChangeAI(creature);
+    {
+        ScheduledChangeAI* newAI = new ScheduledChangeAI(creature);
+        if (Creature* creature = ToCreature())
+        {
+            if (CreatureAI* currentAI = creature->AI())
+                newAI->StoredAI = currentAI->GetAIForCharm(GetCharmer());
+        }
+        return newAI;
+    }
     else
         return nullptr;
 }
@@ -9729,12 +9737,10 @@ void Unit::UpdateCharmAI()
         else
         {
             ASSERT(GetTypeId() == TYPEID_UNIT);
-
-            // first, we check if the creature's own AI specifies an override
-            if (Creature* creature = ToCreature())
+            if (ScheduledChangeAI* currentAI = dynamic_cast<ScheduledChangeAI*>(GetAI()))
             {
-                if (CreatureAI* currentAI = creature->AI())
-                    newAI = currentAI->GetAIForCharm(GetCharmer());
+                if (UnitAI* storedAI = currentAI->StoredAI)
+                    newAI = storedAI;
             }
             if (!newAI)
             {
