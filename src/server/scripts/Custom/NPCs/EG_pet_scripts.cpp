@@ -30,7 +30,7 @@ struct EG_npc_pet_hand_of_drakuru : public ScriptedAI
             ScriptedAI::OnCharmed(isNew);
     }
 
-    CreatureAI* GetAIForCharm(Creature* /*who*/) override
+    CreatureAI* GetAIForCharm(Unit* /*who*/) override
     {
         return new PetAI(me);
     }
@@ -79,7 +79,7 @@ struct EG_npc_pet_blightblood_troll : public ScriptedAI
         ScriptedAI::OnCharmed(isNew);
     }
 
-    CreatureAI* GetAIForCharm(Creature* /*who*/) override
+    CreatureAI* GetAIForCharm(Unit* /*who*/) override
     {
         return new EG_npc_pet_blightblood_troll_petAI(me);
     }

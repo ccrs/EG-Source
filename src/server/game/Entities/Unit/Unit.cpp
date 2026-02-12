@@ -9731,11 +9731,10 @@ void Unit::UpdateCharmAI()
             ASSERT(GetTypeId() == TYPEID_UNIT);
 
             // first, we check if the creature's own AI specifies an override
-            if (Unit* charmer = GetCharmer())
+            if (Creature* creature = ToCreature())
             {
-                if (Creature* creatureCharmer = charmer->ToCreature())
-                    if (CreatureAI* charmerAI = creatureCharmer->AI())
-                        newAI = charmerAI->GetAIForCharm(ToCreature());
+                if (CreatureAI* currentAI = creature->AI())
+                    newAI = currentAI->GetAIForCharm(GetCharmer());
             }
             if (!newAI)
             {
