@@ -182,7 +182,7 @@ bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
         return true;
     }
 
-    if ((_playerOnly && unit->IsPlayer() || !_playerOnly)
+    if (((_playerOnly && unit->IsPlayer()) || !_playerOnly)
         && unit->IsAlive()
         && unit->IsInCombat()
         && _source->IsValidAssistTarget(unit)
