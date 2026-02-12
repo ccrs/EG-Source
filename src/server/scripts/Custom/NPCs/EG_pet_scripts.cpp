@@ -1,4 +1,5 @@
 #include "ScriptMgr.h"
+#include "Map.h"
 #include "ScriptedCreature.h"
 #include "SpellInfo.h"
 #include "PetAI.h"

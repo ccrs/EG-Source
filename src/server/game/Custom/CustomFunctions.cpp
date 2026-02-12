@@ -1,10 +1,10 @@
+#include "CustomFunctions.h"
 #include "DatabaseEnv.h"
 #include "ObjectMgr.h"
 #include "Log.h"
 #include "Player.h"
 #include "Transmogrification.h"
 #include "Unit.h"
-#include "CustomFunctions.h"
 
 void Player::_LoadCustomSettings(PreparedQueryResult result)
 {
