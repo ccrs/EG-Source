@@ -181,8 +181,8 @@ struct npc_colonel_jules : public ScriptedAI
 
         if (id == 9)
             _point = 4;
-
-        me->GetMotionMaster()->MovePoint(_point++, exorcismPos[_point]);
+        if (_point)
+            me->GetMotionMaster()->MovePoint(_point++, exorcismPos[_point]);
     }
 
     bool OnGossipHello(Player* player) override
