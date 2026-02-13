@@ -149,7 +149,7 @@ struct npc_colonel_jules : public ScriptedAI
             case ACTION_JULES_MOVE_HOME:
             {
                 me->SetWalk(true);
-                me->GetMotionMaster()->MovePoint(10, me->GetHomePosition());
+                me->GetMotionMaster()->MovePoint(10, me->GetHomePosition(), true, me->GetHomePosition().GetOrientation());
                 me->RemoveAura(SPELL_JULES_VOMITS_AURA);
                 me->RemoveAura(SPELL_JULES_THREATENS_AURA);
 
@@ -172,10 +172,9 @@ struct npc_colonel_jules : public ScriptedAI
         if (id == 10)
         {
             me->SetCanFly(false);
+            me->SetDisableGravity(false);
             me->RemoveAllAuras();
             me->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
-            me->SetUnitFlag(UNIT_FLAG_STUNNED);
-            me->AddAura(SPELL_JULES_GOES_PRONE, me);
             me->HandleEmoteCommand(EMOTE_STATE_STAND);
             return;
         }
@@ -241,7 +240,6 @@ struct npc_barada : public ScriptedAI
             me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
             Talk(SAY_BARADA_2);
             me->SetUnitFlag(UNIT_FLAG_PACIFIED);
-            me->HandleEmoteCommand(EMOTE_STATE_STAND);
             me->GetMotionMaster()->MovePoint(0, exorcismPos[0]);
         }
     }
@@ -256,7 +254,10 @@ struct npc_barada : public ScriptedAI
         else if (id == 1)
             me->GetMotionMaster()->MovePoint(2, exorcismPos[2]);
         else if (id == 2)
+        {
+            me->HandleEmoteCommand(EMOTE_STATE_STAND);
             _events.ScheduleEvent(EVENT_BARADAS_1, 2s);
+        }
     }
 
     void JustDied(Unit* /*killer*/) override
@@ -391,7 +392,7 @@ struct npc_barada : public ScriptedAI
                     me->RemoveAllAuras();
                     me->RemoveUnitFlag(UNIT_FLAG_PACIFIED);
                     Talk(SAY_BARADA_8);
-                    _events.ScheduleEvent(EVENT_RESET, 45s);
+                    _events.ScheduleEvent(EVENT_RESET, 60s);
                     break;
                 case EVENT_RESET:
                     if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))

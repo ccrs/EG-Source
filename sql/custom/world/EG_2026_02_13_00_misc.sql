@@ -41,3 +41,9 @@ DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` 
 DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_prayer_beads';
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (39371, 'EG_spell_prayer_beads');
+
+UPDATE `creature` SET `orientation` = 4.79 WHERE (`guid` = 78786);
+
+DELETE FROM `creature_template_movement` WHERE `CreatureId`= 22507;
+INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`, `Chase`, `Random`, `InteractionPauseTimer`) VALUES
+(22507, 0, 0, 1, 0, 0, 0, 0);
