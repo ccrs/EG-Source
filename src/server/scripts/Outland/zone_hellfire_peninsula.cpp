@@ -84,12 +84,35 @@ enum ExorcismMisc
     ACTION_JULES_HOVER = 2,
     ACTION_JULES_FLIGHT = 3,
     ACTION_JULES_MOVE_HOME = 4,
+    ACTION_SUCCESS = 5,
+    ACTION_FAIL = 6
 };
 
 enum ExorcismEvents
 {
-    EVENT_BARADAS_TALK = 1,
-    EVENT_RESET = 2
+    EVENT_BARADAS_1 = 1,
+    EVENT_BARADAS_2 = 2,
+    EVENT_BARADAS_3 = 3,
+    EVENT_BARADAS_4 = 4,
+    EVENT_BARADAS_5 = 5,
+    EVENT_BARADAS_6 = 6,
+    EVENT_BARADAS_7 = 7,
+    EVENT_BARADAS_8 = 8,
+    EVENT_BARADAS_9 = 9,
+    EVENT_BARADAS_10 = 10,
+    EVENT_BARADAS_11 = 11,
+    EVENT_BARADAS_12 = 12,
+    EVENT_BARADAS_13 = 13,
+    EVENT_BARADAS_14 = 14,
+    EVENT_BARADAS_15 = 15,
+    EVENT_BARADAS_16 = 16,
+    EVENT_BARADAS_17 = 17,
+    EVENT_BARADAS_18 = 18,
+    EVENT_BARADAS_19 = 19,
+    EVENT_BARADAS_20 = 20,
+    EVENT_BARADAS_21 = 21,
+    EVENT_BARADAS_22 = 22,
+    EVENT_RESET = 23
 };
 
 /*######
@@ -101,10 +124,8 @@ struct npc_colonel_jules : public ScriptedAI
 
     void Reset() override
     {
-        events.Reset();
-        point = 4;
-        wpreached = false;
-        success = false;
+        _point = 4;
+        _success = false;
         me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
         me->AddAura(SPELL_JULES_GOES_PRONE, me);
     }
@@ -113,41 +134,45 @@ struct npc_colonel_jules : public ScriptedAI
     {
         switch (action)
         {
-        case ACTION_JULES_HOVER:
-            me->AddAura(SPELL_JULES_THREATENS_AURA, me);
-            me->SetCanFly(true);
-            me->SetWalk(true);
-            me->SetFacingTo(3.207566f);
-            me->GetMotionMaster()->MoveJump(exorcismPos[3], 2.0f, 2.0f);
-            success = false;
-            break;
-        case ACTION_JULES_FLIGHT:
-            me->RemoveAura(SPELL_JULES_GOES_PRONE);
-            me->AddAura(SPELL_JULES_GOES_UPRIGHT, me);
-            me->AddAura(SPELL_JULES_VOMITS_AURA, me);
-            me->SetWalk(true);
-            wpreached = true;
-            me->GetMotionMaster()->MovePoint(point, exorcismPos[4]);
-            break;
-        case ACTION_JULES_MOVE_HOME:
-            wpreached = false;
-            me->SetWalk(true);
-            me->GetMotionMaster()->MoveTargetedHome();
-            me->SetCanFly(false);
-            me->AddAura(SPELL_JULES_GOES_PRONE, me);
-            me->RemoveAura(SPELL_JULES_GOES_UPRIGHT);
-            me->RemoveAura(SPELL_JULES_VOMITS_AURA);
-            me->RemoveAura(SPELL_JULES_THREATENS_AURA);
-
-            std::list<uint32> despawnEntries = { NPC_DARKNESS_RELEASED, NPC_FOUL_PURGE, NPC_THE_EXORCISM_BUBBLING_SLIMER_BUNNY };
-            for (uint32 entry : despawnEntries)
+            case ACTION_JULES_HOVER:
+                me->AddAura(SPELL_JULES_THREATENS_AURA, me);
+                me->SetCanFly(true);
+                me->SetWalk(true);
+                me->SetFacingTo(3.207566f);
+                me->GetMotionMaster()->MoveJump(exorcismPos[3], 2.0f, 2.0f);
+                _success = false;
+                break;
+            case ACTION_JULES_FLIGHT:
+                me->RemoveAura(SPELL_JULES_GOES_PRONE);
+                me->AddAura(SPELL_JULES_GOES_UPRIGHT, me);
+                me->AddAura(SPELL_JULES_VOMITS_AURA, me);
+                me->SetWalk(true);
+                me->GetMotionMaster()->MovePoint(4, exorcismPos[4]);
+                break;
+            case ACTION_JULES_MOVE_HOME:
             {
+                me->SetWalk(true);
+                me->GetMotionMaster()->MoveTargetedHome();
+                me->SetCanFly(false);
+                me->AddAura(SPELL_JULES_GOES_PRONE, me);
+                me->RemoveAura(SPELL_JULES_GOES_UPRIGHT);
+                me->RemoveAura(SPELL_JULES_VOMITS_AURA);
+                me->RemoveAura(SPELL_JULES_THREATENS_AURA);
+
                 std::list<Creature*> npcs;
-                me->GetCreatureListWithEntryInGrid(npcs, entry, 40.0f);
+                me->GetCreatureListWithOptionsInGrid(npcs, 40.f, FindCreatureOptions{ .CreatureIds = { NPC_DARKNESS_RELEASED, NPC_FOUL_PURGE, NPC_THE_EXORCISM_BUBBLING_SLIMER_BUNNY } });
                 for (Creature* npc : npcs)
                     npc->DespawnOrUnsummon();
+                break;
             }
-            break;
+            case ACTION_SUCCESS:
+                _success = true;
+                break;
+            case ACTION_FAIL:
+                _success = false;
+                break;
+            default:
+                break;
         }
     }
 
@@ -156,31 +181,15 @@ struct npc_colonel_jules : public ScriptedAI
         if (type != POINT_MOTION_TYPE)
             return;
 
-        if (id < 9)
-            wpreached = true;
-
         if (id == 9)
-        {
-            wpreached = true;
-            point = 4;
-        }
-    }
+            _point = 4;
 
-    void UpdateAI(uint32 diff) override
-    {
-        if (wpreached)
-        {
-            me->GetMotionMaster()->MovePoint(point, exorcismPos[point]);
-            point++;
-            wpreached = false;
-        }
-
-        events.Update(diff);
+        me->GetMotionMaster()->MovePoint(_point++, exorcismPos[_point]);
     }
 
     bool OnGossipHello(Player* player) override
     {
-        if (success)
+        if (_success)
             player->KilledMonsterCredit(NPC_COLONEL_JULES, ObjectGuid::Empty);
 
         SendGossipMenuFor(player, player->GetGossipTextId(me), me->GetGUID());
@@ -188,11 +197,8 @@ struct npc_colonel_jules : public ScriptedAI
     }
 
 private:
-    EventMap events;
-    uint8 point;
-    bool wpreached;
-public:
-    bool success;
+    uint8 _point;
+    bool _success;
 };
 
 /*######
@@ -204,9 +210,8 @@ struct npc_barada : public ScriptedAI
 
     void Reset() override
     {
-        events.Reset();
-        step = 0;
-        playerGUID.Clear();
+        _events.Reset();
+        _playerGUID.Clear();
         me->RemoveUnitFlag(UNIT_FLAG_PACIFIED);
         me->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
     }
@@ -216,7 +221,7 @@ struct npc_barada : public ScriptedAI
         ClearGossipMenuFor(player);
         if (gossipListId == 1)
         {
-            if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
+            if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                 jules->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
             player->PlayerTalkClass->SendCloseGossip();
             me->AI()->Talk(SAY_BARADA_1);
@@ -227,19 +232,19 @@ struct npc_barada : public ScriptedAI
 
     void DoAction(int32 action) override
     {
-        if (action != ACTION_START_EVENT)
-            return;
-
-        if (Creature* jules = me->FindNearestCreature(NPC_COLONEL_JULES, 20.0f, true))
+        if (action == ACTION_START_EVENT)
         {
-            julesGUID = jules->GetGUID();
-            jules->AI()->Talk(SAY_JULES_1);
+            if (Creature* jules = me->FindNearestCreature(NPC_COLONEL_JULES, 20.0f))
+            {
+                _julesGUID = jules->GetGUID();
+                jules->AI()->Talk(SAY_JULES_1);
+            }
+            me->SetWalk(true);
+            me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+            Talk(SAY_BARADA_2);
+            me->SetUnitFlag(UNIT_FLAG_PACIFIED);
+            me->GetMotionMaster()->MovePoint(0, exorcismPos[0]);
         }
-        me->SetWalk(true);
-        me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
-        Talk(SAY_BARADA_2);
-        me->SetUnitFlag(UNIT_FLAG_PACIFIED);
-        me->GetMotionMaster()->MovePoint(0, exorcismPos[0]);
     }
 
     void MovementInform(uint32 type, uint32 id) override
@@ -252,162 +257,135 @@ struct npc_barada : public ScriptedAI
         else if (id == 1)
             me->GetMotionMaster()->MovePoint(2, exorcismPos[2]);
         else if (id == 2)
-            events.ScheduleEvent(EVENT_BARADAS_TALK, 2s);
+            _events.ScheduleEvent(EVENT_BARADAS_1, 2s);
     }
 
     void JustDied(Unit* /*killer*/) override
     {
-        if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
+        if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
         {
             jules->AI()->DoAction(ACTION_JULES_MOVE_HOME);
             jules->RemoveAllAuras();
             jules->AddAura(SPELL_JULES_GOES_PRONE, jules);
         }
-        me->DespawnOrUnsummon(1s,10s);
-        std::list<uint32> despawnEntries = { NPC_DARKNESS_RELEASED, NPC_FOUL_PURGE, NPC_THE_EXORCISM_BUBBLING_SLIMER_BUNNY };
-        for (uint32 entry : despawnEntries)
-        {
-            std::list<Creature*> npcs;
-            me->GetCreatureListWithEntryInGrid(npcs, entry, 40.0f);
-            for (Creature* npc : npcs)
-                npc->DespawnOrUnsummon();
-        }
+        me->DespawnOrUnsummon(5s, 10s);
+
+        std::list<Creature*> npcs;
+        me->GetCreatureListWithOptionsInGrid(npcs, 40.f, FindCreatureOptions{ .CreatureIds = { NPC_DARKNESS_RELEASED, NPC_FOUL_PURGE, NPC_THE_EXORCISM_BUBBLING_SLIMER_BUNNY } });
+        for (Creature* npc : npcs)
+            npc->DespawnOrUnsummon();
     }
 
     void UpdateAI(uint32 diff) override
     {
-        events.Update(diff);
+        _events.Update(diff);
 
-        while (uint32 eventId = events.ExecuteEvent())
+        while (uint32 eventId = _events.ExecuteEvent())
         {
             switch (eventId)
             {
-            case EVENT_BARADAS_TALK:
-                switch (step)
-                {
-                case 0:
+                case EVENT_BARADAS_1:
                     me->SetFacingTo(1.513286f);
                     me->HandleEmoteCommand(EMOTE_ONESHOT_KNEEL);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 3s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_2, 3s);
                     break;
-                case 1:
+                case EVENT_BARADAS_2:
                     DoCast(SPELL_BARADAS_COMMAND);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 5s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_3, 5s);
                     break;
-                case 2:
+                case EVENT_BARADAS_3:
                     Talk(SAY_BARADA_3);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 7s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_4, 7s);
                     break;
-                case 3:
-                    if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
+                case EVENT_BARADAS_4:
+                    if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                         jules->AI()->Talk(SAY_JULES_2);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 18s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_5, 18s);
                     break;
-                case 4:
+                case EVENT_BARADAS_5:
                     DoCast(SPELL_BARADA_FALTERS);
                     me->HandleEmoteCommand(EMOTE_STAND_STATE_NONE);
-                    if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
+                    if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                         jules->AI()->DoAction(ACTION_JULES_HOVER);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 11s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_6, 11s);
                     break;
-                case 5:
-                    if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
+                case EVENT_BARADAS_6:
+                    if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                         jules->AI()->Talk(SAY_JULES_3);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 13s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_7, 13s);
                     break;
-                case 6:
+                case EVENT_BARADAS_7:
                     Talk(SAY_BARADA_4);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 5s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_8, 5s);
                     break;
-                case 7:
-                    if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
+                case EVENT_BARADAS_8:
+                    if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                         jules->AI()->Talk(SAY_JULES_3);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 13s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_9, 13s);
                     break;
-                case 8:
+                case EVENT_BARADAS_9:
                     Talk(SAY_BARADA_4);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 12s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_10, 12s);
                     break;
-                case 9:
-                    if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
+                case EVENT_BARADAS_10:
+                    if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                         jules->AI()->Talk(SAY_JULES_4);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 12s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_11, 12s);
                     break;
-                case 10:
+                case EVENT_BARADAS_11:
                     Talk(SAY_BARADA_4);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 5s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_12, 5s);
                     break;
-                case 11:
-                    if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
+                case EVENT_BARADAS_12:
+                    if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                         jules->AI()->DoAction(ACTION_JULES_FLIGHT);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_13, 10s);
                     break;
-                case 12:
-                    if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
+                case EVENT_BARADAS_13:
+                    if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                         jules->AI()->Talk(SAY_JULES_4);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 8s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_14, 8s);
                     break;
-                case 13:
+                case EVENT_BARADAS_14:
                     Talk(SAY_BARADA_5);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_15, 10s);
                     break;
-                case 14:
-                    if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
+                case EVENT_BARADAS_15:
+                    if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                         jules->AI()->Talk(SAY_JULES_4);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_16, 10s);
                     break;
-                case 15:
+                case EVENT_BARADAS_16:
                     Talk(SAY_BARADA_6);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_17, 10s);
                     break;
-                case 16:
-                    if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
+                case EVENT_BARADAS_17:
+                    if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                         jules->AI()->Talk(SAY_JULES_5);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_18, 10s);
                     break;
-                case 17:
+                case EVENT_BARADAS_18:
                     Talk(SAY_BARADA_7);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_19, 10s);
                     break;
-                case 18:
-                    if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
+                case EVENT_BARADAS_19:
+                    if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                         jules->AI()->Talk(SAY_JULES_3);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_20, 10s);
                     break;
-                case 19:
+                case EVENT_BARADAS_20:
                     Talk(SAY_BARADA_7);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 10s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_21, 10s);
                     break;
-                case 20:
-                    if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
+                case EVENT_BARADAS_21:
+                    if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                         jules->AI()->DoAction(ACTION_JULES_MOVE_HOME);
-                    events.ScheduleEvent(EVENT_BARADAS_TALK, 1s);
-                    step++;
+                    _events.ScheduleEvent(EVENT_BARADAS_22, 1s);
                     break;
-                case 21:
-                    if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
+                case EVENT_BARADAS_22:
+                    if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                     {
-                        ENSURE_AI(npc_colonel_jules, jules->AI())->success = true;
+                        jules->AI()->DoAction(ACTION_SUCCESS);
                         jules->RemoveAllAuras();
                         jules->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                         jules->SetUnitFlag(UNIT_FLAG_STUNNED);
@@ -419,27 +397,27 @@ struct npc_barada : public ScriptedAI
                     me->GetMotionMaster()->MoveTargetedHome();
                     EnterEvadeMode();
                     me->SetWalk(true);
-                    events.ScheduleEvent(EVENT_RESET, 45s);
+                    _events.ScheduleEvent(EVENT_RESET, 45s);
                     break;
-                }
-                break;
-            case EVENT_RESET:
-                if (Creature* jules = ObjectAccessor::GetCreature(*me, julesGUID))
-                {
-                    ENSURE_AI(npc_colonel_jules, jules->AI())->success = false;
-                    jules->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
-                    jules->RemoveUnitFlag(UNIT_FLAG_STUNNED);
-                }
-                break;
+                case EVENT_RESET:
+                    if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
+                    {
+                        jules->AI()->DoAction(ACTION_FAIL);
+                        jules->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+                        jules->RemoveUnitFlag(UNIT_FLAG_STUNNED);
+                        jules->DespawnOrUnsummon(10s, 5s);
+                    }
+                    break;
+                default:
+                    break;
             }
         }
     }
 
 private:
-    EventMap events;
-    uint8 step;
-    ObjectGuid julesGUID;
-    ObjectGuid playerGUID;
+    EventMap _events;
+    ObjectGuid _julesGUID;
+    ObjectGuid _playerGUID;
 };
 
 enum Aledis
