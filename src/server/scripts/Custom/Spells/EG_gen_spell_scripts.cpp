@@ -167,6 +167,40 @@ class EG_spell_charm_drakuru_servant : public AuraScript
     }
 };
 
+enum SpellRitualPrayerBeads
+{
+    SPELL_HEAL_BARADA = 39322,
+    NPC_ANCHORITE_BARADA = 22431,
+    NPC_DARKNESS_RELEASED = 22507,
+    NPC_FOUL_PURGE = 22506
+};
+
+// 9322 - Prayer Beads
+class EG_spell_prayer_beads : public SpellScript
+{
+    PrepareSpellScript(EG_spell_prayer_beads);
+
+    void HandleAfterHit()
+    {
+        Unit* caster = GetCaster();
+        Unit* target = GetHitUnit();
+        if (!caster || !target || !target->IsCreature())
+            return;
+
+        uint32 entry = target->GetEntry();
+        if (entry == NPC_ANCHORITE_BARADA || entry == NPC_DARKNESS_RELEASED || entry == NPC_FOUL_PURGE)
+        {
+            if (Creature* found = target->FindNearestCreature(NPC_ANCHORITE_BARADA, 40.0f, true))
+                caster->CastSpell(found, SPELL_HEAL_BARADA, true);
+        }
+    }
+
+    void Register() override
+    {
+        AfterHit += SpellHitFn(EG_spell_prayer_beads::HandleAfterHit);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_Cosmetic___Divine_Shield_Blue);
@@ -175,4 +209,5 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_fel_reaver_controller);
     RegisterSpellScript(EG_spell_charm_channel);
     RegisterSpellScript(EG_spell_charm_drakuru_servant);
+    RegisterSpellScript(EG_spell_prayer_beads);
 }
