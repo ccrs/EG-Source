@@ -1,4 +1,5 @@
 #include "ScriptMgr.h"
+#include "Creature.h"
 #include "Spell.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
@@ -170,34 +171,29 @@ class EG_spell_charm_drakuru_servant : public AuraScript
 enum SpellRitualPrayerBeads
 {
     SPELL_HEAL_BARADA = 39322,
-    NPC_ANCHORITE_BARADA = 22431,
-    NPC_DARKNESS_RELEASED = 22507,
-    NPC_FOUL_PURGE = 22506
+    NPC_ANCHORITE_BARADA = 22431
 };
 
-// 9322 - Prayer Beads
+// 39371 - Prayer Beads
 class EG_spell_prayer_beads : public SpellScript
 {
     PrepareSpellScript(EG_spell_prayer_beads);
 
-    void HandleAfterHit()
+    void HandleHit()
     {
         Unit* caster = GetCaster();
-        Unit* target = GetHitUnit();
-        if (!caster || !target || !target->IsCreature())
+        Creature* target = GetHitCreature();
+        if (!caster || !target)
             return;
 
         uint32 entry = target->GetEntry();
-        if (entry == NPC_ANCHORITE_BARADA || entry == NPC_DARKNESS_RELEASED || entry == NPC_FOUL_PURGE)
-        {
-            if (Creature* found = target->FindNearestCreature(NPC_ANCHORITE_BARADA, 40.0f, true))
-                caster->CastSpell(found, SPELL_HEAL_BARADA, true);
-        }
+        if (entry == NPC_ANCHORITE_BARADA)
+            caster->CastSpell(target, SPELL_HEAL_BARADA, true);
     }
 
     void Register() override
     {
-        AfterHit += SpellHitFn(EG_spell_prayer_beads::HandleAfterHit);
+        OnHit += SpellHitFn(EG_spell_prayer_beads::HandleHit);
     }
 };
 

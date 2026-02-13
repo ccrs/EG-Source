@@ -276,6 +276,8 @@ struct npc_barada : public ScriptedAI
             npc->DespawnOrUnsummon();
     }
 
+    void EnterEvadeMode(EvadeReason /*why*/) override { }
+
     void UpdateAI(uint32 diff) override
     {
         _events.Update(diff);
@@ -383,6 +385,7 @@ struct npc_barada : public ScriptedAI
                     _events.ScheduleEvent(EVENT_BARADAS_22, 1s);
                     break;
                 case EVENT_BARADAS_22:
+                {
                     if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                     {
                         jules->AI()->DoAction(ACTION_SUCCESS);
@@ -391,14 +394,16 @@ struct npc_barada : public ScriptedAI
                         jules->SetUnitFlag(UNIT_FLAG_STUNNED);
                         jules->AddAura(SPELL_JULES_GOES_PRONE, jules);
                     }
+                    std::list<Creature*> npcs;
+                    me->GetCreatureListWithOptionsInGrid(npcs, 40.f, FindCreatureOptions{ .CreatureIds = { NPC_DARKNESS_RELEASED, NPC_FOUL_PURGE, NPC_THE_EXORCISM_BUBBLING_SLIMER_BUNNY } });
+                    for (Creature* npc : npcs)
+                        npc->DespawnOrUnsummon();
                     me->RemoveAura(SPELL_BARADAS_COMMAND);
                     me->RemoveUnitFlag(UNIT_FLAG_PACIFIED);
                     Talk(SAY_BARADA_8);
-                    me->GetMotionMaster()->MoveTargetedHome();
-                    EnterEvadeMode();
-                    me->SetWalk(true);
                     _events.ScheduleEvent(EVENT_RESET, 45s);
                     break;
+                }
                 case EVENT_RESET:
                     if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                     {
@@ -407,6 +412,7 @@ struct npc_barada : public ScriptedAI
                         jules->RemoveUnitFlag(UNIT_FLAG_STUNNED);
                         jules->DespawnOrUnsummon(10s, 5s);
                     }
+                    me->DespawnOrUnsummon(10s, 5s);
                     break;
                 default:
                     break;
