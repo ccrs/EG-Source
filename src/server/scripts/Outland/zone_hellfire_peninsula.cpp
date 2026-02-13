@@ -125,7 +125,7 @@ struct npc_colonel_jules : public ScriptedAI
     {
         _point = 4;
         me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
-        me->AddAura(SPELL_JULES_GOES_PRONE, me);
+        me->CastSpell(me, SPELL_JULES_GOES_PRONE);
     }
 
     void DoAction(int32 action) override
@@ -133,16 +133,17 @@ struct npc_colonel_jules : public ScriptedAI
         switch (action)
         {
             case ACTION_JULES_HOVER:
-                me->AddAura(SPELL_JULES_THREATENS_AURA, me);
+                DoCastSelf(SPELL_JULES_THREATENS_AURA);
                 me->SetCanFly(true);
                 me->SetWalk(true);
                 me->SetFacingTo(3.207566f);
                 me->GetMotionMaster()->MoveJump(exorcismPos[3], 2.0f, 2.0f);
                 break;
             case ACTION_JULES_FLIGHT:
-                me->RemoveAura(SPELL_JULES_GOES_PRONE);
-                me->AddAura(SPELL_JULES_GOES_UPRIGHT, me);
-                me->AddAura(SPELL_JULES_VOMITS_AURA, me);
+                me->RemoveAurasDueToSpell(SPELL_JULES_GOES_PRONE);
+                me->RemoveAurasDueToSpell(SPELL_JULES_THREATENS_AURA);
+                DoCastSelf(SPELL_JULES_GOES_UPRIGHT, true);
+                DoCastSelf(SPELL_JULES_VOMITS_AURA);
                 me->SetWalk(true);
                 me->GetMotionMaster()->MovePoint(4, exorcismPos[4]);
                 break;
@@ -150,9 +151,8 @@ struct npc_colonel_jules : public ScriptedAI
             {
                 me->SetWalk(true);
                 me->GetMotionMaster()->MovePoint(10, me->GetHomePosition(), true, me->GetHomePosition().GetOrientation());
-                me->RemoveAura(SPELL_JULES_VOMITS_AURA);
-                me->RemoveAura(SPELL_JULES_THREATENS_AURA);
-
+                me->RemoveAurasDueToSpell(SPELL_JULES_VOMITS_AURA);
+                me->RemoveAurasDueToSpell(SPELL_JULES_THREATENS_AURA);
                 std::list<Creature*> npcs;
                 me->GetCreatureListWithOptionsInGrid(npcs, 40.f, FindCreatureOptions{ .CreatureIds = { NPC_DARKNESS_RELEASED, NPC_FOUL_PURGE, NPC_THE_EXORCISM_BUBBLING_SLIMER_BUNNY } });
                 for (Creature* npc : npcs)
@@ -195,7 +195,7 @@ struct npc_colonel_jules : public ScriptedAI
     void EnterEvadeMode(EvadeReason /*why*/) override { }
 
 private:
-    uint8 _point;
+    uint8 _point = 4;
 };
 
 /*######
@@ -388,7 +388,7 @@ struct npc_barada : public ScriptedAI
                 }
                 case EVENT_BARADAS_22:
                     me->HandleEmoteCommand(EMOTE_STATE_STAND);
-                    me->CastSpell(me, SPELL_HEAL_SELF);
+                    DoCastSelf(SPELL_HEAL_SELF);
                     me->RemoveAllAuras();
                     me->RemoveUnitFlag(UNIT_FLAG_PACIFIED);
                     Talk(SAY_BARADA_8);
