@@ -1,5 +1,5 @@
-#include "Unit.h"
 #include "CustomFunctions.h"
+#include "Unit.h"
 
 bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
 {
