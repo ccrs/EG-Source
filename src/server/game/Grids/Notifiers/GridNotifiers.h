@@ -1417,6 +1417,9 @@ namespace Trinity
                 if (i_args.CreatureId && u->GetEntry() != i_args.CreatureId)
                     return false;
 
+                if (!i_args.CreatureIds.contains(u->GetEntry()))
+                    return false;
+
                 if (i_args.StringId && !u->HasStringId(*i_args.StringId))
                     return false;
 

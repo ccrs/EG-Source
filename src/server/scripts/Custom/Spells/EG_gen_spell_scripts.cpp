@@ -1,4 +1,5 @@
 #include "ScriptMgr.h"
+#include "Creature.h"
 #include "Spell.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
@@ -167,6 +168,35 @@ class EG_spell_charm_drakuru_servant : public AuraScript
     }
 };
 
+enum SpellRitualPrayerBeads
+{
+    SPELL_HEAL_BARADA = 39322,
+    NPC_ANCHORITE_BARADA = 22431
+};
+
+// 39371 - Prayer Beads
+class EG_spell_prayer_beads : public SpellScript
+{
+    PrepareSpellScript(EG_spell_prayer_beads);
+
+    void HandleHit()
+    {
+        Unit* caster = GetCaster();
+        Creature* target = GetHitCreature();
+        if (!caster || !target)
+            return;
+
+        uint32 entry = target->GetEntry();
+        if (entry == NPC_ANCHORITE_BARADA)
+            caster->CastSpell(target, SPELL_HEAL_BARADA, true);
+    }
+
+    void Register() override
+    {
+        OnHit += SpellHitFn(EG_spell_prayer_beads::HandleHit);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_Cosmetic___Divine_Shield_Blue);
@@ -175,4 +205,5 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_fel_reaver_controller);
     RegisterSpellScript(EG_spell_charm_channel);
     RegisterSpellScript(EG_spell_charm_drakuru_servant);
+    RegisterSpellScript(EG_spell_prayer_beads);
 }

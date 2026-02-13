@@ -36,6 +36,7 @@
 #include <list>
 #include <set>
 #include <unordered_map>
+#include <unordered_set>
 
 class Corpse;
 class Creature;
@@ -298,6 +299,7 @@ class FlaggedValuesArray32
 struct FindCreatureOptions
 {
     Optional<uint32> CreatureId;
+    std::unordered_set<uint32> CreatureIds;
     Optional<std::string_view> StringId;
 
     Optional<bool> IsAlive;
