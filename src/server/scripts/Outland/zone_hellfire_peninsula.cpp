@@ -38,6 +38,7 @@ enum ExorcismSpells
 
     SPELL_BARADAS_COMMAND = 39277,
     SPELL_BARADA_FALTERS = 39278,
+    SPELL_HEAL_SELF = 39321,
 };
 
 enum ExorcismTexts
@@ -83,9 +84,7 @@ enum ExorcismMisc
     ACTION_START_EVENT = 1,
     ACTION_JULES_HOVER = 2,
     ACTION_JULES_FLIGHT = 3,
-    ACTION_JULES_MOVE_HOME = 4,
-    ACTION_SUCCESS = 5,
-    ACTION_FAIL = 6
+    ACTION_JULES_MOVE_HOME = 4
 };
 
 enum ExorcismEvents
@@ -125,7 +124,6 @@ struct npc_colonel_jules : public ScriptedAI
     void Reset() override
     {
         _point = 4;
-        _success = false;
         me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
         me->AddAura(SPELL_JULES_GOES_PRONE, me);
     }
@@ -140,7 +138,6 @@ struct npc_colonel_jules : public ScriptedAI
                 me->SetWalk(true);
                 me->SetFacingTo(3.207566f);
                 me->GetMotionMaster()->MoveJump(exorcismPos[3], 2.0f, 2.0f);
-                _success = false;
                 break;
             case ACTION_JULES_FLIGHT:
                 me->RemoveAura(SPELL_JULES_GOES_PRONE);
@@ -152,10 +149,7 @@ struct npc_colonel_jules : public ScriptedAI
             case ACTION_JULES_MOVE_HOME:
             {
                 me->SetWalk(true);
-                me->GetMotionMaster()->MoveTargetedHome();
-                me->SetCanFly(false);
-                me->AddAura(SPELL_JULES_GOES_PRONE, me);
-                me->RemoveAura(SPELL_JULES_GOES_UPRIGHT);
+                me->GetMotionMaster()->MovePoint(10, me->GetHomePosition());
                 me->RemoveAura(SPELL_JULES_VOMITS_AURA);
                 me->RemoveAura(SPELL_JULES_THREATENS_AURA);
 
@@ -165,12 +159,6 @@ struct npc_colonel_jules : public ScriptedAI
                     npc->DespawnOrUnsummon();
                 break;
             }
-            case ACTION_SUCCESS:
-                _success = true;
-                break;
-            case ACTION_FAIL:
-                _success = false;
-                break;
             default:
                 break;
         }
@@ -181,6 +169,17 @@ struct npc_colonel_jules : public ScriptedAI
         if (type != POINT_MOTION_TYPE)
             return;
 
+        if (id == 10)
+        {
+            me->SetCanFly(false);
+            me->RemoveAllAuras();
+            me->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+            me->SetUnitFlag(UNIT_FLAG_STUNNED);
+            me->AddAura(SPELL_JULES_GOES_PRONE, me);
+            me->HandleEmoteCommand(EMOTE_STATE_STAND);
+            return;
+        }
+
         if (id == 9)
             _point = 4;
 
@@ -189,16 +188,15 @@ struct npc_colonel_jules : public ScriptedAI
 
     bool OnGossipHello(Player* player) override
     {
-        if (_success)
-            player->KilledMonsterCredit(NPC_COLONEL_JULES, ObjectGuid::Empty);
-
+        player->KilledMonsterCredit(NPC_COLONEL_JULES, ObjectGuid::Empty);
         SendGossipMenuFor(player, player->GetGossipTextId(me), me->GetGUID());
         return true;
     }
 
+    void EnterEvadeMode(EvadeReason /*why*/) override { }
+
 private:
     uint8 _point;
-    bool _success;
 };
 
 /*######
@@ -243,6 +241,7 @@ struct npc_barada : public ScriptedAI
             me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
             Talk(SAY_BARADA_2);
             me->SetUnitFlag(UNIT_FLAG_PACIFIED);
+            me->HandleEmoteCommand(EMOTE_STATE_STAND);
             me->GetMotionMaster()->MovePoint(0, exorcismPos[0]);
         }
     }
@@ -263,11 +262,7 @@ struct npc_barada : public ScriptedAI
     void JustDied(Unit* /*killer*/) override
     {
         if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
-        {
-            jules->AI()->DoAction(ACTION_JULES_MOVE_HOME);
-            jules->RemoveAllAuras();
-            jules->AddAura(SPELL_JULES_GOES_PRONE, jules);
-        }
+            jules->DespawnOrUnsummon(5s, 10s);
         me->DespawnOrUnsummon(5s, 10s);
 
         std::list<Creature*> npcs;
@@ -380,39 +375,31 @@ struct npc_barada : public ScriptedAI
                     _events.ScheduleEvent(EVENT_BARADAS_21, 10s);
                     break;
                 case EVENT_BARADAS_21:
-                    if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
-                        jules->AI()->DoAction(ACTION_JULES_MOVE_HOME);
-                    _events.ScheduleEvent(EVENT_BARADAS_22, 1s);
-                    break;
-                case EVENT_BARADAS_22:
                 {
                     if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
-                    {
-                        jules->AI()->DoAction(ACTION_SUCCESS);
-                        jules->RemoveAllAuras();
-                        jules->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
-                        jules->SetUnitFlag(UNIT_FLAG_STUNNED);
-                        jules->AddAura(SPELL_JULES_GOES_PRONE, jules);
-                    }
+                        jules->AI()->DoAction(ACTION_JULES_MOVE_HOME);
                     std::list<Creature*> npcs;
                     me->GetCreatureListWithOptionsInGrid(npcs, 40.f, FindCreatureOptions{ .CreatureIds = { NPC_DARKNESS_RELEASED, NPC_FOUL_PURGE, NPC_THE_EXORCISM_BUBBLING_SLIMER_BUNNY } });
                     for (Creature* npc : npcs)
                         npc->DespawnOrUnsummon();
-                    me->RemoveAura(SPELL_BARADAS_COMMAND);
+                    _events.ScheduleEvent(EVENT_BARADAS_22, 2s);
+                    break;
+                }
+                case EVENT_BARADAS_22:
+                    me->HandleEmoteCommand(EMOTE_STATE_STAND);
+                    me->CastSpell(me, SPELL_HEAL_SELF);
+                    me->RemoveAllAuras();
                     me->RemoveUnitFlag(UNIT_FLAG_PACIFIED);
                     Talk(SAY_BARADA_8);
                     _events.ScheduleEvent(EVENT_RESET, 45s);
                     break;
-                }
                 case EVENT_RESET:
                     if (Creature* jules = ObjectAccessor::GetCreature(*me, _julesGUID))
                     {
-                        jules->AI()->DoAction(ACTION_FAIL);
                         jules->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
-                        jules->RemoveUnitFlag(UNIT_FLAG_STUNNED);
-                        jules->DespawnOrUnsummon(10s, 5s);
+                        jules->DespawnOrUnsummon(1s, 10s);
                     }
-                    me->DespawnOrUnsummon(10s, 5s);
+                    me->DespawnOrUnsummon(1s, 10s);
                     break;
                 default:
                     break;
