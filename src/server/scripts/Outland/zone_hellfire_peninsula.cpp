@@ -902,5 +902,4 @@ void AddSC_hellfire_peninsula()
     RegisterSpellScript(spell_hellfire_peninsula_purify_helboar_meat);
     RegisterSpellScript(spell_hellfire_peninsula_absorb_eye_of_grillok);
     RegisterSpellScript(spell_hellfire_peninsula_demonaic_visitation);
-    RegisterSpellScript(spell_hellfire_peninsula_demonaic_visitation);
 }
