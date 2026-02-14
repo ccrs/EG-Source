@@ -1611,6 +1611,13 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
             //same map, only remove pet if out of range for new position
             if (pet && !pet->IsWithinDist3d(x, y, z, GetMap()->GetVisibilityRange()))
                 UnsummonPetTemporaryIfAny();
+            else if (pet && !pet->IsInCombat())
+            {
+                Position petTeleportPosition = Position(x, y, z, orientation);
+                Position referencePosition = Position(x, y, z, orientation);
+                GetNearPoint(pet, &referencePosition, petTeleportPosition.m_positionX, petTeleportPosition.m_positionY, petTeleportPosition.m_positionZ, PET_FOLLOW_DIST, pet->GetFollowAngle());
+                pet->NearTeleportTo(petTeleportPosition);
+            }
         }
         else
         {
