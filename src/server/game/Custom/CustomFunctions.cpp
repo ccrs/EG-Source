@@ -7,6 +7,7 @@
 #include "Player.h"
 #include "Transmogrification.h"
 #include "Unit.h"
+#include "World.h"
 
 void Player::_LoadCustomSettings(PreparedQueryResult result)
 {
