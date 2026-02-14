@@ -1617,7 +1617,8 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
             if (pet && !pet->IsInCombat())
             {
                 Position petTeleportPosition = Position(x, y, z, orientation);
-                GetNearPoint(pet, &Position(x, y, z, orientation), petTeleportPosition.m_positionX, petTeleportPosition.m_positionY, petTeleportPosition.m_positionZ, PET_FOLLOW_DIST, pet->GetFollowAngle());
+                Position referencePosition = Position(x, y, z, orientation);
+                GetNearPoint(pet, &referencePosition, petTeleportPosition.m_positionX, petTeleportPosition.m_positionY, petTeleportPosition.m_positionZ, PET_FOLLOW_DIST, pet->GetFollowAngle());
                 pet->NearTeleportTo(petTeleportPosition);
             }
         }
