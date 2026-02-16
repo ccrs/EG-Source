@@ -2,7 +2,9 @@
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "ScriptMgr.h"
+#include "SmartEnum.h"
 #include "Language.h"
+#include "Util.h"
 #include "WorldSession.h"
 
 using namespace Trinity::ChatCommands;
@@ -32,6 +34,7 @@ public:
             { "aoeloot",            HandleAOELoot, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "account",            accountSettings },
             { "xpRate",             HandleXPRate, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "masquerade",         HandleRaceMasquerade, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
         };
 
         static ChatCommandTable commandTable =
@@ -162,6 +165,49 @@ public:
             player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE);
             handler->SendSysMessage("Account riding training transfering deactivated.");
         }
+        return true;
+    }
+
+    static bool HandleRaceMasquerade(ChatHandler* handler, uint8 value)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        if (!player)
+            return false;
+
+        if (value > 11)
+        {
+            handler->SendSysMessage("Please use a value between 0 and 11.");
+            return true;
+        }
+
+        if (value == 0)
+        {
+            player->SetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE, CustomFlags::CUSTOM_FLAG_RACE_MASQUERADE_HIDE);
+            player->SetMasqueradeRace(RACE_NONE);
+            handler->SendSysMessage("Other player's Race Masquerade options will be hidden from now on.");
+            return true;
+        }
+
+        uint8 raceValue = value;
+        if (raceValue == 9 || raceValue == 10)
+            ++raceValue;
+
+        uint32 playerTeam = Player::TeamForRace(player->GetRace());
+        if (Player::TeamForRace(raceValue) != playerTeam)
+        {
+            std::string racesForTeam;
+            if (playerTeam == ALLIANCE)
+                racesForTeam = "1 - Human\n3 - Dwarf\n4 - Nightelf\n7 - Gnome\n10 - Dranei";
+            else
+                racesForTeam = "2 - Orc\n5 - Undead\n6 - Tauren\n8 - Troll\n9 - Bloodelf";
+            handler->SendSysMessage("Please select a race from your current Faction.\nOptions: " + racesForTeam);
+            return true;
+        }
+
+        Races masqueradeRace = Races(raceValue);
+        player->SetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE, CustomFlags(1 << (raceValue)));
+        player->SetMasqueradeRace(masqueradeRace);
+        handler->PSendSysMessage(LANG_MASQUERADE_RACE_ENABLED, EnumUtils::ToTitle(masqueradeRace));
         return true;
     }
 };

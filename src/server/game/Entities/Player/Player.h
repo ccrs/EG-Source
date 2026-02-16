@@ -935,6 +935,7 @@ enum CustomFlagsIndex : uint16
     CUSTOM_XPRATE_FLAGS = 2,
     CUSTOM_ACCOUNT_MOUNT = 3,
     CUSTOM_ACCOUNT_RIDING = 4,
+    CUSTOM_RACE_MASQUERADE = 5,
     CUSTOM_FLAGS_MAX
 };
 
@@ -957,6 +958,18 @@ enum CustomFlags : uint16
     CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE    = 0x01,
 
     CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE    = 0x01,
+
+    CUSTOM_FLAG_RACE_MASQUERADE_HIDE = 0x001,
+    CUSTOM_FLAG_RACE_MASQUERADE_HUMAN = 0x002,
+    CUSTOM_FLAG_RACE_MASQUERADE_ORC = 0x004,
+    CUSTOM_FLAG_RACE_MASQUERADE_DWARF = 0x008,
+    CUSTOM_FLAG_RACE_MASQUERADE_NIGHTELF = 0x010,
+    CUSTOM_FLAG_RACE_MASQUERADE_UNDEAD = 0x020,
+    CUSTOM_FLAG_RACE_MASQUERADE_TAUREN = 0x040,
+    CUSTOM_FLAG_RACE_MASQUERADE_GNOME = 0x080,
+    CUSTOM_FLAG_RACE_MASQUERADE_TROLL = 0x100,
+    CUSTOM_FLAG_RACE_MASQUERADE_BLOODELF = 0x200,
+    CUSTOM_FLAG_RACE_MASQUERADE_DRANEI = 0x400,
 };
 
 class TC_GAME_API Player : public Unit, public GridObject<Player>
@@ -2315,6 +2328,11 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         std::unordered_map<uint8/*lootIndex*/, LootReference> AOELootView;
         std::vector<LootReference> AOELoot;
         Loot* GetLootFromAOELoot(ObjectGuid lootGUID) const;
+
+        void NotifyMasqueradeRaceDirty() { _masqueradeRaceDirty = true; }
+        bool IsMasqueradingRace() const { return _masqueradeRace != 0; }
+        void SetMasqueradeRace(Races race);
+        Races GetMasqueradeRace() const;
     protected:
         // Gamemaster whisper whitelist
         GuidList WhisperList;
@@ -2636,16 +2654,19 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         WorldLocation _corpseLocation;
 
         // EG - Custom Declarations
-
         void _SaveCustomSettings();
         void _SaveTransmogrifications();
         void _LoadCustomSettings(PreparedQueryResult result);
         void _LoadTransmogrifications(PreparedQueryResult result);
+        void _LoadMasqueradeRace();
 
         std::array<uint16, CUSTOM_FLAGS_MAX> _customFlags;
 
         std::unordered_map<ObjectGuid, uint32> _transmogrificationMap;
         std::unordered_map<uint8, uint32> _transmogrificationHideMap;
+
+        Races _masqueradeRace;
+        bool _masqueradeRaceDirty; // true if player's client currently thinks mask race is actual race
 };
 
 TC_GAME_API void AddItemsSetItem(Player* player, Item* item);

@@ -5,6 +5,7 @@
 #include "Object.h"
 #include "ObjectMgr.h"
 #include "Player.h"
+#include "SharedDefines.h"
 #include "Transmogrification.h"
 #include "Unit.h"
 #include "World.h"
@@ -52,6 +53,21 @@ void Player::_LoadTransmogrifications(PreparedQueryResult result)
                 TC_LOG_DEBUG("transmogrification", "Item entry (Entry: {}, itemGUID: {}, playerGUID: {}) does not exist, ignoring.", fakeEntry, itemGUID.ToString(), GetGUID().ToString());
             }
         } while (result->NextRow());
+    }
+}
+
+void Player::_LoadMasqueradeRace()
+{
+    uint16 storedValue = GetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE);
+    if (storedValue > CustomFlags::CUSTOM_FLAG_RACE_MASQUERADE_HIDE)
+    {
+        uint8 index = 1;
+        for (; index < 11; index++)
+            if (storedValue & (1 << index))
+                break;
+        if (index > 8)
+            ++index;
+        _masqueradeRace = Races(index);
     }
 }
 
@@ -175,6 +191,21 @@ Loot* Player::GetLootFromAOELoot(ObjectGuid lootGUID) const
             return currentLoot.RelatedLoot;
     }
     return nullptr;
+}
+
+void Player::SetMasqueradeRace(Races race)
+{
+    _masqueradeRace = race;
+    InitDisplayIds();
+    RestoreDisplayId();
+    ForceValuesUpdateAtIndex(UNIT_FIELD_BYTES_0);
+}
+
+Races Player::GetMasqueradeRace() const
+{
+    if (!_masqueradeRace)
+        return Races(GetRace());
+    return _masqueradeRace;
 }
 
 void WorldObject::GetNearPoint2D(WorldObject const* searcher, Position const* reference, float& x, float& y, float distance, float absAngle) const
