@@ -1954,6 +1954,7 @@ public:
             handler->PSendSysMessage("| - Acccount Mount flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT));
             handler->PSendSysMessage("| - Acccount Riding flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING));
             handler->PSendSysMessage("| - XPRate flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS));
+            handler->PSendSysMessage("| - Race Masquerade flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE));
         }
 
         return true;

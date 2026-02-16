@@ -68,6 +68,7 @@ void Player::_LoadMasqueradeRace()
         if (index > 8)
             ++index;
         _masqueradeRace = Races(index);
+        m_Events.AddEvent(new EG::SetRaceMasqueradeSetting(this, _masqueradeRace), m_Events.CalculateTime(1s));
     }
 }
 
@@ -193,12 +194,36 @@ Loot* Player::GetLootFromAOELoot(ObjectGuid lootGUID) const
     return nullptr;
 }
 
+uint32 Player::GetOriginalDisplayId() const
+{
+    PlayerInfo const* info = sObjectMgr->GetPlayerInfo(GetRace(), GetClass());
+    if (!info)
+    {
+        TC_LOG_ERROR("entities.player", "Player::InitDisplayIds: Player '{}' ({}) has incorrect race/class pair. Can't init display ids.", GetName(), GetGUID().ToString());
+        return 0;
+    }
+
+    uint8 gender = GetNativeGender();
+    switch (gender)
+    {
+        case GENDER_FEMALE:
+            return info->displayId_f;
+        case GENDER_MALE:
+        default:
+            return info->displayId_m;
+    }
+}
+
 void Player::SetMasqueradeRace(Races race)
 {
     _masqueradeRace = race;
     InitDisplayIds();
     RestoreDisplayId();
-    ForceValuesUpdateAtIndex(UNIT_FIELD_BYTES_0);
+
+    _changesMask.SetBit(UNIT_FIELD_BYTES_0);
+    _changesMask.SetBit(UNIT_FIELD_DISPLAYID);
+    _changesMask.SetBit(UNIT_FIELD_NATIVEDISPLAYID);
+    AddToObjectUpdateIfNeeded();
 }
 
 Races Player::GetMasqueradeRace() const
@@ -321,4 +346,17 @@ bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
     }
 
     return false;
+}
+
+EG::SetRaceMasqueradeSetting::SetRaceMasqueradeSetting(Player* owner, Races selectedRace) : _owner(owner), _selectedRace(selectedRace)
+{
+}
+
+bool EG::SetRaceMasqueradeSetting::Execute(uint64, uint32)
+{
+    if (!_owner->IsInWorld())
+        return false;
+
+    _owner->SetMasqueradeRace(_selectedRace);
+    return true;
 }

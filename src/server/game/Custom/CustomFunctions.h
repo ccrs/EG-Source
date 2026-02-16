@@ -1,8 +1,10 @@
 #ifndef CUSTOM_FUNCTIONS
 #define CUSTOM_FUNCTIONS
 
+#include "EventProcessor.h"
 #include "SharedDefines.h"
 
+class Player;
 class Unit;
 
 namespace EG
@@ -19,6 +21,18 @@ namespace EG
         bool _playerOnly;
         bool _includeSelf;
         float _hp;
+    };
+
+    class TC_GAME_API SetRaceMasqueradeSetting : public BasicEvent
+    {
+    public:
+        SetRaceMasqueradeSetting(Player* owner, Races selectedRace);
+
+        bool Execute(uint64 /*time*/, uint32 /*diff*/) override;
+
+    private:
+        Player* _owner;
+        Races const _selectedRace;
     };
 }
 

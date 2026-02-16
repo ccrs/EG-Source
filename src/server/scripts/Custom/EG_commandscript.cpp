@@ -1,4 +1,5 @@
 #include "Chat.h"
+#include "CustomFunctions.h"
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "ScriptMgr.h"
@@ -55,14 +56,14 @@ public:
         {
             player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_TRANSMOG_HIDE);
             player->UpdateObjectVisibility();
-            handler->SendSysMessage("Showing transmoged items, disconnect and reconnect to see the applied changes.");
+            handler->SendSysMessage("Showing transmoged items, disconnect and reconnect to see this setting applied.");
             return true;
         }
         else
         {
             player->AddCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_TRANSMOG_HIDE);
             player->UpdateObjectVisibility();
-            handler->SendSysMessage("Hiding transmoged items, disconnect and reconnect to see the applied changes.");
+            handler->SendSysMessage("Hiding transmoged items, disconnect and reconnect to see this setting applied.");
             return true;
         }
     }
@@ -77,14 +78,14 @@ public:
         {
             player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY);
             player->UpdateObjectVisibility();
-            handler->SendSysMessage("Showing legendary transmoged items, disconnect and reconnect to see the applied changes.");
+            handler->SendSysMessage("Showing legendary transmoged items, disconnect and reconnect to see this setting applied.");
             return true;
         }
         else
         {
             player->AddCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY);
             player->UpdateObjectVisibility();
-            handler->SendSysMessage("Hiding legendary transmoged items, disconnect and reconnect to see the applied changes.");
+            handler->SendSysMessage("Hiding legendary transmoged items, disconnect and reconnect to see this setting applied.");
             return true;
         }
     }
@@ -174,17 +175,23 @@ public:
         if (!player)
             return false;
 
-        if (value > 11)
+        if (value > 12)
         {
-            handler->SendSysMessage("Please use a value between 0 and 11.");
+            handler->SendSysMessage("Please use a value between 0 and 12.\nDisconnect and reconnect to see this setting applied.");
             return true;
         }
 
         if (value == 0)
         {
             player->SetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE, CustomFlags::CUSTOM_FLAG_RACE_MASQUERADE_HIDE);
-            player->SetMasqueradeRace(RACE_NONE);
-            handler->SendSysMessage("Other player's Race Masquerade options will be hidden from now on.");
+            handler->SendSysMessage("Other players Race Masquerade options will be hidden from now on.\nDisconnect and reconnect to see this setting applied.");
+            return true;
+        }
+
+        if (value == 11)
+        {
+            player->SetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE, CustomFlags::CUSTOM_FLAG_NONE);
+            handler->SendSysMessage("Displaying your character's original race visual.");
             return true;
         }
 
@@ -197,16 +204,15 @@ public:
         {
             std::string racesForTeam;
             if (playerTeam == ALLIANCE)
-                racesForTeam = "1 - Human\n3 - Dwarf\n4 - Nightelf\n7 - Gnome\n10 - Dranei";
+                racesForTeam = "0 - HIDE all\n1 - Human\n3 - Dwarf\n4 - Nightelf\n7 - Gnome\n10 - Dranei\n11 - Reset";
             else
-                racesForTeam = "2 - Orc\n5 - Undead\n6 - Tauren\n8 - Troll\n9 - Bloodelf";
-            handler->SendSysMessage("Please select a race from your current Faction.\nOptions: " + racesForTeam);
+                racesForTeam = "0 - HIDE all\n2 - Orc\n5 - Undead\n6 - Tauren\n8 - Troll\n9 - Bloodelf\n11 - Reset";
+            handler->SendSysMessage("Please select a race from your current Faction.\nOptions:\n" + racesForTeam);
             return true;
         }
 
         Races masqueradeRace = Races(raceValue);
-        player->SetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE, CustomFlags(1 << (raceValue)));
-        player->SetMasqueradeRace(masqueradeRace);
+        player->SetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE, CustomFlags(1 << (value)));
         handler->PSendSysMessage(LANG_MASQUERADE_RACE_ENABLED, EnumUtils::ToTitle(masqueradeRace));
         return true;
     }

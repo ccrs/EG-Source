@@ -941,23 +941,22 @@ enum CustomFlagsIndex : uint16
 
 enum CustomFlags : uint16
 {
-    CUSTOM_FLAG_NONE                    = 0,
+    CUSTOM_FLAG_NONE = 0,
 
-    CUSTOM_FLAG_TRANSMOG_HIDE           = 0x01,
+    CUSTOM_FLAG_TRANSMOG_HIDE = 0x01,
     CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY = 0x02,
-    CUSTOM_FLAG_TRANSMOG_FULL           = 0x03,
 
-    CUSTOM_FLAG_AOELOOT_ACTIVE          = 0x01,
+    CUSTOM_FLAG_AOELOOT_ACTIVE = 0x01,
 
-    CUSTOM_FLAG_XPRATE_1                = 0x01,
-    CUSTOM_FLAG_XPRATE_2                = 0x02,
-    CUSTOM_FLAG_XPRATE_3                = 0x04,
-    CUSTOM_FLAG_XPRATE_4                = 0x08,
-    CUSTOM_FLAG_XPRATE_5                = 0x10,
+    CUSTOM_FLAG_XPRATE_1 = 0x01,
+    CUSTOM_FLAG_XPRATE_2 = 0x02,
+    CUSTOM_FLAG_XPRATE_3 = 0x04,
+    CUSTOM_FLAG_XPRATE_4 = 0x08,
+    CUSTOM_FLAG_XPRATE_5 = 0x10,
 
-    CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE    = 0x01,
+    CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE = 0x01,
 
-    CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE    = 0x01,
+    CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE = 0x01,
 
     CUSTOM_FLAG_RACE_MASQUERADE_HIDE = 0x001,
     CUSTOM_FLAG_RACE_MASQUERADE_HUMAN = 0x002,
@@ -1884,6 +1883,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void SetFactionForRace(uint8 race);
 
         void InitDisplayIds();
+        uint32 GetOriginalDisplayId() const;
 
         bool IsAtGroupRewardDistance(WorldObject const* pRewardSource) const;
         bool IsAtRecruitAFriendDistance(WorldObject const* pOther) const;
@@ -2666,7 +2666,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         std::unordered_map<uint8, uint32> _transmogrificationHideMap;
 
         Races _masqueradeRace;
-        bool _masqueradeRaceDirty; // true if player's client currently thinks mask race is actual race
+        bool _masqueradeRaceDirty;
 };
 
 TC_GAME_API void AddItemsSetItem(Player* player, Item* item);
