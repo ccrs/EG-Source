@@ -5,6 +5,7 @@
 #include "Object.h"
 #include "ObjectMgr.h"
 #include "Player.h"
+#include "SharedDefines.h"
 #include "Transmogrification.h"
 #include "Unit.h"
 #include "World.h"
@@ -52,6 +53,22 @@ void Player::_LoadTransmogrifications(PreparedQueryResult result)
                 TC_LOG_DEBUG("transmogrification", "Item entry (Entry: {}, itemGUID: {}, playerGUID: {}) does not exist, ignoring.", fakeEntry, itemGUID.ToString(), GetGUID().ToString());
             }
         } while (result->NextRow());
+    }
+}
+
+void Player::_LoadMasqueradeRace()
+{
+    uint16 storedValue = GetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE);
+    if (storedValue > CustomFlags::CUSTOM_FLAG_RACE_MASQUERADE_HIDE)
+    {
+        uint8 index = 1;
+        for (; index < 11; index++)
+            if (storedValue & (1 << index))
+                break;
+        if (index > 8)
+            ++index;
+        _masqueradeRace = Races(index);
+        m_Events.AddEvent(new EG::SetRaceMasqueradeSetting(this, _masqueradeRace), m_Events.CalculateTime(1s));
     }
 }
 
@@ -177,6 +194,54 @@ Loot* Player::GetLootFromAOELoot(ObjectGuid lootGUID) const
     return nullptr;
 }
 
+uint32 Player::GetOriginalDisplayId() const
+{
+    PlayerInfo const* info = sObjectMgr->GetPlayerInfo(GetRace(), GetClass());
+    if (!info)
+    {
+        TC_LOG_ERROR("entities.player", "Player::InitDisplayIds: Player '{}' ({}) has incorrect race/class pair. Can't init display ids.", GetName(), GetGUID().ToString());
+        return 0;
+    }
+
+    uint8 gender = GetNativeGender();
+    switch (gender)
+    {
+        case GENDER_FEMALE:
+            return info->displayId_f;
+        case GENDER_MALE:
+        default:
+            return info->displayId_m;
+    }
+}
+
+void Player::SetMasqueradeRace(Races race)
+{
+    _masqueradeRace = race;
+    InitDisplayIds();
+    RestoreDisplayId();
+
+    _changesMask.SetBit(UNIT_FIELD_BYTES_0);
+    _changesMask.SetBit(UNIT_FIELD_DISPLAYID);
+    _changesMask.SetBit(UNIT_FIELD_NATIVEDISPLAYID);
+    AddToObjectUpdateIfNeeded();
+}
+
+Races Player::GetMasqueradeRace() const
+{
+    if (!_masqueradeRace)
+        return Races(GetRace());
+    return _masqueradeRace;
+}
+
+bool Player::CleanMasqueradeRaceValue()
+{
+    if (!IsInWorld() || !HaveAtClient(this))
+        return false;
+
+    ForceValuesUpdateAtIndex(UNIT_FIELD_BYTES_0);
+    return true;
+}
+
 void WorldObject::GetNearPoint2D(WorldObject const* searcher, Position const* reference, float& x, float& y, float distance, float absAngle) const
 {
     float effectiveReach = GetCombatReach();
@@ -290,4 +355,29 @@ bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
     }
 
     return false;
+}
+
+EG::SetRaceMasqueradeSetting::SetRaceMasqueradeSetting(Player* owner, Races selectedRace) : _owner(owner), _selectedRace(selectedRace)
+{
+}
+
+bool EG::SetRaceMasqueradeSetting::Execute(uint64, uint32)
+{
+    if (!_owner->IsInWorld())
+        return false;
+
+    _owner->SetMasqueradeRace(_selectedRace);
+    return true;
+}
+
+EG::CleanRaceMasquerade::CleanRaceMasquerade(Player* owner) : _owner(owner)
+{
+}
+
+bool EG::CleanRaceMasquerade::Execute(uint64, uint32)
+{
+    if (!_owner->CleanMasqueradeRaceValue())
+        return false;
+
+    return true;
 }

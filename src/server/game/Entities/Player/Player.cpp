@@ -41,6 +41,7 @@
 #include "ConditionMgr.h"
 #include "Containers.h"
 #include "CreatureAI.h"
+#include "CustomFunctions.h"
 #include "DatabaseEnv.h"
 #include "DisableMgr.h"
 #include "Formulas.h"
@@ -337,7 +338,11 @@ Player::Player(WorldSession* session): Unit(true)
 
     m_groupUpdateTimer.Reset(5000);
 
+    // EG - Custom
     _customFlags = {};
+
+    _masqueradeRace = RACE_NONE;
+    _masqueradeRaceDirty = false;
 }
 
 Player::~Player()
@@ -1245,6 +1250,13 @@ void Player::Update(uint32 p_time)
         }
         else
             m_hostileReferenceCheckTimer -= p_time;
+    }
+
+    // EG - Race masquerade
+    if (_masqueradeRaceDirty)
+    {
+        _masqueradeRaceDirty = false;
+        m_Events.AddEvent(new EG::CleanRaceMasquerade(this), m_Events.CalculateTime(1s));
     }
 
     if (IsHasDelayedTeleport())
@@ -4537,7 +4549,7 @@ Corpse* Player::CreateCorpse()
 
     _corpseLocation.WorldRelocate(*this);
 
-    _cfb1 = ((0x00) | (GetRace() << 8) | (GetNativeGender() << 16) | (GetSkinId() << 24));
+    _cfb1 = ((0x00) | (GetMasqueradeRace() << 8) | (GetNativeGender() << 16) | (GetSkinId() << 24));
     _cfb2 = (GetFaceId() | (GetHairStyleId() << 8) | (GetHairColorId() << 16) | (GetFacialStyle() << 24));
 
     corpse->SetUInt32Value(CORPSE_FIELD_BYTES_1, _cfb1);
@@ -17705,6 +17717,8 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
     // EG - Custom Settings
     _LoadCustomSettings(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS));
 
+    _LoadMasqueradeRace();
+
     // EG - Transmogrification
     _LoadTransmogrifications(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_TRANSMOGRIFICATIONS));
 
@@ -21442,7 +21456,12 @@ void Player::InitDataForForm(bool reapplyMods)
 
 void Player::InitDisplayIds()
 {
-    PlayerInfo const* info = sObjectMgr->GetPlayerInfo(GetRace(), GetClass());
+    // EG - Race masquerade
+    Races masqueradeRace = GetMasqueradeRace();
+    PlayerInfo const* info = sObjectMgr->GetPlayerInfo(masqueradeRace, GetClass());
+    if (!info && masqueradeRace != GetRace())
+        info = sObjectMgr->GetPlayerInfo(masqueradeRace, (masqueradeRace == RACE_DRAENEI || masqueradeRace == RACE_BLOODELF) ? CLASS_PALADIN : CLASS_WARRIOR);
+
     if (!info)
     {
         TC_LOG_ERROR("entities.player", "Player::InitDisplayIds: Player '{}' ({}) has incorrect race/class pair. Can't init display ids.", GetName(), GetGUID().ToString());

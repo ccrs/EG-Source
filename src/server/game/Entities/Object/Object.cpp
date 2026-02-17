@@ -3560,6 +3560,17 @@ struct WorldObjectChangeAccumulator
 void WorldObject::BuildUpdate(UpdateDataMapType& data_map)
 {
     WorldObjectChangeAccumulator notifier(*this, data_map);
+
+    // EG - Masquerade system
+    if (Player* player = ToPlayer())
+    {
+        if ((_changesMask.GetBit(UNIT_FIELD_DISPLAYID) || _changesMask.GetBit(UNIT_FIELD_NATIVEDISPLAYID)) && player->IsMasqueradingRace() && player->GetDisplayId() == player->GetNativeDisplayId())
+        {
+            _changesMask.SetBit(UNIT_FIELD_BYTES_0);
+            player->NotifyMasqueradeRaceDirty();
+        }
+    }
+
     //we must build packets for all visible players
     Cell::VisitWorldObjects(this, notifier, GetVisibilityRange());
 
