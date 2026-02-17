@@ -233,6 +233,15 @@ Races Player::GetMasqueradeRace() const
     return _masqueradeRace;
 }
 
+bool Player::CleanMasqueradeRaceValue()
+{
+    if (!IsInWorld() || !HaveAtClient(this))
+        return false;
+
+    ForceValuesUpdateAtIndex(UNIT_FIELD_BYTES_0);
+    return true;
+}
+
 void WorldObject::GetNearPoint2D(WorldObject const* searcher, Position const* reference, float& x, float& y, float distance, float absAngle) const
 {
     float effectiveReach = GetCombatReach();
@@ -358,5 +367,17 @@ bool EG::SetRaceMasqueradeSetting::Execute(uint64, uint32)
         return false;
 
     _owner->SetMasqueradeRace(_selectedRace);
+    return true;
+}
+
+EG::CleanRaceMasquerade::CleanRaceMasquerade(Player* owner) : _owner(owner)
+{
+}
+
+bool EG::CleanRaceMasquerade::Execute(uint64, uint32)
+{
+    if (!_owner->CleanMasqueradeRaceValue())
+        return false;
+
     return true;
 }

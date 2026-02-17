@@ -34,6 +34,17 @@ namespace EG
         Player* _owner;
         Races const _selectedRace;
     };
+
+    class TC_GAME_API CleanRaceMasquerade : public BasicEvent
+    {
+    public:
+        CleanRaceMasquerade(Player* owner);
+
+        bool Execute(uint64 /*time*/, uint32 /*diff*/) override;
+
+    private:
+        Player* _owner;
+    };
 }
 
 #endif // CUSTOM_FUNCTIONS

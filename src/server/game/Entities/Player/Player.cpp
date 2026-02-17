@@ -41,6 +41,7 @@
 #include "ConditionMgr.h"
 #include "Containers.h"
 #include "CreatureAI.h"
+#include "CustomFunctions.h"
 #include "DatabaseEnv.h"
 #include "DisableMgr.h"
 #include "Formulas.h"
@@ -1255,7 +1256,7 @@ void Player::Update(uint32 p_time)
     if (_masqueradeRaceDirty)
     {
         _masqueradeRaceDirty = false;
-        ForceValuesUpdateAtIndex(UNIT_FIELD_BYTES_0);
+        m_Events.AddEvent(new EG::CleanRaceMasquerade(this), m_Events.CalculateTime(1s));
     }
 
     if (IsHasDelayedTeleport())
@@ -17715,6 +17716,7 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
 
     // EG - Custom Settings
     _LoadCustomSettings(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS));
+
     _LoadMasqueradeRace();
 
     // EG - Transmogrification

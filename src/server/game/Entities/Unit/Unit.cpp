@@ -13683,6 +13683,24 @@ void Unit::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player const* t
 
             fieldBuffer << displayId;
         }
+        else if (player
+            && player->IsMasqueradingRace()
+            && (GetDisplayId() == GetNativeDisplayId()) // not transformed into something else
+            && index == UNIT_FIELD_BYTES_0
+            && m_uint32Values[index] != 0
+            && (player != target || (updateType == UPDATETYPE_VALUES && (_changesMask.GetBit(UNIT_FIELD_DISPLAYID) || _changesMask.GetBit(UNIT_FIELD_NATIVEDISPLAYID))))
+        )
+        {
+            updateMask.SetBit(index);
+
+            // Masquerade system - send masquerading race if displayid is being changed to ensure client uses correct skin; send actual race otherwise to ensure languages and spellbook work
+            uint32 raceValue = target->HasCustomFlag(CUSTOM_RACE_MASQUERADE, CUSTOM_FLAG_RACE_MASQUERADE_HIDE) ? player->GetRace() : uint32(player->GetMasqueradeRace());
+            uint32 unitFieldBytes0Value = m_uint32Values[UNIT_FIELD_BYTES_0];
+            unitFieldBytes0Value &= ~uint32(uint32(0xFF) << (UNIT_BYTES_0_OFFSET_RACE * 8)); // remove original race value
+            unitFieldBytes0Value |= uint32(raceValue << (UNIT_BYTES_0_OFFSET_RACE * 8)); // add masquerade race value
+
+            fieldBuffer << unitFieldBytes0Value;
+        }
         else if (_fieldNotifyFlags & flags[index] ||
             ((flags[index] & visibleFlag) & UF_FLAG_SPECIAL_INFO) ||
             ((updateType == UPDATETYPE_VALUES ? _changesMask.GetBit(index) : m_uint32Values[index]) && (flags[index] & visibleFlag)) ||
@@ -13828,22 +13846,6 @@ void Unit::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player const* t
                 }
 
                 fieldBuffer << itemId;
-            }
-            else if (player
-                && player->IsMasqueradingRace()
-                && GetDisplayId() == GetNativeDisplayId() // not transformed into something else
-                && index == UNIT_FIELD_BYTES_0
-                && m_uint32Values[index] != 0
-                && (player != target || (updateType == UPDATETYPE_VALUES && (_changesMask.GetBit(UNIT_FIELD_DISPLAYID) || _changesMask.GetBit(UNIT_FIELD_NATIVEDISPLAYID))))
-            )
-            {
-                // Masquerade system - send masquerading race if displayid is being changed to ensure client uses correct skin; send actual race otherwise to ensure languages and spellbook work
-                uint32 raceValue = target->HasCustomFlag(CUSTOM_RACE_MASQUERADE, CUSTOM_FLAG_RACE_MASQUERADE_HIDE) ? player->GetRace() : uint32(player->GetMasqueradeRace());
-                uint32 unitFieldBytes0Value = m_uint32Values[UNIT_FIELD_BYTES_0];
-                unitFieldBytes0Value &= ~uint32(uint32(0xFF) << (UNIT_BYTES_0_OFFSET_RACE * 8)); // remove original race value
-                unitFieldBytes0Value |= uint32(raceValue << (UNIT_BYTES_0_OFFSET_RACE * 8)); // add masquerade race value
-
-                fieldBuffer << unitFieldBytes0Value;
             }
             else
             {

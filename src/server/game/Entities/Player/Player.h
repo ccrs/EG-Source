@@ -2333,6 +2333,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         bool IsMasqueradingRace() const { return _masqueradeRace != 0; }
         void SetMasqueradeRace(Races race);
         Races GetMasqueradeRace() const;
+        bool CleanMasqueradeRaceValue();
     protected:
         // Gamemaster whisper whitelist
         GuidList WhisperList;
