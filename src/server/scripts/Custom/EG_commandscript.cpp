@@ -114,9 +114,9 @@ public:
         }
     }
 
-    static bool HandleXPRate(ChatHandler* /*handler*/, uint8 /*rate*/)
+    static bool HandleXPRate(ChatHandler* handler, uint8 rate)
     {
-        /*Player* player = handler->GetSession()->GetPlayer();
+        Player* player = handler->GetSession()->GetPlayer();
         if (!player)
             return false;
 
@@ -127,7 +127,7 @@ public:
         }
 
         player->SetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS, CustomFlags(1 << (rate - 1)));
-        handler->SendSysMessage(Trinity::StringFormat("XP rate modified to {}.", rate));*/
+        handler->SendSysMessage(Trinity::StringFormat("XP rate modified to {}.", rate));
         return true;
     }
 
