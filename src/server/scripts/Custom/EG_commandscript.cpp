@@ -120,7 +120,7 @@ public:
         if (!player)
             return false;
 
-        if (!rate || rate > 6)
+        if (!rate || rate > 5)
         {
             handler->SendSysMessage("Please use a rate value between 1 and 5.");
             return true;
