@@ -54,26 +54,35 @@ class EG_AccountSpells : public PlayerScript
                     switch (relatedInfo->Id)
                     {
                         case 33388: // Apprentice Riding (Apprentice)
+                        case 5784: // Felsteed (Summon)
+                        case 13819: // Warhorse (Summon)
+                        case 34769: // Summon Warhorse (Summon)
                             if (player->GetLevel() >= 20)
-                                player->LearnSpell(relatedInfo->Id, false);
+                                player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
                             break;
                         case 33391: // Journeyman Riding (Journeyman)
+                        case 23161: // Dreadsteed (Summon)
+                        case 23214: // Charger (Summon)
+                        case 34767: // Summon Charger (Summon)
+                        case 48778: // Acherus Deathcharger (Summon)
                             if (player->GetLevel() >= 40)
-                                player->LearnSpell(relatedInfo->Id, false);
+                                player->LearnSpell(33391, false); // Journeyman Riding (Journeyman)
                             else if (player->GetLevel() >= 20)
                                 player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
                             break;
                         case 34090: // Expert Riding (Expert)
+                        case 33943: // Flight Form (Shapeshift)
                             if (player->GetLevel() >= 60)
-                                player->LearnSpell(relatedInfo->Id, false);
+                                player->LearnSpell(34090, false); // Expert Riding (Expert)
                             else if (player->GetLevel() >= 40)
                                 player->LearnSpell(33391, false); // Journeyman Riding (Journeyman)
                             else if (player->GetLevel() >= 20)
                                 player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
                             break;
                         case 34091: // Artisan Riding (Artisan)
+                        case 40120: // Swift Flight Form (Shapeshift)
                             if (player->GetLevel() >= 70)
-                                player->LearnSpell(relatedInfo->Id, false);
+                                player->LearnSpell(34091, false);
                             else if (player->GetLevel() >= 60)
                                 player->LearnSpell(34090, false); // Expert Riding (Expert)
                             else if (player->GetLevel() >= 40)
@@ -126,26 +135,35 @@ class EG_AccountSpells : public PlayerScript
                     switch (relatedInfo->Id)
                     {
                         case 33388: // Apprentice Riding (Apprentice)
+                        case 5784: // Felsteed (Summon)
+                        case 13819: // Warhorse (Summon)
+                        case 34769: // Summon Warhorse (Summon)
                             if (player->GetLevel() >= 20)
-                                player->LearnSpell(relatedInfo->Id, false);
+                                player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
                             break;
                         case 33391: // Journeyman Riding (Journeyman)
+                        case 23161: // Dreadsteed (Summon)
+                        case 23214: // Charger (Summon)
+                        case 34767: // Summon Charger (Summon)
+                        case 48778: // Acherus Deathcharger (Summon)
                             if (player->GetLevel() >= 40)
-                                player->LearnSpell(relatedInfo->Id, false);
+                                player->LearnSpell(33391, false); // Journeyman Riding (Journeyman)
                             else if (player->GetLevel() >= 20)
                                 player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
                             break;
                         case 34090: // Expert Riding (Expert)
+                        case 33943: // Flight Form (Shapeshift)
                             if (player->GetLevel() >= 60)
-                                player->LearnSpell(relatedInfo->Id, false);
+                                player->LearnSpell(34090, false); // Expert Riding (Expert)
                             else if (player->GetLevel() >= 40)
                                 player->LearnSpell(33391, false); // Journeyman Riding (Journeyman)
                             else if (player->GetLevel() >= 20)
                                 player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
                             break;
                         case 34091: // Artisan Riding (Artisan)
+                        case 40120: // Swift Flight Form (Shapeshift)
                             if (player->GetLevel() >= 70)
-                                player->LearnSpell(relatedInfo->Id, false);
+                                player->LearnSpell(34091, false);
                             else if (player->GetLevel() >= 60)
                                 player->LearnSpell(34090, false); // Expert Riding (Expert)
                             else if (player->GetLevel() >= 40)
