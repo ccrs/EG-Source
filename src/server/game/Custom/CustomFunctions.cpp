@@ -186,6 +186,15 @@ uint32 Player::GetHiddenTransmogrificationEntry(uint8 itemIndex) const
 
 Loot* Player::GetLootFromAOELoot(ObjectGuid lootGUID) const
 {
+    if (!HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE))
+        return nullptr;
+
+    if (lootGUID.IsEmpty())
+        return nullptr;
+
+    if (StoredLoot.empty() || StoredLoot.size() < 2)
+        return nullptr;
+
     for (LootReference currentLoot : StoredLoot)
     {
         if (currentLoot.ContainerEntityGUID == lootGUID)

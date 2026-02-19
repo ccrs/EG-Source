@@ -96,7 +96,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
         }
         loot = &bones->loot;
     }
-    else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->StoredLootView.contains(lootSlot))
+    else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->GetLootFromAOELoot(lguid) && player->StoredLootView.contains(lootSlot))
     {
         LootReference const& relatedLootReference = player->StoredLootView.find(lootSlot)->second;
         Creature* creature = GetPlayer()->GetMap()->GetCreature(relatedLootReference.ContainerEntityGUID);
