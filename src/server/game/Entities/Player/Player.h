@@ -2325,8 +2325,8 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         std::unordered_map<ObjectGuid, uint32> GetTransmogrificationContainer() const { return _transmogrificationMap; }
         uint32 GetHiddenTransmogrificationEntry(uint8 itemIndex) const;
 
-        std::unordered_map<uint8/*lootIndex*/, LootReference> AOELootView;
-        std::vector<LootReference> AOELoot;
+        std::unordered_map<uint8/*lootIndex*/, LootReference> StoredLootView;
+        std::vector<LootReference> StoredLoot;
         Loot* GetLootFromAOELoot(ObjectGuid lootGUID) const;
 
         void NotifyMasqueradeRaceDirty() { _masqueradeRaceDirty = true; }

@@ -8150,8 +8150,8 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
         GetName(), GetGUID().ToString(), guid.ToString());
 
     bool aoeLoot = false;
-    AOELoot.clear();
-    AOELootView.clear();
+    StoredLoot.clear();
+    StoredLootView.clear();
     if (guid.IsGameObject())
     {
         GameObject* go = GetMap()->GetGameObject(guid);
@@ -8523,7 +8523,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
         lootViewToSend.gold += loot->gold;
         // add 'this' player as one of the players that are looting 'loot'
         loot->AddLooter(GetGUID());
-        AOELoot.emplace_back(loot, guid);
+        StoredLoot.emplace_back(loot, guid);
         if (aoeLoot)
         {
             std::vector<Creature*> deadCreatures;
@@ -8550,7 +8550,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                     lootViewToSend.Store(processResult);
                     lootViewToSend.lootList.push_back(currentLoot);
                     lootViewToSend.gold += currentLoot->gold;
-                    AOELoot.emplace_back(currentLoot, deadCreature->GetGUID());
+                    StoredLoot.emplace_back(currentLoot, deadCreature->GetGUID());
                     currentLoot->AddLooter(GetGUID());
                 }
             }
@@ -8558,11 +8558,11 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
         uint8 itemResultCounter = 0;
         for (LootProcessResult const& currentResult : lootViewToSend.processedList)
         {
-            auto found = std::find_if(AOELoot.begin(), AOELoot.end(), [&currentResult](LootReference const& l)
+            auto found = std::find_if(StoredLoot.begin(), StoredLoot.end(), [&currentResult](LootReference const& l)
             {
                 return l.RelatedLoot == currentResult.RelatedLoot;
             });
-            AOELootView.insert({ itemResultCounter++, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot, found->ContainerEntityGUID) });
+            StoredLootView.insert({ itemResultCounter++, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot, found->ContainerEntityGUID) });
         }
 
         SetLootGUID(guid);

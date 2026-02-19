@@ -53,10 +53,10 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
             return;
         }
 
-        if (player->AOELootView.find(lootSlot) != player->AOELootView.end())
+        if (player->StoredLootView.find(lootSlot) != player->StoredLootView.end())
         {
             lootViewSlot = lootSlot;
-            LootReference const& relatedLootReference = player->AOELootView.find(lootSlot)->second;
+            LootReference const& relatedLootReference = player->StoredLootView.find(lootSlot)->second;
             lootSlot = relatedLootReference.ItemIndex;
         }
         loot = &go->loot;
@@ -71,10 +71,10 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
             return;
         }
 
-        if (player->AOELootView.find(lootSlot) != player->AOELootView.end())
+        if (player->StoredLootView.find(lootSlot) != player->StoredLootView.end())
         {
             lootViewSlot = lootSlot;
-            LootReference const& relatedLootReference = player->AOELootView.find(lootSlot)->second;
+            LootReference const& relatedLootReference = player->StoredLootView.find(lootSlot)->second;
             lootSlot = relatedLootReference.ItemIndex;
         }
         loot = &pItem->loot;
@@ -88,17 +88,17 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
             return;
         }
 
-        if (player->AOELootView.find(lootSlot) != player->AOELootView.end())
+        if (player->StoredLootView.find(lootSlot) != player->StoredLootView.end())
         {
             lootViewSlot = lootSlot;
-            LootReference const& relatedLootReference = player->AOELootView.find(lootSlot)->second;
+            LootReference const& relatedLootReference = player->StoredLootView.find(lootSlot)->second;
             lootSlot = relatedLootReference.ItemIndex;
         }
         loot = &bones->loot;
     }
-    else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->AOELootView.contains(lootSlot))
+    else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->StoredLootView.contains(lootSlot))
     {
-        LootReference const& relatedLootReference = player->AOELootView.find(lootSlot)->second;
+        LootReference const& relatedLootReference = player->StoredLootView.find(lootSlot)->second;
         Creature* creature = GetPlayer()->GetMap()->GetCreature(relatedLootReference.ContainerEntityGUID);
 
         bool lootAllowed = creature && creature->IsAlive() == (player->GetClass() == CLASS_ROGUE && creature->loot.loot_type == LOOT_PICKPOCKETING);
@@ -122,10 +122,10 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
             return;
         }
 
-        if (player->AOELootView.find(lootSlot) != player->AOELootView.end())
+        if (player->StoredLootView.find(lootSlot) != player->StoredLootView.end())
         {
             lootViewSlot = lootSlot;
-            LootReference const& relatedLootReference = player->AOELootView.find(lootSlot)->second;
+            LootReference const& relatedLootReference = player->StoredLootView.find(lootSlot)->second;
             lootSlot = relatedLootReference.ItemIndex;
         }
 
@@ -206,7 +206,7 @@ void WorldSession::HandleLootMoneyOpcode(WorldPacket& /*recvData*/)
     if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->GetLootFromAOELoot(guid))
     {
         uint32 totalGold = 0;
-        for (LootReference reference : player->AOELoot) {
+        for (LootReference reference : player->StoredLoot) {
             Loot* relatedLoot = reference.RelatedLoot;
             totalGold += relatedLoot->gold;
             relatedLoot->NotifyMoneyRemoved();
@@ -407,15 +407,15 @@ void WorldSession::DoLootRelease(ObjectGuid lguid)
     }
     else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->GetLootFromAOELoot(lguid))
     {
-        for (LootReference currentLoot : player->AOELoot)
+        for (LootReference currentLoot : player->StoredLoot)
         {
             Creature* creature = GetPlayer()->GetMap()->GetCreature(currentLoot.ContainerEntityGUID);
 
             bool lootAllowed = creature && creature->IsAlive() == (player->GetClass() == CLASS_ROGUE && creature->loot.loot_type == LOOT_PICKPOCKETING);
             if (!lootAllowed || !creature->IsWithinDistInMap(_player, 10.f))
             {
-                player->AOELootView.clear();
-                player->AOELoot.clear();
+                player->StoredLootView.clear();
+                player->StoredLoot.clear();
                 return;
             }
 
@@ -436,8 +436,8 @@ void WorldSession::DoLootRelease(ObjectGuid lguid)
             //Player is not looking at loot list, he doesn't need to see updates on the loot list
             loot->RemoveLooter(player->GetGUID());
         }
-        player->AOELootView.clear();
-        player->AOELoot.clear();
+        player->StoredLootView.clear();
+        player->StoredLoot.clear();
     }
     else
     {

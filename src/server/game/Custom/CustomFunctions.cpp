@@ -186,7 +186,7 @@ uint32 Player::GetHiddenTransmogrificationEntry(uint8 itemIndex) const
 
 Loot* Player::GetLootFromAOELoot(ObjectGuid lootGUID) const
 {
-    for (LootReference currentLoot : AOELoot)
+    for (LootReference currentLoot : StoredLoot)
     {
         if (currentLoot.ContainerEntityGUID == lootGUID)
             return currentLoot.RelatedLoot;
