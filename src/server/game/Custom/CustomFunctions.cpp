@@ -11,7 +11,7 @@
 
 void Creature::ProcessLOSLock()
 {
-    if (!IsAlive() || HasUnitState(UNIT_STATE_SIGHTLESS) || !IsAIEnabled())
+    if (_LOSQueue.empty() || !IsAlive() || HasUnitState(UNIT_STATE_SIGHTLESS) || !IsAIEnabled())
     {
         _LOSQueue = {};
         _uniqueLOSEntries.clear();
