@@ -19,214 +19,203 @@ enum TestDummyModes
     MODE_DPS
 };
 
-class EG_npc_damage_test_dummy : public CreatureScript
+struct EG_npc_damage_test_dummy : public NullCreatureAI
 {
-public:
-    EG_npc_damage_test_dummy() : CreatureScript("EG_npc_damage_test_dummy") {}
+    friend class EG_npc_damage_test_controller;
 
-    struct EG_npc_damage_test_dummyAI : public NullCreatureAI
+    EG_npc_damage_test_dummy(Creature* creature) : NullCreatureAI(creature), _mode(MODE_NULL), _attemptCountdown(0), _attemptTimer(0), _attemptDuration(0), _healthUpdateInterval(1000), _rageGainInterval(3000) { }
+
+    void InitializeAI() override
     {
-        friend class EG_npc_damage_test_controller;
+        me->SetReactState(REACT_PASSIVE);
+        me->SetMaxHealth(1000000000u);
+        me->SetHealth(1000000000u);
+        UpdateFlags();
+    }
 
-        EG_npc_damage_test_dummyAI(Creature* creature) : NullCreatureAI(creature), _mode(MODE_NULL), _attemptCountdown(0), _attemptTimer(0), _attemptDuration(0), _healthUpdateInterval(1000), _rageGainInterval(3000) { }
+    void HealthUpdate()
+    {
+        uint32 hp = me->GetMaxHealth() / (_attemptDuration / IN_MILLISECONDS) * ((_attemptTimer + 999) / IN_MILLISECONDS);
+        if (!hp)
+            hp = 1;
+        me->SetHealth(hp);
+    }
 
-        void InitializeAI() override
+    void RageGainTick()
+    {
+        std::list<Player*> players;
+        me->GetPlayerListInGrid(players, 250.0f);
+        for (Player* player : players)
         {
-            me->SetReactState(REACT_PASSIVE);
-            me->SetMaxHealth(1000000000u);
-            me->SetHealth(1000000000u);
-            UpdateFlags();
+            if (player->GetPowerType() == POWER_RAGE && _attemptScores.find(player->GetGUID()) != _attemptScores.end())
+                player->RewardRage(3000, 1, false);
         }
+    }
 
-        void HealthUpdate()
-        {
-            uint32 hp = me->GetMaxHealth() / (_attemptDuration / IN_MILLISECONDS) * ((_attemptTimer + 999) / IN_MILLISECONDS);
-            if (!hp)
-                hp = 1;
-            me->SetHealth(hp);
-        }
+    void UpdateFlags()
+    {
+        if (!_currentPlayer.IsEmpty())
+            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_IMMUNE_TO_PC);
+        else
+            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_IMMUNE_TO_PC);
+    }
 
-        void RageGainTick()
-        {
-            std::list<Player*> players;
-            me->GetPlayerListInGrid(players, 250.0f);
-            for (Player* player : players)
-            {
-                if (player->GetPowerType() == POWER_RAGE && _attemptScores.find(player->GetGUID()) != _attemptScores.end())
-                    player->RewardRage(3000, 1, false);
-            }
-        }
+    void BeginAttempt(Player* target, TestDummyModes /*mode*/, Milliseconds timer)
+    {
+        _currentPlayer = target->GetGUID();
+        _attemptScores.clear();
+        _attemptCountdown = 10 * IN_MILLISECONDS;
+        _attemptDuration = _attemptTimer = timer.count();
+        _healthUpdateInterval = 1000;
+        _rageGainInterval = 3000;
+        me->SetLevel(std::min<uint8>(252, target->GetLevel()) + 3);
+        UpdateFlags();
+        me->Say(Trinity::StringFormat("OK, %s. Starting attempt in 10 seconds, get ready...", target->GetName().c_str()), LANG_UNIVERSAL);
+    }
 
-        void UpdateFlags()
+    void CancelAttempt()
+    {
+        me->Say("OK. Attempt canceled.", LANG_UNIVERSAL);
+        _currentPlayer.Clear();
+        me->GetThreatManager().ClearAllThreat();
+        me->CombatStop();
+        UpdateFlags();
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!_currentPlayer)
+            return;
+        if (_attemptCountdown)
         {
-            if (!_currentPlayer.IsEmpty())
-                me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_IMMUNE_TO_PC);
+            uint32 old = _attemptCountdown;
+            if (_attemptCountdown > diff)
+                _attemptCountdown -= diff;
             else
-                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_IMMUNE_TO_PC);
+            {
+                diff -= _attemptCountdown;
+                _attemptCountdown = 0;
+            }
+            char const* text = nullptr;
+            if (!_attemptCountdown)
+                text = "Alright - GO!!!";
+            else if (_attemptCountdown <= 1000 && old > 1000)
+                text = "1 second...";
+            else if (_attemptCountdown <= 2000 && old > 2000)
+                text = "2 seconds...";
+            else if (_attemptCountdown <= 3000 && old > 3000)
+                text = "3 seconds...";
+            else if (_attemptCountdown <= 5000 && old > 5000)
+                text = "5 seconds...";
+            else if (_attemptCountdown <= 7000 && old > 7000)
+                text = "7 seconds...";
+            if (text)
+                me->Say(text, LANG_UNIVERSAL);
         }
-
-        void BeginAttempt(Player* target, TestDummyModes /*mode*/, Milliseconds timer)
+        if (_attemptCountdown)
+            return;
+        if (diff < _attemptTimer)
         {
-            _currentPlayer = target->GetGUID();
-            _attemptScores.clear();
-            _attemptCountdown = 10 * IN_MILLISECONDS;
-            _attemptDuration = _attemptTimer = timer.count();
-            _healthUpdateInterval = 1000;
-            _rageGainInterval = 3000;
-            me->SetLevel(std::min<uint8>(252, target->GetLevel()) + 3);
-            UpdateFlags();
-            me->Say(Trinity::StringFormat("OK, %s. Starting attempt in 10 seconds, get ready...", target->GetName().c_str()), LANG_UNIVERSAL);
+            _attemptTimer -= diff;
         }
-
-        void CancelAttempt()
+        else
         {
-            me->Say("OK. Attempt canceled.", LANG_UNIVERSAL);
+            size_t const num = _attemptScores.size();
+            if (num > 1)
+                me->Say(Trinity::StringFormat("Attempt concluded - %u players participated:", num), LANG_UNIVERSAL);
+            else
+                me->Say("Attempt concluded:", LANG_UNIVERSAL);
+            std::vector<std::pair<decltype(_attemptScores)::value_type::second_type::second_type, decltype(_attemptScores)::value_type::second_type::first_type>> _sortable;
+            for (auto const& pair : _attemptScores)
+                _sortable.emplace_back(pair.second.second, pair.second.first);
+            std::sort(_sortable.begin(), _sortable.end(), std::greater<decltype(_sortable)::value_type>());
+            uint32 index = 0;
+            for (auto const& pair : _sortable)
+            {
+                if (num >= 10)
+                    me->Say(Trinity::StringFormat("%02d. %s %s (per sec: %s)", ++index, pair.second, pretty(pair.first), pretty(pair.first / float(_attemptDuration / 1000))), LANG_UNIVERSAL);
+                else if (num > 1)
+                    me->Say(Trinity::StringFormat("%d. %s %s (per sec: %s)", ++index, pair.second, pretty(pair.first), pretty(pair.first / float(_attemptDuration / 1000))), LANG_UNIVERSAL);
+                else
+                    me->Say(Trinity::StringFormat("%s - %s (per sec: %s)", pair.second, pretty(pair.first), pretty(pair.first / float(_attemptDuration / 1000))), LANG_UNIVERSAL);
+            }
             _currentPlayer.Clear();
             me->GetThreatManager().ClearAllThreat();
             me->CombatStop();
             UpdateFlags();
+            return;
         }
-
-        void UpdateAI(uint32 diff) override
+        if (_healthUpdateInterval <= diff)
         {
-            if (!_currentPlayer)
-                return;
-            if (_attemptCountdown)
-            {
-                uint32 old = _attemptCountdown;
-                if (_attemptCountdown > diff)
-                    _attemptCountdown -= diff;
-                else
-                {
-                    diff -= _attemptCountdown;
-                    _attemptCountdown = 0;
-                }
-                char const* text = nullptr;
-                if (!_attemptCountdown)
-                    text = "Alright - GO!!!";
-                else if (_attemptCountdown <= 1000 && old > 1000)
-                    text = "1 second...";
-                else if (_attemptCountdown <= 2000 && old > 2000)
-                    text = "2 seconds...";
-                else if (_attemptCountdown <= 3000 && old > 3000)
-                    text = "3 seconds...";
-                else if (_attemptCountdown <= 5000 && old > 5000)
-                    text = "5 seconds...";
-                else if (_attemptCountdown <= 7000 && old > 7000)
-                    text = "7 seconds...";
-                if (text)
-                    me->Say(text, LANG_UNIVERSAL);
-            }
-            if (_attemptCountdown)
-                return;
-            if (diff < _attemptTimer)
-            {
-                _attemptTimer -= diff;
-            }
-            else
-            {
-                size_t const num = _attemptScores.size();
-                if (num > 1)
-                    me->Say(Trinity::StringFormat("Attempt concluded - %u players participated:", num), LANG_UNIVERSAL);
-                else
-                    me->Say("Attempt concluded:", LANG_UNIVERSAL);
-                std::vector<std::pair<decltype(_attemptScores)::value_type::second_type::second_type, decltype(_attemptScores)::value_type::second_type::first_type>> _sortable;
-                for (auto const& pair : _attemptScores)
-                    _sortable.emplace_back(pair.second.second, pair.second.first);
-                std::sort(_sortable.begin(), _sortable.end(), std::greater<decltype(_sortable)::value_type>());
-                uint32 index = 0;
-                for (auto const& pair : _sortable)
-                {
-                    if (num >= 10)
-                        me->Say(Trinity::StringFormat("%02d. %s %s (per sec: %s)", ++index, pair.second, pretty(pair.first), pretty(pair.first / float(_attemptDuration / 1000))), LANG_UNIVERSAL);
-                    else if (num > 1)
-                        me->Say(Trinity::StringFormat("%d. %s %s (per sec: %s)", ++index, pair.second, pretty(pair.first), pretty(pair.first / float(_attemptDuration / 1000))), LANG_UNIVERSAL);
-                    else
-                        me->Say(Trinity::StringFormat("%s - %s (per sec: %s)", pair.second, pretty(pair.first), pretty(pair.first / float(_attemptDuration / 1000))), LANG_UNIVERSAL);
-                }
-                _currentPlayer.Clear();
-                me->GetThreatManager().ClearAllThreat();
-                me->CombatStop();
-                UpdateFlags();
-                return;
-            }
-            if (_healthUpdateInterval <= diff)
-            {
-                _healthUpdateInterval = 1000;
-                HealthUpdate();
-            }
-            else
-                _healthUpdateInterval -= diff;
-
-            if (_rageGainInterval <= diff)
-            {
-                _rageGainInterval = 3000;
-                RageGainTick();
-            }
-            else
-                _rageGainInterval -= diff;
+            _healthUpdateInterval = 1000;
+            HealthUpdate();
         }
+        else
+            _healthUpdateInterval -= diff;
 
-        void DamageTaken(Unit* attacker, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
+        if (_rageGainInterval <= diff)
         {
-            if (!_attemptCountdown && _attemptTimer)
-            {
-                ObjectGuid const who = attacker->GetCharmerOrOwnerOrOwnGUID();
-                if (!who.IsPlayer())
-                    return;
-                auto it = _attemptScores.find(who);
-                if (it != _attemptScores.end())
-                    it->second.second += damage;
-                else
-                {
-                    Player const* player = ObjectAccessor::GetPlayer(*attacker, who);
-                    _attemptScores.emplace(who, decltype(_attemptScores)::value_type::second_type({ player ? player->GetName() : "<unknown>", damage }));
-                }
-            }
-            damage = 0;
+            _rageGainInterval = 3000;
+            RageGainTick();
         }
-
-        void EnterEvadeMode(EvadeReason /*why*/) { }
-
-    private:
-        std::string pretty(uint32 value)
-        {
-            std::string result;
-            uint32 itr = 1000;
-            while (itr <= value)
-                itr *= 1000;
-            itr /= 1000;
-            result.append(std::to_string(value / itr));
-            while (itr > 1)
-            {
-                value %= itr;
-                itr /= 1000;
-                result.append(Trinity::StringFormat(",%03d", value / itr));
-            }
-            return result;
-        }
-
-        std::string pretty(float value)
-        {
-            std::string result = pretty(uint32(value + 0.005f));
-            result.append(Trinity::StringFormat("%.2f", value - std::floor(value)), 1);
-            return result;
-        }
-
-        ObjectGuid _currentPlayer;
-        TestDummyModes _mode;
-        std::unordered_map<ObjectGuid, std::pair<std::string, uint32>> _attemptScores;
-        uint32 _attemptCountdown;
-        uint32 _attemptTimer;
-        uint32 _attemptDuration;
-        uint32 _healthUpdateInterval;
-        uint32 _rageGainInterval;
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new EG_npc_damage_test_dummyAI(creature);
+        else
+            _rageGainInterval -= diff;
     }
+
+    void DamageTaken(Unit* attacker, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
+    {
+        if (!_attemptCountdown && _attemptTimer)
+        {
+            ObjectGuid const who = attacker->GetCharmerOrOwnerOrOwnGUID();
+            if (!who.IsPlayer())
+                return;
+            auto it = _attemptScores.find(who);
+            if (it != _attemptScores.end())
+                it->second.second += damage;
+            else
+            {
+                Player const* player = ObjectAccessor::GetPlayer(*attacker, who);
+                _attemptScores.emplace(who, decltype(_attemptScores)::value_type::second_type({ player ? player->GetName() : "<unknown>", damage }));
+            }
+        }
+        damage = 0;
+    }
+
+    void EnterEvadeMode(EvadeReason /*why*/) { }
+
+private:
+    std::string pretty(uint32 value)
+    {
+        std::string result;
+        uint32 itr = 1000;
+        while (itr <= value)
+            itr *= 1000;
+        itr /= 1000;
+        result.append(std::to_string(value / itr));
+        while (itr > 1)
+        {
+            value %= itr;
+            itr /= 1000;
+            result.append(Trinity::StringFormat(",%03d", value / itr));
+        }
+        return result;
+    }
+
+    std::string pretty(float value)
+    {
+        std::string result = pretty(uint32(value + 0.005f));
+        result.append(Trinity::StringFormat("%.2f", value - std::floor(value)), 1);
+        return result;
+    }
+
+    ObjectGuid _currentPlayer;
+    TestDummyModes _mode;
+    std::unordered_map<ObjectGuid, std::pair<std::string, uint32>> _attemptScores;
+    uint32 _attemptCountdown;
+    uint32 _attemptTimer;
+    uint32 _attemptDuration;
+    uint32 _healthUpdateInterval;
+    uint32 _rageGainInterval;
 };
 
 enum TestDummyGossipOffsets : uint32
@@ -269,277 +258,267 @@ std::vector<TestDummyBuffInfo> const debuffs =
 
 int8 constexpr NUM_DUMMY = 3;
 
-class EG_npc_damage_test_controller : public CreatureScript
+struct EG_npc_damage_test_controller : public NullCreatureAI
 {
-public:
-    EG_npc_damage_test_controller() : CreatureScript("EG_npc_damage_test_controller") {}
+    typedef EG_npc_damage_test_dummy FriendAI;
 
-    struct EG_npc_damage_test_controllerAI : public NullCreatureAI
+    EG_npc_damage_test_controller(Creature* creature) : NullCreatureAI(creature) { }
+
+    void InitializeAI() override
     {
-        typedef EG_npc_damage_test_dummy::EG_npc_damage_test_dummyAI FriendAI;
-
-        EG_npc_damage_test_controllerAI(Creature* creature) : NullCreatureAI(creature) { }
-
-        void InitializeAI() override
+        bool isDummy = false;
+        if (TempSummon* temp = me->ToTempSummon())
         {
-            bool isDummy = false;
-            if (TempSummon* temp = me->ToTempSummon())
+            if (WorldObject* summoner = temp->GetSummoner())
             {
-                if (WorldObject* summoner = temp->GetSummoner())
-                {
-                    if (Creature* creaSummoner = summoner->ToCreature())
-                        if (creaSummoner->GetEntry() == me->GetEntry())
-                            isDummy = true;
-                }
-                else
-                    isDummy = true;
-            }
-            if (isDummy) // we can't determine this in getai yet since creature isn't fully formed
-            {
-                me->AIM_Initialize(new npc_damage_test_buffdummyAI(me));
-                return;
-            }
-            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NON_ATTACKABLE);
-            float x, y, z;
-            for (int8 i = 0; i < NUM_DUMMY; ++i)
-            {
-                me->GetClosePoint(x, y, z, 1.0f, 0.0f, float((i + 1) * M_PI_2));
-                _Dummy[i] = me->SummonCreature(me->GetEntry(), x, y, z + 2.0f, me->GetOrientation())->GetGUID();
-            }
-            Reset();
-        }
-
-        void Reset() override
-        {
-            me->AddAura(20045, me); // Improved Blessing of Might (Rank 2)
-            me->AddAura(20245, me); // Improved Blessing of Wisdom (Rank 2);
-            me->AddAura(52456, me); // Enhancing Totems (Rank 3)
-            me->AddAura(53648, me); // Swift Retribution (Rank 3)
-            me->AddAura(29193, me); // Improved Windfury Totem (Rank 2)
-            me->AddAura(14767, me); // Improved Power Word: Fortitude (Rank 2)
-            me->AddAura(17051, me); // Improved Mark of the Wild
-        }
-
-        bool OnGossipHello(Player* player) override
-        {
-            FriendAI* dummyAI = _GetFriendAI();
-            if (!dummyAI)
-            {
-                SendGossipMenuFor(player, player->GetTeam() == TEAM_ALLIANCE ? 13761 : 14172, me->GetGUID()); // Sorry, friend. Only certified officers of the H/A can authorize the purchase of a vehicle.
-                return true;
-            }
-
-            ObjectGuid const& current = dummyAI->_currentPlayer;
-            if (!current.IsEmpty())
-            {
-                if (player->GetGUID() == current)
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Cancel current attempt", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_CANCEL));
+                if (Creature* creaSummoner = summoner->ToCreature())
+                    if (creaSummoner->GetEntry() == me->GetEntry())
+                        isDummy = true;
             }
             else
-            {
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Begin attempt", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_MENU));
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Modify auras", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU));
-            }
+                isDummy = true;
+        }
+        if (isDummy) // we can't determine this in getai yet since creature isn't fully formed
+        {
+            me->AIM_Initialize(new npc_damage_test_buffdummy(me));
+            return;
+        }
+        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NON_ATTACKABLE);
+        float x, y, z;
+        for (int8 i = 0; i < NUM_DUMMY; ++i)
+        {
+            me->GetClosePoint(x, y, z, 1.0f, 0.0f, float((i + 1) * M_PI_2));
+            _Dummy[i] = me->SummonCreature(me->GetEntry(), x, y, z + 2.0f, me->GetOrientation())->GetGUID();
+        }
+        Reset();
+    }
 
-            SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
+    void Reset() override
+    {
+        me->AddAura(20045, me); // Improved Blessing of Might (Rank 2)
+        me->AddAura(20245, me); // Improved Blessing of Wisdom (Rank 2);
+        me->AddAura(52456, me); // Enhancing Totems (Rank 3)
+        me->AddAura(53648, me); // Swift Retribution (Rank 3)
+        me->AddAura(29193, me); // Improved Windfury Totem (Rank 2)
+        me->AddAura(14767, me); // Improved Power Word: Fortitude (Rank 2)
+        me->AddAura(17051, me); // Improved Mark of the Wild
+    }
+
+    bool OnGossipHello(Player* player) override
+    {
+        FriendAI* dummyAI = _GetFriendAI();
+        if (!dummyAI)
+        {
+            SendGossipMenuFor(player, player->GetTeam() == TEAM_ALLIANCE ? 13761 : 14172, me->GetGUID()); // Sorry, friend. Only certified officers of the H/A can authorize the purchase of a vehicle.
             return true;
         }
 
-        bool OnGossipSelect(Player* player, uint32 /*sender*/, uint32 listId) override
+        ObjectGuid const& current = dummyAI->_currentPlayer;
+        if (!current.IsEmpty())
         {
-            uint32 const action = GetGossipActionFor(player, listId);
-            ClearGossipMenuFor(player);
+            if (player->GetGUID() == current)
+                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Cancel current attempt", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_CANCEL));
+        }
+        else
+        {
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Begin attempt", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_MENU));
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Modify auras", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU));
+        }
 
-            FriendAI* dummyAI = _GetFriendAI();
-            if (!dummyAI)
-            {
-                SendGossipMenuFor(player, player->GetTeam() == TEAM_ALLIANCE ? 13761 : 14172, me->GetGUID()); // Sorry, friend. Only certified officers of the H/A can authorize the purchase of a vehicle.
-                return false;
-            }
+        SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
+        return true;
+    }
 
-            ObjectGuid const& current = dummyAI->_currentPlayer;
+    bool OnGossipSelect(Player* player, uint32 /*sender*/, uint32 listId) override
+    {
+        uint32 const action = GetGossipActionFor(player, listId);
+        ClearGossipMenuFor(player);
 
-            switch (action - GOSSIP_ACTION_INFO_DEF)
-            {
-            case GOSSIP_OFFSET_CANCEL:
-                CloseGossipMenuFor(player);
-                if (current == player->GetGUID())
-                    dummyAI->CancelAttempt();
-                break;
-            case GOSSIP_OFFSET_ATTEMPT_MENU:
-                if (!current.IsEmpty())
-                    break;
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Modify auras]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU));
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Burst DPS (30 sec)", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_DPS_30SEC));
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Standard DPS (150 sec)", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_DPS_150SEC));
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Sustained DPS (6 min)", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_DPS_360SEC));
-                SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
-                break;
-            case GOSSIP_OFFSET_ATTEMPT_DPS_30SEC:
-                if (!current.IsEmpty())
-                    break;
-                CloseGossipMenuFor(player);
-                dummyAI->BeginAttempt(player, TestDummyModes::MODE_DPS, Seconds(30));
-                break;
-            case GOSSIP_OFFSET_ATTEMPT_DPS_150SEC:
-                if (!current.IsEmpty())
-                    break;
-                CloseGossipMenuFor(player);
-                dummyAI->BeginAttempt(player, TestDummyModes::MODE_DPS, Seconds(150));
-                break;
-            case GOSSIP_OFFSET_ATTEMPT_DPS_360SEC:
-                if (!current.IsEmpty())
-                    break;
-                CloseGossipMenuFor(player);
-                dummyAI->BeginAttempt(player, TestDummyModes::MODE_DPS, Minutes(6));
-                break;
-            case GOSSIP_OFFSET_AURA_RESET_DEBUFFS:
-                _ClearAllDebuffs(dummyAI);
-                _SendAuraMenu(player, dummyAI);
-                break;
-            case GOSSIP_OFFSET_AURA_MENU:
-                _SendAuraMenu(player, dummyAI);
-                break;
-            case GOSSIP_OFFSET_AURA_MENU_DEBUFFS:
-                _SendDebuffMenu(player, dummyAI);
-                break;
-            case GOSSIP_OFFSET_ALL_DEBUFFS:
-                for (TestDummyBuffInfo info : debuffs)
-                    _AddDebuff(dummyAI, info);
-                _SendAuraMenu(player, dummyAI);
-                break;
-            default:
-                if (action >= GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_DEBUFF))
-                {
-                    uint32 const offset = action - GOSSIP_ACTION_INFO_DEF - GOSSIP_OFFSET_FIRST_DEBUFF;
-                    if (offset < debuffs.size())
-                    {
-                        _AddDebuff(dummyAI, debuffs[offset]);
-                        _SendDebuffMenu(player, dummyAI);
-                        break;
-                    }
-                }
-                CloseGossipMenuFor(player);
-                break;
-            }
+        FriendAI* dummyAI = _GetFriendAI();
+        if (!dummyAI)
+        {
+            SendGossipMenuFor(player, player->GetTeam() == TEAM_ALLIANCE ? 13761 : 14172, me->GetGUID()); // Sorry, friend. Only certified officers of the H/A can authorize the purchase of a vehicle.
             return false;
         }
 
-    private:
-        ObjectGuid _CasterGUID(TestDummyBuffInfo info) const
-        {
-            return (info.castDummy && info.castDummy <= NUM_DUMMY) ? _Dummy[info.castDummy - 1] : me->GetGUID();
-        }
+        ObjectGuid const& current = dummyAI->_currentPlayer;
 
-        bool _IsCasterGUID(ObjectGuid const& guid) const
+        switch (action - GOSSIP_ACTION_INFO_DEF)
         {
-            if (guid == me->GetGUID())
+        case GOSSIP_OFFSET_CANCEL:
+            CloseGossipMenuFor(player);
+            if (current == player->GetGUID())
+                dummyAI->CancelAttempt();
+            break;
+        case GOSSIP_OFFSET_ATTEMPT_MENU:
+            if (!current.IsEmpty())
+                break;
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Modify auras]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU));
+            AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Burst DPS (30 sec)", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_DPS_30SEC));
+            AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Standard DPS (150 sec)", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_DPS_150SEC));
+            AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Sustained DPS (6 min)", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_DPS_360SEC));
+            SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
+            break;
+        case GOSSIP_OFFSET_ATTEMPT_DPS_30SEC:
+            if (!current.IsEmpty())
+                break;
+            CloseGossipMenuFor(player);
+            dummyAI->BeginAttempt(player, TestDummyModes::MODE_DPS, Seconds(30));
+            break;
+        case GOSSIP_OFFSET_ATTEMPT_DPS_150SEC:
+            if (!current.IsEmpty())
+                break;
+            CloseGossipMenuFor(player);
+            dummyAI->BeginAttempt(player, TestDummyModes::MODE_DPS, Seconds(150));
+            break;
+        case GOSSIP_OFFSET_ATTEMPT_DPS_360SEC:
+            if (!current.IsEmpty())
+                break;
+            CloseGossipMenuFor(player);
+            dummyAI->BeginAttempt(player, TestDummyModes::MODE_DPS, Minutes(6));
+            break;
+        case GOSSIP_OFFSET_AURA_RESET_DEBUFFS:
+            _ClearAllDebuffs(dummyAI);
+            _SendAuraMenu(player, dummyAI);
+            break;
+        case GOSSIP_OFFSET_AURA_MENU:
+            _SendAuraMenu(player, dummyAI);
+            break;
+        case GOSSIP_OFFSET_AURA_MENU_DEBUFFS:
+            _SendDebuffMenu(player, dummyAI);
+            break;
+        case GOSSIP_OFFSET_ALL_DEBUFFS:
+            for (TestDummyBuffInfo info : debuffs)
+                _AddDebuff(dummyAI, info);
+            _SendAuraMenu(player, dummyAI);
+            break;
+        default:
+            if (action >= GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_DEBUFF))
+            {
+                uint32 const offset = action - GOSSIP_ACTION_INFO_DEF - GOSSIP_OFFSET_FIRST_DEBUFF;
+                if (offset < debuffs.size())
+                {
+                    _AddDebuff(dummyAI, debuffs[offset]);
+                    _SendDebuffMenu(player, dummyAI);
+                    break;
+                }
+            }
+            CloseGossipMenuFor(player);
+            break;
+        }
+        return false;
+    }
+
+private:
+    ObjectGuid _CasterGUID(TestDummyBuffInfo info) const
+    {
+        return (info.castDummy && info.castDummy <= NUM_DUMMY) ? _Dummy[info.castDummy - 1] : me->GetGUID();
+    }
+
+    bool _IsCasterGUID(ObjectGuid const& guid) const
+    {
+        if (guid == me->GetGUID())
+            return true;
+
+        for (int8 i = 0; i < NUM_DUMMY; ++i)
+            if (guid == _Dummy[i])
                 return true;
 
-            for (int8 i = 0; i < NUM_DUMMY; ++i)
-                if (guid == _Dummy[i])
-                    return true;
+        return false;
+    }
 
-            return false;
-        }
+    bool _HasAnyDebuff(FriendAI* ai) const
+    {
+        for (auto const& pair : ai->me->GetOwnedAuras())
+            if (_IsCasterGUID(pair.second->GetCasterGUID()))
+                return true;
+        return false;
+    }
 
-        bool _HasAnyDebuff(FriendAI* ai) const
+    FriendAI* _GetFriendAI() const
+    {
+        std::list<Creature*> list;
+        me->GetCreatureListWithEntryInGrid(list, 0);
+        for (Creature* c : list)
+            if (c->IsAIEnabled())
+                if (auto* ai = dynamic_cast<FriendAI*>(c->AI()))
+                    return ai;
+        return nullptr;
+    }
+
+    void _AddDebuff(FriendAI* ai, TestDummyBuffInfo info)
+    {
+        Unit* caster = me;
+        if (info.castDummy && info.castDummy <= NUM_DUMMY)
+            caster = ObjectAccessor::GetUnit(*me, _Dummy[info.castDummy - 1]);
+        if (!caster)
+            return;
+        Aura* debuff = caster->AddAura(info.spellId, const_cast<Creature*>(ai->me));
+        if (!debuff)
+            return;
+        debuff->SetMaxDuration(-1);
+        debuff->SetDuration(-1);
+    }
+
+    void _ClearAllDebuffs(FriendAI* ai)
+    {
+        std::list<Aura*> toRemove;
+        for (auto const& pair : ai->me->GetOwnedAuras())
+            if (_IsCasterGUID(pair.second->GetCasterGUID()))
+                toRemove.push_back(pair.second);
+        for (Aura* aura : toRemove)
+            aura->Remove();
+    }
+
+    void _SendAuraMenu(Player* player, FriendAI* dummyAI)
+    {
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Begin attempt]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_MENU));
+
+        if (_HasAnyDebuff(dummyAI))
+            AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset debuff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_RESET_DEBUFFS));
+
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid debuffs to dummy", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU_DEBUFFS));
+        SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
+    }
+
+    void _SendDebuffMenu(Player* player, FriendAI* dummyAI)
+    {
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Go back]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU));
+        bool main = false;
+        for (uint32 i = 0, n = debuffs.size(); i < n; ++i)
         {
-            for (auto const& pair : ai->me->GetOwnedAuras())
-                if (_IsCasterGUID(pair.second->GetCasterGUID()))
-                    return true;
-            return false;
-        }
-
-        FriendAI* _GetFriendAI() const
-        {
-            std::list<Creature*> list;
-            me->GetCreatureListWithEntryInGrid(list, 0);
-            for (Creature* c : list)
-                if (c->IsAIEnabled())
-                    if (auto* ai = dynamic_cast<FriendAI*>(c->AI()))
-                        return ai;
-            return nullptr;
-        }
-
-        void _AddDebuff(FriendAI* ai, TestDummyBuffInfo info)
-        {
-            Unit* caster = me;
-            if (info.castDummy && info.castDummy <= NUM_DUMMY)
-                caster = ObjectAccessor::GetUnit(*me, _Dummy[info.castDummy - 1]);
-            if (!caster)
-                return;
-            Aura* debuff = caster->AddAura(info.spellId, const_cast<Creature*>(ai->me));
-            if (!debuff)
-                return;
-            debuff->SetMaxDuration(-1);
-            debuff->SetDuration(-1);
-        }
-
-        void _ClearAllDebuffs(FriendAI* ai)
-        {
-            std::list<Aura*> toRemove;
-            for (auto const& pair : ai->me->GetOwnedAuras())
-                if (_IsCasterGUID(pair.second->GetCasterGUID()))
-                    toRemove.push_back(pair.second);
-            for (Aura* aura : toRemove)
-                aura->Remove();
-        }
-
-        void _SendAuraMenu(Player* player, FriendAI* dummyAI)
-        {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Begin attempt]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ATTEMPT_MENU));
-
-            if (_HasAnyDebuff(dummyAI))
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Reset debuff settings", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_RESET_DEBUFFS));
-
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Add raid debuffs to dummy", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU_DEBUFFS));
-            SendGossipMenuFor(player, 7381, me->GetGUID()); // Hello friend.
-        }
-
-        void _SendDebuffMenu(Player* player, FriendAI* dummyAI)
-        {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "[Go back]", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_AURA_MENU));
-            bool main = false;
-            for (uint32 i = 0, n = debuffs.size(); i < n; ++i)
+            uint32 const spellId = debuffs[i].spellId;
+            if (dummyAI->me->HasAura(spellId, _CasterGUID(debuffs[i])))
+                continue;
+            SpellInfo const* spell = sSpellMgr->GetSpellInfo(spellId);
+            if (!spell)
+                continue;
+            if (!main)
             {
-                uint32 const spellId = debuffs[i].spellId;
-                if (dummyAI->me->HasAura(spellId, _CasterGUID(debuffs[i])))
-                    continue;
-                SpellInfo const* spell = sSpellMgr->GetSpellInfo(spellId);
-                if (!spell)
-                    continue;
-                if (!main)
-                {
-                    AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Add all raid debuffs", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ALL_DEBUFFS));
-                    main = true;
-                }
-                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, Trinity::StringFormat("Add '%s'", spell->SpellName[0]), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_DEBUFF) + i);
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Add all raid debuffs", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ALL_DEBUFFS));
+                main = true;
             }
-            SendGossipMenuFor(player, 7381, me->GetGUID());
+            AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, Trinity::StringFormat("Add '%s'", spell->SpellName[0]), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_DEBUFF) + i);
         }
+        SendGossipMenuFor(player, 7381, me->GetGUID());
+    }
 
-        ObjectGuid _Dummy[NUM_DUMMY];
-    };
+    ObjectGuid _Dummy[NUM_DUMMY];
+};
 
-    struct npc_damage_test_buffdummyAI : public NullCreatureAI
+
+struct npc_damage_test_buffdummy : public NullCreatureAI
+{
+    npc_damage_test_buffdummy(Creature* creature) : NullCreatureAI(creature) { }
+
+    void InitializeAI() override
     {
-        npc_damage_test_buffdummyAI(Creature* creature) : NullCreatureAI(creature) { }
-
-        void InitializeAI() override
-        {
-            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_NON_ATTACKABLE);
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new EG_npc_damage_test_controllerAI(creature);
+        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_NON_ATTACKABLE);
     }
 };
 
 void AddSC_EG_gen_npc_scripts()
 {
-    new EG_npc_damage_test_controller();
-    new EG_npc_damage_test_dummy();
+    RegisterCreatureAI(EG_npc_damage_test_controller);
+    RegisterCreatureAI(EG_npc_damage_test_dummy);
 }
