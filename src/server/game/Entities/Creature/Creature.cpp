@@ -1176,10 +1176,6 @@ Unit* Creature::SelectVictim()
         return target;
     }
 
-    /// @todo a vehicle may eat some mob, so mob should not evade
-    if (GetVehicle())
-        return nullptr;
-
     Unit::AuraEffectList const& iAuras = GetAuraEffectsByType(SPELL_AURA_MOD_INVISIBILITY);
     if (!iAuras.empty())
     {
@@ -2510,6 +2506,8 @@ bool Creature::CanCreatureAttack(Unit const* victim, bool /*force*/) const
 
     if (Unit* unit = GetCharmerOrOwner())
         return victim->IsWithinDist(unit, dist);
+    else if (GetVehicle())
+        return IsWithinDist(victim, dist);
     else
     {
         // include sizes for huge npcs
