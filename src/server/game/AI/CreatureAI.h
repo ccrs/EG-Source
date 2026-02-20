@@ -268,6 +268,7 @@ class TC_GAME_API CreatureAI : public UnitAI
 
         CreatureBoundary const* _boundary;
         bool _negateBoundary;
+
     private:
         void OnOwnerCombatInteraction(Unit* target);
 
