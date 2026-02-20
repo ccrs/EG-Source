@@ -34,9 +34,8 @@ void Creature::ProcessDelayedLOSEntries()
             if (current->IsAlive() && !current->IsInFlight() && CanSeeOrDetect(current, false, true))
                 AI()->MoveInLineOfSight(current);
         }
-
-        itr = _LOSQueue.erase(itr);
         _uniqueLOSEntries.erase(*itr);
+        itr = _LOSQueue.erase(itr);
     }
 
     _moveInLOSLockStatus = LOS_LOCK_NONE;
