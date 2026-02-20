@@ -21,7 +21,7 @@ enum TestDummyModes
 
 struct EG_npc_damage_test_dummy : public NullCreatureAI
 {
-    friend class EG_npc_damage_test_controller;
+    friend struct EG_npc_damage_test_controller;
 
     EG_npc_damage_test_dummy(Creature* creature) : NullCreatureAI(creature), _mode(MODE_NULL), _attemptCountdown(0), _attemptTimer(0), _attemptDuration(0), _healthUpdateInterval(1000), _rageGainInterval(3000) { }
 
@@ -280,7 +280,7 @@ struct EG_npc_damage_test_controller : public NullCreatureAI
         }
         if (isDummy) // we can't determine this in getai yet since creature isn't fully formed
         {
-            me->AIM_Initialize(new npc_damage_test_buffdummy(me));
+            me->AIM_Initialize(new FriendAI(me));
             return;
         }
         me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NON_ATTACKABLE);
