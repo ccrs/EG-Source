@@ -1,6 +1,8 @@
 #include "CustomFunctions.h"
+#include "CreatureAI.h"
 #include "Map.h"
 #include "Object.h"
+#include "ObjectAccessor.h"
 #include "ObjectGuid.h"
 #include "Unit.h"
 #include "World.h"
@@ -9,17 +11,31 @@
 
 void Creature::ProcessLOSLock()
 {
-    _moveInLOSLockStatus = LOS_LOCK_PROCESSING;
+    if (!IsAlive() || HasUnitState(UNIT_STATE_SIGHTLESS) || !IsAIEnabled())
+    {
+        _LOSQueue = {};
+        _uniqueLOSEntries.clear();
+        _moveInLOSLockStatus = LOS_LOCK_NONE;
+        return;
+    }
 
+    _moveInLOSLockStatus = LOS_LOCK_PROCESSING;
+    for (ObjectGuid front = _LOSQueue.front(); !_LOSQueue.empty(); _LOSQueue.pop())
+    {
+        if (Unit* current = ObjectAccessor::GetUnit(*this, front))
+            if (current->IsAlive() && !current->IsInFlight() && CanSeeOrDetect(current, false, true))
+                AI()->MoveInLineOfSight(current);
+    }
+    _uniqueLOSEntries.clear();
     _moveInLOSLockStatus = LOS_LOCK_NONE;
 }
 
 void Creature::InsertLOSEntry(ObjectGuid guid)
 {
-    if (!_uniqueLOSEntries.contains(who->GetGUID()))
+    if (!_uniqueLOSEntries.contains(guid))
     {
-        _uniqueLOSEntries.insert(who->GetGUID());
-        _LOSQueue.push(who->GetGUID());
+        _uniqueLOSEntries.insert(guid);
+        _LOSQueue.push(guid);
     }
 }
 
