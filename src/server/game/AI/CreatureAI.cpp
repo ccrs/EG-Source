@@ -110,6 +110,11 @@ void CreatureAI::MoveInLineOfSight_Safe(Unit* who)
     switch (_moveInLOSLockStatus)
     {
         case LOS_LOCK_SPAWN:
+            if (!_uniqueLOSEntries.contains(who->GetGUID()))
+            {
+                _uniqueLOSEntries.insert(who->GetGUID());
+                _LOSQueue.push(who->GetGUID());
+            }
             break;
         case LOS_LOCK_NONE:
             _moveInLOSLockStatus = LOS_LOCK_PROCESSING;

@@ -679,6 +679,9 @@ void Creature::Update(uint32 diff)
 
     UpdateMovementFlags();
 
+    if (IsAIEnabled() && AI()->GetLOSLockStatus() == LOS_LOCK_SPAWN)
+        AI()->ProcessLOSLock();
+
     switch (m_deathState)
     {
         case JUST_RESPAWNED:

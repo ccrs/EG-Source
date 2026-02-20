@@ -1,9 +1,17 @@
 #include "CustomFunctions.h"
+#include "CreatureAI.h"
 #include "Map.h"
 #include "Object.h"
 #include "Unit.h"
 #include "World.h"
 
+
+void CreatureAI::ProcessLOSLock()
+{
+    _moveInLOSLockStatus = LOS_LOCK_PROCESSING;
+
+    _moveInLOSLockStatus = LOS_LOCK_NONE;
+}
 
 void WorldObject::GetNearPoint2D(WorldObject const* searcher, Position const* reference, float& x, float& y, float distance, float absAngle) const
 {

@@ -266,6 +266,8 @@ class TC_GAME_API CreatureAI : public UnitAI
         static bool IsInBounds(CreatureBoundary const& boundary, Position const* who);
         bool IsInBoundary(Position const* who = nullptr) const;
 
+        void ProcessLOSLock();
+        LOSLockStatus GetLOSLockStatus() const { return _moveInLOSLockStatus; }
     protected:
         void EngagementStart(Unit* who);
         void EngagementOver();
@@ -275,13 +277,12 @@ class TC_GAME_API CreatureAI : public UnitAI
 
         CreatureBoundary const* _boundary;
         bool _negateBoundary;
-
     private:
         void OnOwnerCombatInteraction(Unit* target);
 
         bool _isEngaged;
-        uint8 _moveInLOSLockStatus;
-        std::unordered_map<ObjectGuid, Unit*> _uniqueLOSEntries;
+        LOSLockStatus _moveInLOSLockStatus;
+        std::unordered_set<ObjectGuid> _uniqueLOSEntries;
         std::queue<ObjectGuid> _LOSQueue;
 };
 
