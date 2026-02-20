@@ -385,7 +385,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
 
         void ProcessLOSLock();
         LOSLockStatus GetLOSLockStatus() const { return _moveInLOSLockStatus; }
-        void SetLOSLockStatus(LOSLockStatus value) const { _moveInLOSLockStatus = value; }
+        void SetLOSLockStatus(LOSLockStatus value) { _moveInLOSLockStatus = value; }
         void InsertLOSEntry(ObjectGuid guid);
     protected:
         bool CreateFromProto(ObjectGuid::LowType guidlow, uint32 entry, CreatureData const* data = nullptr, uint32 vehId = 0);
