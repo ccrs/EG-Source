@@ -107,19 +107,15 @@ void CreatureAI::DoZoneInCombat(Creature* creature /*= nullptr*/)
 // MoveInLineOfSight can be called inside another MoveInLineOfSight and cause stack overflow
 void CreatureAI::MoveInLineOfSight_Safe(Unit* who)
 {
-    switch (_moveInLOSLockStatus)
+    switch (me->GetLOSLockStatus())
     {
         case LOS_LOCK_SPAWN:
-            if (!_uniqueLOSEntries.contains(who->GetGUID()))
-            {
-                _uniqueLOSEntries.insert(who->GetGUID());
-                _LOSQueue.push(who->GetGUID());
-            }
+            me->InsertLOSEntry(who->GetGUID());
             break;
         case LOS_LOCK_NONE:
-            _moveInLOSLockStatus = LOS_LOCK_PROCESSING;
+            me->SetLOSLockStatus(LOS_LOCK_PROCESSING);
             MoveInLineOfSight(who);
-            _moveInLOSLockStatus = LOS_LOCK_NONE;
+            me->SetLOSLockStatus(LOS_LOCK_NONE);
             break;
         case LOS_LOCK_PROCESSING:
         default:

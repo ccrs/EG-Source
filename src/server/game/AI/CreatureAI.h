@@ -76,13 +76,6 @@ enum SCEquip
     EQUIP_UNEQUIP   = 0
 };
 
-enum LOSLockStatus : uint8
-{
-    LOS_LOCK_NONE = 0,
-    LOS_LOCK_SPAWN = 1,
-    LOS_LOCK_PROCESSING = 2
-};
-
 class TC_GAME_API CreatureAI : public UnitAI
 {
     protected:
@@ -266,8 +259,6 @@ class TC_GAME_API CreatureAI : public UnitAI
         static bool IsInBounds(CreatureBoundary const& boundary, Position const* who);
         bool IsInBoundary(Position const* who = nullptr) const;
 
-        void ProcessLOSLock();
-        LOSLockStatus GetLOSLockStatus() const { return _moveInLOSLockStatus; }
     protected:
         void EngagementStart(Unit* who);
         void EngagementOver();
@@ -281,9 +272,6 @@ class TC_GAME_API CreatureAI : public UnitAI
         void OnOwnerCombatInteraction(Unit* target);
 
         bool _isEngaged;
-        LOSLockStatus _moveInLOSLockStatus;
-        std::unordered_set<ObjectGuid> _uniqueLOSEntries;
-        std::queue<ObjectGuid> _LOSQueue;
 };
 
 #endif

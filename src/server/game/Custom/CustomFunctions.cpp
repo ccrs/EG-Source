@@ -1,16 +1,26 @@
 #include "CustomFunctions.h"
-#include "CreatureAI.h"
 #include "Map.h"
 #include "Object.h"
+#include "ObjectGuid.h"
 #include "Unit.h"
 #include "World.h"
+#include "Creature.h"
 
 
-void CreatureAI::ProcessLOSLock()
+void Creature::ProcessLOSLock()
 {
     _moveInLOSLockStatus = LOS_LOCK_PROCESSING;
 
     _moveInLOSLockStatus = LOS_LOCK_NONE;
+}
+
+void Creature::InsertLOSEntry(ObjectGuid guid)
+{
+    if (!_uniqueLOSEntries.contains(who->GetGUID()))
+    {
+        _uniqueLOSEntries.insert(who->GetGUID());
+        _LOSQueue.push(who->GetGUID());
+    }
 }
 
 void WorldObject::GetNearPoint2D(WorldObject const* searcher, Position const* reference, float& x, float& y, float distance, float absAngle) const
