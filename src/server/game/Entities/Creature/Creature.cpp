@@ -679,11 +679,11 @@ void Creature::Update(uint32 diff)
 
     UpdateMovementFlags();
 
-    if (IsAIEnabled() && AI()->GetLOSLockStatus() == LOS_LOCK_SPAWN)
+    if (IsAIEnabled() && me->GetLOSLockStatus() == LOS_LOCK_SPAWN)
     {
         _LOSLockDelay.Update(diff);
         if (_LOSLockDelay.Passed())
-            AI()->ProcessLOSLock();
+            me->ProcessLOSLock();
     }
 
     switch (m_deathState)

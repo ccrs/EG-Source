@@ -27,7 +27,9 @@
 #include "MapObject.h"
 #include "Loot.h"
 #include "Timer.h"
+#include <queue>
 #include <list>
+#include <unordered_set>
 
 class CreatureAI;
 class CreatureGroup;
