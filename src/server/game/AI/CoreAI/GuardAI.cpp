@@ -66,7 +66,7 @@ void GuardAI::EnterEvadeMode(EvadeReason why)
     me->CombatStop(true);
     EngagementOver();
 
-    if (why != EVADE_REASON_VEHICLE_EVADE)
+    if (why != EVADE_REASON_VEHICLE_EVADE && !me->GetVehicle())
         me->GetMotionMaster()->MoveTargetedHome();
 }
 
