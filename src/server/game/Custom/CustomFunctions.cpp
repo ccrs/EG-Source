@@ -20,13 +20,25 @@ void Creature::ProcessDelayedLOSEntries()
     }
 
     _moveInLOSLockStatus = LOS_LOCK_PROCESSING;
-    for (ObjectGuid front = _LOSQueue.front(); !_LOSQueue.empty(); _LOSQueue.pop())
+    for (auto itr = _LOSQueue.begin(); itr != _LOSQueue.end();)
     {
-        if (Unit* current = ObjectAccessor::GetUnit(*this, front))
+        if (Unit* current = ObjectAccessor::GetUnit(*this, *itr))
+        {
+            if (Creature* currentCreature = current->ToCreature())
+                if (currentCreature->GetLOSLockStatus() == LOS_LOCK_SPAWN)
+                {
+                    ++itr;
+                    continue;
+                }
+
             if (current->IsAlive() && !current->IsInFlight() && CanSeeOrDetect(current, false, true))
                 AI()->MoveInLineOfSight(current);
+        }
+
+        itr = _LOSQueue.erase(itr);
+        _uniqueLOSEntries.erase(*itr);
     }
-    _uniqueLOSEntries.clear();
+
     _moveInLOSLockStatus = LOS_LOCK_NONE;
 }
 
@@ -35,7 +47,7 @@ void Creature::InsertLOSEntry(ObjectGuid guid)
     if (!_uniqueLOSEntries.contains(guid))
     {
         _uniqueLOSEntries.insert(guid);
-        _LOSQueue.push(guid);
+        _LOSQueue.push_back(guid);
     }
 }
 

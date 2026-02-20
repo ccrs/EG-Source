@@ -27,7 +27,7 @@
 #include "MapObject.h"
 #include "Loot.h"
 #include "Timer.h"
-#include <queue>
+#include <deque>
 #include <list>
 #include <unordered_set>
 
@@ -479,7 +479,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
 
         LOSLockStatus _moveInLOSLockStatus;
         std::unordered_set<ObjectGuid> _uniqueLOSEntries;
-        std::queue<ObjectGuid> _LOSQueue;
+        std::deque<ObjectGuid> _LOSQueue;
         TimeTracker _LOSLockDelay;
 };
 
