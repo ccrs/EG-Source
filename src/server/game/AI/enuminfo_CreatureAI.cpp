@@ -36,6 +36,7 @@ TC_API_EXPORT EnumText EnumUtils<CreatureAI::EvadeReason>::ToString(CreatureAI::
         case CreatureAI::EVADE_REASON_NO_PATH: return { "EVADE_REASON_NO_PATH", "EVADE_REASON_NO_PATH", "the creature was unable to reach its target for over 5 seconds" };
         case CreatureAI::EVADE_REASON_SEQUENCE_BREAK: return { "EVADE_REASON_SEQUENCE_BREAK", "EVADE_REASON_SEQUENCE_BREAK", "this is a boss and the pre-requisite encounters for engaging it are not defeated yet" };
         case CreatureAI::EVADE_REASON_OTHER: return { "EVADE_REASON_OTHER", "EVADE_REASON_OTHER", "anything else" };
+        case CreatureAI::EVADE_REASON_VEHICLE_EVADE: return { "EVADE_REASON_VEHICLE_EVADE", "EVADE_REASON_VEHICLE_EVADE", "" };
         default: throw std::out_of_range("value");
     }
 }
@@ -53,6 +54,7 @@ TC_API_EXPORT CreatureAI::EvadeReason EnumUtils<CreatureAI::EvadeReason>::FromIn
         case 2: return CreatureAI::EVADE_REASON_NO_PATH;
         case 3: return CreatureAI::EVADE_REASON_SEQUENCE_BREAK;
         case 4: return CreatureAI::EVADE_REASON_OTHER;
+        case 5: return CreatureAI::EVADE_REASON_VEHICLE_EVADE;
         default: throw std::out_of_range("index");
     }
 }
@@ -67,6 +69,7 @@ TC_API_EXPORT size_t EnumUtils<CreatureAI::EvadeReason>::ToIndex(CreatureAI::Eva
         case CreatureAI::EVADE_REASON_NO_PATH: return 2;
         case CreatureAI::EVADE_REASON_SEQUENCE_BREAK: return 3;
         case CreatureAI::EVADE_REASON_OTHER: return 4;
+        case CreatureAI::EVADE_REASON_VEHICLE_EVADE: return 5;
         default: throw std::out_of_range("value");
     }
 }

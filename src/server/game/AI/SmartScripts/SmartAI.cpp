@@ -411,6 +411,12 @@ void SmartAI::EnterEvadeMode(EvadeReason why)
     if (!_EnterEvadeMode())
         return;
 
+    if (me->GetVehicle() && why != EVADE_REASON_VEHICLE_EVADE)
+    {
+        GetScript()->ProcessEventsFor(SMART_EVENT_EVADE); // must be after _EnterEvadeMode (spells, auras, ...)
+        return;
+    }
+
     me->AddUnitState(UNIT_STATE_EVADE);
 
     GetScript()->ProcessEventsFor(SMART_EVENT_EVADE); // must be after _EnterEvadeMode (spells, auras, ...)

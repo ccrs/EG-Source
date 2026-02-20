@@ -37,7 +37,7 @@
 AISpellInfoType* UnitAI::AISpellInfo;
 AISpellInfoType* GetAISpellInfo(uint32 i) { return &UnitAI::AISpellInfo[i]; }
 
-CreatureAI::CreatureAI(Creature* creature) : UnitAI(creature), me(creature), _boundary(nullptr), _negateBoundary(false), _isEngaged(false), _moveInLOSLocked(false)
+CreatureAI::CreatureAI(Creature* creature) : UnitAI(creature), me(creature), _boundary(nullptr), _negateBoundary(false), _isEngaged(false)
 {
 }
 
@@ -107,11 +107,28 @@ void CreatureAI::DoZoneInCombat(Creature* creature /*= nullptr*/)
 // MoveInLineOfSight can be called inside another MoveInLineOfSight and cause stack overflow
 void CreatureAI::MoveInLineOfSight_Safe(Unit* who)
 {
-    if (_moveInLOSLocked == true)
-        return;
-    _moveInLOSLocked = true;
-    MoveInLineOfSight(who);
-    _moveInLOSLocked = false;
+    switch (me->GetLOSLockStatus())
+    {
+        case LOS_LOCK_SPAWN:
+            me->InsertLOSEntry(who->GetGUID());
+            break;
+        case LOS_LOCK_NONE:
+            me->SetLOSLockStatus(LOS_LOCK_PROCESSING);
+            if (Creature* whoCreature = who->ToCreature())
+            {
+                if (whoCreature->GetLOSLockStatus() == LOS_LOCK_SPAWN)
+                    me->InsertLOSEntry(who->GetGUID());
+                else
+                    MoveInLineOfSight(who);
+            }       
+            else
+                MoveInLineOfSight(who);
+            me->SetLOSLockStatus(LOS_LOCK_NONE);
+            break;
+        case LOS_LOCK_PROCESSING:
+        default:
+            break;
+    }
 }
 
 void CreatureAI::MoveInLineOfSight(Unit* who)
@@ -192,20 +209,23 @@ void CreatureAI::EnterEvadeMode(EvadeReason why)
         return;
     }
 
-    if (!me->GetVehicle()) // otherwise me will be in evade mode forever
+    if (me->GetVehicle()) // otherwise me will be in evade mode forever
     {
-        if (Unit* owner = me->GetCharmerOrOwner())
-        {
-            me->GetMotionMaster()->Clear();
-            me->GetMotionMaster()->MoveFollow(owner, PET_FOLLOW_DIST, me->GetFollowAngle());
-        }
-        else
-        {
-            // Required to prevent attacking creatures that are evading and cause them to reenter combat
-            // Does not apply to MoveFollow
-            me->AddUnitState(UNIT_STATE_EVADE);
-            me->GetMotionMaster()->MoveTargetedHome();
-        }
+        Reset();
+        return;
+    }
+
+    if (Unit* owner = me->GetCharmerOrOwner())
+    {
+        me->GetMotionMaster()->Clear();
+        me->GetMotionMaster()->MoveFollow(owner, PET_FOLLOW_DIST, me->GetFollowAngle());
+    }
+    else
+    {
+        // Required to prevent attacking creatures that are evading and cause them to reenter combat
+        // Does not apply to MoveFollow
+        me->AddUnitState(UNIT_STATE_EVADE);
+        me->GetMotionMaster()->MoveTargetedHome();
     }
 
     Reset();

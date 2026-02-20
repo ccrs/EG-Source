@@ -101,7 +101,7 @@ void EscortAI::EnterEvadeMode(EvadeReason why)
 
     EngagementOver();
 
-    if (why == EVADE_REASON_VEHICLE_EVADE)
+    if (why == EVADE_REASON_VEHICLE_EVADE || me->GetVehicle())
     {
         Reset();
         return;

@@ -23,10 +23,13 @@
 #include "CreatureData.h"
 #include "DatabaseEnvFwd.h"
 #include "Duration.h"
-#include "Loot.h"
 #include "GridObject.h"
 #include "MapObject.h"
+#include "Loot.h"
+#include "Timer.h"
+#include <deque>
 #include <list>
+#include <unordered_set>
 
 class CreatureAI;
 class CreatureGroup;
@@ -37,6 +40,13 @@ class SpellInfo;
 class WorldSession;
 
 enum MovementGeneratorType : uint8;
+
+enum LOSLockStatus : uint8
+{
+    LOS_LOCK_NONE = 0,
+    LOS_LOCK_SPAWN = 1,
+    LOS_LOCK_PROCESSING = 2
+};
 
 struct VendorItemCount
 {
@@ -375,6 +385,10 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool HasStoredMovementFlag(uint32 flag) const { return (_storedMovementFlags & flag) != 0; }
         uint32 GetStoredMovementFlags() const { return _storedMovementFlags; }
 
+        void ProcessDelayedLOSEntries();
+        LOSLockStatus GetLOSLockStatus() const { return _moveInLOSLockStatus; }
+        void SetLOSLockStatus(LOSLockStatus value) { _moveInLOSLockStatus = value; }
+        void InsertLOSEntry(ObjectGuid guid);
     protected:
         bool CreateFromProto(ObjectGuid::LowType guidlow, uint32 entry, CreatureData const* data = nullptr, uint32 vehId = 0);
         bool InitEntry(uint32 entry, CreatureData const* data = nullptr);
@@ -462,6 +476,11 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
 
         // EG - Custom declarations
         uint32 _storedMovementFlags;
+
+        LOSLockStatus _moveInLOSLockStatus;
+        std::unordered_set<ObjectGuid> _uniqueLOSEntries;
+        std::deque<ObjectGuid> _LOSQueue;
+        TimeTracker _LOSLockDelay;
 };
 
 class TC_GAME_API AssistDelayEvent : public BasicEvent

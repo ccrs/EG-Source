@@ -96,7 +96,7 @@ class TC_GAME_API CreatureAI : public UnitAI
             EVADE_REASON_NO_PATH,           // the creature was unable to reach its target for over 5 seconds
             EVADE_REASON_SEQUENCE_BREAK,    // this is a boss and the pre-requisite encounters for engaging it are not defeated yet
             EVADE_REASON_OTHER,             // anything else
-            EVADE_REASON_VEHICLE_EVADE
+            EVADE_REASON_VEHICLE_EVADE      // 
         };
 
         explicit CreatureAI(Creature* creature);
@@ -259,10 +259,10 @@ class TC_GAME_API CreatureAI : public UnitAI
         static bool IsInBounds(CreatureBoundary const& boundary, Position const* who);
         bool IsInBoundary(Position const* who = nullptr) const;
 
+        virtual void MoveInLineOfSight(Unit* /*who*/);
     protected:
         void EngagementStart(Unit* who);
         void EngagementOver();
-        virtual void MoveInLineOfSight(Unit* /*who*/);
 
         bool _EnterEvadeMode(EvadeReason why = EVADE_REASON_OTHER);
 
@@ -273,7 +273,6 @@ class TC_GAME_API CreatureAI : public UnitAI
         void OnOwnerCombatInteraction(Unit* target);
 
         bool _isEngaged;
-        bool _moveInLOSLocked;
 };
 
 #endif

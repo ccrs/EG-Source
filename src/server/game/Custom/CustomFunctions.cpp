@@ -1,14 +1,60 @@
 #include "CustomFunctions.h"
+#include "Creature.h"
+#include "CreatureAI.h"
 #include "DatabaseEnv.h"
 #include "Map.h"
 #include "Log.h"
 #include "Object.h"
+#include "ObjectAccessor.h"
+#include "ObjectGuid.h"
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "SharedDefines.h"
 #include "Transmogrification.h"
 #include "Unit.h"
 #include "World.h"
+
+
+void Creature::ProcessDelayedLOSEntries()
+{
+    if (_LOSQueue.empty() || !IsAlive() || HasUnitState(UNIT_STATE_SIGHTLESS) || !IsAIEnabled())
+    {
+        _LOSQueue = {};
+        _uniqueLOSEntries.clear();
+        _moveInLOSLockStatus = LOS_LOCK_NONE;
+        return;
+    }
+
+    _moveInLOSLockStatus = LOS_LOCK_PROCESSING;
+    for (auto itr = _LOSQueue.begin(); itr != _LOSQueue.end();)
+    {
+        if (Unit* current = ObjectAccessor::GetUnit(*this, *itr))
+        {
+            if (Creature* currentCreature = current->ToCreature())
+                if (currentCreature->GetLOSLockStatus() == LOS_LOCK_SPAWN)
+                {
+                    ++itr;
+                    continue;
+                }
+
+            if (current->IsAlive() && !current->IsInFlight() && CanSeeOrDetect(current, false, true))
+                AI()->MoveInLineOfSight(current);
+        }
+        _uniqueLOSEntries.erase(*itr);
+        itr = _LOSQueue.erase(itr);
+    }
+
+    _moveInLOSLockStatus = LOS_LOCK_NONE;
+}
+
+void Creature::InsertLOSEntry(ObjectGuid guid)
+{
+    if (!_uniqueLOSEntries.contains(guid))
+    {
+        _uniqueLOSEntries.insert(guid);
+        _LOSQueue.push_back(guid);
+    }
+}
 
 void Player::_LoadCustomSettings(PreparedQueryResult result)
 {
