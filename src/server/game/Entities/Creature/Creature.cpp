@@ -683,8 +683,11 @@ void Creature::Update(uint32 diff)
     {
         _LOSLockDelay.Update(diff);
         if (_LOSLockDelay.Passed())
-            ProcessLOSLock();
+            ProcessDelayedLOSEntries();
     }
+
+    if (IsAIEnabled() && GetLOSLockStatus() == LOS_LOCK_NONE)
+        ProcessDelayedLOSEntries();
 
     switch (m_deathState)
     {

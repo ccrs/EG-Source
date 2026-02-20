@@ -114,7 +114,15 @@ void CreatureAI::MoveInLineOfSight_Safe(Unit* who)
             break;
         case LOS_LOCK_NONE:
             me->SetLOSLockStatus(LOS_LOCK_PROCESSING);
-            MoveInLineOfSight(who);
+            if (Creature* whoCreature = who->ToCreature())
+            {
+                if (whoCreature->GetLOSLockStatus() == LOS_LOCK_SPAWN)
+                    me->InsertLOSEntry(who->GetGUID());
+                else
+                    MoveInLineOfSight(who);
+            }       
+            else
+                MoveInLineOfSight(who);
             me->SetLOSLockStatus(LOS_LOCK_NONE);
             break;
         case LOS_LOCK_PROCESSING:

@@ -385,7 +385,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool HasStoredMovementFlag(uint32 flag) const { return (_storedMovementFlags & flag) != 0; }
         uint32 GetStoredMovementFlags() const { return _storedMovementFlags; }
 
-        void ProcessLOSLock();
+        void ProcessDelayedLOSEntries();
         LOSLockStatus GetLOSLockStatus() const { return _moveInLOSLockStatus; }
         void SetLOSLockStatus(LOSLockStatus value) { _moveInLOSLockStatus = value; }
         void InsertLOSEntry(ObjectGuid guid);

@@ -9,7 +9,7 @@
 #include "Creature.h"
 
 
-void Creature::ProcessLOSLock()
+void Creature::ProcessDelayedLOSEntries()
 {
     if (_LOSQueue.empty() || !IsAlive() || HasUnitState(UNIT_STATE_SIGHTLESS) || !IsAIEnabled())
     {
