@@ -10,3 +10,7 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 30575 AND `SourceId` = 0;
+
+DELETE FROM `creature_template_movement` WHERE `CreatureId`= 29754;
+INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`, `Chase`, `Random`, `InteractionPauseTimer`) VALUES
+(29754, 0, 0, 1, 1, 0, 0, 0);
