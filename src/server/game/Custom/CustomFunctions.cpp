@@ -1,9 +1,55 @@
 #include "CustomFunctions.h"
+#include "CreatureAI.h"
 #include "Map.h"
 #include "Object.h"
+#include "ObjectAccessor.h"
+#include "ObjectGuid.h"
 #include "Unit.h"
 #include "World.h"
+#include "Creature.h"
 
+
+void Creature::ProcessDelayedLOSEntries()
+{
+    if (_LOSQueue.empty() || !IsAlive() || HasUnitState(UNIT_STATE_SIGHTLESS) || !IsAIEnabled())
+    {
+        _LOSQueue = {};
+        _uniqueLOSEntries.clear();
+        _moveInLOSLockStatus = LOS_LOCK_NONE;
+        return;
+    }
+
+    _moveInLOSLockStatus = LOS_LOCK_PROCESSING;
+    for (auto itr = _LOSQueue.begin(); itr != _LOSQueue.end();)
+    {
+        if (Unit* current = ObjectAccessor::GetUnit(*this, *itr))
+        {
+            if (Creature* currentCreature = current->ToCreature())
+                if (currentCreature->GetLOSLockStatus() == LOS_LOCK_SPAWN)
+                {
+                    ++itr;
+                    continue;
+                }
+
+            if (current->IsAlive() && !current->IsInFlight() && CanSeeOrDetect(current, false, true))
+                AI()->MoveInLineOfSight(current);
+        }
+
+        itr = _LOSQueue.erase(itr);
+        _uniqueLOSEntries.erase(*itr);
+    }
+
+    _moveInLOSLockStatus = LOS_LOCK_NONE;
+}
+
+void Creature::InsertLOSEntry(ObjectGuid guid)
+{
+    if (!_uniqueLOSEntries.contains(guid))
+    {
+        _uniqueLOSEntries.insert(guid);
+        _LOSQueue.push_back(guid);
+    }
+}
 
 void WorldObject::GetNearPoint2D(WorldObject const* searcher, Position const* reference, float& x, float& y, float distance, float absAngle) const
 {

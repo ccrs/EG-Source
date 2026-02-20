@@ -259,10 +259,10 @@ class TC_GAME_API CreatureAI : public UnitAI
         static bool IsInBounds(CreatureBoundary const& boundary, Position const* who);
         bool IsInBoundary(Position const* who = nullptr) const;
 
+        virtual void MoveInLineOfSight(Unit* /*who*/);
     protected:
         void EngagementStart(Unit* who);
         void EngagementOver();
-        virtual void MoveInLineOfSight(Unit* /*who*/);
 
         bool _EnterEvadeMode(EvadeReason why = EVADE_REASON_OTHER);
 
@@ -273,7 +273,6 @@ class TC_GAME_API CreatureAI : public UnitAI
         void OnOwnerCombatInteraction(Unit* target);
 
         bool _isEngaged;
-        bool _moveInLOSLocked;
 };
 
 #endif
