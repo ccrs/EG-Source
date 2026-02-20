@@ -72,10 +72,10 @@ void MovementGeneratorDeleter::operator()(MovementGenerator* a)
 
 bool MovementGeneratorComparator::operator()(MovementGenerator const* a, MovementGenerator const* b) const
 {
-    if (a->Mode > b->Mode)
+    if (a->Priority > b->Priority)
         return true;
-    else if (a->Mode == b->Mode)
-        return a->Priority > b->Priority;
+    else if (a->Priority == b->Priority)
+        return a->Mode > b->Mode;
 
     return false;
 }
