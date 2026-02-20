@@ -37,7 +37,7 @@
 AISpellInfoType* UnitAI::AISpellInfo;
 AISpellInfoType* GetAISpellInfo(uint32 i) { return &UnitAI::AISpellInfo[i]; }
 
-CreatureAI::CreatureAI(Creature* creature) : UnitAI(creature), me(creature), _boundary(nullptr), _negateBoundary(false), _isEngaged(false), _moveInLOSLocked(false)
+CreatureAI::CreatureAI(Creature* creature) : UnitAI(creature), me(creature), _boundary(nullptr), _negateBoundary(false), _isEngaged(false), _moveInLOSLockStatus(LOS_LOCK_SPAWN)
 {
 }
 
@@ -107,11 +107,19 @@ void CreatureAI::DoZoneInCombat(Creature* creature /*= nullptr*/)
 // MoveInLineOfSight can be called inside another MoveInLineOfSight and cause stack overflow
 void CreatureAI::MoveInLineOfSight_Safe(Unit* who)
 {
-    if (_moveInLOSLocked == true)
-        return;
-    _moveInLOSLocked = true;
-    MoveInLineOfSight(who);
-    _moveInLOSLocked = false;
+    switch (_moveInLOSLockStatus)
+    {
+        case LOS_LOCK_SPAWN:
+            break;
+        case LOS_LOCK_NONE:
+            _moveInLOSLockStatus = LOS_LOCK_PROCESSING;
+            MoveInLineOfSight(who);
+            _moveInLOSLockStatus = LOS_LOCK_NONE;
+            break;
+        case LOS_LOCK_PROCESSING:
+        default:
+            break;
+    }
 }
 
 void CreatureAI::MoveInLineOfSight(Unit* who)
