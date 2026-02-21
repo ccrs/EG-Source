@@ -1255,6 +1255,15 @@ void MotionMaster::DirectAdd(MovementGenerator* movement, MovementSlot slot/* = 
                             currentTopMovement->Deactivate(_owner);
                         else if (movement->Mode == currentTopMovement->Mode)
                             Remove(itr, true, false);
+                        else
+                        {
+                            auto itr = std::find_if(_generators.begin(), _generators.end(), [movement](MovementGenerator const* a) -> bool
+                            {
+                                return a->Priority == movement->Priority && a->Mode == movement->Mode;
+                            });
+                            if (itr != _generators.end())
+                                Remove(itr, false, false);
+                        }
                     }
                     else
                         currentTopMovement->Deactivate(_owner);
