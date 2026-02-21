@@ -217,7 +217,7 @@ class TC_GAME_API MotionMaster
         typedef std::unordered_multimap<uint32, MovementGenerator const*> MotionMasterUnitStatesContainer;
 
         void ResolveDelayedActions();
-        void Remove(MotionMasterContainer::iterator iterator, bool active, bool movementInform);
+        void Remove(MotionMasterContainer::iterator& iterator, bool active, bool movementInform);
         void Pop(bool active, bool movementInform);
         void DirectInitialize();
         void DirectClear();
