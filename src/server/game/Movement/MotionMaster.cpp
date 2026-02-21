@@ -1100,11 +1100,11 @@ void MotionMaster::MoveFace(WorldObject const* object, uint32 id/* = EVENT_FACE*
 
     TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::MoveFace: '{}', faces '{}'", _owner->GetGUID().ToString(), object->GetGUID().ToString());
 
-    std::function<void(Movement::MoveSplineInit&)> initializer = [=, this](Movement::MoveSplineInit& init)
+    std::function<void(Movement::MoveSplineInit&)> initializer = [owner = _owner, object](Movement::MoveSplineInit& init)
     {
-        init.MoveTo(_owner->GetPositionX(), _owner->GetPositionY(), _owner->GetPositionZ(), false);
+        init.MoveTo(owner->GetPositionX(), owner->GetPositionY(), owner->GetPositionZ(), false);
         if (object)
-            init.SetFacing(_owner->GetAbsoluteAngle(object));   // when on transport, GetAbsoluteAngle will still return global coordinates (and angle) that needs transforming
+            init.SetFacing(owner->GetAbsoluteAngle(object));   // when on transport, GetAbsoluteAngle will still return global coordinates (and angle) that needs transforming
     };
 
     GenericMovementGenerator* movement = new GenericMovementGenerator(std::move(initializer), FACE_MOTION_TYPE, id);
@@ -1119,17 +1119,17 @@ void MotionMaster::MoveFace(WorldObject const* object, uint32 id/* = EVENT_FACE*
     Add(movement);
 }
 
-void MotionMaster::MoveFace(float const orientation, uint32 id/* = EVENT_FACE*/, Milliseconds duration/* = 0ms*/)
+void MotionMaster::MoveFace(float orientation, uint32 id/* = EVENT_FACE*/, Milliseconds duration/* = 0ms*/)
 {
     if (GetCurrentMovementGeneratorPriority() == MOTION_PRIORITY_HIGHEST)
         return;
 
     TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::MoveFace: '{}', faces '{}'", _owner->GetGUID().ToString(), orientation);
 
-    std::function<void(Movement::MoveSplineInit&)> initializer = [=, this](Movement::MoveSplineInit& init)
+    std::function<void(Movement::MoveSplineInit&)> initializer = [owner = _owner, orientation](Movement::MoveSplineInit& init)
     {
-        init.MoveTo(_owner->GetPositionX(), _owner->GetPositionY(), _owner->GetPositionZ(), false);
-        if (_owner->HasUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT) && !_owner->GetTransGUID().IsEmpty())
+        init.MoveTo(owner->GetPositionX(), owner->GetPositionY(), owner->GetPositionZ(), false);
+        if (owner->GetTransport())
             init.DisableTransportPathTransformations(); // It makes no sense to target global orientation
         init.SetFacing(orientation);
     };
