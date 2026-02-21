@@ -81,3 +81,36 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 18297 AND `SourceId` = 0;
+
+ -- Valduran the Stormborn smart ai
+SET @ENTRY := 29368;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 9 AND `entryOrGuid` IN (2936800);
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 0, 1500, 3400, 4700, 11, 56326, 64, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 3.4 - 4.7 seconds (0 - 1.5s initially) (IC) - Self: Cast spell  Lightning Bolt (56326) with flags combat move on Victim'),
+(@ENTRY, 0, 1, 0, 0, 0, 100, 0, 15000, 18000, 29000, 33000, 11, 56322, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Every 29 - 33 seconds (15 - 18s initially) (IC) - Self: Cast spell  Spark Frenzy (56322) on Self'),
+(@ENTRY, 0, 2, 0, 0, 0, 100, 0, 3000, 8000, 23000, 26000, 11, 56319, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Every 23 - 26 seconds (3 - 8s initially) (IC) - Self: Cast spell  Ball Lightning (56319) on Random hostile'),
+(@ENTRY, 0, 3, 4, 8, 0, 100, 0, 56189, 0, 0, 0, 11, 44762, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 'On spell  Sound War Horn (56189) hit - Self: Cast spell  Camera Shake - Med (44762) on Caster'),
+(@ENTRY, 0, 4, 5, 61, 0, 100, 0, 0, 0, 0, 0, 28, 56220, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On spell  Sound War Horn (56189) hit - Self: Remove aura due to spell  Valduran\'s Channel (56220)'),
+(@ENTRY, 0, 5, 0, 61, 0, 100, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On spell  Sound War Horn (56189) hit - Self: Set emote state to 0'),
+(@ENTRY, 0, 6, 0, 38, 0, 100, 0, 0, 1, 0, 0, 80, 2936800, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[0] set to 1 - Self: Start timed action list id #Valduran the Stormborn #0 (2936800) (update out of combat) // -inline'),
+(@ENTRY * 100, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 0 seconds - Self: Talk 0 to invoker'),
+(@ENTRY * 100, 9, 1, 0, 0, 0, 100, 0, 4000, 4000, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 4 seconds - Self: Talk 1 to invoker'),
+(@ENTRY * 100, 9, 2, 0, 0, 0, 100, 0, 5000, 5000, 0, 0, 11, 61361, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 5 seconds - Self: Cast spell  Lightning Teleport (61361) on Self'),
+(@ENTRY * 100, 9, 3, 0, 0, 0, 100, 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 0 seconds - Self: Enable gravity'),
+(@ENTRY * 100, 9, 4, 0, 0, 0, 100, 0, 0, 0, 0, 0, 99, 3, 0, 0, 0, 0, 0, 20, 191510, 10, 0, 0, 0, 0, 0, 'After 0 seconds - Closest gameobject Valduran\'s Shield (191510) in 10 yards: Set gameobjects loot state GO_JUST_DEACTIVATED'),
+(@ENTRY * 100, 9, 5, 0, 0, 0, 100, 0, 0, 0, 0, 0, 2, 2102, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 0 seconds - Self: Set faction to Actor Evil (2102)'),
+(@ENTRY * 100, 9, 6, 0, 0, 0, 100, 0, 1000, 1000, 0, 0, 144, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 1 seconds - Self: Disable Immune to PC'),
+(@ENTRY * 100, 9, 7, 0, 0, 0, 100, 0, 0, 0, 0, 0, 145, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 0 seconds - Self: Disable Immune to NPC'),
+(@ENTRY, 0, 7, 0, 25, 0, 100, 0, 0, 0, 0, 0, 60, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Disable gravity'),
+(@ENTRY, 0, 8, 9, 6, 0, 100, 0, 0, 0, 0, 0, 45, 1, 1, 0, 0, 0, 0, 11, 29801, 20, 0, 0, 0, 0, 0, 'On death - Creature Bouldercrag the Rockshaper (29801) in 20 yd: Set creature data #1 to 1'),
+(@ENTRY, 0, 9, 0, 61, 0, 100, 0, 0, 0, 0, 0, 45, 1, 1, 0, 0, 0, 0, 11, 30152, 20, 0, 0, 0, 0, 0, 'On death - Creature Bruor Ironbane (30152) in 20 yd: Set creature data #1 to 1'),
+(@ENTRY, 0, 10, 0, 7, 0, 100, 0, 0, 0, 0, 0, 41, 0, 10, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On evade - Self: Despawn instantly respawn in 10 seconds');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 29368 AND `SourceId` = 0;
+
+DELETE FROM `creature_template_movement` WHERE `CreatureId`= 29368;
+INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`, `Chase`, `Random`, `InteractionPauseTimer`) VALUES
+(29368, 1, 0, 0, 0, 0, 0, 0);
