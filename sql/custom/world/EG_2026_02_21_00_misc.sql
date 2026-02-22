@@ -12,7 +12,10 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 (@ENTRY, 0, 1, 2, 61, 0, 100, 0, 0, 0, 0, 0, 53, 1, 26858, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just summoned - Self: Start path #26858, run, do not repeat, Passive'),
 (@ENTRY, 0, 2, 0, 61, 0, 100, 0, 0, 0, 0, 0, 22, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On just summoned - Set event phase to phase 1'),
 (@ENTRY, 0, 3, 0, 40, 0, 100, 0, 3, 26858, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On wapoint 3 of path 26858 reached - Self: Enable gravity'),
-(@ENTRY, 0, 4, 0, 1, 1, 100, 1, 240000, 240000, 0, 0, 41, 0, 10, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Time = 240 seconds (OOC) - Self: Despawn instantly respawn in 10 seconds');
+(@ENTRY, 0, 4, 0, 1, 1, 100, 1, 240000, 240000, 0, 0, 41, 0, 10, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Time = 240 seconds (OOC) - Self: Despawn instantly respawn in 10 seconds'),
+(@ENTRY, 0, 5, 0, 0, 0, 100, 0, 5000, 8000, 6000, 9000, 11, 47425, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 6 - 9 seconds (5 - 8s initially) (IC) - Self: Cast spell  Frost Breath (47425) on Victim'),
+(@ENTRY, 0, 6, 0, 0, 0, 100, 0, 10000, 20000, 25000, 35000, 11, 45329, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 25 - 35 seconds (10 - 20s initially) (IC) - Self: Cast spell  Shadow Nova (45329) on Victim'),
+(@ENTRY, 0, 7, 0, 0, 0, 100, 0, 10000, 20000, 10000, 20000, 11, 61085, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Every 10 - 20 seconds (IC) - Self: Cast spell  Blizzard (61085) on Random hostile');
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 26858 AND `SourceId` = 0;
@@ -20,10 +23,10 @@ DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` 
 -- WP
 DELETE FROM `waypoint_data` WHERE `id`=26858;
 INSERT INTO `waypoint_data` (`id`, `point`, `position_x`, `position_y`, `position_z`, `orientation`, `delay`, `move_type`, `action`, `action_chance`, `wpguid`) VALUES
-(26858, 1, 4400.307, 913.1443, 141.6648, NULL, 0, 0, 0, 100, 0),
-(26858, 2, 4400.307, 913.1443, 86.03818, NULL, 0, 0, 0, 100, 0),
-(26858, 3, 4396.26,  917.477,  83.1363,  NULL, 0, 0, 0, 100, 0),
-(26858, 4, 4384.42,  931.647,  81.0272,  NULL, 0, 0, 0, 100, 0);
+(26858, 1, 4400.307, 913.1443, 141.6648, NULL, 0, 1, 0, 100, 0),
+(26858, 2, 4400.307, 913.1443, 86.03818, NULL, 0, 1, 0, 100, 0),
+(26858, 3, 4396.26,  917.477,  83.1363,  NULL, 0, 1, 0, 100, 0),
+(26858, 4, 4384.42,  931.647,  81.0272,  NULL, 0, 1, 0, 100, 0);
 
 SET @GOSSIP=9434;
 
