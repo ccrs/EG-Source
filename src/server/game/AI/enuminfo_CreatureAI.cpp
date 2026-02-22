@@ -42,7 +42,7 @@ TC_API_EXPORT EnumText EnumUtils<CreatureAI::EvadeReason>::ToString(CreatureAI::
 }
 
 template <>
-TC_API_EXPORT size_t EnumUtils<CreatureAI::EvadeReason>::Count() { return 5; }
+TC_API_EXPORT size_t EnumUtils<CreatureAI::EvadeReason>::Count() { return 6; }
 
 template <>
 TC_API_EXPORT CreatureAI::EvadeReason EnumUtils<CreatureAI::EvadeReason>::FromIndex(size_t index)
