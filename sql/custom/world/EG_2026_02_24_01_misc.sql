@@ -183,3 +183,22 @@ DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` 
 DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_fiery_lance';
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (43997, 'EG_spell_fiery_lance');
+
+DELETE FROM `creature_template_movement` WHERE `CreatureId` IN (24418);
+INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`) VALUES
+(24418, 0, 0, 1, 0);
+
+ -- Steel Gate Flying Machine smart ai
+SET @ENTRY := 24418;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 60, 0, 100, 512, 5000, 5000, 5000, 5000, 41, 0, 10, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Every 5 seconds - Self: Despawn instantly respawn in 10 seconds'),
+(@ENTRY, 0, 1, 0, 28, 0, 100, 512, 0, 0, 0, 0, 41, 0, 10, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On passenger removed (vehicle) - Self: Despawn instantly respawn in 10 seconds');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 24418 AND `SourceId` = 0;
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+(22, 1, 24418, 0, 0, 23, 0, 3999, 0, 0, 1, 'Action invoker is not in area Steel Gate (3999)');
+
+UPDATE `creature_template_addon` SET `auras` = '43775 43889 60921' WHERE `entry` = 24418;
