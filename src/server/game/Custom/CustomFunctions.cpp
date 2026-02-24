@@ -1,9 +1,12 @@
 #include "CustomFunctions.h"
 #include "CreatureAI.h"
 #include "Map.h"
+#include "MotionMaster.h"
 #include "Object.h"
 #include "ObjectAccessor.h"
 #include "ObjectGuid.h"
+#include "Optional.h"
+#include "SmartAI.h"
 #include "Unit.h"
 #include "World.h"
 #include "Creature.h"
@@ -163,4 +166,13 @@ bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
     }
 
     return false;
+}
+
+void SmartAI::SetCombatMovement()
+{
+    if (!me->IsAlive() || !CanCombatMove() || !me->GetVictim())
+        return;
+
+    Optional<ChaseRange> chaseRange = _combatDistance ? ChaseRange(_combatDistance) : Optional<ChaseRange>{ };
+    me->GetMotionMaster()->MoveChase(me->GetVictim(), chaseRange);
 }
