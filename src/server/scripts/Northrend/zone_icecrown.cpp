@@ -1226,16 +1226,19 @@ class spell_icecrown_cannons_target : public SpellScript
         return ValidateSpellInfo({ static_cast<uint32>(spellInfo->GetEffect(EFFECT_0).CalcValue()) });
     }
 
-    void HandleDummy(SpellEffIndex /*effIndex*/)
+    void HandleDummy()
     {
-        if (WorldLocation const* pos = GetExplTargetDest())
-            GetCaster()->CastSpell(pos->GetPosition(), GetEffectValue(), true);
+        if (once)
+            if (WorldLocation const* pos = GetExplTargetDest())
+                GetCaster()->CastSpell(pos->GetPosition(), GetSpellInfo()->GetEffect(EFFECT_0).CalcValue(), true);
+        once = false;
     }
 
     void Register() override
     {
-        OnEffectHit += SpellEffectFn(spell_icecrown_cannons_target::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+        AfterHit += SpellHitFn(spell_icecrown_cannons_target::HandleDummy);
     }
+    bool once = true;
 };
 
 /*######
