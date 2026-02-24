@@ -36,6 +36,7 @@ public:
             { "account",            accountSettings },
             { "xpRate",             HandleXPRate, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "masquerade",         HandleRaceMasquerade, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "weaponSkill",        HandleWeaponSkill, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
         };
 
         static ChatCommandTable commandTable =
@@ -214,6 +215,26 @@ public:
         Races masqueradeRace = Races(raceValue);
         player->SetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE, CustomFlags(1 << (value)));
         handler->PSendSysMessage(LANG_MASQUERADE_RACE_ENABLED, EnumUtils::ToTitle(masqueradeRace));
+        return true;
+    }
+
+    static bool HandleWeaponSkill(ChatHandler* handler, bool active)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        if (!player)
+            return false;
+
+        if (active)
+        {
+            player->AddCustomFlag(CustomFlagsIndex::CUSTOM_WEAPON_SKILL, CustomFlags::CUSTOM_FLAG_WEAPON_SKILL_ACTIVE);
+            player->UpdateWeaponsSkillsToMaxSkillsForLevel();
+            handler->SendSysMessage("Weapon Skill setting activated, related skills will remain always maxed.");
+        }
+        else
+        {
+            player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_WEAPON_SKILL, CustomFlags::CUSTOM_FLAG_WEAPON_SKILL_ACTIVE);
+            handler->SendSysMessage("Weapon Skill setting deactivated, related skills may need leveling from now on.");
+        }
         return true;
     }
 };
