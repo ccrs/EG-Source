@@ -65,7 +65,7 @@ ChaseMovementGenerator::ChaseMovementGenerator(Unit *target, Optional<ChaseRange
 }
 ChaseMovementGenerator::~ChaseMovementGenerator() = default;
 
-bool ChaseMovementGenerator::Initialize(Unit* /*owner*/)
+bool ChaseMovementGenerator::Initialize(Unit* owner)
 {
     RemoveFlag(MOVEMENTGENERATOR_FLAG_INITIALIZATION_PENDING | MOVEMENTGENERATOR_FLAG_DEACTIVATED);
     AddFlag(MOVEMENTGENERATOR_FLAG_INITIALIZED | MOVEMENTGENERATOR_FLAG_INFORM_ENABLED);
@@ -73,6 +73,7 @@ bool ChaseMovementGenerator::Initialize(Unit* /*owner*/)
     _path = nullptr;
     _lastTargetPosition.reset();
     _rangeCheckTimer.Reset(0);
+    owner->StopMoving();
     return false;
 }
 
