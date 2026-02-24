@@ -4938,7 +4938,8 @@ void SpellMgr::LoadSpellInfoCorrections()
     });
 
     // Charm Drakuru Servant
-    ApplySpellFix({ 52390 }, [](SpellInfo* spellInfo)
+    // Harpoon Toss
+    ApplySpellFix({ 52390, 44188 }, [](SpellInfo* spellInfo)
     {
         spellInfo->_GetEffect(EFFECT_0).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
     });
