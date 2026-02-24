@@ -197,6 +197,30 @@ class EG_spell_prayer_beads : public SpellScript
     }
 };
 
+enum FieryLance
+{
+    NPC_DRAGONFLAYER_DEFENDER = 24533
+};
+
+// 43997 - Fiery Lance
+class EG_spell_fiery_lance : public SpellScript
+{
+    PrepareSpellScript(EG_spell_fiery_lance);
+
+    SpellCastResult CheckRequirement()
+    {
+        if (Unit* target = GetExplTargetUnit())
+            if (target->GetEntry() == NPC_DRAGONFLAYER_DEFENDER)
+                return SPELL_CAST_OK;
+        return SPELL_FAILED_BAD_TARGETS;
+    }
+
+    void Register() override
+    {
+        OnCheckCast += SpellCheckCastFn(EG_spell_fiery_lance::CheckRequirement);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_Cosmetic___Divine_Shield_Blue);
@@ -206,4 +230,5 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_charm_channel);
     RegisterSpellScript(EG_spell_charm_drakuru_servant);
     RegisterSpellScript(EG_spell_prayer_beads);
+    RegisterSpellScript(EG_spell_fiery_lance);
 }
