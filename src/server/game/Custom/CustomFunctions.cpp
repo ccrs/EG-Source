@@ -3,13 +3,16 @@
 #include "CreatureAI.h"
 #include "DatabaseEnv.h"
 #include "Map.h"
+#include "MotionMaster.h"
 #include "Log.h"
 #include "Object.h"
 #include "ObjectAccessor.h"
 #include "ObjectGuid.h"
 #include "ObjectMgr.h"
+#include "Optional.h"
 #include "Player.h"
 #include "SharedDefines.h"
+#include "SmartAI.h"
 #include "Transmogrification.h"
 #include "Unit.h"
 #include "World.h"
@@ -410,6 +413,15 @@ bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
     }
 
     return false;
+}
+
+void SmartAI::SetCombatMovement()
+{
+    if (!me->IsAlive() || !CanCombatMove() || !me->GetVictim())
+        return;
+
+    Optional<ChaseRange> chaseRange = _combatDistance ? ChaseRange(_combatDistance) : Optional<ChaseRange>{ };
+    me->GetMotionMaster()->MoveChase(me->GetVictim(), chaseRange);
 }
 
 EG::SetRaceMasqueradeSetting::SetRaceMasqueradeSetting(Player* owner, Races selectedRace) : _owner(owner), _selectedRace(selectedRace)
