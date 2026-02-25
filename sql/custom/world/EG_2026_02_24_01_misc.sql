@@ -196,11 +196,44 @@ UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `en
 DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
 INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
 (@ENTRY, 0, 0, 0, 60, 0, 100, 512, 5000, 5000, 5000, 5000, 41, 0, 10, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Every 5 seconds - Self: Despawn instantly respawn in 10 seconds'),
-(@ENTRY, 0, 1, 0, 28, 0, 100, 512, 0, 0, 0, 0, 41, 0, 10, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On passenger removed (vehicle) - Self: Despawn instantly respawn in 10 seconds');
+(@ENTRY, 0, 1, 0, 28, 0, 100, 512, 0, 0, 0, 0, 41, 0, 10, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On passenger removed (vehicle) - Self: Despawn instantly respawn in 10 seconds'),
+(@ENTRY, 0, 2, 0, 37, 0, 100, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On AI initialize - Self: Set react state to Passive'),
+(@ENTRY, 0, 3, 0, 28, 0, 100, 512, 0, 0, 0, 0, 86, 43806, 2, 23, 0, 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 'On passenger removed (vehicle) - Owner/Summoner: Cast spell  Kill Credit: Deliver Sack (43806) with flags triggered at Owner/Summoner'),
+(@ENTRY, 0, 4, 5, 38, 0, 100, 512, 1, 1, 1000, 1000, 41, 2000, 30, 0, 0, 0, 0, 29, 2, 0, 0, 0, 0, 0, 0, 'On data[1] set to 1 (wait 1000 - 1000 ms before next event trigger) - Target unit in Seat 2: Despawn in 2 s respawn in 30 seconds'),
+(@ENTRY, 0, 5, 0, 61, 0, 100, 0, 0, 0, 0, 0, 28, 46598, 0, 0, 0, 0, 0, 29, 2, 0, 0, 0, 0, 0, 0, 'On data[1] set to 1 (wait 1000 - 1000 ms before next event trigger) - Target unit in Seat 2: Remove aura due to spell  Ride Vehicle Hardcoded (46598)');
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 24418 AND `SourceId` = 0;
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
-(22, 1, 24418, 0, 0, 23, 0, 3999, 0, 0, 1, 'Action invoker is not in area Steel Gate (3999)');
+(22, 1, 24418, 0, 0, 23, 0, 3999, 0, 0, 1, 'Action invoker is not in area Steel Gate (3999)'),
+(22, 2, 24418, 0, 0, 31, 0, 3, 24439, 0, 1, 'Action invoker is not creature, entry is 24439'),
+(22, 4, 24418, 0, 0, 31, 0, 3, 24439, 0, 0, 'Action invoker is creature, entry is 24439');
 
-UPDATE `creature_template_addon` SET `auras` = '43775 43889 60921' WHERE `entry` = 24418;
+UPDATE `creature_template_addon` SET `auras` = '43775 43889' WHERE `entry` = 24418;
+
+DELETE FROM `creature_template_spell` WHERE (`CreatureID` = 24418) and (`Index` = 4);
+
+ -- Sack of Relics smart ai
+SET @ENTRY := 24439;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 25, 0, 100, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Set react state to Passive'),
+(@ENTRY, 0, 1, 0, 8, 0, 100, 0, 43770, 0, 0, 0, 11, 46598, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 'On spell  Grappling Hook (43770) hit - Self: Cast spell  Ride Vehicle Hardcoded (46598) on Caster');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 24439 AND `SourceId` = 0;
+
+ -- Invisible Stalker (Floating) (5.00) smart ai
+SET @ENTRY := 24526;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 10, 0, 100, 0, 2, 2, 1000, 1000, 45, 1, 1, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 'On any unit in line of sight (OOC) - Unit in LOS: Set creature data #1 to 1');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 24526 AND `SourceId` = 0;
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+(22, 1, 24526, 0, 0, 31, 0, 3, 24418, 0, 0, 'Action invoker is creature, entry is 24418');
+
+UPDATE `creature_template_addon` SET `auras` = '' WHERE `entry` = 24440;
