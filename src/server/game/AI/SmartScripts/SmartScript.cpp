@@ -1592,7 +1592,7 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                 if (Creature* creature = target->ToCreature())
                     if (IsSmart(creature) && creature->GetVictim())
                     {
-                        ENSURE_AI(SmartAI, creature->AI())->SetCombatDistance(attackDistance);
+                        ENSURE_AI(SmartAI, creature->AI())->SetCombatChaseParameters(SmartAI::CombatChaseParameters{ .CombatDistance = attackDistance, .CombatAngle = attackAngle });
                         ENSURE_AI(SmartAI, creature->AI())->SetCombatMovement();
                     }
             }

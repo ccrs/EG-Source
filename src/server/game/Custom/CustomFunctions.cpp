@@ -420,8 +420,9 @@ void SmartAI::SetCombatMovement()
     if (!me->IsAlive() || !CanCombatMove() || !me->GetVictim())
         return;
 
-    Optional<ChaseRange> chaseRange = _combatDistance ? ChaseRange(_combatDistance) : Optional<ChaseRange>{ };
-    me->GetMotionMaster()->MoveChase(me->GetVictim(), chaseRange);
+    Optional<ChaseRange> chaseRange = _combatChaseParameters.CombatDistance ? ChaseRange(_combatChaseParameters.CombatDistance) : Optional<ChaseRange>{ };
+    Optional<ChaseAngle> chaseAngle = _combatChaseParameters.CombatAngle ? ChaseAngle(_combatChaseParameters.CombatAngle) : Optional<ChaseAngle>{ };
+    me->GetMotionMaster()->MoveChase(me->GetVictim(), chaseRange, chaseAngle);
 }
 
 EG::SetRaceMasqueradeSetting::SetRaceMasqueradeSetting(Player* owner, Races selectedRace) : _owner(owner), _selectedRace(selectedRace)

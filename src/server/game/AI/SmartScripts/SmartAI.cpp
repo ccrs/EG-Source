@@ -35,9 +35,10 @@
 SmartAI::SmartAI(Creature* creature) : CreatureAI(creature), _charmed(false), _followCreditType(0), _followArrivedTimer(0), _followCredit(0), _followArrivedEntry(0), _followDistance(0.f), _followAngle(0.f),
     _escortState(SMART_ESCORT_NONE), _escortNPCFlags(0), _escortInvokerCheckTimer(1000), _currentWaypointNode(0), _waypointReached(false), _waypointPauseTimer(0), _waypointPauseForced(false), _repeatWaypointPath(false),
     _OOCReached(false), _waypointPathEnded(false), _run(true), _evadeDisabled(false), _canAutoAttack(true), _canCombatMove(true), _invincibilityHPLevel(0), _despawnTime(0), _despawnState(0), _vehicleConditionsTimer(0),
-    _gossipReturn(false), _escortQuestId(0), _combatDistance(0.f)
+    _gossipReturn(false), _escortQuestId(0)
 {
     _vehicleConditions = sConditionMgr->HasConditionsForNotGroupedEntry(CONDITION_SOURCE_TYPE_CREATURE_TEMPLATE_VEHICLE, creature->GetEntry());
+    _combatChaseParameters = { .CombatDistance = 0.f, .CombatAngle = 0.f };
 }
 
 bool SmartAI::IsAIControlled() const
@@ -469,7 +470,7 @@ void SmartAI::EnterEvadeMode(EvadeReason why)
 
     if (!me->HasUnitState(UNIT_STATE_EVADE))
     {
-        SetCombatDistance(0.f);
+        ResetCombatChaseParameters();
         GetScript()->OnReset();
     }
 }
@@ -556,14 +557,14 @@ void SmartAI::JustAppeared()
     if (me->isDead())
         return;
 
-    SetCombatDistance(0.f);
+    ResetCombatChaseParameters();
     GetScript()->ProcessEventsFor(SMART_EVENT_RESPAWN);
     GetScript()->OnReset();
 }
 
 void SmartAI::JustReachedHome()
 {
-    SetCombatDistance(0.f);
+    ResetCombatChaseParameters();
     GetScript()->OnReset();
     GetScript()->ProcessEventsFor(SMART_EVENT_REACHED_HOME);
 
