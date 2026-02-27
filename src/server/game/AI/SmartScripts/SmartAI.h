@@ -77,8 +77,14 @@ class TC_GAME_API SmartAI : public CreatureAI
         {
             return _canCombatMove;
         }
-        float GetCombatDistance() const { return _combatDistance; }
-        void SetCombatDistance(float distance) { _combatDistance = distance; }
+        struct CombatChaseParameters
+        {
+            float CombatDistance;
+            float CombatAngle;
+        };
+        CombatChaseParameters GetCombatChaseParameters() const { return _combatChaseParameters; }
+        void SetCombatChaseParameters(CombatChaseParameters combatChaseParameters) { _combatChaseParameters = combatChaseParameters; }
+        void ResetCombatChaseParameters() { _combatChaseParameters = { .CombatDistance = 0.f, .CombatAngle = 0.f }; };
         void SetCombatMovement();
         void SetFollow(Unit* target, float dist = 0.0f, float angle = 0.0f, uint32 credit = 0, uint32 end = 0, uint32 creditType = 0);
         void StopFollow(bool complete);
@@ -291,7 +297,7 @@ class TC_GAME_API SmartAI : public CreatureAI
         bool _gossipReturn;
 
         uint32 _escortQuestId;
-        float _combatDistance;
+        CombatChaseParameters _combatChaseParameters;
 };
 
 class TC_GAME_API SmartGameObjectAI : public GameObjectAI
