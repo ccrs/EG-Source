@@ -27,7 +27,7 @@ INSERT INTO `creature_text` (`creatureid`, `groupid`, `id`, `text`, `type`, `lan
 
 -- UPDATE `creature` SET `phasemask` = 169 WHERE `guid` IN (1976229, 1976228);
 
-UPDATE `creature_template` SET `RegenHealth` = 0 WHERE `entry` IN (@VHG1, @VHG2);
+UPDATE `creature_template` SET `RegenHealth` = 1 WHERE `entry` IN (@VHG1, @VHG2);
 
 -- Spells
 SET @FH1 := 43986;
@@ -69,25 +69,26 @@ DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
 DELETE FROM `smart_scripts` WHERE `source_type` = 9 AND `entryOrGuid` IN (2799200);
 INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
 (@ENTRY, 0, 0, 1, 25, 0, 100, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Disable auto attack'),
-(@ENTRY, 0, 1, 0, 61, 0, 100, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Disable combat based movement'),
-(@ENTRY, 0, 2, 3, 38, 0, 100, 512, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 1 - Self: Talk 0 to invoker'),
-(@ENTRY, 0, 3, 0, 61, 0, 100, 512, 0, 0, 0, 0, 67, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 1 - Trigger timed event timedEvent[1] in 0 - 0 ms'),
-(@ENTRY, 0, 4, 5, 38, 0, 100, 512, 1, 2, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 2 - Self: Talk 1 to invoker'),
-(@ENTRY, 0, 5, 0, 61, 0, 100, 512, 0, 0, 0, 0, 67, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 2 - Trigger timed event timedEvent[1] in 0 - 0 ms'),
-(@ENTRY, 0, 6, 7, 38, 0, 100, 512, 1, 3, 0, 0, 1, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 3 - Self: Talk 2 to invoker'),
-(@ENTRY, 0, 7, 0, 61, 0, 100, 512, 0, 0, 0, 0, 67, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 3 - Trigger timed event timedEvent[1] in 0 - 0 ms'),
-(@ENTRY, 0, 8, 0, 59, 0, 100, 512, 1, 0, 0, 0, 80, 2799200, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On timed event timedEvent[1] triggered - Self: Start timed action list id #Vrykul Harpoon Gun #0 (2799200) (update always) // -inline'),
-(@ENTRY * 100, 9, 0, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 970, -5250, 195, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (970, -5250, 195, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 1, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 978, -5272, 204, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (978, -5272, 204, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 2, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 956, -5267, 198, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (956, -5267, 198, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 3, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 965, -5241, 189, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (965, -5241, 189, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 4, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 948, -5247, 200, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (948, -5247, 200, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 5, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 920, -5251, 193, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (920, -5251, 193, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 6, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 928, -5269, 206, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (928, -5269, 206, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 7, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 906, -5263, 196, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (906, -5263, 196, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 8, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 915, -5238, 187, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (915, -5238, 187, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 9, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 898, -5245, 202, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (898, -5245, 202, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY, 0, 9, 0, 31, 0, 100, 512, 43997, 0, 0, 0, 11, 43998, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On spell Fiery Lance (43997)  hit a target - Self: Cast spell  Fiery Lance (43998) on Self');
+(@ENTRY, 0, 1, 2, 61, 0, 100, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Disable combat based movement'),
+(@ENTRY, 0, 2, 0, 61, 0, 100, 0, 0, 0, 0, 0, 102, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Do not regenerate HP'),
+(@ENTRY, 0, 3, 4, 38, 0, 100, 512, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 1 - Self: Talk 0 to invoker'),
+(@ENTRY, 0, 4, 0, 61, 0, 100, 512, 0, 0, 0, 0, 67, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 1 - Trigger timed event timedEvent[1] in 0 - 0 ms'),
+(@ENTRY, 0, 5, 6, 38, 0, 100, 512, 1, 2, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 2 - Self: Talk 1 to invoker'),
+(@ENTRY, 0, 6, 0, 61, 0, 100, 512, 0, 0, 0, 0, 67, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 2 - Trigger timed event timedEvent[1] in 0 - 0 ms'),
+(@ENTRY, 0, 7, 8, 38, 0, 100, 512, 1, 3, 0, 0, 1, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 3 - Self: Talk 2 to invoker'),
+(@ENTRY, 0, 8, 0, 61, 0, 100, 512, 0, 0, 0, 0, 67, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 3 - Trigger timed event timedEvent[1] in 0 - 0 ms'),
+(@ENTRY, 0, 9, 0, 59, 0, 100, 512, 1, 0, 0, 0, 80, 2799200, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On timed event timedEvent[1] triggered - Self: Start timed action list id #Vrykul Harpoon Gun #0 (2799200) (update always) // -inline'),
+(@ENTRY * 100, 9, 0, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 970, -5250, 195, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (970, -5250, 195, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 1, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 978, -5272, 204, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (978, -5272, 204, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 2, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 956, -5267, 198, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (956, -5267, 198, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 3, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 965, -5241, 189, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (965, -5241, 189, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 4, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 948, -5247, 200, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (948, -5247, 200, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 5, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 920, -5251, 193, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (920, -5251, 193, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 6, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 928, -5269, 206, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (928, -5269, 206, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 7, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 906, -5263, 196, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (906, -5263, 196, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 8, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 915, -5238, 187, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (915, -5238, 187, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 9, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 898, -5245, 202, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (898, -5245, 202, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY, 0, 10, 0, 31, 0, 100, 512, 43997, 0, 0, 0, 11, 43998, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On spell Fiery Lance (43997)  hit a target - Self: Cast spell  Fiery Lance (43998) on Self');
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 27992 AND `SourceId` = 0;
@@ -99,25 +100,26 @@ DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
 DELETE FROM `smart_scripts` WHERE `source_type` = 9 AND `entryOrGuid` IN (2799300);
 INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
 (@ENTRY, 0, 0, 1, 25, 0, 100, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Disable auto attack'),
-(@ENTRY, 0, 1, 0, 61, 0, 100, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Disable combat based movement'),
-(@ENTRY, 0, 2, 3, 38, 0, 100, 512, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 1 - Self: Talk 0 to invoker'),
-(@ENTRY, 0, 3, 0, 61, 0, 100, 512, 0, 0, 0, 0, 67, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 1 - Trigger timed event timedEvent[1] in 0 - 0 ms'),
-(@ENTRY, 0, 4, 5, 38, 0, 100, 512, 1, 2, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 2 - Self: Talk 1 to invoker'),
-(@ENTRY, 0, 5, 0, 61, 0, 100, 512, 0, 0, 0, 0, 67, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 2 - Trigger timed event timedEvent[1] in 0 - 0 ms'),
-(@ENTRY, 0, 6, 7, 38, 0, 100, 512, 1, 3, 0, 0, 1, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 3 - Self: Talk 2 to invoker'),
-(@ENTRY, 0, 7, 0, 61, 0, 100, 512, 0, 0, 0, 0, 67, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 3 - Trigger timed event timedEvent[1] in 0 - 0 ms'),
-(@ENTRY, 0, 8, 0, 59, 0, 100, 512, 1, 0, 0, 0, 80, 2799300, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On timed event timedEvent[1] triggered - Self: Start timed action list id #Vrykul Harpoon Gun #0 (2799300) (update always) // -inline'),
-(@ENTRY * 100, 9, 0, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 970, -5250, 195, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (970, -5250, 195, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 1, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 978, -5272, 204, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (978, -5272, 204, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 2, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 956, -5267, 198, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (956, -5267, 198, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 3, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 965, -5241, 189, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (965, -5241, 189, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 4, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 948, -5247, 200, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (948, -5247, 200, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 5, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 920, -5251, 193, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (920, -5251, 193, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 6, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 928, -5269, 206, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (928, -5269, 206, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 7, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 906, -5263, 196, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (906, -5263, 196, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 8, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 915, -5238, 187, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (915, -5238, 187, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY * 100, 9, 9, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 898, -5245, 202, 4.5, 'After 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (898, -5245, 202, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
-(@ENTRY, 0, 9, 0, 31, 0, 100, 512, 43997, 0, 0, 0, 11, 43998, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On spell Fiery Lance (43997)  hit a target - Self: Cast spell  Fiery Lance (43998) on Self');
+(@ENTRY, 0, 1, 2, 61, 0, 100, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Disable combat based movement'),
+(@ENTRY, 0, 2, 0, 61, 0, 100, 0, 0, 0, 0, 0, 102, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Do not regenerate HP'),
+(@ENTRY, 0, 3, 4, 38, 0, 100, 512, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 1 - Self: Talk 0 to invoker'),
+(@ENTRY, 0, 4, 0, 61, 0, 100, 512, 0, 0, 0, 0, 67, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 1 - Trigger timed event timedEvent[1] in 0 - 0 ms'),
+(@ENTRY, 0, 5, 6, 38, 0, 100, 512, 1, 2, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 2 - Self: Talk 1 to invoker'),
+(@ENTRY, 0, 6, 0, 61, 0, 100, 512, 0, 0, 0, 0, 67, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 2 - Trigger timed event timedEvent[1] in 0 - 0 ms'),
+(@ENTRY, 0, 7, 8, 38, 0, 100, 512, 1, 3, 0, 0, 1, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 3 - Self: Talk 2 to invoker'),
+(@ENTRY, 0, 8, 0, 61, 0, 100, 512, 0, 0, 0, 0, 67, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On data[1] set to 3 - Trigger timed event timedEvent[1] in 0 - 0 ms'),
+(@ENTRY, 0, 9, 0, 59, 0, 100, 512, 1, 0, 0, 0, 80, 2799300, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On timed event timedEvent[1] triggered - Self: Start timed action list id #Vrykul Harpoon Gun #0 (2799300) (update always) // -inline'),
+(@ENTRY * 100, 9, 0, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 970, -5250, 195, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (970, -5250, 195, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 1, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 978, -5272, 204, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (978, -5272, 204, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 2, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 956, -5267, 198, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (956, -5267, 198, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 3, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 965, -5241, 189, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (965, -5241, 189, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 4, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 948, -5247, 200, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (948, -5247, 200, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 5, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 920, -5251, 193, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (920, -5251, 193, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 6, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 928, -5269, 206, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (928, -5269, 206, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 7, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 906, -5263, 196, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (906, -5263, 196, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 8, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 915, -5238, 187, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (915, -5238, 187, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY * 100, 9, 9, 0, 0, 0, 100, 512, 3000, 4000, 0, 0, 12, 24533, 4, 60000, 0, 0, 0, 8, 0, 0, 0, 898, -5245, 202, 4.5, 'After 3 - 4 seconds - Self: Summon creature Dragonflayer Defender (24533) at (898, -5245, 202, 4.5) as summon type timed despawn out of combat with duration 60 seconds'),
+(@ENTRY, 0, 10, 0, 31, 0, 100, 512, 43997, 0, 0, 0, 11, 43998, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On spell Fiery Lance (43997)  hit a target - Self: Cast spell  Fiery Lance (43998) on Self');
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 27993 AND `SourceId` = 0;
