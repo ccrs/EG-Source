@@ -87,3 +87,30 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 28952 AND `SourceId` = 0;
+
+ -- Prophet of Akali smart ai
+SET @ENTRY := 28996;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 9 AND `entryOrGuid` IN (2899600, 2899601);
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 1, 54, 0, 100, 0, 0, 0, 0, 0, 11, 34427, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just summoned - Self: Cast spell  Ethereal Teleport (34427) on Self'),
+(@ENTRY, 0, 1, 2, 61, 0, 100, 0, 0, 0, 0, 0, 1, 0, 2300, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just summoned - Self: Talk 0 to invoker'),
+(@ENTRY, 0, 2, 3, 61, 0, 100, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just summoned - Self: Set react state to Passive'),
+(@ENTRY, 0, 3, 0, 61, 0, 100, 0, 0, 0, 0, 0, 117, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On just summoned - Self: Disable evade'),
+(@ENTRY, 0, 4, 5, 52, 0, 100, 0, 0, 28996, 0, 0, 59, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'When text 0 said by creature Prophet of Akali (28996) is over - Self: Set run'),
+(@ENTRY, 0, 5, 0, 61, 0, 100, 0, 0, 0, 0, 0, 69, 1, 0, 0, 0, 0, 0, 8, 0, 0, 0, 6869.15, -4558.09, 443.398, 0, 'When text 0 said by creature Prophet of Akali (28996) is over - Self: Move to position (6869.15, -4558.09, 443.398, 0) (point id 1)'),
+(@ENTRY, 0, 6, 7, 34, 0, 100, 0, 0, 1, 0, 0, 97, 31, 0, 0, 0, 0, 0, 1, 0, 0, 0, 6856.27, -4543.67, 441.985, 0, 'On movement inform, point 1 - Self: Jump to pos (6856.27, -4543.67, 441.985, 0) with speed XY 31 and speed Z 0'),
+(@ENTRY, 0, 7, 0, 61, 0, 100, 0, 0, 0, 0, 0, 80, 2899600, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On movement inform, point 1 - Self: Start timed action list id #Prophet of Akali #0 (2899600) (update always) // -inline'),
+(@ENTRY * 100, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 45, 0, 3, 0, 0, 0, 0, 9, 28988, 0, 100, 0, 0, 0, 0, 'After 0 seconds - Creature Akali Subduer (28988) in 0 - 100 yards: Set creature data #0 to 3'),
+(@ENTRY * 100, 9, 1, 0, 0, 0, 100, 0, 1000, 1000, 0, 0, 11, 52859, 0, 0, 0, 0, 0, 19, 28952, 100, 0, 0, 0, 0, 0, 'After 1 seconds - Self: Cast spell  Submission (52859) on Closest alive creature Akali (28952) in 100 yards'),
+(@ENTRY, 0, 8, 0, 38, 0, 100, 0, 0, 1, 0, 0, 80, 2899601, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[0] set to 1 - Self: Start timed action list id #Prophet of Akali #1 (2899601) (update always) // -inline'),
+(@ENTRY * 100 + 1, 9, 0, 0, 0, 0, 100, 0, 2000, 2000, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 2 seconds - Self: Talk 1 to invoker'),
+(@ENTRY * 100 + 1, 9, 1, 0, 0, 0, 100, 0, 4700, 4700, 0, 0, 11, 52884, 1, 0, 0, 0, 0, 19, 28952, 50, 0, 0, 0, 0, 0, 'After 4.7 seconds - Self: Cast spell  Drain Power (52884) with flags interrupt previous on Closest alive creature Akali (28952) in 50 yards'),
+(@ENTRY * 100 + 1, 9, 2, 0, 0, 0, 100, 0, 0, 0, 0, 0, 45, 0, 4, 0, 0, 0, 0, 9, 28988, 0, 100, 0, 0, 0, 0, 'After 0 seconds - Creature Akali Subduer (28988) in 0 - 100 yards: Set creature data #0 to 4'),
+(@ENTRY * 100 + 1, 9, 3, 0, 0, 0, 100, 0, 11600, 11600, 0, 0, 1, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 11.6 seconds - Self: Talk 2 to invoker'),
+(@ENTRY * 100 + 1, 9, 4, 0, 0, 0, 100, 0, 3500, 3500, 0, 0, 11, 34427, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 3.5 seconds - Self: Cast spell  Ethereal Teleport (34427) on Self'),
+(@ENTRY * 100 + 1, 9, 5, 0, 0, 0, 100, 0, 0, 0, 0, 0, 41, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 0 seconds - Self: Despawn instantly');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 28996 AND `SourceId` = 0;
