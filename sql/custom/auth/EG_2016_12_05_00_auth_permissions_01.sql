@@ -6,6 +6,9 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (195,   5), -- Join Arenas
 (195,   6), -- Join Dungeon Finder
 (195,  24), -- Two side faction characters on the same account
+(194,  25), -- Allow say chat between factions
+(194,  27), -- Two side mail interaction
+(194,  29), -- Add friends of other faction
 (195,  49), -- Forces to enter the email for confirmation on password change
 (195, 199), -- Role: Player Commands
 --

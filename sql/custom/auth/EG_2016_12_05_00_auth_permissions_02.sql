@@ -8,11 +8,8 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (194,  11), -- Log GM trades
 (194,  13), -- Skip Instance required bosses check
 (194,  18), -- Skip character creation death knight min level check
-(194,  25), -- Allow say chat between factions
 (194,  26), -- Allow channel chat between factions
 (194,  28), -- See two side who list
-(194,  27), -- Two side mail interaction
-(194,  29), -- Add friends of other faction
 (194,  32), -- Can be assigned tickets with .assign ticket command
 (194,  33), -- Notify if a command was not found
 (194,  34), -- Check if should appear in list using .gm ingame command
