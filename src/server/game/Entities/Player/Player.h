@@ -938,6 +938,7 @@ enum CustomFlagsIndex : uint16
     CUSTOM_ACCOUNT_RIDING = 4,
     CUSTOM_RACE_MASQUERADE = 5,
     CUSTOM_WEAPON_SKILL = 6,
+    CUSTOM_ACCOUNT_PET = 7,
     CUSTOM_FLAGS_MAX
 };
 
@@ -973,6 +974,8 @@ enum CustomFlags : uint16
     CUSTOM_FLAG_RACE_MASQUERADE_DRANEI = 0x400,
 
     CUSTOM_FLAG_WEAPON_SKILL_ACTIVE = 0x01,
+
+    CUSTOM_FLAG_ACCOUNT_PET_ACTIVE = 0x01,
 };
 
 class TC_GAME_API Player : public Unit, public GridObject<Player>

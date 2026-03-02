@@ -1953,6 +1953,7 @@ public:
             handler->PSendSysMessage("| - AOELoot flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_AOELOOT_FLAGS));
             handler->PSendSysMessage("| - Acccount Mount flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT));
             handler->PSendSysMessage("| - Acccount Riding flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING));
+            handler->PSendSysMessage("| - Acccount Pet flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_ACCOUNT_PET));
             handler->PSendSysMessage("| - XPRate flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS));
             handler->PSendSysMessage("| - Race Masquerade flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE));
             handler->PSendSysMessage("| - Weapon Skill flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_WEAPON_SKILL));

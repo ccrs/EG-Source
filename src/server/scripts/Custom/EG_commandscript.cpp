@@ -27,6 +27,7 @@ public:
         {
             { "mount",  HandleAccountMount,  rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "riding", HandleAccountRiding, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "pet",    HandleAccountPet,    rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
         };
 
         static ChatCommandTable customCharacterSettings =
@@ -166,6 +167,25 @@ public:
         {
             player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE);
             handler->SendSysMessage("Account riding training transfering deactivated.");
+        }
+        return true;
+    }
+
+    static bool HandleAccountPet(ChatHandler* handler, bool active)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        if (!player)
+            return false;
+
+        if (active)
+        {
+            player->AddCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_PET, CustomFlags::CUSTOM_FLAG_ACCOUNT_PET_ACTIVE);
+            handler->SendSysMessage("Account pet companions transfering activated, they will be transfered on next character login.");
+        }
+        else
+        {
+            player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_PET, CustomFlags::CUSTOM_FLAG_ACCOUNT_PET_ACTIVE);
+            handler->SendSysMessage("Account pet companions transfering deactivated.");
         }
         return true;
     }
