@@ -17725,6 +17725,11 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
     // EG - Transmogrification
     _LoadTransmogrifications(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_TRANSMOGRIFICATIONS));
 
+    if ((sWorld->getBoolConfig(CONFIG_ACCOUNT_MOUNTS) && HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT, CustomFlags::CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE))
+        || HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE)
+    )
+        _LoadAccountSharedSpells(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_ACCOUNT_SHARED_SPELLS));
+
     return true;
 }
 

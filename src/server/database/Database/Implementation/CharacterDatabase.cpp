@@ -604,7 +604,8 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     PrepareStatement(CHAR_DEL_TRANSMOGRIFICATIONS, "DELETE FROM character_transmogrification WHERE Owner = ?", CONNECTION_ASYNC);
 
     // EG - Account wide spell search (faction locked)
-    PrepareStatement(CHAR_SEL_EXISTING_CHARACTER_SPELLS, "SELECT character_spell.spell FROM character_spell LEFT JOIN characters ON character_spell.guid = characters.guid WHERE character_spell.active = 1 AND characters.account = ? AND ((1 << (characters.race - 1)) & ?) != 0 AND character_spell.guid != ?", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_SEL_EXISTING_CHARACTER_SPELLS, "SELECT character_spell.spell, characters.race FROM character_spell LEFT JOIN characters ON character_spell.guid = characters.guid WHERE character_spell.active = 1 AND characters.account = ? AND character_spell.guid != ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_EXISTING_SAME_FACTION_CHARACTER_SPELLS, "SELECT character_spell.spell FROM character_spell LEFT JOIN characters ON character_spell.guid = characters.guid WHERE character_spell.active = 1 AND characters.account = ? AND ((1 << (characters.race - 1)) & ?) != 0 AND character_spell.guid != ?", CONNECTION_SYNCH);
 }
 
 CharacterDatabaseConnection::CharacterDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo)

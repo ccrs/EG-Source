@@ -745,8 +745,9 @@ enum PlayerLoginQueryIndex
     PLAYER_LOGIN_QUERY_LOAD_MONTHLY_QUEST_STATUS,
     PLAYER_LOGIN_QUERY_LOAD_CORPSE_LOCATION,
     PLAYER_LOGIN_QUERY_LOAD_PET_SLOTS,
-    PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS         = 35,
-    PLAYER_LOGIN_QUERY_LOAD_TRANSMOGRIFICATIONS     = 36,
+    PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS,
+    PLAYER_LOGIN_QUERY_LOAD_TRANSMOGRIFICATIONS,
+    PLAYER_LOGIN_QUERY_LOAD_ACCOUNT_SHARED_SPELLS,
     MAX_PLAYER_LOGIN_QUERY
 };
 
@@ -2663,6 +2664,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void _LoadCustomSettings(PreparedQueryResult result);
         void _LoadTransmogrifications(PreparedQueryResult result);
         void _LoadMasqueradeRace();
+        void _LoadAccountSharedSpells(PreparedQueryResult result);
 
         std::array<uint16, CUSTOM_FLAGS_MAX> _customFlags;
 

@@ -223,6 +223,12 @@ bool LoginQueryHolder::Initialize()
     stmt->setUInt32(0, lowGuid);
     res &= SetPreparedQuery(PLAYER_LOGIN_QUERY_LOAD_TRANSMOGRIFICATIONS, stmt);
 
+    // EG - Account Shared Spells
+    stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_EXISTING_CHARACTER_SPELLS);
+    stmt->setUInt32(0, m_accountId);
+    stmt->setUInt32(1, lowGuid);
+    res &= SetPreparedQuery(PLAYER_LOGIN_QUERY_LOAD_ACCOUNT_SHARED_SPELLS, stmt);
+
     return res;
 }
 

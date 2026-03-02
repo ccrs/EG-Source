@@ -13,9 +13,12 @@
 #include "Player.h"
 #include "SharedDefines.h"
 #include "SmartAI.h"
+#include "SpellMgr.h"
+#include "SpellInfo.h"
 #include "Transmogrification.h"
 #include "Unit.h"
 #include "World.h"
+#include <unordered_map>
 
 
 void Creature::ProcessDelayedLOSEntries()
@@ -118,6 +121,89 @@ void Player::_LoadMasqueradeRace()
             ++index;
         _masqueradeRace = Races(index);
         m_Events.AddEvent(new EG::SetRaceMasqueradeSetting(this, _masqueradeRace), m_Events.CalculateTime(1s));
+    }
+}
+
+void Player::_LoadAccountSharedSpells(PreparedQueryResult result)
+{
+    if (result)
+    {
+        std::unordered_multimap<uint32/*team*/, uint32/*spellId*/> spellIdsByTeam;
+        do
+        {
+            Field* fields = result->Fetch();
+            uint32 spellId = fields[0].GetUInt32();
+            uint8 race = fields[1].GetUInt8();
+            spellIdsByTeam.emplace(Player::TeamForRace(race), spellId);
+        }
+        while (result->NextRow());
+
+        uint32 playerTeam = GetTeam();
+        bool searchForMounts = HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT, CustomFlags::CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE);
+        bool searchForRiding = HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE);
+        for (std::pair<uint32, uint32> currentValue : spellIdsByTeam)
+        {
+            uint32 team = currentValue.first;
+            uint32 spellId = currentValue.second;
+            SpellInfo const* relatedInfo = sSpellMgr->GetSpellInfo(spellId);
+            if (!relatedInfo)
+                continue;
+            if (searchForMounts
+                && team == playerTeam
+                && relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).Effect == SPELL_EFFECT_APPLY_AURA
+                && relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).ApplyAuraName == SPELL_AURA_MOUNTED
+            )
+                LearnSpell(relatedInfo->Id, false);
+            else if (searchForRiding)
+            {
+                switch (relatedInfo->Id)
+                {
+                    case 33388: // Apprentice Riding (Apprentice)
+                    case 5784: // Felsteed (Summon)
+                    case 13819: // Warhorse (Summon)
+                    case 34769: // Summon Warhorse (Summon)
+                        if (GetLevel() >= 20)
+                            LearnSpell(33388, false); // Apprentice Riding (Apprentice)
+                        break;
+                    case 33391: // Journeyman Riding (Journeyman)
+                    case 23161: // Dreadsteed (Summon)
+                    case 23214: // Charger (Summon)
+                    case 34767: // Summon Charger (Summon)
+                    case 48778: // Acherus Deathcharger (Summon)
+                        if (GetLevel() >= 40)
+                            LearnSpell(33391, false); // Journeyman Riding (Journeyman)
+                        else if (GetLevel() >= 20)
+                            LearnSpell(33388, false); // Apprentice Riding (Apprentice)
+                        break;
+                    case 34090: // Expert Riding (Expert)
+                    case 33943: // Flight Form (Shapeshift)
+                        if (GetLevel() >= 60)
+                            LearnSpell(34090, false); // Expert Riding (Expert)
+                        else if (GetLevel() >= 40)
+                            LearnSpell(33391, false); // Journeyman Riding (Journeyman)
+                        else if (GetLevel() >= 20)
+                            LearnSpell(33388, false); // Apprentice Riding (Apprentice)
+                        break;
+                    case 34091: // Artisan Riding (Artisan)
+                    case 40120: // Swift Flight Form (Shapeshift)
+                        if (GetLevel() >= 70)
+                            LearnSpell(34091, false);
+                        else if (GetLevel() >= 60)
+                            LearnSpell(34090, false); // Expert Riding (Expert)
+                        else if (GetLevel() >= 40)
+                            LearnSpell(33391, false); // Journeyman Riding (Journeyman)
+                        else if (GetLevel() >= 20)
+                            LearnSpell(33388, false); // Apprentice Riding (Apprentice)
+                        break;
+                    case 54197: // Cold Weather Flying (Passive)
+                        if (GetLevel() >= 77)
+                            LearnSpell(relatedInfo->Id, false);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
     }
 }
 

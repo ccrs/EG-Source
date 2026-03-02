@@ -518,8 +518,9 @@ enum CharacterDatabaseStatements : uint32
     CHAR_SEL_TRANSMOGRIFICATIONS,
     CHAR_DEL_TRANSMOGRIFICATIONS,
 
-    // EG - Account wide spell search (faction locked)
+    // EG - Account wide spell search
     CHAR_SEL_EXISTING_CHARACTER_SPELLS,
+    CHAR_SEL_EXISTING_SAME_FACTION_CHARACTER_SPELLS,
 
     MAX_CHARACTERDATABASE_STATEMENTS
 };
