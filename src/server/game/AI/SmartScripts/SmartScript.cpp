@@ -3399,9 +3399,10 @@ void SmartScript::UpdateTimer(SmartScriptHolder& e, uint32 const diff)
         // Delay flee for assist event if stunned or rooted
         if (e.GetActionType() == SMART_ACTION_FLEE_FOR_ASSIST)
         {
-            if (me && me->HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_LOST_CONTROL))
+            if (me && me->HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_LOST_CONTROL | UNIT_STATE_CASTING))
             {
                 e.timer = 1;
+                RaisePriority(e);
                 return;
             }
         }
