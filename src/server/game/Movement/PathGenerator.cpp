@@ -176,9 +176,10 @@ void PathGenerator::BuildPolyPath(G3D::Vector3 const& startPos, G3D::Vector3 con
     {
         TC_LOG_DEBUG("maps.mmaps", "++ BuildPolyPath :: (startPoly == 0 || endPoly == 0)");
         BuildShortcut();
-        bool path = _source->GetTypeId() == TYPEID_UNIT && _source->ToCreature()->CanFly();
+        Creature const* toCreature = _source->ToCreature();
+        bool path = toCreature && toCreature->CanFly();
 
-        bool waterPath = _source->GetTypeId() == TYPEID_UNIT && _source->ToCreature()->CanSwim();
+        bool waterPath = toCreature && (toCreature->CanSwim() || toCreature->HasUnitFlag(UNIT_FLAG_POSSESSED));
         if (waterPath)
         {
             // Check both start and end points, if they're both in water, then we can *safely* let the creature move
