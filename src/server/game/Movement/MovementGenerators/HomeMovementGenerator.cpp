@@ -92,7 +92,7 @@ void HomeMovementGenerator<Creature>::SetTargetLocation(Creature* owner)
      * }
      */
 
-    init.MoveTo(PositionToVector3(destination));
+    init.MoveTo(PositionToVector3(destination), true, true);
     init.SetFacing(destination.GetOrientation());
     init.SetWalk(false);
     init.Launch();
