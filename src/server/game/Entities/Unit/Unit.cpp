@@ -459,7 +459,8 @@ void Unit::Update(uint32 p_time)
             uint32 count = itr->second;
             extraAttacksTargets.erase(itr);
             if (Unit* victim = ObjectAccessor::GetUnit(*this, targetGuid))
-                HandleProcExtraAttackFor(victim, count);
+                if (IsWithinMeleeRange(victim))
+                    HandleProcExtraAttackFor(victim, count);
         }
         _lastExtraAttackSpell = 0;
     }
