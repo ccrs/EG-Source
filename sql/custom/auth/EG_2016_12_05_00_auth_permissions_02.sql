@@ -8,8 +8,6 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (194,  11), -- Log GM trades
 (194,  13), -- Skip Instance required bosses check
 (194,  18), -- Skip character creation death knight min level check
-(194,  26), -- Allow channel chat between factions
-(194,  28), -- See two side who list
 (194,  32), -- Can be assigned tickets with .assign ticket command
 (194,  33), -- Notify if a command was not found
 (194,  34), -- Check if should appear in list using .gm ingame command
@@ -17,7 +15,6 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (194,  37), -- Use staff badge in chat
 (194,  38), -- Resurrect with full Health Points
 (194,  39), -- Restore saved gm setting states
-(194,  40), -- Allows to add a gm to friend list
 (194,  41), -- Use Config option START_GM_LEVEL to assign new character level
 (194,  44), -- Receive global GM messages/texts
 (194,  45), -- Join channels without announce
