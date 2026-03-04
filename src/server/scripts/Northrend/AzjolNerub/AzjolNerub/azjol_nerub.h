@@ -49,7 +49,10 @@ enum ANCreatureIds
 
     NPC_WATCHER_NARJIL              = 28729,
     NPC_WATCHER_GASHRA              = 28730,
-    NPC_WATCHER_SILTHIK             = 28731
+    NPC_WATCHER_SILTHIK             = 28731,
+
+    NPC_SKITTERING_SWARMER          = 28735,
+    NPC_SKITTERING_INFECTOR         = 28736
 };
 
 // These are passed as -action to AI's DoAction to differentiate between them and boss scripts' own actions

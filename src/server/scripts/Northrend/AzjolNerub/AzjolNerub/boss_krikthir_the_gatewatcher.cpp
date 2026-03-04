@@ -166,6 +166,8 @@ struct boss_krik_thir : public BossAI
 
     void JustDied(Unit* /*killer*/) override
     {
+        summons.DespawnEntry(NPC_SKITTERING_SWARMER);
+        summons.DespawnEntry(NPC_SKITTERING_INFECTOR);
         summons.clear();
         _JustDied();
         Talk(SAY_DEATH);
