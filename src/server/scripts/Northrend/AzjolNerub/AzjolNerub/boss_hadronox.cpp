@@ -24,10 +24,11 @@
 #include "ScriptedCreature.h"
 #include "SpellAuraEffects.h"
 #include "SpellAuras.h"
+#include "SpellHistory.h"
 #include "SpellScript.h"
 #include "TemporarySummon.h"
 
-enum Events
+enum HadronoxEvents
 {
     // Hadronox
     EVENT_LEECH_POISON = 1,
@@ -55,7 +56,7 @@ enum Events
     EVENT_ANIMATE_BONES
 };
 
-enum Spells
+enum HadronoxSpells
 {
     // Hadronox
     SPELL_WEB_FRONT_DOORS                   = 53177,
@@ -98,34 +99,34 @@ enum Spells
     SPELL_ANIMATE_BONES_2                   = 53336,
 };
 
-enum SummonGroups : uint32
+enum HadronoxSummonGroups : uint32
 {
     SUMMON_GROUP_CRUSHER_1      = 1,
     SUMMON_GROUP_CRUSHER_2      = 2,
     SUMMON_GROUP_CRUSHER_3      = 3
 };
 
-enum Actions
+enum HadronoxActions
 {
     ACTION_HADRONOX_MOVE = 1,
     ACTION_CRUSHER_ENGAGED,
     ACTION_PACK_WALK
 };
 
-enum Data
+enum HadronoxData
 {
     DATA_CRUSHER_PACK_ID = 1,
     DATA_HADRONOX_ENTERED_COMBAT,
     DATA_HADRONOX_WEBBED_DOORS
 };
 
-enum Creatures
+enum HadronoxCreatures
 {
     NPC_CRUSHER             = 28922,
     NPC_WORLDTRIGGER_LARGE  = 23472
 };
 
-enum Talk
+enum HadronoxTalk
 {
     CRUSHER_SAY_AGGRO = 1,
     CRUSHER_EMOTE_FRENZY = 2,
@@ -133,7 +134,7 @@ enum Talk
 };
 
 // Movement IDs used by the permanently spawning Anub'ar opponents - they are done in sequence, as one finishes, the next one starts
-enum Movements
+enum HadronoxMovements
 {
     MOVE_NONE = 0,
     MOVE_OUTSIDE,
@@ -152,17 +153,11 @@ static const Position hadronoxStep[NUM_STEPS] =
     { 530.42f  , 560.003f,  733.0308f }
 };
 
+static const float zCutoff = 637.f;
+
 struct boss_hadronox : public BossAI
 {
     boss_hadronox(Creature* creature) : BossAI(creature, DATA_HADRONOX), _enteredCombat(false), _doorsWebbed(false), _lastPlayerCombatState(false), _step(0) { }
-
-    bool IsInCombatWithPlayer() const
-    {
-        for (auto const& pair : me->GetCombatManager().GetPvECombatRefs())
-            if (pair.second->GetOther(me)->IsControlledByPlayer())
-                return true;
-        return false;
-    }
 
     void SetStep(uint8 step)
     {
@@ -170,14 +165,15 @@ struct boss_hadronox : public BossAI
             return;
 
         _step = step;
-        me->SetReactState(REACT_PASSIVE);
-        me->SetHomePosition(hadronoxStep[step]);
-        me->GetMotionMaster()->Clear();
         me->AttackStop();
-        me->GetMotionMaster()->MovePoint(0, hadronoxStep[step]);
+        me->SetReactState(REACT_PASSIVE);
+        events.CancelEventGroup(1);
+        me->SetHomePosition(hadronoxStep[step]);
+        me->GetMotionMaster()->Remove(CHASE_MOTION_TYPE);
+        me->GetMotionMaster()->MovePoint(1, hadronoxStep[step]);
     }
 
-    void SummonCrusherPack(SummonGroups group)
+    void SummonCrusherPack(HadronoxSummonGroups group)
     {
         std::list<TempSummon*> summoned;
         me->SummonCreatureGroup(group, &summoned);
@@ -188,17 +184,25 @@ struct boss_hadronox : public BossAI
         }
     }
 
-    void MovementInform(uint32 type, uint32 /*id*/) override
+    void MovementInform(uint32 type, uint32 id) override
     {
-        if (type != POINT_MOTION_TYPE)
+        if (type != POINT_MOTION_TYPE || id != 1)
             return;
+
+        if (_step >= NUM_STEPS-1)
+        {
+            DoCastAOE(SPELL_WEB_FRONT_DOORS, true);
+            DoCastAOE(SPELL_WEB_SIDE_DOORS, true);
+            _doorsWebbed = true;
+        }
+
+        events.ScheduleEvent(EVENT_LEECH_POISON, 5s, 1);
+        events.ScheduleEvent(EVENT_ACID_CLOUD, 7s, 1);
+        events.ScheduleEvent(EVENT_WEB_GRAB, 13s, 1);
+        events.ScheduleEvent(EVENT_PIERCE_ARMOR, 4s, 1);
         me->SetReactState(REACT_AGGRESSIVE);
-        if (_step < NUM_STEPS-1)
-            return;
-        DoCastAOE(SPELL_WEB_FRONT_DOORS);
-        DoCastAOE(SPELL_WEB_SIDE_DOORS);
-        _doorsWebbed = true;
-        DoZoneInCombat();
+        if (Unit* currentVictim = me->GetVictim())
+            AttackStart(currentVictim);
     }
 
     uint32 GetData(uint32 data) const override
@@ -220,11 +224,11 @@ struct boss_hadronox : public BossAI
 
     void JustEngagedWith(Unit* /*who*/) override
     {
-        events.ScheduleEvent(EVENT_LEECH_POISON, randtime(Seconds(5), Seconds(7)));
-        events.ScheduleEvent(EVENT_ACID_CLOUD, randtime(Seconds(7), Seconds(13)));
-        events.ScheduleEvent(EVENT_WEB_GRAB, randtime(Seconds(13), Seconds(19)));
-        events.ScheduleEvent(EVENT_PIERCE_ARMOR, randtime(Seconds(4), Seconds(7)));
-        events.ScheduleEvent(EVENT_PLAYER_CHECK, 1s);
+        events.RescheduleEvent(EVENT_LEECH_POISON, 5s, 7s, 1);
+        events.RescheduleEvent(EVENT_ACID_CLOUD, 7s, 13s, 1);
+        events.RescheduleEvent(EVENT_WEB_GRAB, 13s, 19s, 1);
+        events.RescheduleEvent(EVENT_PIERCE_ARMOR, 4s, 7s, 1);
+        events.RescheduleEvent(EVENT_PLAYER_CHECK, 1s);
         me->setActive(true);
     }
 
@@ -250,18 +254,38 @@ struct boss_hadronox : public BossAI
         }
     }
 
-    void EnterEvadeMode(EvadeReason /*why*/) override
+    void EnterEvadeMode(EvadeReason why) override
     {
+        if (!_lastPlayerCombatState && why == EVADE_REASON_NO_HOSTILES)
+        {
+            me->SetReactState(REACT_AGGRESSIVE);
+            events.Reset();
+            me->RemoveAurasOnEvade();
+            me->ClearComboPointHolders(); // Remove all combo points targeting this unit
+            me->CombatStop(true);
+            me->SetLootRecipient(nullptr);
+            me->ResetPlayerDamageReq();
+            me->SetLastDamagedTime(0);
+            me->SetCannotReachTarget(false);
+            me->DoNotReacquireSpellFocusTarget();
+            me->SetTarget(ObjectGuid::Empty);
+            me->GetSpellHistory()->ResetAllCooldowns();
+            EngagementOver();
+            me->setActive(false);
+            me->AddUnitState(UNIT_STATE_EVADE);
+            me->GetMotionMaster()->MoveTargetedHome();
+            return;
+        }
         std::list<Creature*> triggers;
         me->GetCreatureListWithEntryInGrid(triggers, NPC_WORLDTRIGGER_LARGE);
         for (Creature* trigger : triggers)
             if (trigger->HasAura(SPELL_SUMMON_CHAMPION_PERIODIC) || trigger->HasAura(SPELL_WEB_FRONT_DOORS) || trigger->HasAura(SPELL_WEB_SIDE_DOORS))
                 _DespawnAtEvade(25s, trigger);
-        _DespawnAtEvade(25s);
         summons.DespawnAll();
         for (ObjectGuid gNerubian : _anubar)
             if (Creature* nerubian = ObjectAccessor::GetCreature(*me, gNerubian))
                 nerubian->DespawnOrUnsummon();
+        _DespawnAtEvade(25s);
     }
 
     void SetGUID(ObjectGuid const& guid, int32 /*id*/) override
@@ -278,13 +302,12 @@ struct boss_hadronox : public BossAI
         _enteredCombat = false;
         _doorsWebbed = false;
         _lastPlayerCombatState = false;
-        SetStep(0);
+        _step = 0;
     }
 
     void JustAppeared() override
     {
         BossAI::JustAppeared();
-        SetCombatMovement(true);
         SummonCrusherPack(SUMMON_GROUP_CRUSHER_1);
     }
 
@@ -304,25 +327,27 @@ struct boss_hadronox : public BossAI
             {
                 case EVENT_LEECH_POISON:
                     DoCastAOE(SPELL_LEECH_POISON);
-                    events.Repeat(randtime(Seconds(7), Seconds(9)));
+                    events.Repeat(7s, 9s);
                     break;
                 case EVENT_ACID_CLOUD:
                     if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f))
                         DoCast(target, SPELL_ACID_CLOUD);
-                    events.Repeat(randtime(Seconds(16), Seconds(23)));
+                    events.Repeat(16s, 23s);
                     break;
                 case EVENT_WEB_GRAB:
                     DoCastAOE(SPELL_WEB_GRAB);
-                    events.Repeat(randtime(Seconds(20), Seconds(25)));
+                    events.Repeat(20s, 25s);
                     break;
                 case EVENT_PIERCE_ARMOR:
                     DoCastVictim(SPELL_PIERCE_ARMOR);
-                    events.Repeat(randtime(Seconds(10), Seconds(15)));
+                    events.Repeat(10s, 15s);
                     break;
                 case EVENT_PLAYER_CHECK:
-                    if (IsInCombatWithPlayer() != _lastPlayerCombatState)
+                {
+                    bool incCombatWithPlayers = me->GetCombatManager().HasPvECombatWithPlayers();
+                    if (incCombatWithPlayers != _lastPlayerCombatState)
                     {
-                        _lastPlayerCombatState = !_lastPlayerCombatState;
+                        _lastPlayerCombatState = incCombatWithPlayers;
                         if (_lastPlayerCombatState) // we are now in combat with players
                         {
                             if (!instance->CheckRequiredBosses(DATA_HADRONOX))
@@ -330,18 +355,24 @@ struct boss_hadronox : public BossAI
                                 EnterEvadeMode(EVADE_REASON_SEQUENCE_BREAK);
                                 return;
                             }
-                            // cancel current point movement if engaged by players
-                            if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == POINT_MOTION_TYPE)
+                            if (me->HasReactState(REACT_PASSIVE))
                             {
-                                me->GetMotionMaster()->Clear();
-                                SetCombatMovement(true);
-                                AttackStart(me->GetVictim());
+                                events.ScheduleEvent(EVENT_LEECH_POISON, 5s, 1);
+                                events.ScheduleEvent(EVENT_ACID_CLOUD, 7s, 1);
+                                events.ScheduleEvent(EVENT_WEB_GRAB, 13s, 1);
+                                events.ScheduleEvent(EVENT_PIERCE_ARMOR, 4s, 1);
+                                me->SetReactState(REACT_AGGRESSIVE);
+                                if (Unit* currentVictim = me->SelectVictim())
+                                    AttackStart(currentVictim);
                             }
                         }
                         else // we are no longer in combat with players - reset the encounter
                             EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
                     }
-                    events.Repeat(Seconds(1));
+                    events.Repeat(1s);
+                    break;
+                }
+                default:
                     break;
             }
 
@@ -380,7 +411,7 @@ struct boss_hadronox : public BossAI
 
 struct npc_hadronox_crusherPackAI : public ScriptedAI
 {
-    npc_hadronox_crusherPackAI(Creature* creature, Position const* positions) : ScriptedAI(creature), _instance(creature->GetInstanceScript()), _positions(positions), _myPack(SummonGroups(0)) { }
+    npc_hadronox_crusherPackAI(Creature* creature, Position const* positions) : ScriptedAI(creature), _instance(creature->GetInstanceScript()), _positions(positions), _myPack(HadronoxSummonGroups(0)) { }
 
     void DoAction(int32 action) override
     {
@@ -422,8 +453,8 @@ struct npc_hadronox_crusherPackAI : public ScriptedAI
     {
         if (data == DATA_CRUSHER_PACK_ID)
         {
-            _myPack = SummonGroups(value);
-            me->SetReactState(_myPack ? REACT_PASSIVE : REACT_AGGRESSIVE);
+            _myPack = HadronoxSummonGroups(value);
+            me->SetReactState(_myPack != SUMMON_GROUP_CRUSHER_1 ? REACT_PASSIVE : REACT_AGGRESSIVE);
         }
     }
 
@@ -440,6 +471,7 @@ struct npc_hadronox_crusherPackAI : public ScriptedAI
                     other->AI()->AttackStart(who);
                 }
         }
+
         _JustEngagedWith();
         ScriptedAI::JustEngagedWith(who);
     }
@@ -461,6 +493,11 @@ struct npc_hadronox_crusherPackAI : public ScriptedAI
 
     void UpdateAI(uint32 diff) override
     {
+        if (me->GetPositionZ() < zCutoff)
+        {
+            me->DespawnOrUnsummon();
+            return;
+        }
         if (!UpdateVictim())
             return;
 
@@ -476,7 +513,7 @@ struct npc_hadronox_crusherPackAI : public ScriptedAI
         InstanceScript* const _instance;
         EventMap _events;
         Position const* const _positions;
-        SummonGroups _myPack;
+        HadronoxSummonGroups _myPack;
 };
 
 static const Position crusherWaypoints[] =
@@ -666,7 +703,7 @@ struct npc_hadronox_foeAI : public ScriptedAI
     void MovementInform(uint32 type, uint32 id) override
     {
         if (type == POINT_MOTION_TYPE)
-            _nextMovement = Movements(id+1);
+            _nextMovement = HadronoxMovements(id+1);
     }
 
     void EnterEvadeMode(EvadeReason /*why*/) override
@@ -678,6 +715,11 @@ struct npc_hadronox_foeAI : public ScriptedAI
 
     void UpdateAI(uint32 diff) override
     {
+        if (me->GetPositionZ() < zCutoff)
+        {
+            me->DespawnOrUnsummon();
+            return;
+        }
         if (_nextMovement)
         {
             switch (_nextMovement)
@@ -710,12 +752,11 @@ struct npc_hadronox_foeAI : public ScriptedAI
                 case MOVE_HADRONOX:
                 case MOVE_HADRONOX_REAL:
                 {
-                    static const float zCutoff = 702.0f;
                     Creature* hadronox = _instance->GetCreature(DATA_HADRONOX);
                     if (hadronox && hadronox->IsAlive())
                     {
                         if (_nextMovement != MOVE_HADRONOX_REAL)
-                            if (hadronox->GetPositionZ() < zCutoff)
+                            if (hadronox->GetPositionZ() < 702.f)
                             {
                                 me->GetMotionMaster()->MovePoint(MOVE_HADRONOX, hadronoxStep[2]);
                                 break;
@@ -746,7 +787,7 @@ struct npc_hadronox_foeAI : public ScriptedAI
         InstanceScript* const _instance;
 
     private:
-        Movements _nextMovement;
+        HadronoxMovements _nextMovement;
         uint8 _mySpawn;
 };
 

@@ -29,7 +29,7 @@
 #include "SpellScript.h"
 #include "TemporarySummon.h"
 
-enum Spells
+enum AzjolAnubarakSpells
 {
     SPELL_EMERGE                = 53500,
     SPELL_SUBMERGE              = 53421,
@@ -54,12 +54,12 @@ enum Spells
     SPELL_POISON_BOLT           = 53617
 };
 
-enum Creatures
+enum AzjolAnubarakCreatures
 {
     NPC_WORLD_TRIGGER           = 22515,
 };
 
-enum Yells
+enum AzjolAnubarakYells
 {
     SAY_AGGRO       = 0,
     SAY_SLAY        = 1,
@@ -69,7 +69,7 @@ enum Yells
     SAY_INTRO       = 5
 };
 
-enum Events
+enum AzjolAnubarakEvents
 {
     EVENT_POUND = 1,
     EVENT_IMPALE,
@@ -83,30 +83,30 @@ enum Events
     EVENT_CLOSE_DOOR
 };
 
-enum Actions
+enum AzjolAnubarakActions
 {
     ACTION_PET_DIED = 1,
     ACTION_PET_EVADE
 };
 
-enum Misc
+enum AzjolAnubarakMisc
 {
     ACHIEV_GOTTA_GO_START_EVENT = 20381,
 };
 
-enum Phases
+enum AzjolAnubarakPhases
 {
     PHASE_EMERGE = 1,
     PHASE_SUBMERGE
 };
 
-enum GUIDTypes
+enum AzjolAnubarakGUIDTypes
 {
     GUID_TYPE_PET = 0,
     GUID_TYPE_IMPALE
 };
 
-enum SummonGroups
+enum AzjolAnubarakSummonGroups
 {
     SUMMON_GROUP_WORLD_TRIGGER_GUARDIAN = 1
 };

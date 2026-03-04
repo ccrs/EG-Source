@@ -29,7 +29,7 @@
 #include "SpellScript.h"
 #include "TemporarySummon.h"
 
-enum Events
+enum KirkthirEvents
 {
     // Krik'thir the Gatewatcher
     EVENT_SEND_GROUP = 1,
@@ -61,7 +61,7 @@ enum Events
     EVENT_CLEAVE
 };
 
-enum Spells
+enum KirkthirSpells
 {
     // Krik'thir the Gatewatcher
     SPELL_SUBBOSS_AGGRO_TRIGGER     = 52343,
@@ -100,12 +100,12 @@ enum Spells
     SPELL_ACID_SPLASH               = 52446
 };
 
-enum Data
+enum KirkthirData
 {
     DATA_PET_GROUP
 };
 
-enum Actions
+enum KirkthirActions
 {
     ACTION_GASHRA_DIED,
     ACTION_NARJIL_DIED,
@@ -115,7 +115,7 @@ enum Actions
     ACTION_PET_EVADE
 };
 
-enum Yells
+enum KirkthirYells
 {
     SAY_AGGRO       = 0,
     SAY_SLAY        = 1,
