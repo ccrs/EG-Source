@@ -1416,7 +1416,7 @@ void WorldObject::UpdateAllowedPositionZ(float x, float y, float &z, float* grou
     {
         if (!unit->CanFly())
         {
-            bool canSwim = unit->CanSwim();
+            bool canSwim = unit->CanSwim() || unit->HasUnitFlag(UNIT_FLAG_POSSESSED);
             float ground_z = z;
             float max_z;
             if (canSwim)

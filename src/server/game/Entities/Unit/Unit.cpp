@@ -459,7 +459,8 @@ void Unit::Update(uint32 p_time)
             uint32 count = itr->second;
             extraAttacksTargets.erase(itr);
             if (Unit* victim = ObjectAccessor::GetUnit(*this, targetGuid))
-                HandleProcExtraAttackFor(victim, count);
+                if (IsWithinMeleeRange(victim))
+                    HandleProcExtraAttackFor(victim, count);
         }
         _lastExtraAttackSpell = 0;
     }
@@ -3148,7 +3149,9 @@ bool Unit::isInBackInMap(Unit const* target, float distance, float arc) const
 
 bool Unit::isInAccessiblePlaceFor(Creature const* c) const
 {
-    if (IsInWater())
+    ZLiquidStatus liquidStatus = GetLiquidStatus();
+    bool isInWater = (liquidStatus & MAP_LIQUID_STATUS_IN_CONTACT) != 0;
+    if (isInWater)
         return c->CanEnterWater();
     else
         return c->CanWalk() || c->CanFly();
@@ -7199,8 +7202,9 @@ float Unit::SpellCritChanceTaken(Unit const* caster, SpellInfo const* spellInfo,
                 // Spell crit suppression
                 if (GetTypeId() == TYPEID_UNIT)
                 {
-                    int32 const levelDiff = static_cast<int32>(GetLevelForTarget(caster)) - caster->GetLevel();
-                    crit_chance -= levelDiff * 0.7f;
+                    int32 const levelDiff = int32(GetLevelForTarget(caster)) - int32(caster->GetLevel());
+                    if (levelDiff > 0)
+                        crit_chance -= levelDiff * 0.7f;
                 }
             }
             break;

@@ -1556,6 +1556,9 @@ void AuraEffect::HandleSpiritOfRedemption(AuraApplication const* aurApp, uint8 m
     if (target->GetTypeId() != TYPEID_PLAYER)
         return;
 
+    target->ApplySpellImmune(0, IMMUNITY_SCHOOL, SPELL_SCHOOL_MASK_ALL, apply);
+    target->ApplySpellImmune(0, IMMUNITY_MECHANIC, IMMUNE_TO_MOVEMENT_IMPAIRMENT_AND_LOSS_CONTROL_MASK, apply);
+
     // prepare spirit state
     if (apply)
     {

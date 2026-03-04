@@ -596,10 +596,13 @@ void AnticheatMgr::_TeleportHackDetection(Player* player, MovementInfo const& mo
     uint32 key = player->GetGUID().GetCounter();
 
     float lastX = _players[key].GetLastMovementInfo().pos.GetPositionX();
-    float newX = movementInfo.pos.GetPositionX();
     float lastY = _players[key].GetLastMovementInfo().pos.GetPositionY();
-    float newY = movementInfo.pos.GetPositionY();
     float lastZ = _players[key].GetLastMovementInfo().pos.GetPositionZ();
+    if (lastX == 0.0f || lastY == 0.0f || lastZ == 0.0f)
+        return;
+
+    float newX = movementInfo.pos.GetPositionX();
+    float newY = movementInfo.pos.GetPositionY();
     float xDiff = fabs(lastX - newX);
     float yDiff = fabs(lastY - newY);
 

@@ -2406,7 +2406,9 @@ void Spell::TargetInfo::PreprocessTarget(Spell* spell)
     else if (MissCondition == SPELL_MISS_REFLECT && ReflectResult == SPELL_MISS_NONE)
         _spellHitTarget = spell->m_caster->ToUnit();
 
-    if (spell->m_originalCaster && MissCondition != SPELL_MISS_EVADE && !spell->m_originalCaster->IsFriendlyTo(unit) && (!spell->m_spellInfo->IsPositive() || spell->m_spellInfo->HasEffect(SPELL_EFFECT_DISPEL)) && (spell->m_spellInfo->HasInitialAggro() || unit->IsEngaged()))
+    if (spell->m_originalCaster && MissCondition != SPELL_MISS_EVADE && !spell->m_originalCaster->IsFriendlyTo(unit) && (!spell->m_spellInfo->IsPositive() || spell->m_spellInfo->HasEffect(SPELL_EFFECT_DISPEL)) && (spell->m_spellInfo->HasInitialAggro() || unit->IsEngaged())
+        && !(spell->GetSpellInfo()->SpellFamilyName == SPELLFAMILY_HUNTER && spell->m_caster->IsGameObject() && unit->IsControlledByPlayer())
+    )
         unit->SetInCombatWith(spell->m_originalCaster);
 
     spell->CallScriptBeforeHitHandlers(MissCondition);
@@ -4268,7 +4270,7 @@ void Spell::SendSpellStart()
         castFlags |= CAST_FLAG_AMMO;
     if ((m_caster->GetTypeId() == TYPEID_PLAYER ||
         (m_caster->GetTypeId() == TYPEID_UNIT && m_caster->ToCreature()->IsPet()))
-         && m_spellInfo->PowerType != POWER_HEALTH)
+         && m_spellInfo->PowerType != POWER_HEALTH && m_powerCost)
         castFlags |= CAST_FLAG_POWER_LEFT_SELF;
 
     if (m_spellInfo->RuneCostID && m_spellInfo->PowerType == POWER_RUNE)
@@ -4326,7 +4328,7 @@ void Spell::SendSpellGo()
 
     if ((m_caster->GetTypeId() == TYPEID_PLAYER ||
         (m_caster->GetTypeId() == TYPEID_UNIT && m_caster->ToCreature()->IsPet()))
-        && m_spellInfo->PowerType != POWER_HEALTH)
+        && m_spellInfo->PowerType != POWER_HEALTH && m_powerCost)
         castFlags |= CAST_FLAG_POWER_LEFT_SELF;
 
     if ((m_caster->GetTypeId() == TYPEID_PLAYER)
@@ -7784,7 +7786,9 @@ void Spell::PreprocessSpellLaunch(TargetInfo& targetInfo)
         return;
 
     // This will only cause combat - the target will engage once the projectile hits (in Spell::TargetInfo::PreprocessTarget)
-    if (m_originalCaster && targetInfo.MissCondition != SPELL_MISS_EVADE && !m_originalCaster->IsFriendlyTo(targetUnit) && (!m_spellInfo->IsPositive() || m_spellInfo->HasEffect(SPELL_EFFECT_DISPEL)) && (m_spellInfo->HasInitialAggro() || targetUnit->IsEngaged()))
+    if (m_originalCaster && targetInfo.MissCondition != SPELL_MISS_EVADE && !m_originalCaster->IsFriendlyTo(targetUnit) && (!m_spellInfo->IsPositive() || m_spellInfo->HasEffect(SPELL_EFFECT_DISPEL)) && (m_spellInfo->HasInitialAggro() || targetUnit->IsEngaged())
+        && !(GetSpellInfo()->SpellFamilyName == SPELLFAMILY_HUNTER && m_caster->IsGameObject() && targetUnit->IsControlledByPlayer())
+    )
         m_originalCaster->SetInCombatWith(targetUnit, true);
 
     Unit* unit = nullptr;
