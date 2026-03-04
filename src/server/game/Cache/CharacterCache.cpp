@@ -94,6 +94,16 @@ Modifying functions
 */
 void CharacterCache::AddCharacterCacheEntry(ObjectGuid const& guid, uint32 accountId, std::string const& name, uint8 gender, uint8 race, uint8 playerClass, uint8 level)
 {
+    auto it = _characterCacheStore.find(guid);
+    if (it != _characterCacheStore.end())
+    {
+        TC_LOG_ERROR("entities.player.character", "AddCharacterCacheEntry deleting existing entry found for GUID: {}", guid.ToString());
+        _characterCacheByNameStore.erase(it->second.Name);
+        _characterCacheStore.erase(it);
+    }
+
+    TC_LOG_DEBUG("entities.player.character", "AddCharacterCacheEntry Adding: {} - {}", guid.ToString(), name);
+
     CharacterCacheEntry& data = _characterCacheStore[guid];
     data.Guid = guid;
     data.Name = name;
@@ -110,10 +120,19 @@ void CharacterCache::AddCharacterCacheEntry(ObjectGuid const& guid, uint32 accou
     _characterCacheByNameStore[name] = &data;
 }
 
-void CharacterCache::DeleteCharacterCacheEntry(ObjectGuid const& guid, std::string const& name)
+void CharacterCache::DeleteCharacterCacheEntry(ObjectGuid const& guid)
 {
-    _characterCacheStore.erase(guid);
-    _characterCacheByNameStore.erase(name);
+    auto it = _characterCacheStore.find(guid);
+    if (it == _characterCacheStore.end())
+    {
+        TC_LOG_ERROR("entities.player.character", "DeleteCharacterCacheEntry found no such entry for GUID: {}", guid.ToString());
+        return;
+    }
+
+    TC_LOG_DEBUG("entities.player.character", "DeleteCharacterCacheEntry Deleting: {} - {}", guid.ToString(), it->second.Name);
+
+    _characterCacheByNameStore.erase(it->second.Name);
+    _characterCacheStore.erase(it);
 }
 
 void CharacterCache::UpdateCharacterData(ObjectGuid const& guid, std::string const& name, Optional<uint8> gender /*= {}*/, Optional<uint8> race /*= {}*/)
