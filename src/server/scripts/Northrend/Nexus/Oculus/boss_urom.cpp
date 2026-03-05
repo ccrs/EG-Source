@@ -17,6 +17,7 @@
 
 #include "oculus.h"
 #include "Containers.h"
+#include "EventProcessor.h"
 #include "Map.h"
 #include "MotionMaster.h"
 #include "ScriptedCreature.h"
@@ -89,6 +90,22 @@ static Summons Group[]=
 static uint32 TeleportSpells[]=
 {
     SPELL_SUMMON_MENAGERIE, SPELL_SUMMON_MENAGERIE_2, SPELL_SUMMON_MENAGERIE_3
+};
+
+class UromSetAggresiveStateEvent : public BasicEvent
+{
+    public:
+        UromSetAggresiveStateEvent(Creature* owner) : _owner(owner) { }
+
+        bool Execute(uint64 /*time*/, uint32 /*diff*/) override
+        {
+            _owner->SetReactState(REACT_AGGRESSIVE);
+            _owner->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
+            return true;
+        }
+
+    private:
+        Creature* _owner;
 };
 
 struct boss_urom : public BossAI
@@ -202,6 +219,9 @@ struct boss_urom : public BossAI
         }
 
         Talk(_platform);
+        me->SetReactState(REACT_PASSIVE);
+        me->RemoveAllAuras();
+        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
         DoCast(TeleportSpells[_platform]);
 
         ++_platform;
@@ -266,7 +286,7 @@ struct boss_urom : public BossAI
                     events.ScheduleEvent(EVENT_FROST_BOMB, 5s, 8s);
                     break;
                 case EVENT_TIME_BOMB:
-                    if (Unit* unit = SelectTarget(SelectTargetMethod::Random))
+                    if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0, 0.f, true))
                         DoCast(unit, SPELL_TIME_BOMB);
                     events.ScheduleEvent(EVENT_TIME_BOMB, 20s, 25s);
                     break;
@@ -285,6 +305,7 @@ struct boss_urom : public BossAI
 
     void LeaveCombat()
     {
+        DoAddEvent(2s, new UromSetAggresiveStateEvent(me));
         me->RemoveAllAuras();
         me->CombatStop(false);
         EngagementOver();

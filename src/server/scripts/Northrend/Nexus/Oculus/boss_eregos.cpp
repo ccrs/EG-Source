@@ -154,14 +154,16 @@ struct boss_eregos : public BossAI
 
     void JustSummoned(Creature* summon) override
     {
-        BossAI::JustSummoned(summon);
+        summons.Summon(summon);
 
-        if (summon->GetEntry() != NPC_PLANAR_ANOMALY)
-            return;
-
-        summon->CombatStop(true);
-        summon->SetReactState(REACT_PASSIVE);
-        summon->GetMotionMaster()->MoveRandom(100.0f);
+        if (summon->GetEntry() == NPC_PLANAR_ANOMALY)
+        {
+            summon->SetReactState(REACT_PASSIVE);
+            if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0, 0.f, true))
+                summon->GetMotionMaster()->MoveChase(unit);
+        }
+        else if (me->IsEngaged())
+            DoZoneInCombat(summon);
     }
 
     void SummonedCreatureDespawn(Creature* summon) override
@@ -178,8 +180,9 @@ struct boss_eregos : public BossAI
         if (!IsHeroic())
             return;
 
-        if ( (me->GetHealthPct() < 60.0f  && me->GetHealthPct() > 20.0f && _phase < PHASE_FIRST_PLANAR)
-            || (me->GetHealthPct() < 20.0f && _phase < PHASE_SECOND_PLANAR) )
+        if ((me->GetHealthPct() < 60.0f  && me->GetHealthPct() > 20.0f && _phase < PHASE_FIRST_PLANAR)
+            || (me->GetHealthPct() < 20.0f && _phase < PHASE_SECOND_PLANAR)
+        )
         {
             events.Reset();
             _phase = (me->GetHealthPct() < 60.0f  && me->GetHealthPct() > 20.0f) ? PHASE_FIRST_PLANAR : PHASE_SECOND_PLANAR;
