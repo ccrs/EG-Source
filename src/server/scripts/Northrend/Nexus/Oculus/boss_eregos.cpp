@@ -171,7 +171,9 @@ struct boss_eregos : public BossAI
                 if (_playerCount > 0)
                     std::advance(it, _playerCount);
 
-                summon->GetMotionMaster()->MoveChase(it->GetSource(), 0.f, false);
+                Player* currentPlayer = it->GetSource();
+                if (currentPlayer && currentPlayer->IsInWorld() && currentPlayer->IsAlive() && !currentPlayer->IsGameMaster())
+                    summon->GetMotionMaster()->MoveChase(currentPlayer, 0.f, false);
                 ++_playerCount;
             }
         }
