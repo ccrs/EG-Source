@@ -28,11 +28,6 @@
 #include "Unit.h"
 #include "Util.h"
 
-static bool HasLostTarget(Unit* owner, Unit* target)
-{
-    return owner->GetVictim() != target;
-}
-
 static bool PositionOkay(Unit* owner, Unit* target, Optional<float> minDistance, Optional<float> maxDistance, Optional<ChaseAngle> angle)
 {
     float const distSq = owner->GetExactDistSq(target);
@@ -96,7 +91,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
         return false;
 
     // the owner might be unable to move (rooted or casting), or we have lost the target, pause movement
-    if (owner->HasUnitState(UNIT_STATE_NOT_MOVE) || owner->IsMovementPreventedByCasting() || HasLostTarget(owner, target))
+    if (owner->HasUnitState(UNIT_STATE_NOT_MOVE) || owner->IsMovementPreventedByCasting() || _HasLostTarget(owner, target))
     {
         owner->StopMoving();
         _lastTargetPosition.reset();
@@ -272,8 +267,18 @@ void ChaseMovementGenerator::Finalize(Unit* owner, bool active, bool/* movementI
     }
 }
 
+bool ChaseMovementGenerator::_HasLostTarget(Unit* owner, Unit* target)
+{
+    if (CheckLostTarget)
+        return owner->GetVictim() != target;
+    return false;
+}
+
 bool ChaseMovementGenerator::_UseChaseAngle(Unit* owner, Unit* target)
 {
+    if (!CheckLostTarget)
+        return false;
+
     MovementGeneratorType targetMovementType = target->GetMotionMaster()->GetCurrentMovementGeneratorType();
     if (targetMovementType == CHASE_MOTION_TYPE)
         if (ChaseMovementGenerator* movement = dynamic_cast<ChaseMovementGenerator*>(target->GetMotionMaster()->GetCurrentMovementGenerator()))
