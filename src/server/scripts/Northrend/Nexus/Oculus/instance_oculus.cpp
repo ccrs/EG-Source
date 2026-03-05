@@ -109,6 +109,11 @@ class instance_oculus : public InstanceMapScript
                             GreaterWhelpList.push_back(creature->GetGUID());
                         }
                         break;
+                    case NPC_PLANAR_ANOMALY:
+                        if (Creature* eregos = instance->GetCreature(EregosGUID))
+                            if (eregos->IsAIEnabled())
+                                eregos->AI()->JustSummoned(creature);
+                        break;
                     default:
                         break;
                 }

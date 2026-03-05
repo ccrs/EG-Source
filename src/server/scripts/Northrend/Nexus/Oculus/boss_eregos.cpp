@@ -16,10 +16,13 @@
  */
 
 #include "ScriptMgr.h"
+#include "Map.h"
 #include "MotionMaster.h"
 #include "oculus.h"
+#include "Player.h"
 #include "ScriptedCreature.h"
 #include "SpellScript.h"
+#include <iterator>
 
 // Types of drake mounts: Ruby (Tank), Amber (DPS), Emerald (Healer)
 // Two Repeating phases
@@ -51,12 +54,13 @@ enum Spells
     SPELL_PLANAR_SHIFT                            = 51162,
     SPELL_SUMMON_LEY_WHELP                        = 51175,
     SPELL_SUMMON_PLANAR_ANOMALIES                 = 57963,
-    SPELL_PLANAR_BLAST                            = 57976
+    SPELL_PLANAR_BLAST                            = 57976,
+    SPELL_PLANAR_DISTORTION                       = 59379
 };
 
 enum Npcs
 {
-    NPC_PLANAR_ANOMALY = 30879
+    NPC_GREATER_LEY___WHELP = 28276
 };
 
 enum Phases
@@ -92,6 +96,7 @@ struct boss_eregos : public BossAI
         _rubyVoid = true;
         _emeraldVoid = true;
         _amberVoid = true;
+        _playerCount = 0;
     }
 
     void Reset() override
@@ -159,8 +164,16 @@ struct boss_eregos : public BossAI
         if (summon->GetEntry() == NPC_PLANAR_ANOMALY)
         {
             summon->SetReactState(REACT_PASSIVE);
-            if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0, 0.f, true))
-                summon->GetMotionMaster()->MoveChase(unit);
+            summon->CastSpell(nullptr, SPELL_PLANAR_DISTORTION);
+            if (_playerCount < instance->instance->GetPlayers().getSize())
+            {
+                auto it = instance->instance->GetPlayers().begin();
+                if (_playerCount > 0)
+                    std::advance(it, _playerCount);
+
+                summon->GetMotionMaster()->MoveChase(it->GetSource(), 0.f, false);
+                ++_playerCount;
+            }
         }
         else if (me->IsEngaged())
             DoZoneInCombat(summon);
@@ -190,9 +203,15 @@ struct boss_eregos : public BossAI
             Talk(SAY_SHIELD);
             DoCast(SPELL_PLANAR_SHIFT);
 
-            // not sure about the amount, and if we should despawn previous spawns (dragon trashs)
-            summons.DespawnAll();
-            for (uint8 i = 0; i < 6; i++)
+            summons.DespawnIf([](ObjectGuid guid)
+            {
+                if (guid.GetEntry() == NPC_GREATER_LEY___WHELP)
+                    return false;
+
+                return true;
+            });
+            _playerCount = 0;
+            for (uint8 i = 0; i < instance->instance->GetPlayersCountExceptGMs(); i++)
                 DoCast(SPELL_PLANAR_ANOMALIES);
         }
     }
@@ -252,6 +271,7 @@ private:
     bool _rubyVoid;
     bool _emeraldVoid;
     bool _amberVoid;
+    uint8 _playerCount;
 };
 
 // 51162 - Planar Shift

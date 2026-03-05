@@ -51,7 +51,8 @@ enum OCCreatureIds
     NPC_VERDISA                 = 27657,
     NPC_BELGARISTRASZ           = 27658,
     NPC_ETERNOS                 = 27659,
-    NPC_GREATER_WHELP           = 28276
+    NPC_GREATER_WHELP           = 28276,
+    NPC_PLANAR_ANOMALY          = 30879,
 };
 
 enum OCGameObjectIds
