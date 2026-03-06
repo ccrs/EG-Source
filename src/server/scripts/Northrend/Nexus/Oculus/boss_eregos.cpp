@@ -168,9 +168,16 @@ struct boss_eregos : public BossAI
             summon->CastSpell(nullptr, SPELL_PLANAR_DISTORTION);
             if (_playerCount < instance->instance->GetPlayers().getSize())
             {
-                auto it = instance->instance->GetPlayers().begin();
+                MapRefManager::const_iterator it = instance->instance->GetPlayers().begin();
                 if (_playerCount > 0)
-                    std::advance(it, _playerCount);
+                {
+                    uint8 counter = _playerCount;
+                    while (counter > 0)
+                    {
+                        --counter;
+                        ++it;
+                    }
+                }
 
                 Player* currentPlayer = it->GetSource();
                 if (currentPlayer && currentPlayer->IsInWorld() && currentPlayer->IsAlive() && !currentPlayer->IsGameMaster())
