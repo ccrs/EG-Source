@@ -1588,7 +1588,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
     SetUnitMovementFlags(GetUnitMovementFlags() & MOVEMENTFLAG_MASK_HAS_PLAYER_STATUS_OPCODE);
     DisableSpline();
     GetMotionMaster()->InterruptOnTeleport();
-    GetMotionMaster()->Remove(FACE_MOTION_TYPE);
+    GetMotionMaster()->Remove(FACE_MOTION_TYPE, MOTION_SLOT_ACTIVE, MOTION_PRIORITY_NORMAL, MOTION_MODE_OVERRIDE);
 
     if (Transport* transport = GetTransport())
     {
@@ -21354,7 +21354,7 @@ void Player::FinishTaxiFlight()
     if (!IsInFlight())
         return;
 
-    GetMotionMaster()->Remove(FLIGHT_MOTION_TYPE);
+    GetMotionMaster()->Remove(FLIGHT_MOTION_TYPE, MOTION_SLOT_ACTIVE, MOTION_PRIORITY_HIGHEST);
     m_taxi.ClearTaxiDestinations(); // not destinations, clear source node
 }
 
