@@ -1,5 +1,6 @@
 #include "Creature.h"
 #include "CreatureAI.h"
+#include "Containers.h"
 #include "ObjectAccessor.h"
 #include "PassiveAI.h"
 #include "Player.h"
@@ -517,8 +518,169 @@ struct npc_damage_test_buffdummy : public NullCreatureAI
     }
 };
 
+enum EvolvingEctoplasm
+{
+    SPELL_IMMUNITY_SHADOW       = 7743,
+    SPELL_IMMUNITY_FROST        = 7940,
+    SPELL_IMMUNITY_NATURE       = 7941,
+    SPELL_IMMUNITY_FIRE         = 7942,
+
+    SPELL_TRANSFORM_BLACK       = 7946,
+    SPELL_TRANSFORM_BLUE        = 7944,
+    SPELL_TRANSFORM_GREEN       = 7945,
+    SPELL_TRANSFORM_RED         = 7943
+};
+
+struct EG_npc_evolving_ectoplasm : public ScriptedAI
+{
+    EG_npc_evolving_ectoplasm(Creature* creature) : ScriptedAI(creature) { }
+
+    void Reset() override
+    {
+        _scheduler.CancelAll();
+        DoCastSelf(EvolvingEctoplasm::SPELL_IMMUNITY_FROST);
+        DoCastSelf(EvolvingEctoplasm::SPELL_TRANSFORM_BLUE);
+    }
+
+    void JustEngagedWith(Unit* /*who*/) override
+    {
+        _scheduler.Schedule(10s, 15s, [this](TaskContext task)
+        {
+            me->RemoveAllAuras();
+
+            if (_color)
+            {
+                std::list<uint8> colors{ 0, 1, 2, 3 };
+                colors.remove(_color);
+                _color = Trinity::Containers::SelectRandomContainerElement(colors);
+            }
+            else
+                _color = urand(0, 3);
+
+            switch (_color)
+            {
+                case 0:
+                    DoCastSelf(EvolvingEctoplasm::SPELL_IMMUNITY_FROST);
+                    DoCastSelf(EvolvingEctoplasm::SPELL_TRANSFORM_BLUE);
+                    break;
+                case 1:
+                    DoCastSelf(EvolvingEctoplasm::SPELL_IMMUNITY_SHADOW);
+                    DoCastSelf(EvolvingEctoplasm::SPELL_TRANSFORM_BLACK);
+                    break;
+                case 2:
+                    DoCastSelf(EvolvingEctoplasm::SPELL_IMMUNITY_NATURE);
+                    DoCastSelf(EvolvingEctoplasm::SPELL_TRANSFORM_GREEN);
+                    break;
+                case 3:
+                    DoCastSelf(EvolvingEctoplasm::SPELL_IMMUNITY_FIRE);
+                    DoCastSelf(EvolvingEctoplasm::SPELL_TRANSFORM_RED);
+                    break;
+                default:
+                    break;
+            }
+
+            task.Repeat();
+        });
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        _scheduler.Update(diff, [this]
+        {
+            DoMeleeAttackIfReady();
+        });
+    }
+
+private:
+    TaskScheduler _scheduler;
+    uint8 _color;
+};
+
+enum PlagueSlime
+{
+    SPELL_IMMUNITY_SHADOW       = 7743,
+    SPELL_IMMUNITY_FROST        = 7940,
+    SPELL_IMMUNITY_FIRE         = 7942,
+    SPELL_IMMUNITY_NATURE       = 7941,
+
+    SPELL_TRANSFORM_BLACK       = 28987,
+    SPELL_TRANSFORM_BLUE        = 28988,
+    SPELL_TRANSFORM_RED         = 28990,
+    SPELL_TRANSFORM_GREEN       = 28989
+};
+
+struct EG_npc_plague_slime : public ScriptedAI
+{
+    EG_npc_plague_slime(Creature* creature) : ScriptedAI(creature), _counter(0) { }
+
+    void Reset() override
+    {
+        _scheduler.CancelAll();
+        _counter = 0;
+        DoCastSelf(PlagueSlime::SPELL_IMMUNITY_SHADOW);
+        DoCastSelf(PlagueSlime::SPELL_TRANSFORM_BLACK);
+    }
+
+    void JustEngagedWith(Unit* /*who*/) override
+    {
+        _scheduler.Schedule(25s, 30s, [this](TaskContext task)
+        {
+            me->RemoveAllAuras();
+
+            switch (_counter)
+            {
+                case 0:
+                    DoCastSelf(PlagueSlime::SPELL_IMMUNITY_FROST);
+                    DoCastSelf(PlagueSlime::SPELL_TRANSFORM_BLUE);
+                    break;
+                case 1:
+                    DoCastSelf(PlagueSlime::SPELL_IMMUNITY_FIRE);
+                    DoCastSelf(PlagueSlime::SPELL_TRANSFORM_RED);
+                    break;
+                case 2:
+                    DoCastSelf(PlagueSlime::SPELL_IMMUNITY_NATURE);
+                    DoCastSelf(PlagueSlime::SPELL_TRANSFORM_GREEN);
+                    break;
+                case 3:
+                    DoCastSelf(PlagueSlime::SPELL_IMMUNITY_SHADOW);
+                    DoCastSelf(PlagueSlime::SPELL_TRANSFORM_BLACK);
+                    break;
+                default:
+                    break;
+            }
+
+            if (_counter == 3)
+                _counter = 0;
+            else
+                ++_counter;
+
+            task.Repeat();
+        });
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        _scheduler.Update(diff, [this]
+        {
+            DoMeleeAttackIfReady();
+        });
+    }
+
+private:
+    TaskScheduler _scheduler;
+    uint32 _counter;
+};
+
 void AddSC_EG_gen_npc_scripts()
 {
     RegisterCreatureAI(EG_npc_damage_test_controller);
     RegisterCreatureAI(EG_npc_damage_test_dummy);
+    RegisterCreatureAI(EG_npc_evolving_ectoplasm);
+    RegisterCreatureAI(EG_npc_plague_slime);
 }
