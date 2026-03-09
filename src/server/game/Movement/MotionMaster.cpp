@@ -574,10 +574,11 @@ bool MotionMaster::GetDestination(float &x, float &y, float &z)
 
 bool MotionMaster::StopOnDeath()
 {
-    if (MovementGenerator* movementGenerator = GetCurrentMovementGenerator())
-        if (movementGenerator->HasFlag(MOVEMENTGENERATOR_FLAG_PERSIST_ON_DEATH))
-            return false;
-
+    std::function<bool(MovementGenerator const*)> criteria = [](MovementGenerator const* a) -> bool
+    {
+        return a->HasFlag(MOVEMENTGENERATOR_FLAG_PERSIST_ON_DEATH);
+    };
+    bool returnValue = !HasMovementGenerator(criteria);
     if (_owner->IsInWorld())
     {
         // Only clear MotionMaster for entities that exists in world
@@ -585,11 +586,15 @@ bool MotionMaster::StopOnDeath()
         //  * Using 'call pet' on dead pets
         //  * Using 'call stabled pet'
         //  * Logging in with dead pets
-        Clear();
+        criteria = [](MovementGenerator const* a) -> bool
+        {
+            return !a->HasFlag(MOVEMENTGENERATOR_FLAG_PERSIST_ON_DEATH);
+        };
+        Clear(criteria);
         MoveIdle();
     }
 
-    return true;
+    return returnValue;
 }
 
 void MotionMaster::InterruptOnTeleport()
