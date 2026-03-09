@@ -66,7 +66,9 @@ bool GenericMovementGenerator::Update(Unit* owner, uint32 diff)
     if (!owner->movespline->isCyclic())
         _duration.Update(diff);
 
-    if (_duration.Passed() || owner->movespline->Finalized())
+    if ((HasFlag(MOVEMENTGENERATOR_FLAG_FIXED_DURATION) && _duration.Passed())
+        || (!HasFlag(MOVEMENTGENERATOR_FLAG_FIXED_DURATION) && (_duration.Passed() || owner->movespline->Finalized()))
+    )
     {
         AddFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED);
         return false;
