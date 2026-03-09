@@ -6,6 +6,7 @@ UPDATE `creature_template` SET `ScriptName` = 'EG_npc_evolving_ectoplasm' WHERE 
 
 -- Steel Gate Flying Machine
 UPDATE `creature_template` SET `npcflag` = 0 WHERE `entry` = 24418;
+UPDATE `creature` SET `unit_flags` = 33554432 WHERE `guid` = 104704;
 
 DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 13) AND (`SourceEntry` IN (38439));
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
