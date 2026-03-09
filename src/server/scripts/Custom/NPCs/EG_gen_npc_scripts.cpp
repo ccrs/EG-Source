@@ -601,15 +601,15 @@ private:
 
 enum PlagueSlime
 {
-    SPELL_IMMUNITY_SHADOW       = 7743,
-    SPELL_IMMUNITY_FROST        = 7940,
-    SPELL_IMMUNITY_FIRE         = 7942,
-    SPELL_IMMUNITY_NATURE       = 7941,
+    SPELL_PLAGUESLIME_IMMUNITY_SHADOW       = 7743,
+    SPELL_PLAGUESLIME_IMMUNITY_FROST        = 7940,
+    SPELL_PLAGUESLIME_IMMUNITY_FIRE         = 7942,
+    SPELL_PLAGUESLIME_IMMUNITY_NATURE       = 7941,
 
-    SPELL_TRANSFORM_BLACK       = 28987,
-    SPELL_TRANSFORM_BLUE        = 28988,
-    SPELL_TRANSFORM_RED         = 28990,
-    SPELL_TRANSFORM_GREEN       = 28989
+    SPELL_PLAGUESLIME_TRANSFORM_BLACK       = 28987,
+    SPELL_PLAGUESLIME_TRANSFORM_BLUE        = 28988,
+    SPELL_PLAGUESLIME_TRANSFORM_RED         = 28990,
+    SPELL_PLAGUESLIME_TRANSFORM_GREEN       = 28989
 };
 
 struct EG_npc_plague_slime : public ScriptedAI
@@ -620,8 +620,8 @@ struct EG_npc_plague_slime : public ScriptedAI
     {
         _scheduler.CancelAll();
         _counter = 0;
-        DoCastSelf(PlagueSlime::SPELL_IMMUNITY_SHADOW);
-        DoCastSelf(PlagueSlime::SPELL_TRANSFORM_BLACK);
+        DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_IMMUNITY_SHADOW);
+        DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_TRANSFORM_BLACK);
     }
 
     void JustEngagedWith(Unit* /*who*/) override
@@ -633,20 +633,20 @@ struct EG_npc_plague_slime : public ScriptedAI
             switch (_counter)
             {
                 case 0:
-                    DoCastSelf(PlagueSlime::SPELL_IMMUNITY_FROST);
-                    DoCastSelf(PlagueSlime::SPELL_TRANSFORM_BLUE);
+                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_IMMUNITY_FROST);
+                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_TRANSFORM_BLUE);
                     break;
                 case 1:
-                    DoCastSelf(PlagueSlime::SPELL_IMMUNITY_FIRE);
-                    DoCastSelf(PlagueSlime::SPELL_TRANSFORM_RED);
+                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_IMMUNITY_FIRE);
+                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_TRANSFORM_RED);
                     break;
                 case 2:
-                    DoCastSelf(PlagueSlime::SPELL_IMMUNITY_NATURE);
-                    DoCastSelf(PlagueSlime::SPELL_TRANSFORM_GREEN);
+                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_IMMUNITY_NATURE);
+                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_TRANSFORM_GREEN);
                     break;
                 case 3:
-                    DoCastSelf(PlagueSlime::SPELL_IMMUNITY_SHADOW);
-                    DoCastSelf(PlagueSlime::SPELL_TRANSFORM_BLACK);
+                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_IMMUNITY_SHADOW);
+                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_TRANSFORM_BLACK);
                     break;
                 default:
                     break;
