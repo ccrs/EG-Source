@@ -1299,7 +1299,9 @@ void MotionMaster::_DirectAdd(MovementGenerator* movement, MovementSlot slot/* =
             if (!_generators.empty())
             {
                 MovementGenerator* currentTopMovement = _generators.begin()->second.front();
-                bool replacesExisting = !movement->HasFlag(MOVEMENTGENERATOR_FLAG_IMMEDIATE) && itr != _generators.end();
+                bool replacesExisting = !movement->HasFlag(MOVEMENTGENERATOR_FLAG_IMMEDIATE)
+                    && itr != _generators.end()
+                    && !_generators.key_comp()(newKey, itr->first);
                 if (replacesExisting)
                 {
                     MovementGenerator* existingMovement = itr->second.front();
