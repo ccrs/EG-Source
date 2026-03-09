@@ -521,7 +521,7 @@ void MotionMaster::Clear(MovementGeneratorMode mode)
     if (Empty())
         return;
 
-    std::function<bool(MovementGenerator*)> criteria = [mode](MovementGenerator* a) -> bool
+    std::function<bool(MovementGenerator const*)> criteria = [mode](MovementGenerator const* a) -> bool
     {
         return a->Mode == mode;
     };
@@ -543,7 +543,7 @@ void MotionMaster::Clear(MovementGeneratorPriority priority)
     if (Empty())
         return;
 
-    std::function<bool(MovementGenerator*)> criteria = [priority](MovementGenerator* a) -> bool
+    std::function<bool(MovementGenerator const*)> criteria = [priority](MovementGenerator const* a) -> bool
     {
         return a->Priority == priority;
     };
@@ -1225,7 +1225,7 @@ void MotionMaster::DirectClearDefault()
         DeleteDefault(_generators.empty(), false);
 }
 
-void MotionMaster::DirectClear(std::function<bool(MovementGenerator*)> const& filter)
+void MotionMaster::DirectClear(std::function<bool(MovementGenerator const*)> const& filter)
 {
     if (_generators.empty())
         return;

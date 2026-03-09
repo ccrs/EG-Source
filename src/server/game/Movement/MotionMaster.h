@@ -223,7 +223,7 @@ class TC_GAME_API MotionMaster
         void DirectInitialize();
         void DirectClear();
         void DirectClearDefault();
-        void DirectClear(std::function<bool(MovementGenerator*)> const& filter);
+        void DirectClear(std::function<bool(MovementGenerator const*)> const& filter);
         void DirectAdd(MovementGenerator* movement, MovementSlot slot);
 
         void Delete(MovementGenerator* movement, bool active, bool movementInform);
