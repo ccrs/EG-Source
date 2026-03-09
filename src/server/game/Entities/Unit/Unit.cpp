@@ -8814,7 +8814,7 @@ void Unit::AtExitCombat()
 void Unit::AtEngage(Unit* /*target*/)
 {
     if (HasUnitState(UNIT_STATE_DISTRACTED))
-        GetMotionMaster()->Remove(DISTRACT_MOTION_TYPE);
+        GetMotionMaster()->Remove(DISTRACT_MOTION_TYPE, MOTION_SLOT_ACTIVE, MOTION_PRIORITY_HIGHEST);
 }
 
 void Unit::AtTargetAttacked(Unit* target, bool canInitialAggro)
@@ -11500,7 +11500,7 @@ void Unit::SetFeared(bool apply)
     {
         if (IsAlive())
         {
-            GetMotionMaster()->Remove(FLEEING_MOTION_TYPE);
+            GetMotionMaster()->Remove(FLEEING_MOTION_TYPE, MOTION_SLOT_ACTIVE, MOTION_PRIORITY_HIGHEST);
             if (GetVictim())
                 SetTarget(EnsureVictim()->GetGUID());
             if (!IsPlayer() && !IsInCombat())
@@ -11528,7 +11528,7 @@ void Unit::SetConfused(bool apply)
     {
         if (IsAlive())
         {
-            GetMotionMaster()->Remove(CONFUSED_MOTION_TYPE);
+            GetMotionMaster()->Remove(CONFUSED_MOTION_TYPE, MOTION_SLOT_ACTIVE, MOTION_PRIORITY_HIGHEST);
             if (GetVictim())
                 SetTarget(EnsureVictim()->GetGUID());
         }
