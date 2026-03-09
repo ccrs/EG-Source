@@ -14,7 +14,6 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (193,  35), -- See all security levels with who command
 (193,  46), -- Change channel settings without being channel moderator
 (193,  48), -- Enable IP, Last Login and EMail output in pinfo
-(193,  51), -- Allow trading between factions
 (193, 194), -- Role: Sec Level Moderator
 (193, 197), -- Role: Gamemaster Commands
 --

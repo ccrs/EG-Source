@@ -13,6 +13,7 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (195,  29), -- Add friends of other faction
 (195,  40), -- Allows to add a gm to friend list
 (195,  49), -- Forces to enter the email for confirmation on password change
+(195,  51), -- Allow trading between factions
 (195, 199), -- Role: Player Commands
 --
 (199, 496), -- Command: commands
