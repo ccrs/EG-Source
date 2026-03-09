@@ -25,7 +25,6 @@ EndScriptData */
 /* ContentData
 npc_invis_infernal_caster
 npc_infernal_attacker
-npc_mature_netherwing_drake
 npc_enslaved_netherwing_drake
 npc_earthmender_wilda
 npc_torloth_the_magnificent
@@ -194,150 +193,6 @@ public:
     {
         return new npc_infernal_attackerAI(creature);
     }
-};
-
-/*#####
-# npc_mature_netherwing_drake
-#####*/
-
-enum MatureNetherwing
-{
-    SAY_JUST_EATEN              = 0,
-
-    SPELL_PLACE_CARCASS         = 38439,
-    SPELL_JUST_EATEN            = 38502,
-    SPELL_NETHER_BREATH         = 38467,
-    POINT_ID                    = 1,
-
-    GO_CARCASS                  = 185155,
-
-    QUEST_KINDNESS              = 10804,
-    NPC_EVENT_PINGER            = 22131
-};
-
-class npc_mature_netherwing_drake : public CreatureScript
-{
-public:
-    npc_mature_netherwing_drake() : CreatureScript("npc_mature_netherwing_drake") { }
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_mature_netherwing_drakeAI(creature);
-    }
-
-    struct npc_mature_netherwing_drakeAI : public ScriptedAI
-    {
-        npc_mature_netherwing_drakeAI(Creature* creature) : ScriptedAI(creature)
-        {
-            Initialize();
-        }
-
-        void Initialize()
-        {
-            uiPlayerGUID.Clear();
-
-            bCanEat = false;
-            bIsEating = false;
-
-            EatTimer = 5000;
-            CastTimer = 5000;
-        }
-
-        ObjectGuid uiPlayerGUID;
-
-        bool bCanEat;
-        bool bIsEating;
-
-        uint32 EatTimer;
-        uint32 CastTimer;
-
-        void Reset() override
-        {
-            Initialize();
-        }
-
-        void SpellHit(WorldObject* caster, SpellInfo const* spellInfo) override
-        {
-            if (bCanEat || bIsEating)
-                return;
-
-            if (caster->GetTypeId() == TYPEID_PLAYER && spellInfo->Id == SPELL_PLACE_CARCASS && !me->HasAura(SPELL_JUST_EATEN))
-            {
-                uiPlayerGUID = caster->GetGUID();
-                bCanEat = true;
-            }
-        }
-
-        void MovementInform(uint32 type, uint32 id) override
-        {
-            if (type != POINT_MOTION_TYPE)
-                return;
-
-            if (id == POINT_ID)
-            {
-                bIsEating = true;
-                EatTimer = 7000;
-                me->HandleEmoteCommand(EMOTE_ONESHOT_ATTACK_UNARMED);
-            }
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            if (bCanEat || bIsEating)
-            {
-                if (EatTimer <= diff)
-                {
-                    if (bCanEat && !bIsEating)
-                    {
-                        if (Unit* unit = ObjectAccessor::GetUnit(*me, uiPlayerGUID))
-                        {
-                            if (GameObject* go = unit->FindNearestGameObject(GO_CARCASS, 10))
-                            {
-                                me->GetMotionMaster()->MoveIdle();
-                                me->StopMoving();
-
-                                me->GetMotionMaster()->MovePoint(POINT_ID, go->GetPositionX(), go->GetPositionY(), go->GetPositionZ());
-                            }
-                        }
-                        bCanEat = false;
-                    }
-                    else if (bIsEating)
-                    {
-                        DoCast(me, SPELL_JUST_EATEN);
-                        Talk(SAY_JUST_EATEN);
-
-                        if (Player* player = ObjectAccessor::GetPlayer(*me, uiPlayerGUID))
-                        {
-                            player->KilledMonsterCredit(NPC_EVENT_PINGER);
-
-                            if (GameObject* go = player->FindNearestGameObject(GO_CARCASS, 10))
-                                go->Delete();
-                        }
-
-                        Reset();
-                        me->GetMotionMaster()->Clear();
-                    }
-                }
-                else
-                    EatTimer -= diff;
-
-            return;
-            }
-
-            if (!UpdateVictim())
-                return;
-
-            if (CastTimer <= diff)
-            {
-                DoCastVictim(SPELL_NETHER_BREATH);
-                CastTimer = 5000;
-            }
-            else
-                CastTimer -= diff;
-
-            DoMeleeAttackIfReady();
-        }
-    };
 };
 
 /*###
@@ -1738,7 +1593,6 @@ void AddSC_shadowmoon_valley()
 {
     new npc_invis_infernal_caster();
     new npc_infernal_attacker();
-    new npc_mature_netherwing_drake();
     new npc_enslaved_netherwing_drake();
     new npc_earthmender_wilda();
     new npc_lord_illidan_stormrage();
