@@ -1296,22 +1296,23 @@ void MotionMaster::_DirectAdd(MovementGenerator* movement, MovementSlot slot/* =
         {
             MotionMasterContainerKey newKey = { movement->Priority, movement->Mode };
             auto itr = _generators.lower_bound(newKey);
+            bool replacesExisting = !movement->HasFlag(MOVEMENTGENERATOR_FLAG_IMMEDIATE)
+                && itr != _generators.end()
+                && !_generators.key_comp()(newKey, itr->first);
             if (!_generators.empty())
             {
                 MovementGenerator* currentTopMovement = _generators.begin()->second.front();
-                bool replacesExisting = !movement->HasFlag(MOVEMENTGENERATOR_FLAG_IMMEDIATE)
-                    && itr != _generators.end()
-                    && !_generators.key_comp()(newKey, itr->first);
                 if (replacesExisting)
                 {
                     MovementGenerator* existingMovement = itr->second.front();
                     MotionMasterContainerKey currentTopKey = _generators.begin()->first;
                     itr->second.clear();
+                    itr->second.push_front(movement);
                     _Delete(existingMovement, newKey == currentTopKey, false);
                 }
                 else
                 {
-                    if (_generators.empty() || itr == _generators.begin())
+                    if (itr == _generators.begin())
                         currentTopMovement->Deactivate(_owner);
                 }
             }
@@ -1320,10 +1321,8 @@ void MotionMaster::_DirectAdd(MovementGenerator* movement, MovementSlot slot/* =
 
             if (!movement->HasFlag(MOVEMENTGENERATOR_FLAG_IMMEDIATE))
             {
-                if (itr == _generators.end())
+                if (_generators.empty() || !replacesExisting)
                     _generators.emplace_hint(itr, newKey, std::list{ movement });
-                else
-                    itr->second.push_front(movement);
                 _AddBaseUnitState(movement);
             }
             else
