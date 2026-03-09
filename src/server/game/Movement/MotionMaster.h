@@ -218,20 +218,20 @@ class TC_GAME_API MotionMaster
         typedef std::multiset<MovementGenerator*, MovementGeneratorComparator> MotionMasterContainer;
         typedef std::unordered_multimap<uint32, MovementGenerator const*> MotionMasterUnitStatesContainer;
 
-        void ResolveDelayedActions();
-        void Remove(MotionMasterContainer::iterator& iterator, bool active, bool movementInform);
-        void Pop(bool active, bool movementInform);
-        void DirectInitialize();
-        void DirectClear();
-        void DirectClearDefault();
-        void DirectClear(std::function<bool(MovementGenerator const*)> const& filter);
-        void DirectAdd(MovementGenerator* movement, MovementSlot slot);
+        void _ResolveDelayedActions();
+        void _Remove(MotionMasterContainer::iterator& iterator, bool active, bool movementInform);
+        void _Pop(bool active, bool movementInform);
+        void _DirectInitialize();
+        void _DirectClear();
+        void _DirectClearDefault();
+        void _DirectClear(std::function<bool(MovementGenerator const*)> const& filter);
+        void _DirectAdd(MovementGenerator* movement, MovementSlot slot);
 
-        void Delete(MovementGenerator* movement, bool active, bool movementInform);
-        void DeleteDefault(bool active, bool movementInform);
-        void AddBaseUnitState(MovementGenerator const* movement);
-        void ClearBaseUnitState(MovementGenerator const* movement);
-        void ClearBaseUnitStates();
+        void _Delete(MovementGenerator* movement, bool active, bool movementInform);
+        void _DeleteDefault(bool active, bool movementInform);
+        void _AddBaseUnitState(MovementGenerator const* movement);
+        void _ClearBaseUnitState(MovementGenerator const* movement);
+        void _ClearBaseUnitStates();
 
         Unit* _owner;
         MovementGeneratorPointer _defaultGenerator;

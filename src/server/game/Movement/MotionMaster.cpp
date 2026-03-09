@@ -107,7 +107,7 @@ void MotionMaster::Initialize()
         return;
     }
 
-    DirectInitialize();
+    _DirectInitialize();
 }
 
 void MotionMaster::InitializeDefault()
@@ -123,8 +123,8 @@ void MotionMaster::AddToWorld()
     AddFlag(MOTIONMASTER_FLAG_INITIALIZING);
     RemoveFlag(MOTIONMASTER_FLAG_INITIALIZATION_PENDING);
 
-    DirectInitialize();
-    ResolveDelayedActions();
+    _DirectInitialize();
+    _ResolveDelayedActions();
 
     RemoveFlag(MOTIONMASTER_FLAG_INITIALIZING);
 }
@@ -339,12 +339,12 @@ void MotionMaster::Update(uint32 diff)
         ASSERT(top == GetCurrentMovementGenerator(), "MotionMaster::Update: top was modified while updating! (%s)", _owner->GetGUID().ToString().c_str());
 
         // Since all the actions that modify any slot are delayed, this movement is guaranteed to be top
-        Pop(true, true); // Natural, and only, call to MovementInform
+        _Pop(true, true); // Natural, and only, call to MovementInform
     }
 
     RemoveFlag(MOTIONMASTER_FLAG_UPDATE);
 
-    ResolveDelayedActions();
+    _ResolveDelayedActions();
 }
 
 void MotionMaster::Add(MovementGenerator* movement, MovementSlot slot/* = MOTION_SLOT_ACTIVE*/)
@@ -377,7 +377,7 @@ void MotionMaster::Add(MovementGenerator* movement, MovementSlot slot/* = MOTION
         _delayedActions.emplace_back(std::move(action), MOTIONMASTER_DELAYED_ADD);
     }
     else
-        DirectAdd(movement, slot);
+        _DirectAdd(movement, slot);
 }
 
 void MotionMaster::Remove(MovementGenerator* movement, MovementSlot slot/* = MOTION_SLOT_ACTIVE*/)
@@ -402,7 +402,7 @@ void MotionMaster::Remove(MovementGenerator* movement, MovementSlot slot/* = MOT
     {
         case MOTION_SLOT_DEFAULT:
             if (_defaultGenerator && _defaultGenerator.get() == movement)
-                DirectClearDefault();
+                _DirectClearDefault();
             break;
         case MOTION_SLOT_ACTIVE:
             if (!_generators.empty())
@@ -410,7 +410,7 @@ void MotionMaster::Remove(MovementGenerator* movement, MovementSlot slot/* = MOT
                 auto bounds = _generators.equal_range(movement);
                 auto itr = std::find(bounds.first, bounds.second, movement);
                 if (itr != _generators.end())
-                    Remove(itr, GetCurrentMovementGenerator() == *itr, false);
+                    _Remove(itr, GetCurrentMovementGenerator() == *itr, false);
             }
             break;
         default:
@@ -440,7 +440,7 @@ void MotionMaster::Remove(MovementGeneratorType type, MovementSlot slot/* = MOTI
     {
         case MOTION_SLOT_DEFAULT:
             if (_defaultGenerator && _defaultGenerator->GetMovementGeneratorType() == type)
-                DirectClearDefault();
+                _DirectClearDefault();
             break;
         case MOTION_SLOT_ACTIVE:
             if (!_generators.empty())
@@ -451,7 +451,7 @@ void MotionMaster::Remove(MovementGeneratorType type, MovementSlot slot/* = MOTI
                 });
 
                 if (itr != _generators.end())
-                    Remove(itr, GetCurrentMovementGenerator() == *itr, false);
+                    _Remove(itr, GetCurrentMovementGenerator() == *itr, false);
             }
             break;
         default:
@@ -472,7 +472,7 @@ void MotionMaster::Clear()
     }
 
     if (!Empty())
-        DirectClear();
+        _DirectClear();
 }
 
 void MotionMaster::Clear(MovementSlot slot)
@@ -496,10 +496,10 @@ void MotionMaster::Clear(MovementSlot slot)
     switch (slot)
     {
         case MOTION_SLOT_DEFAULT:
-            DirectClearDefault();
+            _DirectClearDefault();
             break;
         case MOTION_SLOT_ACTIVE:
-            DirectClear();
+            _DirectClear();
             break;
         default:
             break;
@@ -545,7 +545,7 @@ void MotionMaster::Clear(std::function<bool(MovementGenerator const*)> const& fi
     if (Empty())
         return;
 
-    DirectClear(filter);
+    _DirectClear(filter);
 }
 
 void MotionMaster::PropagateSpeedChange()
@@ -1176,7 +1176,7 @@ void MotionMaster::LaunchMoveSpline(std::function<void(Movement::MoveSplineInit&
 
 /******************** Private methods ********************/
 
-void MotionMaster::ResolveDelayedActions()
+void MotionMaster::_ResolveDelayedActions()
 {
     while (!_delayedActions.empty())
     {
@@ -1185,50 +1185,50 @@ void MotionMaster::ResolveDelayedActions()
     }
 }
 
-void MotionMaster::Remove(MotionMasterContainer::iterator& iterator, bool active, bool movementInform)
+void MotionMaster::_Remove(MotionMasterContainer::iterator& iterator, bool active, bool movementInform)
 {
     MovementGenerator* pointer = *iterator;
     iterator = _generators.erase(iterator);
-    Delete(pointer, active, movementInform);
+    _Delete(pointer, active, movementInform);
 }
 
-void MotionMaster::Pop(bool active, bool movementInform)
+void MotionMaster::_Pop(bool active, bool movementInform)
 {
     auto itr = _generators.begin();
     if (itr != _generators.end())
-        Remove(itr, active, movementInform);
+        _Remove(itr, active, movementInform);
 }
 
-void MotionMaster::DirectInitialize()
+void MotionMaster::_DirectInitialize()
 {
     // Clear ALL movement generators (including default)
-    DirectClearDefault();
-    DirectClear();
+    _DirectClearDefault();
+    _DirectClear();
 
     InitializeDefault();
 }
 
-void MotionMaster::DirectClear()
+void MotionMaster::_DirectClear()
 {
     // First delete Top
     if (!_generators.empty())
-        Pop(true, false);
+        _Pop(true, false);
 
     // Then the rest
     while (!_generators.empty())
-        Pop(false, false);
+        _Pop(false, false);
 
     // Make sure the storage is empty
-    ClearBaseUnitStates();
+    _ClearBaseUnitStates();
 }
 
-void MotionMaster::DirectClearDefault()
+void MotionMaster::_DirectClearDefault()
 {
     if (_defaultGenerator)
-        DeleteDefault(_generators.empty(), false);
+        _DeleteDefault(_generators.empty(), false);
 }
 
-void MotionMaster::DirectClear(std::function<bool(MovementGenerator const*)> const& filter)
+void MotionMaster::_DirectClear(std::function<bool(MovementGenerator const*)> const& filter)
 {
     if (_generators.empty())
         return;
@@ -1237,13 +1237,13 @@ void MotionMaster::DirectClear(std::function<bool(MovementGenerator const*)> con
     for (auto itr = _generators.begin(); itr != _generators.end();)
     {
         if (filter(*itr))
-            Remove(itr, *itr == top, false);
+            _Remove(itr, *itr == top, false);
         else
             ++itr;
     }
 }
 
-void MotionMaster::DirectAdd(MovementGenerator* movement, MovementSlot slot/* = MOTION_SLOT_ACTIVE*/)
+void MotionMaster::_DirectAdd(MovementGenerator* movement, MovementSlot slot/* = MOTION_SLOT_ACTIVE*/)
 {
     switch (slot)
     {
@@ -1267,7 +1267,7 @@ void MotionMaster::DirectAdd(MovementGenerator* movement, MovementSlot slot/* = 
                         if (movement->Mode > currentTopMovement->Mode)
                             currentTopMovement->Deactivate(_owner);
                         else if (movement->Mode == currentTopMovement->Mode)
-                            Remove(itr, true, false);
+                            _Remove(itr, true, false);
                         else
                         {
                             auto itr = std::find_if(_generators.begin(), _generators.end(), [movement](MovementGenerator const* a) -> bool
@@ -1275,7 +1275,7 @@ void MotionMaster::DirectAdd(MovementGenerator* movement, MovementSlot slot/* = 
                                 return a->Priority == movement->Priority && a->Mode == movement->Mode;
                             });
                             if (itr != _generators.end())
-                                Remove(itr, false, false);
+                                _Remove(itr, false, false);
                         }
                     }
                     else
@@ -1289,7 +1289,7 @@ void MotionMaster::DirectAdd(MovementGenerator* movement, MovementSlot slot/* = 
                     });
 
                     if (itr != _generators.end())
-                        Remove(itr, false, false);
+                        _Remove(itr, false, false);
                 }
             }
             else
@@ -1298,7 +1298,7 @@ void MotionMaster::DirectAdd(MovementGenerator* movement, MovementSlot slot/* = 
             if (!movement->HasFlag(MOVEMENTGENERATOR_FLAG_IMMEDIATE))
             {
                 _generators.emplace(movement);
-                AddBaseUnitState(movement);
+                _AddBaseUnitState(movement);
             }
             else
             {
@@ -1311,19 +1311,19 @@ void MotionMaster::DirectAdd(MovementGenerator* movement, MovementSlot slot/* = 
     }
 }
 
-void MotionMaster::Delete(MovementGenerator* movement, bool active, bool movementInform)
+void MotionMaster::_Delete(MovementGenerator* movement, bool active, bool movementInform)
 {
     TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::Delete: deleting generator (Priority: {}, Flags: {}, BaseUnitState: {}, Type: {}), owner: '{}'",
         movement->Priority, movement->Flags, movement->BaseUnitState, movement->GetMovementGeneratorType(), _owner->GetGUID().ToString());
 
     movement->Finalize(_owner, active, movementInform);
-    ClearBaseUnitState(movement);
+    _ClearBaseUnitState(movement);
     MovementGeneratorPointerDeleter(movement);
 }
 
-void MotionMaster::DeleteDefault(bool active, bool movementInform)
+void MotionMaster::_DeleteDefault(bool active, bool movementInform)
 {
-    TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::DeleteDefault: deleting generator (Priority: {}, Flags: {}, BaseUnitState: {}, Type: {}), owner: '{}'",
+    TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::_DeleteDefault: deleting generator (Priority: {}, Flags: {}, BaseUnitState: {}, Type: {}), owner: '{}'",
         _defaultGenerator->Priority, _defaultGenerator->Flags, _defaultGenerator->BaseUnitState, _defaultGenerator->GetMovementGeneratorType(), _owner->GetGUID().ToString());
 
     _defaultGenerator->Finalize(_owner, active, movementInform);
@@ -1331,7 +1331,7 @@ void MotionMaster::DeleteDefault(bool active, bool movementInform)
     AddFlag(MOTIONMASTER_FLAG_STATIC_INITIALIZATION_PENDING);
 }
 
-void MotionMaster::AddBaseUnitState(MovementGenerator const* movement)
+void MotionMaster::_AddBaseUnitState(MovementGenerator const* movement)
 {
     if (!movement || !movement->BaseUnitState)
         return;
@@ -1340,7 +1340,7 @@ void MotionMaster::AddBaseUnitState(MovementGenerator const* movement)
     _owner->AddUnitState(movement->BaseUnitState);
 }
 
-void MotionMaster::ClearBaseUnitState(MovementGenerator const* movement)
+void MotionMaster::_ClearBaseUnitState(MovementGenerator const* movement)
 {
     if (!movement || !movement->BaseUnitState)
         return;
@@ -1350,7 +1350,7 @@ void MotionMaster::ClearBaseUnitState(MovementGenerator const* movement)
         _owner->ClearUnitState(movement->BaseUnitState);
 }
 
-void MotionMaster::ClearBaseUnitStates()
+void MotionMaster::_ClearBaseUnitStates()
 {
     uint32 unitState = 0;
     for (auto itr = _baseUnitStatesMap.begin(); itr != _baseUnitStatesMap.end(); ++itr)
