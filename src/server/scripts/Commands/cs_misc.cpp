@@ -2188,6 +2188,7 @@ public:
         std::vector<MovementGeneratorInformation> const list = unit->GetMotionMaster()->GetMovementGeneratorsInformation();
         for (MovementGeneratorInformation const& info : list)
         {
+            handler->SendSysMessage("Priority: " + std::to_string(info.Priority) + " Mode: " + std::to_string(info.Mode));
             switch (info.Type)
             {
                 case IDLE_MOTION_TYPE:

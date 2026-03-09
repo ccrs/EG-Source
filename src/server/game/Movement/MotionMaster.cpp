@@ -70,7 +70,7 @@ void MovementGeneratorDeleter::operator()(MovementGenerator* a)
     MovementGeneratorPointerDeleter(a);
 }
 
-MovementGeneratorInformation::MovementGeneratorInformation(MovementGeneratorType type, ObjectGuid targetGUID, std::string const& targetName) : Type(type), TargetGUID(targetGUID), TargetName(targetName) { }
+MovementGeneratorInformation::MovementGeneratorInformation(uint8 priority, uint8 mode, MovementGeneratorType type, ObjectGuid targetGUID, std::string const& targetName) : Priority(priority), Mode(mode), Type(type), TargetGUID(targetGUID), TargetName(targetName) { }
 
 MotionMaster::MotionMaster(Unit* unit) : _owner(unit), _defaultGenerator(nullptr), _flags(MOTIONMASTER_FLAG_INITIALIZATION_PENDING) { }
 
@@ -138,7 +138,7 @@ std::vector<MovementGeneratorInformation> MotionMaster::GetMovementGeneratorsInf
     std::vector<MovementGeneratorInformation> list;
 
     if (_defaultGenerator)
-        list.emplace_back(_defaultGenerator->GetMovementGeneratorType(), ObjectGuid::Empty, std::string());
+        list.emplace_back(_defaultGenerator->Priority, _defaultGenerator->Mode, _defaultGenerator->GetMovementGeneratorType(), ObjectGuid::Empty, std::string());
 
     for (MotionMasterContainer::value_type const& value : _generators)
     {
@@ -153,15 +153,15 @@ std::vector<MovementGeneratorInformation> MotionMaster::GetMovementGeneratorsInf
                     if (AbstractFollower const* followInformation = dynamic_cast<AbstractFollower const*>(movement))
                     {
                         if (Unit* target = followInformation->GetTarget())
-                            list.emplace_back(type, target->GetGUID(), target->GetName());
+                            list.emplace_back(movement->Priority, movement->Mode, type, target->GetGUID(), target->GetName());
                         else
-                            list.emplace_back(type, ObjectGuid::Empty, std::string());
+                            list.emplace_back(movement->Priority, movement->Mode, type, ObjectGuid::Empty, std::string());
                     }
                     else
-                        list.emplace_back(type, ObjectGuid::Empty, std::string());
+                        list.emplace_back(movement->Priority, movement->Mode, type, ObjectGuid::Empty, std::string());
                     break;
                 default:
-                    list.emplace_back(type, ObjectGuid::Empty, std::string());
+                    list.emplace_back(movement->Priority, movement->Mode, type, ObjectGuid::Empty, std::string());
                     break;
             }
         }

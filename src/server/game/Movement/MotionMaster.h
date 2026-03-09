@@ -74,8 +74,10 @@ struct MovementGeneratorDeleter
 
 struct MovementGeneratorInformation
 {
-    MovementGeneratorInformation(MovementGeneratorType type, ObjectGuid targetGUID, std::string const& targetName);
+    MovementGeneratorInformation(uint8 priority, uint8 mode, MovementGeneratorType type, ObjectGuid targetGUID, std::string const& targetName);
 
+    uint8 Priority;
+    uint8 Mode;
     MovementGeneratorType Type;
     ObjectGuid TargetGUID;
     std::string TargetName;
