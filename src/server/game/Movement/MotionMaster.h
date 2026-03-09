@@ -60,8 +60,7 @@ enum MotionMasterDelayedActionType : uint8
 {
     MOTIONMASTER_DELAYED_CLEAR = 0,
     MOTIONMASTER_DELAYED_CLEAR_SLOT,
-    MOTIONMASTER_DELAYED_CLEAR_MODE,
-    MOTIONMASTER_DELAYED_CLEAR_PRIORITY,
+    MOTIONMASTER_DELAYED_CLEAR_FILTER,
     MOTIONMASTER_DELAYED_ADD,
     MOTIONMASTER_DELAYED_REMOVE,
     MOTIONMASTER_DELAYED_REMOVE_TYPE,
@@ -158,6 +157,8 @@ class TC_GAME_API MotionMaster
         // Removes all movements with the given MovementGeneratorPriority
         // NOTE: MOTION_SLOT_DEFAULT wont be affected
         void Clear(MovementGeneratorPriority priority);
+        // NOTE: MOTION_SLOT_DEFAULT wont be affected
+        void Clear(std::function<bool(MovementGenerator const*)> const& filter);
         void PropagateSpeedChange();
         bool GetDestination(float &x, float &y, float &z);
         bool StopOnDeath();

@@ -508,16 +508,6 @@ void MotionMaster::Clear(MovementSlot slot)
 
 void MotionMaster::Clear(MovementGeneratorMode mode)
 {
-    if (HasFlag(MOTIONMASTER_FLAG_DELAYED))
-    {
-        DelayedActionDefine action = [this, mode]()
-        {
-            Clear(mode);
-        };
-        _delayedActions.emplace_back(std::move(action), MOTIONMASTER_DELAYED_CLEAR_MODE);
-        return;
-    }
-
     if (Empty())
         return;
 
@@ -525,21 +515,11 @@ void MotionMaster::Clear(MovementGeneratorMode mode)
     {
         return a->Mode == mode;
     };
-    DirectClear(criteria);
+    Clear(criteria);
 }
 
 void MotionMaster::Clear(MovementGeneratorPriority priority)
 {
-    if (HasFlag(MOTIONMASTER_FLAG_DELAYED))
-    {
-        DelayedActionDefine action = [this, priority]()
-        {
-            Clear(priority);
-        };
-        _delayedActions.emplace_back(std::move(action), MOTIONMASTER_DELAYED_CLEAR_PRIORITY);
-        return;
-    }
-
     if (Empty())
         return;
 
@@ -547,7 +527,25 @@ void MotionMaster::Clear(MovementGeneratorPriority priority)
     {
         return a->Priority == priority;
     };
-    DirectClear(criteria);
+    Clear(criteria);
+}
+
+void MotionMaster::Clear(std::function<bool(MovementGenerator const*)> const& filter)
+{
+    if (HasFlag(MOTIONMASTER_FLAG_DELAYED))
+    {
+        DelayedActionDefine action = [this, filter]()
+        {
+            Clear(filter);
+        };
+        _delayedActions.emplace_back(std::move(action), MOTIONMASTER_DELAYED_CLEAR_FILTER);
+        return;
+    }
+
+    if (Empty())
+        return;
+
+    DirectClear(filter);
 }
 
 void MotionMaster::PropagateSpeedChange()
