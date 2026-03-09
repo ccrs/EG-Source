@@ -27,7 +27,7 @@
 #include "SharedDefines.h"
 #include <deque>
 #include <functional>
-#include <set>
+#include <map>
 #include <unordered_map>
 #include <vector>
 
@@ -70,12 +70,6 @@ enum MotionMasterDelayedActionType : uint8
 struct MovementGeneratorDeleter
 {
     void operator()(MovementGenerator* a);
-};
-
-struct MovementGeneratorComparator
-{
-    public:
-        bool operator()(MovementGenerator const* a, MovementGenerator const* b) const;
 };
 
 struct MovementGeneratorInformation
@@ -145,7 +139,7 @@ class TC_GAME_API MotionMaster
         void Remove(MovementGenerator* movement, MovementSlot slot = MOTION_SLOT_ACTIVE);
         // Removes first found movement
         // NOTE: MOTION_SLOT_DEFAULT will be autofilled with IDLE_MOTION_TYPE
-        void Remove(MovementGeneratorType type, MovementSlot slot = MOTION_SLOT_ACTIVE, MovementGeneratorMode mode = MOTION_MODE_DEFAULT);
+        void Remove(MovementGeneratorType type, MovementSlot slot = MOTION_SLOT_ACTIVE, MovementGeneratorPriority priority = MOTION_PRIORITY_NORMAL, MovementGeneratorMode mode = MOTION_MODE_DEFAULT);
         // NOTE: MOTION_SLOT_DEFAULT wont be affected
         void Clear();
         // Removes all movements for the given MovementSlot
@@ -214,12 +208,21 @@ class TC_GAME_API MotionMaster
         bool HasFlag(uint8 const flag) const { return (_flags & flag) != 0; }
         void RemoveFlag(uint8 const flag) { _flags &= ~flag; }
     private:
+        typedef std::pair<uint8/*MovementGeneratorPriority*/, uint8/*MovementGeneratorMode*/> MotionMasterContainerKey;
+
+        struct MovementGeneratorComparator
+        {
+            public:
+                bool operator()(MotionMasterContainerKey const& a, MotionMasterContainerKey const& b) const;
+        };
+
         typedef std::unique_ptr<MovementGenerator, MovementGeneratorDeleter> MovementGeneratorPointer;
-        typedef std::multiset<MovementGenerator*, MovementGeneratorComparator> MotionMasterContainer;
+        typedef std::list<MovementGenerator*> MotionMasterContainerList;
+        typedef std::map<MotionMasterContainerKey, MotionMasterContainerList, MovementGeneratorComparator> MotionMasterContainer;
         typedef std::unordered_multimap<uint32, MovementGenerator const*> MotionMasterUnitStatesContainer;
 
         void _ResolveDelayedActions();
-        void _Remove(MotionMasterContainer::iterator& iterator, bool active, bool movementInform);
+        void _Remove(MotionMasterContainer::iterator& iterator, MotionMasterContainerList::iterator& listIterator, bool active, bool movementInform);
         void _Pop(bool active, bool movementInform);
         void _DirectInitialize();
         void _DirectClear();
