@@ -23,9 +23,8 @@ class EG_AccountSpells : public PlayerScript
                 return;
 
             uint32 playerAccountID = player->GetSession()->GetAccountId();
-            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_EXISTING_SAME_FACTION_CHARACTER_SPELLS);
+            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_EXISTING_CHARACTER_SPELLS);
             stmt->setUInt32(0, playerAccountID);
-            stmt->setUInt32(1, Player::TeamForRace(player->GetRace()) == ALLIANCE ? RACEMASK_ALLIANCE : RACEMASK_HORDE);
             stmt->setUInt32(2, player->GetGUID().GetCounter());
 
             std::unordered_set<uint32> spellIds;
