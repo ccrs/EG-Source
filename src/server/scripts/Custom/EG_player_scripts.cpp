@@ -25,7 +25,7 @@ class EG_AccountSpells : public PlayerScript
             uint32 playerAccountID = player->GetSession()->GetAccountId();
             CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_EXISTING_CHARACTER_SPELLS);
             stmt->setUInt32(0, playerAccountID);
-            stmt->setUInt32(2, player->GetGUID().GetCounter());
+            stmt->setUInt32(1, player->GetGUID().GetCounter());
 
             std::unordered_set<uint32> spellIds;
             if (PreparedQueryResult resultCharacterSpells = CharacterDatabase.Query(stmt))
