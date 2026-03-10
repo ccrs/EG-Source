@@ -19440,6 +19440,7 @@ void Player::SaveToDB(CharacterDatabaseTransaction trans, bool create /* = false
 
     // EG - Custom Settings
     _SaveCustomSettings();
+    _SaveTransmogrifications();
 }
 
 // fast save function for item/money cheating preventing - save only inventory and money state
