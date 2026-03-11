@@ -673,6 +673,10 @@ public:
                             JumpToNextStep(21000);
                             break;
                         case 12:
+                            if (Creature* temp = ObjectAccessor::GetCreature(*me, koltiraGUID))
+                                temp->Dismount();
+                            if (Creature* temp = ObjectAccessor::GetCreature(*me, thassarianGUID))
+                                temp->Dismount();
                             if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
                                 temp->AI()->Talk(SAY_LIGHT_OF_DAWN29);
                             JumpToNextStep(13000);
