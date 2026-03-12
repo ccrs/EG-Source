@@ -1259,22 +1259,27 @@ void MotionMaster::_DirectClear(std::function<bool(MovementGenerator const*)> co
     if (_generators.empty())
         return;
 
-    MovementGenerator const* top = GetCurrentMovementGenerator();
     for (auto itr = _generators.begin(); itr != _generators.end();)
     {
+        MovementGenerator* pointer;
+        bool top = itr == _generators.begin();
         for (auto itrList = itr->second.begin(); itrList != itr->second.end();)
         {
             if (filter(*itrList))
             {
-                MovementGenerator* pointer = *itrList;
+                pointer = *itrList;
                 itrList = itr->second.erase(itrList);
-                _Delete(pointer, pointer == top, false);
+                if (itrList == itr->second.end() && !itr->second.empty())
+                    _Delete(pointer, top, false);
             }
             else
                 ++itrList;
         }
         if (itr->second.empty())
+        {
             itr = _generators.erase(itr);
+            _Delete(pointer, top, false);
+        }
         else
             ++itr;
     }
