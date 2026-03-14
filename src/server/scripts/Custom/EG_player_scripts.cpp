@@ -121,6 +121,8 @@ class EG_XPRate : public PlayerScript
 
         void OnGiveXP(Player* player, uint32& amount, Unit* /*unit*/) override
         {
+            if (player->GetClass() == CLASS_DEATH_KNIGHT && player->GetMapId() == 609 && !player->IsGameMaster() && !player->HasSpell(50977))
+                return;
             uint16 storedValue = player->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS);
             if (storedValue > CustomFlags::CUSTOM_FLAG_XPRATE_1)
             {
