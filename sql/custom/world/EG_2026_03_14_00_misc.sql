@@ -23,3 +23,15 @@ INSERT INTO `creature` (`guid`, `id`, `spawnMask`, `phaseMask`, `position_x`, `p
 (300111, 30120, 1, 4, 7226.02, -3628.44, 823.281, 2.81414, 300, 5, 1, '', 0, 571, 0, 0, 0, 0, 0, 12600, 0, 0, 0, 0),
 (300112, 30120, 1, 4, 7155.84, -3636.44, 835.566, 0.901691, 300, 5, 1, '', 0, 571, 0, 0, 0, 0, 0, 12600, 0, 0, 0, 0),
 (300113, 30120, 1, 4, 7189.73, -3552.77, 827.87, 1.77348, 300, 5, 1, '', 0, 571, 0, 0, 0, 0, 0, 12600, 0, 0, 0, 0);
+
+ -- Anub'ar Webspinner smart ai
+SET @ENTRY := 29335;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 2, 4000, 7000, 9000, 12000, 11, 54290, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Every 9 - 12 seconds (4 - 7s initially) (IC) - Self: Cast spell  Web Shot (54290) on Random hostile'),
+(@ENTRY, 0, 1, 0, 0, 0, 100, 4, 4000, 7000, 9000, 12000, 11, 59362, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Every 9 - 12 seconds (4 - 7s initially) (IC) - Self: Cast spell  Web Shot (59362) on Random hostile'),
+(@ENTRY, 0, 2, 0, 0, 0, 100, 6, 10000, 13000, 19000, 22000, 11, 52086, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 'Every 19 - 22 seconds (10 - 13s initially) (IC) - Self: Cast spell  Web Wrap (52086) on Random hostile (not top)');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 29335 AND `SourceId` = 0;
