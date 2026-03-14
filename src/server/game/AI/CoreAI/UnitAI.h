@@ -105,14 +105,15 @@ struct TC_GAME_API NonTankTargetSelector
 struct TC_GAME_API PowerUsersSelector
 {
     public:
-        PowerUsersSelector(Unit const* unit, Powers power, float dist, bool playerOnly) : _me(unit), _power(power), _dist(dist), _playerOnly(playerOnly) { }
+        PowerUsersSelector(Unit* unit, Powers power, float dist, bool playerOnly, bool nonTank = false) : _me(unit), _power(power), _dist(dist), _playerOnly(playerOnly), _nonTank(nonTank) { }
         bool operator()(Unit const* target) const;
 
     private:
-        Unit const* _me;
+        Unit* _me;
         Powers const _power;
-        float const _dist;
-        bool const _playerOnly;
+        float _dist;
+        bool _playerOnly;
+        bool _nonTank;
 };
 
 struct TC_GAME_API FarthestTargetSelector
