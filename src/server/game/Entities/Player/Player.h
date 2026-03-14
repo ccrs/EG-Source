@@ -41,7 +41,6 @@ struct AchievementEntry;
 struct AreaTableEntry;
 struct AreaTriggerEntry;
 struct BarberShopStyleEntry;
-struct CharacterCustomizeInfo;
 struct CharTitlesEntry;
 struct ChatChannelsEntry;
 struct CreatureTemplate;
@@ -60,7 +59,6 @@ class Bag;
 class Battleground;
 class CinematicMgr;
 class Channel;
-class CharacterCreateInfo;
 class Creature;
 class DynamicObject;
 class GameClient;
@@ -80,6 +78,20 @@ class TradeData;
 
 enum InventoryType : uint8;
 enum ItemClass : uint8;
+
+namespace WorldPackets
+{
+    namespace Character
+    {
+        struct CharacterCreateInfo;
+    }
+
+    namespace Talent
+    {
+        struct PetTalentInfoUpdate;
+        struct TalentInfoUpdate;
+    }
+}
 
 typedef std::deque<Mail*> PlayerMails;
 
@@ -167,7 +179,7 @@ struct SpellModifier
     Aura* const ownerAura;
 };
 
-typedef std::unordered_map<uint32, PlayerTalent*> PlayerTalentMap;
+typedef std::unordered_map<uint32, PlayerTalent> PlayerTalentMap;
 typedef std::unordered_map<uint32, PlayerSpell> PlayerSpellMap;
 typedef std::unordered_set<SpellModifier*> SpellModContainer;
 
@@ -888,6 +900,12 @@ struct ResurrectionData
 
 #define SPELL_DK_RAISE_ALLY 46619
 
+struct TalentSpecInfo
+{
+    PlayerTalentMap Talents;
+    uint32 Glyphs[MAX_GLYPH_SLOT_INDEX] = { };
+};
+
 struct PlayerTalentInfo
 {
     PlayerTalentInfo() :
@@ -895,29 +913,9 @@ struct PlayerTalentInfo
         ResetTalentsCost(0), ResetTalentsTime(0),
         ActiveSpec(0), SpecsCount(1)
     {
-        for (uint8 i = 0; i < MAX_TALENT_SPECS; ++i)
-        {
-            SpecInfo[i].Talents = new PlayerTalentMap();
-            memset(SpecInfo[i].Glyphs, 0, MAX_GLYPH_SLOT_INDEX * sizeof(uint32));
-        }
     }
 
-    ~PlayerTalentInfo()
-    {
-        for (uint8 i = 0; i < MAX_TALENT_SPECS; ++i)
-        {
-            for (PlayerTalentMap::const_iterator itr = SpecInfo[i].Talents->begin(); itr != SpecInfo[i].Talents->end(); ++itr)
-                delete itr->second;
-            delete SpecInfo[i].Talents;
-        }
-    }
-
-    struct TalentSpecInfo
-    {
-        PlayerTalentMap* Talents;
-        uint32 Glyphs[MAX_GLYPH_SLOT_INDEX];
-    } SpecInfo[MAX_TALENT_SPECS];
-
+    TalentSpecInfo SpecInfo[MAX_TALENT_SPECS];
     uint32 UsedTalentCount;
     uint32 QuestRewardedTalentCount;
     uint32 ResetTalentsCost;
@@ -926,7 +924,8 @@ struct PlayerTalentInfo
     uint8 SpecsCount;
 
 private:
-    PlayerTalentInfo(PlayerTalentInfo const&);
+    PlayerTalentInfo(PlayerTalentInfo const&) = delete;
+    PlayerTalentInfo& operator=(PlayerTalentInfo const&) = delete;
 };
 
 enum CustomFlagsIndex : uint16
@@ -1005,7 +1004,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void SendSummonRequestFrom(Unit* summoner);
         void SummonIfPossible(bool agree);
 
-        bool Create(ObjectGuid::LowType guidlow, CharacterCreateInfo* createInfo);
+        bool Create(ObjectGuid::LowType guidlow, WorldPackets::Character::CharacterCreateInfo const* createInfo);
 
         void Update(uint32 time) override;
 
@@ -1282,7 +1281,6 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void ApplyEnchantment(Item* item, bool apply);
         void UpdateSkillEnchantments(uint16 skill_id, uint16 curr_value, uint16 new_value);
         void SendEnchantmentDurations();
-        void BuildEnchantmentsInfoData(WorldPacket* data);
         void AddItemDurations(Item* item);
         void RemoveItemDurations(Item* item);
         void SendItemDurations();
@@ -1445,7 +1443,6 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void SaveInventoryAndGoldToDB(CharacterDatabaseTransaction trans);                    // fast save function for item/money cheating preventing
         void SaveGoldToDB(CharacterDatabaseTransaction trans) const;
 
-        static void Customize(CharacterCustomizeInfo const* customizeInfo, CharacterDatabaseTransaction trans);
         static void SavePositionInDB(WorldLocation const& loc, uint16 zoneId, ObjectGuid guid, CharacterDatabaseTransaction trans);
 
         static void DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRealmChars = true, bool deleteFinally = false);
@@ -1560,8 +1557,8 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         uint32 ResetTalentsCost() const;
         void IncreaseResetTalentsCostAndCounters(uint32 lastResetTalentsCost);
         void InitTalentForLevel();
-        void BuildPlayerTalentsInfoData(WorldPacket* data);
-        void BuildPetTalentsInfoData(WorldPacket* data);
+        void BuildPlayerTalentsInfoData(WorldPackets::Talent::TalentInfoUpdate& talentInfo);
+        void BuildPetTalentsInfoData(WorldPackets::Talent::PetTalentInfoUpdate& petTalentInfo) const;
         void SendTalentsInfoData(bool pet);
         bool LearnTalent(uint32 talentId, uint32 talentRank);
         void LearnPetTalent(ObjectGuid petGuid, uint32 talentId, uint32 talentRank);
@@ -1581,8 +1578,8 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void SetGlyph(uint8 slot, uint32 glyph);
         uint32 GetGlyph(uint8 spec, uint8 slot) const { return _talentMgr->SpecInfo[spec].Glyphs[slot]; }
 
-        PlayerTalentMap const* GetTalentMap(uint8 spec) const { return _talentMgr->SpecInfo[spec].Talents; }
-        PlayerTalentMap* GetTalentMap(uint8 spec) { return _talentMgr->SpecInfo[spec].Talents; }
+        PlayerTalentMap const* GetTalentMap(uint8 spec) const { return &_talentMgr->SpecInfo[spec].Talents; }
+        PlayerTalentMap* GetTalentMap(uint8 spec) { return &_talentMgr->SpecInfo[spec].Talents; }
         ActionButtonList const& GetActionButtons() const { return m_actionButtons; }
 
         uint32 GetFreePrimaryProfessionPoints() const { return GetUInt32Value(PLAYER_CHARACTER_POINTS2); }
@@ -1885,6 +1882,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void CheckAreaExploreAndOutdoor(void);
 
         static uint32 TeamForRace(uint8 race);
+        static TeamId TeamIdForRace(uint8 race);
         uint32 GetTeam() const { return m_team; }
         TeamId GetTeamId() const { return m_team == ALLIANCE ? TEAM_ALLIANCE : TEAM_HORDE; }
         void SetFactionForRace(uint8 race);
