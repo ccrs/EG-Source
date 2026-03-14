@@ -467,6 +467,14 @@ bool PowerUsersSelector::operator()(Unit const* target) const
     if (_dist < 0.0f && _me->IsWithinCombatRange(target, -_dist))
         return false;
 
+    if (_nonTank)
+    {
+        if (Unit* currentVictim = _me->GetThreatManager().GetCurrentVictim())
+            return target != currentVictim;
+
+        return target != _me->GetVictim();
+    }
+
     return true;
 }
 
