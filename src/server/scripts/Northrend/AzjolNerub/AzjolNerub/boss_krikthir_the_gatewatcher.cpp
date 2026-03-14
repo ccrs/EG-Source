@@ -439,7 +439,7 @@ struct npc_watcher_gashra : public npc_gatewatcher_petAI
                     _events.Repeat(randtime(Seconds(12), Seconds(20)));
                     break;
                 case EVENT_WEB_WRAP:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true, false))
                         DoCast(target, SPELL_WEB_WRAP);
                     _events.Repeat(randtime(Seconds(13), Seconds(19)));
                     break;
@@ -506,7 +506,7 @@ struct npc_watcher_narjil : public npc_gatewatcher_petAI
                     _events.Repeat(randtime(Seconds(23), Seconds(27)));
                     break;
                 case EVENT_WEB_WRAP:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true, false))
                         DoCast(target, SPELL_WEB_WRAP);
                     _events.Repeat(randtime(Seconds(13), Seconds(19)));
                     break;
@@ -573,7 +573,7 @@ struct npc_watcher_silthik : public npc_gatewatcher_petAI
                     _events.Repeat(randtime(Seconds(13), Seconds(19)));
                     break;
                 case EVENT_WEB_WRAP:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true, false))
                         DoCast(target, SPELL_WEB_WRAP);
                     _events.Repeat(randtime(Seconds(13), Seconds(17)));
                     break;
