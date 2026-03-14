@@ -17072,6 +17072,9 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
     SetLevel(fields[6].GetUInt8(), false);
     SetXP(fields[7].GetUInt32());
 
+    // EG - Custom Settings
+    _LoadCustomSettings(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS));
+
     if (!_LoadIntoDataField(fields[66].GetString(), PLAYER_EXPLORED_ZONES_1, PLAYER_EXPLORED_ZONES_SIZE))
         TC_LOG_WARN("entities.player.loading", "Player::LoadFromDB: Player ({}) has invalid exploredzones data ({}). Forcing partial load.", guid.ToString(), fields[66].GetCString());
 
@@ -17721,14 +17724,13 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
 
     _LoadEquipmentSets(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_EQUIPMENT_SETS));
 
-    // EG - Custom Settings
-    _LoadCustomSettings(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS));
-
+    // EG - Masquerade
     _LoadMasqueradeRace();
 
     // EG - Transmogrification
     _LoadTransmogrifications(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_TRANSMOGRIFICATIONS));
 
+    // EG - Account Spells
     if ((sWorld->getBoolConfig(CONFIG_ACCOUNT_MOUNTS) && HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT, CustomFlags::CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE))
         || HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE)
         || HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_PET, CustomFlags::CUSTOM_FLAG_ACCOUNT_PET_ACTIVE)
