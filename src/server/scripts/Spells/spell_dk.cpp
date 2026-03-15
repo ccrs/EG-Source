@@ -2395,6 +2395,7 @@ public:
             //summon->RemoveCharmedBy(nullptr);
 
             summon->SetCharmedBy(caster, CHARM_TYPE_POSSESS);
+            summon->SetCanFollowOwner(false);
 
             summon->CastSpell(summon, SPELL_DK_RISEN_GHOUL_SELF_STUN, true);
             summon->CastSpell(summon, SPELL_DK_RISEN_GHOUL_SPAWN__IN, true);
