@@ -368,5 +368,7 @@ Trinity::Helpers::Events::GenericEvent::GenericEvent(WorldObject* owner, std::fu
 
 bool Trinity::Helpers::Events::GenericEvent::Execute(uint64, uint32)
 {
+    if (!_owner)
+        return true;
     return _func(_owner);
 }
