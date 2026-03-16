@@ -363,3 +363,10 @@ bool Trinity::Helpers::Events::SetAggresiveStateEvent::Execute(uint64 /*time*/, 
     }
     return true;
 }
+
+Trinity::Helpers::Events::GenericEvent::GenericEvent(WorldObject* owner, std::function<bool(WorldObject*)>&& func) : _owner(owner), _func(std::move(func)) { };
+
+bool Trinity::Helpers::Events::GenericEvent::Execute(uint64, uint32)
+{
+    return _func(_owner);
+}

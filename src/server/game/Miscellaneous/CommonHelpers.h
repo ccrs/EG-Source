@@ -21,9 +21,11 @@
 #include "EventProcessor.h"
 #include "Define.h"
 #include "ObjectGuid.h"
+#include <functional>
 
 class Creature;
 class Player;
+class WorldObject;
 
 struct TC_GAME_API StartCombatArgs
 {
@@ -50,6 +52,18 @@ namespace Trinity
         }
         namespace Events
         {
+            class TC_GAME_API GenericEvent : public BasicEvent
+            {
+                public:
+                    GenericEvent(WorldObject* owner, std::function<bool(WorldObject*)>&& func);
+
+                    bool Execute(uint64 /*time*/, uint32 /*diff*/) override;
+
+                private:
+                    WorldObject* _owner;
+                    std::function<bool(WorldObject*)> _func;
+            };
+
             class TC_GAME_API SetAggresiveStateEvent : public BasicEvent
             {
                 public:
