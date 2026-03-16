@@ -15,12 +15,13 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
 #include "blackrock_spire.h"
+#include "CommonHelpers.h"
 #include "GameObject.h"
 #include "InstanceScript.h"
 #include "MotionMaster.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 
 enum Spells
 {
@@ -46,7 +47,8 @@ enum Events
     EVENT_FLAME_BREATH              = 3,
     EVENT_KNOCK_AWAY                = 4,
     EVENT_SUMMONED_1                = 5,
-    EVENT_SUMMONED_2                = 6
+    EVENT_SUMMONED_2                = 6,
+    EVENT_DESPAWN_ON_NO_ENEMY       = 7
 };
 
 struct boss_gyth : public BossAI
@@ -58,29 +60,54 @@ struct boss_gyth : public BossAI
 
     void Initialize()
     {
-        SummonedRend = false;
+        _summonedRend = false;
     }
-
-    bool SummonedRend;
 
     void Reset() override
     {
         Initialize();
-        if (instance->GetBossState(DATA_GYTH) == IN_PROGRESS)
+        BossAI::Reset();
+    }
+
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        if (instance->GetBossState(DATA_GYTH) == IN_PROGRESS && why == EVADE_REASON_NO_HOSTILES && instance->GetBossState(DATA_WARCHIEF_REND_BLACKHAND) != DONE)
         {
-            instance->SetBossState(DATA_GYTH, DONE);
+            instance->SetBossState(DATA_GYTH, FAIL);
+            summons.DespawnAll();
             me->DespawnOrUnsummon();
+            return;
         }
+
+        summons.DespawnAll();
+        _EnterEvadeMode(why);
+        me->GetMotionMaster()->MovePoint(0, me->GetHomePosition());
     }
 
     void JustEngagedWith(Unit* who) override
     {
         BossAI::JustEngagedWith(who);
 
+        events.CancelEvent(EVENT_DESPAWN_ON_NO_ENEMY);
+
         events.ScheduleEvent(EVENT_CORROSIVE_ACID, 8s, 16s);
         events.ScheduleEvent(EVENT_FREEZE, 8s, 16s);
         events.ScheduleEvent(EVENT_FLAME_BREATH, 8s, 16s);
         events.ScheduleEvent(EVENT_KNOCK_AWAY, 12s, 18s);
+    }
+
+    void DamageTaken(Unit* /*who*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
+    {
+        if (me->HealthBelowPctDamaged(10, damage))
+        {
+            if (!_summonedRend)
+            {
+                instance->SetBossState(DATA_WARCHIEF_REND_BLACKHAND, IN_PROGRESS);
+                DoCast(me, SPELL_SUMMON_REND, true);
+                me->RemoveAura(SPELL_REND_MOUNTS);
+                _summonedRend = true;
+            }
+        }
     }
 
     void JustDied(Unit* /*killer*/) override
@@ -103,13 +130,6 @@ struct boss_gyth : public BossAI
     void UpdateAI(uint32 diff) override
     {
 
-        if (!SummonedRend && HealthBelowPct(5))
-        {
-            DoCast(me, SPELL_SUMMON_REND);
-            me->RemoveAura(SPELL_REND_MOUNTS);
-            SummonedRend = true;
-        }
-
         if (!UpdateVictim())
         {
             events.Update(diff);
@@ -122,12 +142,48 @@ struct boss_gyth : public BossAI
                         me->AddAura(SPELL_REND_MOUNTS, me);
                         if (GameObject* portcullis = me->FindNearestGameObject(GO_DR_PORTCULLIS, 40.0f))
                             portcullis->UseDoorOrButton();
-                        if (Creature* victor = me->FindNearestCreature(NPC_LORD_VICTOR_NEFARIUS, 75.0f, true))
-                            victor->AI()->SetData(1, 1);
+                        if (Creature* victor = me->FindNearestCreature(NPC_LORD_VICTOR_NEFARIUS, 150.0f, true))
+                        {
+                            victor->GetMotionMaster()->MoveIdle();
+                            DoAddEvent(9s, new Trinity::Helpers::Events::GenericEvent(victor, [](WorldObject* owner)
+                            {
+                                if (Creature* victor = owner->ToCreature())
+                                    victor->GetMotionMaster()->MovePath(11037368, false);
+                                return true;
+                            }), victor);
+                            DoAddEvent(9s + 7s, new Trinity::Helpers::Events::GenericEvent(victor, [](WorldObject* owner)
+                            {
+                                if (Creature* victor = owner->ToCreature())
+                                {
+                                    victor->PauseMovement(0, MOTION_SLOT_DEFAULT, true);
+                                    if (Creature* gyth = victor->FindNearestCreature(NPC_GYTH, 75.0f, true))
+                                    {
+                                        victor->SetFacingToObject(gyth);
+                                        victor->AI()->Talk(9);
+                                    }
+                                }
+                                return true;
+                            }), victor);
+                            DoAddEvent(9s + 7s + 2s, new Trinity::Helpers::Events::GenericEvent(victor, [](WorldObject* owner)
+                            {
+                                if (Creature* victor = owner->ToCreature())
+                                    victor->SetFacingTo(1.570796f, true);
+                                return true;
+                            }), victor);
+                            DoAddEvent(9s + 7s + 2s + 1s, new Trinity::Helpers::Events::GenericEvent(victor, [](WorldObject* owner)
+                            {
+                                owner->CastSpell(nullptr, 16337);
+                                return true;
+                            }), victor);
+                        }
                         events.ScheduleEvent(EVENT_SUMMONED_2, 2s);
                         break;
                     case EVENT_SUMMONED_2:
                         me->GetMotionMaster()->MovePath(GYTH_PATH_1, false);
+                        events.ScheduleEvent(EVENT_DESPAWN_ON_NO_ENEMY, 2min);
+                        break;
+                    case EVENT_DESPAWN_ON_NO_ENEMY:
+                        EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
                         break;
                     default:
                         break;
@@ -170,6 +226,9 @@ struct boss_gyth : public BossAI
         }
         DoMeleeAttackIfReady();
     }
+
+private:
+    bool _summonedRend;
 };
 
 void AddSC_boss_gyth()

@@ -15,7 +15,6 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
 #include "blackwing_lair.h"
 #include "GameObject.h"
 #include "InstanceScript.h"
@@ -23,6 +22,7 @@
 #include "Player.h"
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
+#include "ScriptMgr.h"
 #include "TemporarySummon.h"
 
 enum NefarianEvents
@@ -38,14 +38,6 @@ enum NefarianEvents
     EVENT_CLEAVE               = 7,
     EVENT_TAILLASH             = 8,
     EVENT_CLASSCALL            = 9,
-    // UBRS
-    EVENT_CHAOS_1              = 10,
-    EVENT_CHAOS_2              = 11,
-    EVENT_PATH_2               = 12,
-    EVENT_PATH_3               = 13,
-    EVENT_SUCCESS_1            = 14,
-    EVENT_SUCCESS_2            = 15,
-    EVENT_SUCCESS_3            = 16,
 };
 
 enum NefarianSays
@@ -148,11 +140,6 @@ enum NefarianSpells
 // 22666
 };
 
-enum NefarianPoints
-{
-    POINT_FACING_CHROMATIC_CHAOS = 1,
-};
-
 Position const DrakeSpawnLoc[2] = // drakonid
 {
     {-7591.151855f, -1204.051880f, 476.800476f, 3.0f},
@@ -233,77 +220,10 @@ struct boss_victor_nefarius : public BossAI
 
     void JustSummoned(Creature* /*summon*/) override { }
 
-    void SetData(uint32 type, uint32 data) override
-    {
-        if ( type == 1 && data == 1)
-        {
-            me->StopMoving();
-            events.ScheduleEvent(EVENT_PATH_2, 9s);
-        }
-
-        if (type == 1 && data == 2)
-            events.ScheduleEvent(EVENT_SUCCESS_1, 5s);
-    }
-
-    void MovementInform(uint32 type, uint32 id) override
-    {
-        if (type != FACE_MOTION_TYPE)
-            return;
-
-        if (id == POINT_FACING_CHROMATIC_CHAOS)
-            DoCast(SPELL_CHROMATIC_CHAOS);
-    }
-
     void UpdateAI(uint32 diff) override
     {
         if (!UpdateVictim())
-        {
-            events.Update(diff);
-
-            while (uint32 eventId = events.ExecuteEvent())
-            {
-                switch (eventId)
-                {
-                    case EVENT_PATH_2:
-                        me->GetMotionMaster()->MovePath(NEFARIUS_PATH_2, false);
-                        events.ScheduleEvent(EVENT_CHAOS_1, 7s);
-                        break;
-                    case EVENT_CHAOS_1:
-                        if (Creature* gyth = me->FindNearestCreature(NPC_GYTH, 75.0f, true))
-                        {
-                            me->SetFacingToObject(gyth);
-                            Talk(SAY_CHAOS_SPELL);
-                        }
-                        events.ScheduleEvent(EVENT_CHAOS_2, 2s);
-                        break;
-                    case EVENT_CHAOS_2:
-                        me->SetFacingTo(1.570796f, true, POINT_FACING_CHROMATIC_CHAOS);
-                        break;
-                    case EVENT_SUCCESS_1:
-                        if (Unit* player = me->SelectNearestPlayer(60.0f))
-                        {
-                            me->SetFacingToObject(player);
-                            Talk(SAY_SUCCESS);
-                            if (GameObject* portcullis1 = me->FindNearestGameObject(GO_PORTCULLIS_ACTIVE, 65.0f))
-                                portcullis1->SetGoState(GO_STATE_ACTIVE);
-                            if (GameObject* portcullis2 = me->FindNearestGameObject(GO_PORTCULLIS_TOBOSSROOMS, 80.0f))
-                                portcullis2->SetGoState(GO_STATE_ACTIVE);
-                        }
-                        events.ScheduleEvent(EVENT_SUCCESS_2, 4s);
-                        break;
-                    case EVENT_SUCCESS_2:
-                        DoCast(me, SPELL_VAELASTRASZZ_SPAWN);
-                        me->DespawnOrUnsummon(1s);
-                        break;
-                    case EVENT_PATH_3:
-                        me->GetMotionMaster()->MovePath(NEFARIUS_PATH_3, false);
-                        break;
-                    default:
-                        break;
-                }
-            }
             return;
-        }
 
         // Only do this if we haven't spawned nefarian yet
         if (UpdateVictim() && SpawnedAdds <= 42)
