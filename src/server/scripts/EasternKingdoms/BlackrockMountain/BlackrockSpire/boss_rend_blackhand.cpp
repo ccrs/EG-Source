@@ -191,7 +191,6 @@ struct boss_rend_blackhand : public BossAI
         if (summon->GetEntry() == NPC_GYTH)
             return;
 
-        Position summonPos = me->GetPosition();
         summon->SetWalk(true);
         Position destination = RendCenterPosition;
         summon->MovePosition(destination, frand(0.f, 20.f), destination.GetOrientation());
