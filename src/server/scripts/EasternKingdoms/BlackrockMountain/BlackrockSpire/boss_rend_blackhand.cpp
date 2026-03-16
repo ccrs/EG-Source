@@ -18,6 +18,7 @@
 #include "blackrock_spire.h"
 #include "CommonHelpers.h"
 #include "GameObject.h"
+#include "InstanceScript.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
