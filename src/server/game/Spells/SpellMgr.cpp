@@ -4970,6 +4970,12 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->RecoveryTime = 18000000; // 5 hours
     });
 
+    // Northrend Alchemy Research
+    ApplySpellFix({ 60893 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->RecoveryTime = 43200000; // 12 hours
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];
