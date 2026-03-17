@@ -216,7 +216,7 @@ struct boss_palehoof : public BossAI
                 events.Repeat(Seconds(7));
                 break;
             case EVENT_IMPALE:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 60.f, true))
                     DoCast(target, SPELL_IMPALE);
                 events.Repeat(Seconds(10), Seconds(15));
                 break;
