@@ -4964,7 +4964,8 @@ void SpellMgr::LoadSpellInfoCorrections()
     });
 
     // Northrend Inscription Research
-    ApplySpellFix({ 61177 }, [](SpellInfo* spellInfo)
+    // Minor Inscription Research
+    ApplySpellFix({ 61177, 61288 }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 18000000; // 5 hours
     });
