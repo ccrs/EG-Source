@@ -4963,6 +4963,12 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->_GetEffect(EFFECT_0).RadiusEntry = sSpellRadiusStore.LookupEntry(EFFECT_RADIUS_15_YARDS); // 15yd
     });
 
+    // Northrend Inscription Research
+    ApplySpellFix({ 61177 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->RecoveryTime = 18000000; // 5 hours
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];
