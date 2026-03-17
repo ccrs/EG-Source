@@ -49,7 +49,7 @@ enum VolazjTexts
 enum VolazjSpells
 {
     SPELL_INSANITY = 57496, // Dummy
-    INSANITY_VISUAL = 57561,
+    SPELL_INSANITY_VISUAL = 57561,
     SPELL_INSANITY_TARGET = 57508,
     SPELL_MIND_FLAY = 57941,
     SPELL_SHADOW_BOLT_VOLLEY = 57942,
@@ -70,6 +70,9 @@ enum VolazjSpells
     SPELL_WHISPER_DEATH_2 = 60297,
 
     SPELL_TWISTED_VISAGE_VISUAL = 57551,
+    SPELL_TWISTED_VISAGE_VISUAL_WEAPON = 41054,
+    SPELL_TWISTED_VISAGE_VISUAL_RANGED_WEAPON = 57594,
+    SPELL_TWISTED_VISAGE_VISUAL_OFFHAND_WEAPON = 45205,
     SPELL_TWISTED_VISAGE_DEATH = 57555,
 
     // Death Knight
@@ -82,6 +85,7 @@ enum VolazjSpells
     SPELL_TWISTED_VISAGE_CAT_FORM = 57655,
     SPELL_TWISTED_VISAGE_MANGLE = 57657,
     SPELL_TWISTED_VISAGE_RIP = 57661,
+    SPELL_TWISTED_VISAGE_INVISIBILITY_AND_STEALTH_DETECTION = 18950,
     SPELL_TWISTED_VISAGE_NOURISH = 57765,
     // Hunter
     SPELL_TWISTED_VISAGE_SHOOT = 57589,
@@ -219,7 +223,7 @@ struct boss_volazj : public BossAI
             if (!_insanityHandled)
             {
                 // Channel visual
-                DoCast(me, INSANITY_VISUAL, true);
+                DoCast(me, SPELL_INSANITY_VISUAL, true);
                 Talk(SAY_INSANITY);
                 DoCastSelf(SPELL_WHISPER_INSANITY, true);
                 // Unattackable
@@ -240,10 +244,14 @@ struct boss_volazj : public BossAI
                 {
                     // clone
                     player->CastSpell(summon, SPELL_CLONE_PLAYER, true);
+                    player->CastSpell(summon, SPELL_TWISTED_VISAGE_VISUAL_WEAPON, true);
+                    player->CastSpell(summon, SPELL_TWISTED_VISAGE_VISUAL_RANGED_WEAPON, true);
+                    player->CastSpell(summon, SPELL_TWISTED_VISAGE_VISUAL_OFFHAND_WEAPON, true);
                     summon->GetAI()->SetData(DATA_TWISTED_VISAGE_PLAYER_CLASS, player->GetClass());
                     summon->GetAI()->SetData(DATA_TWISTED_VISAGE_PLAYER_SPEC, Trinity::Helpers::Entity::GetPlayerSpecialization(player));
-                    summon->SetReactState(REACT_AGGRESSIVE);
-                    DoZoneInCombat(summon);
+                    summon->SetReactState(REACT_PASSIVE);
+                    summon->EngageWithTarget(player);
+                    SetAggressiveStateAfter(2s, summon, true);
                     // set phase
                     summon->SetPhaseMask((1 << (4 + _insanityHandled)), true);
                 }
@@ -346,7 +354,7 @@ struct boss_volazj : public BossAI
             _insanityHandled = 0;
             me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
             me->SetControlled(false, UNIT_STATE_STUNNED);
-            me->RemoveAurasDueToSpell(INSANITY_VISUAL);
+            me->RemoveAurasDueToSpell(SPELL_INSANITY_VISUAL);
         }
 
         scheduler.Update(diff, [this]
@@ -478,7 +486,7 @@ struct npc_twisted_visage : public ScriptedAI
                             }).Schedule(5s, [this](TaskContext harmstring)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_HAMSTRING);
-                                harmstring.Repeat(5s, 10s);
+                                harmstring.Repeat(7s, 15s);
                             });
                             break;
                         default:
@@ -502,7 +510,7 @@ struct npc_twisted_visage : public ScriptedAI
                             _scheduler.Schedule(5s, [this](TaskContext thunderClap)
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_THUNDER_CLAP);
-                                thunderClap.Repeat(5s, 10s);
+                                thunderClap.Repeat(7s, 15s);
                             }).Schedule(3s, [this](TaskContext devastate)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_DEVASTATE);
@@ -522,7 +530,7 @@ struct npc_twisted_visage : public ScriptedAI
                             }).Schedule(2s, [this](TaskContext avengersShield)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_AVENGER__S_SHIELD);
-                                avengersShield.Repeat(5s, 10s);
+                                avengersShield.Repeat(7s, 15s);
                             });
                             break;
                         default:
@@ -530,7 +538,7 @@ struct npc_twisted_visage : public ScriptedAI
                             _scheduler.Schedule(5s, [this](TaskContext consecration)
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_CONSECRATION);
-                                consecration.Repeat(5s, 10s);
+                                consecration.Repeat(7s, 15s);
                             }).Schedule(2s, [this](TaskContext /*sealCommand*/)
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_SEAL_OF_COMMAND);
@@ -563,7 +571,7 @@ struct npc_twisted_visage : public ScriptedAI
                     _scheduler.Schedule(5s, [this](TaskContext eviscerate)
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_EVISCERATE);
-                        eviscerate.Repeat(5s, 10s);
+                        eviscerate.Repeat(7s, 15s);
                     }).Schedule(2s, [this](TaskContext sinisterStrike)
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_SINISTER_STRIKE);
@@ -577,7 +585,7 @@ struct npc_twisted_visage : public ScriptedAI
                             _scheduler.Schedule(5s, [this](TaskContext shadowWordPain)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_SHADOW_WORD_PAIN);
-                                shadowWordPain.Repeat(5s, 10s);
+                                shadowWordPain.Repeat(7s, 15s);
                             }).Schedule(2s, [this](TaskContext mindFlay)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_MIND_FLAY);
@@ -672,7 +680,7 @@ struct npc_twisted_visage : public ScriptedAI
                     _scheduler.Schedule(5s, [this](TaskContext frostNova)
                     {
                         DoCastSelf(SPELL_TWISTED_VISAGE_FROST_NOVA);
-                        frostNova.Repeat(5s, 10s);
+                        frostNova.Repeat(7s, 15s);
                     }).Schedule(2s, [this](TaskContext fireball)
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_FIREBALL);
@@ -708,6 +716,7 @@ struct npc_twisted_visage : public ScriptedAI
                             _scheduler.Schedule(1ms, [this](TaskContext /*catForm*/)
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_CAT_FORM);
+                                DoCastSelf(SPELL_TWISTED_VISAGE_INVISIBILITY_AND_STEALTH_DETECTION);
                             }).Schedule(2s, [this](TaskContext mangle)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_MANGLE);
