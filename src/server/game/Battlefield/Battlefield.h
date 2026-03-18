@@ -67,6 +67,7 @@ public:
 
     // Called on battlefield creation
     virtual bool SetupBattlefield();
+    virtual void ChangeTeams(PvPTeamId newControllingTeam);
     virtual void Update(uint32 diff);
     // Called when a player enters the battlefield zone
     virtual void HandlePlayerEnterZone(Player* player);

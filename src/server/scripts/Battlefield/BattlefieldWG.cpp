@@ -96,6 +96,14 @@ bool BattlefieldWintergrasp::SetupBattlefield()
     return true;
 }
 
+void BattlefieldWintergrasp::ChangeTeams(PvPTeamId newControllingTeam)
+{
+    Battlefield::ChangeTeams(newControllingTeam);
+
+    for (WintergraspBuildingContainer::value_type& buildingPair : _buildings)
+        buildingPair.second->InitializeState();
+}
+
 void BattlefieldWintergrasp::OnCreatureCreate(Creature* object)
 {
     switch (object->GetEntry())

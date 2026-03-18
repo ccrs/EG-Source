@@ -301,6 +301,7 @@ public:
     ~BattlefieldWintergrasp();
 
     bool SetupBattlefield() override;
+    void ChangeTeams(PvPTeamId newControllingTeam) override;
     void OnCreatureCreate(Creature* object) override;
     void OnCreatureRemove(Creature* object) override;
     void OnGameObjectCreate(GameObject* object) override;

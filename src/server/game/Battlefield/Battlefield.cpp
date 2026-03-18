@@ -39,6 +39,14 @@ bool Battlefield::SetupBattlefield()
     return true;
 }
 
+void Battlefield::ChangeTeams(PvPTeamId newControllingTeam)
+{
+    _controllingTeam = newControllingTeam;
+
+    for (BattlefieldGraveyardContainer::value_type& graveyardPair : _graveyards)
+        graveyardPair.second->InitializeState();
+}
+
 void Battlefield::Update(uint32 diff)
 {
     _resurrectionTimer.Update(diff);
