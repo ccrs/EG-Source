@@ -25,7 +25,8 @@
 #include "WorldStatePackets.h"
 #include <algorithm>
 
-Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) : _mapId(0), _enabled(false), _resurrectionBaseTimer(30 * IN_MILLISECONDS), _battleId(battleId), _zoneId(zoneId), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0), _resurrectionTimer(_resurrectionBaseTimer)
+Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) :
+    _mapId(0), _enabled(false), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0), _battleId(battleId), _zoneId(zoneId), _resurrectionBaseTimer(30 * IN_MILLISECONDS), _resurrectionTimer(_resurrectionBaseTimer)
 {
 }
 

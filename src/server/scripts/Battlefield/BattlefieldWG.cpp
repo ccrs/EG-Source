@@ -20,6 +20,7 @@
 #include "GameObject.h"
 #include "GameTime.h"
 #include "Player.h"
+#include "World.h"
 #include "WorldPacket.h"
 #include "WorldStatePackets.h"
 #include <vector>
@@ -66,6 +67,19 @@ static std::vector<BattlefieldGraveyardInfo> const wintergraspGraveyardInfo =
 
 BattlefieldWintergrasp::BattlefieldWintergrasp() : Battlefield(BATTLEFIELD_BATTLEID_WINTERGRASP, BATTLEFIELD_ZONEID_WINTERGRASP)
 {
+}
+
+BattlefieldWintergrasp::~BattlefieldWintergrasp()
+{
+}
+
+bool BattlefieldWintergrasp::SetupBattlefield()
+{
+    SetMapId(MAPID_WINTERGRASP);
+    _enabled = /*sWorld->getBoolConfig(CONFIG_WINTERGRASP_ENABLE)*/false;
+    _active = /*sWorld->getWorldState(WORLDSTATE_WINTERGRASP_SHOW_NOWAR_TIMER) != 0*/false;
+    _controllingTeam = PvPTeamId(sWorld->getWorldState(WORLDSTATE_WINTERGRASP_CONTROLLING_TEAM));
+
     for (auto itr = wintergraspBuildingInfo.begin(); itr != wintergraspBuildingInfo.end(); ++itr)
     {
         WintergraspBuildingPointer building = std::make_unique<WintergraspBuilding>(this, *itr);
@@ -77,16 +91,6 @@ BattlefieldWintergrasp::BattlefieldWintergrasp() : Battlefield(BATTLEFIELD_BATTL
         WintergraspGraveyardPointer graveyard = std::make_unique<WintergraspGraveyard>(this, *itr);
         EmplaceGraveyard(itr->Id, std::move(graveyard));
     }
-}
-
-BattlefieldWintergrasp::~BattlefieldWintergrasp()
-{
-}
-
-bool BattlefieldWintergrasp::SetupBattlefield()
-{
-    SetMapId(MAPID_WINTERGRASP);
-    _enabled = /*sWorld->getBoolConfig(CONFIG_WINTERGRASP_ENABLE)*/false;
     return true;
 }
 

@@ -119,17 +119,17 @@ public:
 protected:
     uint32 _mapId;
     bool _enabled;
-    uint32 _resurrectionBaseTimer;
+    bool _active;
+    PvPTeamId _controllingTeam;
+    CountdownTimer _timer;
 
 private:
     // constant information
     BattlefieldBattleId _battleId;
     uint32 _zoneId;
 
-    bool _active;
-    PvPTeamId _controllingTeam;
-    CountdownTimer _timer;
     BattlefieldGraveyardContainer _graveyards;
+    uint32 _resurrectionBaseTimer;
     CountdownTimer _resurrectionTimer;
 };
 
