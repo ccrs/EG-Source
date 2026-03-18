@@ -355,6 +355,7 @@ void WintergraspBuilding::InitializeState()
         case WORLDSTATE_WINTERGRASP_TOWER_2:
         case WORLDSTATE_WINTERGRASP_TOWER_3:
             State = Battle->GetControllingTeam() == PVP_TEAM_HORDE ? BATTLEFIELD_BUILDING_STATE_ALLIANCE_INTACT : BATTLEFIELD_BUILDING_STATE_HORDE_INTACT;
+            break;
         default:
             State = Battle->GetControllingTeam() == PVP_TEAM_HORDE ? BATTLEFIELD_BUILDING_STATE_HORDE_INTACT : BATTLEFIELD_BUILDING_STATE_ALLIANCE_INTACT;
             break;
@@ -416,7 +417,7 @@ void WintergraspGraveyard::InitializeState()
         case GRAVEYARD_WORKSHOP_NW:
         case GRAVEYARD_WORKSHOP_SE:
         case GRAVEYARD_WORKSHOP_SW:
-            State = Battle->GetControllingTeam() == PVP_TEAM_HORDE ? BATTLEFIELD_GRAVEYARD_STATE_ALLIANCE : BATTLEFIELD_GRAVEYARD_STATE_HORDE;
+            State = BATTLEFIELD_GRAVEYARD_STATE_NEUTRAL;
             break;
         case GRAVEYARD_KEEP:
             State = Battle->GetControllingTeam() == PVP_TEAM_HORDE ? BATTLEFIELD_GRAVEYARD_STATE_HORDE : BATTLEFIELD_GRAVEYARD_STATE_ALLIANCE;
