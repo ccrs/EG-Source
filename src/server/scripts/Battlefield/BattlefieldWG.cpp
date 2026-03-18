@@ -217,8 +217,8 @@ void BattlefieldWintergrasp::FillInitialWorldStates(WorldPackets::WorldState::In
 
     uint32 timer = 0;
     if (IsWarTime())
-        timer = GetTimer() / 1000;
-    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_TIME_TO_END, GameTime::GetGameTime() + timer); // 3781
+        timer = GameTime::GetGameTime() + (GetTimer() / uint32(1000));
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_TIME_TO_END, timer); // 3781
 
     for (WintergraspBuildingContainer::value_type const& building : _buildings)
         building.second->FillInitialWorldStates(packet);
