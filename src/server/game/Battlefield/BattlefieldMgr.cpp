@@ -85,10 +85,8 @@ void BattlefieldMgr::Update(uint32 diff)
         return;
 
     for (BattlefieldContainer::value_type const& value : _battlefieldContainer)
-    {
-        if (value.second->IsEnabled())
-            value.second->Update(_updateTimer);
-    }
+        value.second->Update(_updateTimer);
+
     _updateTimer = 0;
 }
 
