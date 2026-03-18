@@ -70,7 +70,7 @@ void Battlefield::HandlePlayerLeaveZone(Player* player)
     _playerGUIDs.erase(player->GetGUID());
 }
 
-void Battlefield::UpdateAreaDependentAuras()
+void Battlefield::SendUpdateToPlayers()
 {
     Map* battleMap = sMapMgr->FindMap(_mapId, 0);
     for (auto itr = _playerGUIDs.begin(); itr != _playerGUIDs.end();)
@@ -81,6 +81,7 @@ void Battlefield::UpdateAreaDependentAuras()
             {
                 player->UpdateAreaDependentAuras(player->GetAreaId());
                 player->UpdateZoneDependentAuras(player->GetZoneId());
+                SendInitWorldStatesTo(player);
             }
             ++itr;
         }

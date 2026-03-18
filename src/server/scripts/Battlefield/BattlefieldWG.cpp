@@ -115,7 +115,7 @@ void BattlefieldWintergrasp::ChangeTeams(PvPTeamId newControllingTeam)
     for (WintergraspBuildingContainer::value_type& buildingPair : _buildings)
         buildingPair.second->InitializeState();
 
-    UpdateAreaDependentAuras();
+    SendUpdateToPlayers();
 }
 
 void BattlefieldWintergrasp::OnCreatureCreate(Creature* object)

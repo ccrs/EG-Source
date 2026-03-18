@@ -92,7 +92,7 @@ public:
     virtual bool IsSpellAreaAllowed(uint32 /*spellId*/, Player const* /*player*/, uint32 /*newArea*/) const { return false; }
 
     void SendInitWorldStatesTo(Player* player);
-    void UpdateAreaDependentAuras();
+    void SendUpdateToPlayers();
 
     void EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer);
     BattlefieldGraveyard* GetGraveyard(uint8 graveyardId);
