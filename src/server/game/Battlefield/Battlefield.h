@@ -75,11 +75,11 @@ public:
     // Called when a player inside the battlefield zone kills a unit
     virtual void HandleKill(Player* /*killer*/, Unit* /*victim*/) { }
     // Called when a player queries a gossip from a spirit healer
-    virtual void HandleAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid source);
+    virtual void SendAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid source);
     // Called when a player moves into a resurrection queue
-    virtual void HandleAddPlayerToResurrectionQueue(Player* player, ObjectGuid source);
+    virtual void AddPlayerToResurrectionQueue(Player* player, ObjectGuid source);
     // Called when a player moves out of a resurrection queue
-    virtual void HandleRemovePlayerFromResurrectionQueue(Player* player);
+    virtual void RemovePlayerFromResurrectionQueue(Player* player);
     virtual void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& /*packet*/) { }
     virtual void SendGlobalWorldStates(Player const* /*player*/) const { }
     // Can players inside the battlefield zone use ground mounts?

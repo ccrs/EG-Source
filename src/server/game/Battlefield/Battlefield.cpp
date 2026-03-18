@@ -56,7 +56,7 @@ void Battlefield::HandlePlayerLeaveZone(Player* /*player*/)
 {
 }
 
-void Battlefield::HandleAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid source)
+void Battlefield::SendAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid source)
 {
     WorldPackets::Battleground::AreaSpiritHealerTime areaSpiritHealerTime;
     areaSpiritHealerTime.HealerGuid = source;
@@ -64,7 +64,7 @@ void Battlefield::HandleAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid s
     player->SendDirectMessage(areaSpiritHealerTime.Write());
 }
 
-void Battlefield::HandleAddPlayerToResurrectionQueue(Player* player, ObjectGuid source)
+void Battlefield::AddPlayerToResurrectionQueue(Player* player, ObjectGuid source)
 {
     auto itr = std::find_if(_graveyards.begin(), _graveyards.end(), [&](BattlefieldGraveyardContainer::value_type const& pair) -> bool
     {
@@ -74,7 +74,7 @@ void Battlefield::HandleAddPlayerToResurrectionQueue(Player* player, ObjectGuid 
         itr->second->AddPlayerToResurrectionQueue(player);
 }
 
-void Battlefield::HandleRemovePlayerFromResurrectionQueue(Player* player)
+void Battlefield::RemovePlayerFromResurrectionQueue(Player* player)
 {
     for (BattlefieldGraveyardContainer::value_type const& pair : _graveyards)
         pair.second->RemovePlayerFromResurrectionQueue(player);

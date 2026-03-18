@@ -527,7 +527,7 @@ class spell_wintergrasp_waiting_to_resurrect : public AuraScript
             return;
 
         if (Battlefield* wintergrasp = sBattlefieldMgr->GetBattlefield(owner->GetZoneId()))
-            wintergrasp->HandleRemovePlayerFromResurrectionQueue(owner->ToPlayer());
+            wintergrasp->RemovePlayerFromResurrectionQueue(owner->ToPlayer());
     }
 
     void Register() override
