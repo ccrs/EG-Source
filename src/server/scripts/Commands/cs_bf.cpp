@@ -79,6 +79,7 @@ public:
         }
         else
             battlefield->ChangeTeams(battlefield->GetControllingTeam() == PVP_TEAM_ALLIANCE ? PVP_TEAM_HORDE : PVP_TEAM_ALLIANCE);
+        handler->PSendSysMessage("Battlefield: %u switched to team %u", battleId, battlefield->GetControllingTeam());
         return true;
     }
 
