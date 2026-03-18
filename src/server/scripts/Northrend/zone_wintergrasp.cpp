@@ -36,6 +36,7 @@
 #include "Timer.h"
 #include "Unit.h"
 #include "Vehicle.h"
+#include "WorldSession.h"
 #include <vector>
 
 enum ZoneWintergraspNPCTexts
@@ -259,9 +260,11 @@ struct npc_wg_spirit_guide : public ScriptedAI
         if (_graveyardId)
             if (BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP)))
                 for (uint8 itr = GRAVEYARD_WORKSHOP_NE; itr <= GRAVEYARD_ALLIANCE; ++itr)
-                    if (BattlefieldGraveyard const* graveyard = wintergrasp->GetGraveyard(itr))
-                        if (TeamIdByPvPTeamId(graveyard->GetPvPTeamId()) == player->GetTeamId())
-                            AddGossipItemFor(player, graveyard->TextId, GOSSIP_OPTION_GOSSIP, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + itr);
+                {
+                    if (BattlefieldGraveyard const* targetGraveyard = wintergrasp->GetGraveyard(itr))
+                        if (TeamIdByPvPTeamId(targetGraveyard->GetPvPTeamId()) == player->GetTeamId())
+                            AddGossipItemFor(player, GOSSIP_ICON_CHAT, player->GetSession()->GetTrinityString(targetGraveyard->TextId), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + itr);
+                }
 
         SendGossipMenuFor(player, player->GetGossipTextId(me), me->GetGUID());
         return true;
