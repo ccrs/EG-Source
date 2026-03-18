@@ -269,6 +269,7 @@ public:
 
     void OnObjectCreate(WorldObject* object) override;
     void OnObjectRemove(WorldObject* object) override;
+    void InitializeState() override;
 };
 
 class WintergraspCapturePoint : public BattlefieldCapturePoint
@@ -279,6 +280,7 @@ public:
 
     void OnObjectCreate(WorldObject* object) override;
     void OnObjectRemove(WorldObject* object) override;
+    void InitializeState() override;
 };
 
 class WintergraspGraveyard : public BattlefieldGraveyard
@@ -289,6 +291,7 @@ public:
 
     void OnObjectCreate(WorldObject* object) override;
     void OnObjectRemove(WorldObject* object) override;
+    void InitializeState() override;
 };
 
 class TC_GAME_API BattlefieldWintergrasp : public Battlefield

@@ -83,12 +83,14 @@ bool BattlefieldWintergrasp::SetupBattlefield()
     for (auto itr = wintergraspBuildingInfo.begin(); itr != wintergraspBuildingInfo.end(); ++itr)
     {
         WintergraspBuildingPointer building = std::make_unique<WintergraspBuilding>(this, *itr);
+        building->InitializeState();
         _buildings.emplace(itr->Info.GetNeutralObjectEntry(), std::move(building));
     }
 
     for (auto itr = wintergraspGraveyardInfo.begin(); itr != wintergraspGraveyardInfo.end(); ++itr)
     {
         WintergraspGraveyardPointer graveyard = std::make_unique<WintergraspGraveyard>(this, *itr);
+        graveyard->InitializeState();
         EmplaceGraveyard(itr->Id, std::move(graveyard));
     }
     return true;
@@ -313,6 +315,11 @@ void WintergraspBuilding::OnObjectRemove(WorldObject* object)
     BattlefieldBuilding::OnObjectRemove(object);
 }
 
+void WintergraspBuilding::InitializeState()
+{
+    State = Battle->GetControllingTeam() == PVP_TEAM_HORDE ? BATTLEFIELD_BUILDING_STATE_HORDE_INTACT : BATTLEFIELD_BUILDING_STATE_ALLIANCE_INTACT;
+}
+
 WintergraspCapturePoint::WintergraspCapturePoint(Battlefield* battlefield, BattlefieldEntityInfo const info) : BattlefieldCapturePoint(battlefield, info)
 {
 }
@@ -333,6 +340,10 @@ void WintergraspCapturePoint::OnObjectRemove(WorldObject* object)
     BattlefieldCapturePoint::OnObjectRemove(object);
 }
 
+void WintergraspCapturePoint::InitializeState()
+{
+}
+
 WintergraspGraveyard::WintergraspGraveyard(Battlefield* battlefield, BattlefieldGraveyardInfo const info) : BattlefieldGraveyard(battlefield, info)
 {
 }
@@ -351,6 +362,30 @@ void WintergraspGraveyard::OnObjectRemove(WorldObject* object)
         return;
 
     BattlefieldGraveyard::OnObjectRemove(object);
+}
+
+void WintergraspGraveyard::InitializeState()
+{
+    switch (Id)
+    {
+        case GRAVEYARD_WORKSHOP_NE:
+        case GRAVEYARD_WORKSHOP_NW:
+        case GRAVEYARD_WORKSHOP_SE:
+        case GRAVEYARD_WORKSHOP_SW:
+            State = Battle->GetControllingTeam() == PVP_TEAM_HORDE ? BATTLEFIELD_GRAVEYARD_STATE_ALLIANCE : BATTLEFIELD_GRAVEYARD_STATE_HORDE;
+            break;
+        case GRAVEYARD_KEEP:
+            State = Battle->GetControllingTeam() == PVP_TEAM_HORDE ? BATTLEFIELD_GRAVEYARD_STATE_HORDE : BATTLEFIELD_GRAVEYARD_STATE_ALLIANCE;
+            break;
+        case GRAVEYARD_HORDE:
+            State = BATTLEFIELD_GRAVEYARD_STATE_HORDE;
+            break;
+        case GRAVEYARD_ALLIANCE:
+            State = BATTLEFIELD_GRAVEYARD_STATE_ALLIANCE;
+            break;
+        default:
+            break;
+    }
 }
 
 class BattlefieldWintergraspScript : public BattlefieldScript

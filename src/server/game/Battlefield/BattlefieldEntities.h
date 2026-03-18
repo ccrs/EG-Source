@@ -114,6 +114,7 @@ public:
     virtual void Update(uint32 /*diff*/) { }
     virtual PvPTeamId GetPvPTeamId() const { return PVP_TEAM_NEUTRAL; }
     virtual void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet);
+    virtual void InitializeState() { }
 
     bool ValidateObjectEntry(uint32 entry) const { return Info.ValidateObjectEntry(entry); }
     bool ValidateObjectGUID(ObjectGuid reference) const;
