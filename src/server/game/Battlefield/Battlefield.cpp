@@ -21,6 +21,8 @@
 #include "DBCStores.h"
 #include "MapManager.h"
 #include "Player.h"
+#include "WorldPacket.h"
+#include "WorldStatePackets.h"
 #include <algorithm>
 
 Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) : _mapId(0), _enabled(false), _resurrectionBaseTimer(30 * IN_MILLISECONDS), _battleId(battleId), _zoneId(zoneId), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0), _resurrectionTimer(_resurrectionBaseTimer)
@@ -78,6 +80,17 @@ void Battlefield::RemovePlayerFromResurrectionQueue(Player* player)
 {
     for (BattlefieldGraveyardContainer::value_type const& pair : _graveyards)
         pair.second->RemovePlayerFromResurrectionQueue(player);
+}
+
+void Battlefield::SendInitWorldStatesTo(Player* player)
+{
+    WorldPackets::WorldState::InitWorldStates packet;
+    packet.MapID = _mapId;
+    packet.AreaID = _zoneId;
+    packet.SubareaID = player->GetAreaId();
+    FillInitialWorldStates(packet);
+
+    player->SendDirectMessage(packet.Write());
 }
 
 void Battlefield::EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer)

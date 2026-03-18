@@ -89,6 +89,8 @@ public:
     // Is the referenced SpellArea spellId allowed for the referenced player and newArea?
     virtual bool IsSpellAreaAllowed(uint32 /*spellId*/, Player const* /*player*/, uint32 /*newArea*/) const { return false; }
 
+    void SendInitWorldStatesTo(Player* player);
+
     void EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer);
     BattlefieldGraveyardPointer& GetGraveyard(uint8 graveyardId);
 
