@@ -22,6 +22,8 @@
 #include "Object.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
+#include "WorldPacket.h"
+#include "WorldStatePackets.h"
 #include <algorithm>
 
 bool BattlefieldEntityInfo::ValidateObjectEntry(uint32 entry) const
@@ -63,6 +65,11 @@ void BattlefieldEntity::OnObjectRemove(WorldObject* object)
     }
 }
 
+void BattlefieldEntity::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
+{
+    packet.Worldstates.emplace_back(Info.WorldState, 0);
+}
+
 bool BattlefieldEntity::ValidateObjectGUID(ObjectGuid reference) const
 {
     return std::any_of(ObjectGUIDsByPvPTeamId.begin(), ObjectGUIDsByPvPTeamId.end(), [&](std::unordered_map<PvPTeamId, GuidUnorderedSet>::value_type pair) -> bool
@@ -92,6 +99,11 @@ PvPTeamId BattlefieldBuilding::GetPvPTeamId() const
     }
 }
 
+void BattlefieldBuilding::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
+{
+    packet.Worldstates.emplace_back(Info.WorldState, State);
+}
+
 BattlefieldCapturePoint::BattlefieldCapturePoint(Battlefield* battlefield, BattlefieldEntityInfo const info) : BattlefieldEntity(battlefield, info), State(BATTLEFIELD_CAPTUREPOINT_STATE_NEUTRAL)
 {
 }
@@ -109,6 +121,11 @@ PvPTeamId BattlefieldCapturePoint::GetPvPTeamId() const
         default:
             return PVP_TEAM_NEUTRAL;
     }
+}
+
+void BattlefieldCapturePoint::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
+{
+    packet.Worldstates.emplace_back(Info.WorldState, State);
 }
 
 BattlefieldGraveyard::BattlefieldGraveyard(Battlefield* battlefield, BattlefieldGraveyardInfo const info) : BattlefieldEntity(battlefield, info.Info), Id(info.Id), WorldSafeLocsEntryId(info.WorldSafeLocsEntryId), TextId(info.TextId), State(BATTLEFIELD_GRAVEYARD_STATE_NEUTRAL)
@@ -167,4 +184,9 @@ PvPTeamId BattlefieldGraveyard::GetPvPTeamId() const
         default:
             return PVP_TEAM_NEUTRAL;
     }
+}
+
+void BattlefieldGraveyard::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
+{
+    packet.Worldstates.emplace_back(Info.WorldState, State);
 }

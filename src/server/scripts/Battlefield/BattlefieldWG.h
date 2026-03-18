@@ -199,8 +199,8 @@ enum WintergraspWorldstates
     WORLDSTATE_WINTERGRASP_VEHICLE_ALLIANCE = 3680,
     WORLDSTATE_WINTERGRASP_MAX_VEHICLE_ALLIANCE = 3681,
 
-    WORLDSTATE_WINTERGRASP_DEFENDER_HORDE = 3802,
-    WORLDSTATE_WINTERGRASP_DEFENDER_ALLIANCE = 3803,
+    WORLDSTATE_WINTERGRASP_CONTROLLING_TEAM = 3802,
+    WORLDSTATE_WINTERGRASP_ATTACKING_TEAM = 3803,
 
     WORLDSTATE_WINTERGRASP_TIMES_ATTACKED_HORDE = 4022,
     WORLDSTATE_WINTERGRASP_TIMES_ATTACKED_ALLIANCE = 4023,
@@ -249,6 +249,14 @@ enum WintergraspWorldSafeLocs
 
 static uint32 constexpr MAPID_WINTERGRASP = 571; // Northrend
 
+namespace WorldPackets
+{
+    namespace WorldState
+    {
+        class InitWorldStates;
+    }
+}
+
 class Creature;
 class GameObject;
 class WorldObject;
@@ -294,6 +302,7 @@ public:
     void OnCreatureRemove(Creature* object) override;
     void OnGameObjectCreate(GameObject* object) override;
     void OnGameObjectRemove(GameObject* object) override;
+    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void SendGlobalWorldStates(Player const* player) const override;
 
     bool IsFlyingMountAllowed() const override { return !IsEnabled() || (IsEnabled() && !IsWarTime()); }

@@ -95,6 +95,14 @@ struct BattlefieldEntityInfo
     std::unordered_map<PvPTeamId, std::vector<uint32 /*entry*/>> ObjectEntriesByPvPTeamId;
 };
 
+namespace WorldPackets
+{
+    namespace WorldState
+    {
+        class InitWorldStates;
+    }
+}
+
 class BattlefieldEntity
 {
 public:
@@ -105,6 +113,7 @@ public:
     virtual void OnObjectRemove(WorldObject* object);
     virtual void Update(uint32 /*diff*/) { }
     virtual PvPTeamId GetPvPTeamId() const { return PVP_TEAM_NEUTRAL; }
+    virtual void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet);
 
     bool ValidateObjectEntry(uint32 entry) const { return Info.ValidateObjectEntry(entry); }
     bool ValidateObjectGUID(ObjectGuid reference) const;
@@ -130,6 +139,7 @@ public:
     virtual ~BattlefieldBuilding() { }
 
     PvPTeamId GetPvPTeamId() const override;
+    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
 
     bool IsIntact() const { return State == BATTLEFIELD_BUILDING_STATE_NEUTRAL_INTACT || State == BATTLEFIELD_BUILDING_STATE_HORDE_INTACT || State == BATTLEFIELD_BUILDING_STATE_ALLIANCE_INTACT; }
     bool IsDestroyed() const { return State == BATTLEFIELD_BUILDING_STATE_NEUTRAL_DESTROYED || State == BATTLEFIELD_BUILDING_STATE_HORDE_DESTROYED || State == BATTLEFIELD_BUILDING_STATE_ALLIANCE_DESTROYED; }
@@ -147,6 +157,7 @@ public:
     virtual ~BattlefieldCapturePoint() { }
 
     PvPTeamId GetPvPTeamId() const override;
+    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
 
     BattlefieldCapturePointState State;
 };
@@ -172,6 +183,7 @@ public:
     void ResurrectPlayers();
 
     PvPTeamId GetPvPTeamId() const override;
+    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     uint16 GetWorldSafeLocsEntryId() const { return WorldSafeLocsEntryId; }
 
     uint8 Id;

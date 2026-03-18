@@ -20,6 +20,8 @@
 #include "GameObject.h"
 #include "GameTime.h"
 #include "Player.h"
+#include "WorldPacket.h"
+#include "WorldStatePackets.h"
 #include <vector>
 
 static std::vector<BattlefieldBuildingInfo> const wintergraspBuildingInfo =
@@ -190,6 +192,23 @@ void BattlefieldWintergrasp::OnGameObjectRemove(GameObject* object)
         default:
             break;
     }
+}
+
+void BattlefieldWintergrasp::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
+{
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_SHOW_WAR_TIMER, IsWarTime() ? 1 : 0); // 3710
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_SHOW_NOWAR_TIMER, IsWarTime() ? 0 : 1); // 3801
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_CONTROLLING_TEAM, GetControllingTeam()); // 3802
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_ATTACKING_TEAM, GetAttackingTeam()); // 3803
+
+    uint32 timer = 0;
+    if (IsWarTime())
+        timer = GetTimer() / 1000;
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_TIME_TO_END, GameTime::GetGameTime() + timer); // 3781
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE, GameTime::GetGameTime() + timer); // 4354
+
+    for (WintergraspBuildingContainer::value_type const& building : _buildings)
+        building.second->FillInitialWorldStates(packet);
 }
 
 void BattlefieldWintergrasp::SendGlobalWorldStates(Player const* player) const
