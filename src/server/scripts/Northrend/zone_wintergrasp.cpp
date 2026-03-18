@@ -21,6 +21,7 @@
 #include "Battlefield/BattlefieldWG.h"
 #include "ConditionMgr.h"
 #include "Creature.h"
+#include "DBCStores.h"
 #include "DBCStructure.h"
 #include "GameObject.h"
 #include "GameObjectAI.h"
@@ -255,14 +256,28 @@ struct npc_wg_spirit_guide : public ScriptedAI
         if (me->IsQuestGiver())
             player->PrepareQuestMenu(me->GetGUID());
 
+        if (_graveyardId)
+            if (BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP)))
+                for (uint8 itr = GRAVEYARD_WORKSHOP_NE; itr <= GRAVEYARD_ALLIANCE; ++itr)
+                    if (BattlefieldGraveyard const* graveyard = wintergrasp->GetGraveyard(itr))
+                        if (TeamIdByPvPTeamId(graveyard->GetPvPTeamId()) == player->GetTeamId())
+                            AddGossipItemFor(player, graveyard->TextId, GOSSIP_OPTION_GOSSIP, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + itr);
+
         SendGossipMenuFor(player, player->GetGossipTextId(me), me->GetGUID());
         return true;
     }
 
     bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
     {
-        /*uint32 const action = */player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
+        uint32 const action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
         CloseGossipMenuFor(player);
+
+        if (_graveyardId)
+            if (BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP)))
+                if (BattlefieldGraveyard const* graveyard = wintergrasp->GetGraveyard(action - GOSSIP_ACTION_INFO_DEF))
+                    if (TeamIdByPvPTeamId(graveyard->GetPvPTeamId()) == player->GetTeamId())
+                        if (WorldSafeLocsEntry const* safeLoc = sWorldSafeLocsStore.LookupEntry(graveyard->GetWorldSafeLocsEntryId()))
+                            player->TeleportTo(safeLoc->Continent, safeLoc->Loc.X, safeLoc->Loc.Y, safeLoc->Loc.Z, me->GetOrientation(), 0);
         return true;
     }
 private:
