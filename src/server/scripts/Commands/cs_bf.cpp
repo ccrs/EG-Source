@@ -16,6 +16,8 @@
  */
 
 #include "ScriptMgr.h"
+#include "Battlefield.h"
+#include "BattlefieldMgr.h"
 #include "Chat.h"
 #include "RBAC.h"
 
@@ -59,8 +61,24 @@ public:
         return true;
     }
 
-    static bool HandleBattlefieldSwitch(ChatHandler* /*handler*/)
+    static bool HandleBattlefieldSwitch(ChatHandler* handler, uint8 battleId, Optional<uint8> newControllingTeam)
     {
+        if (battleId == 0 || battleId >= BattlefieldBattleId::BATTLEFIELD_BATTLEID_MAX)
+            return false;
+        Battlefield* battlefield = sBattlefieldMgr->GetBattlefield(BattlefieldBattleId(battleId));
+        if (!battlefield)
+            return false;
+
+        if (newControllingTeam)
+        {
+            PvPTeamId teamId = PvPTeamId(*newControllingTeam);
+            if (teamId != PVP_TEAM_ALLIANCE && teamId != PVP_TEAM_HORDE)
+                return false;
+
+            battlefield->ChangeTeams(teamId);
+        }
+        else
+            battlefield->ChangeTeams(battlefield->GetControllingTeam() == PVP_TEAM_ALLIANCE ? PVP_TEAM_HORDE : PVP_TEAM_ALLIANCE);
         return true;
     }
 
