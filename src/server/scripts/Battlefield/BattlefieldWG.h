@@ -309,6 +309,8 @@ public:
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void SendGlobalWorldStates(Player const* player) const override;
 
+    uint8 GetWintergraspGraveyardId(Creature* creature) const;
+
     bool IsFlyingMountAllowed() const override { return !IsEnabled() || (IsEnabled() && !IsWarTime()); }
     bool IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 newArea) const override;
 
@@ -321,8 +323,6 @@ private:
 
     BattlefieldWintergrasp(BattlefieldWintergrasp const&) = delete;
     BattlefieldWintergrasp& operator=(BattlefieldWintergrasp const&) = delete;
-
-    uint8 GetWintergraspGraveyardId(Creature* creature) const;
 
     WintergraspBuildingContainer _buildings;
 };

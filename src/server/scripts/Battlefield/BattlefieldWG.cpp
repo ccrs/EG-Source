@@ -238,38 +238,6 @@ void BattlefieldWintergrasp::SendGlobalWorldStates(Player const* player) const
     player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE, timer); // 4354
 }
 
-bool BattlefieldWintergrasp::IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 /*newArea*/) const
-{
-    if (!player)
-        return false;
-
-    switch (spellId)
-    {
-        case SPELL_WINTERGRASP_RESTRICTED_FLIGHT_AREA:
-            if (IsFlyingMountAllowed() || (!player->HasAuraType(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED) && !player->HasAuraType(SPELL_AURA_FLY)))
-                return false;
-            break;
-        case SPELL_WINTERGRASP_ESSENCE_OF_WINTERGRASP:
-            return IsEnabled() && (player->GetTeamId() == GetControllingTeamId()) && !IsWarTime();
-        case SPELL_WINTERGRASP_ESSENCE_OF_WINTERGRASP_NORTHREND:
-            return false;
-        case SPELL_WINTERGRASP_BATTLEGROUND_DAMPENING:
-            return IsEnabled() && IsWarTime();
-        case SPELL_WINTERGRASP_ALLIANCE_CONTROLS_FACTORY_PHASE_SHIFT:
-            return player->GetTeamId() != GetControllingTeamId() && player->GetTeamId() == TEAM_ALLIANCE;
-        case SPELL_WINTERGRASP_HORDE_CONTROLS_FACTORY_PHASE_SHIFT:
-            return player->GetTeamId() != GetControllingTeamId() && player->GetTeamId() == TEAM_HORDE;
-        case SPELL_WINTERGRASP_ALLIANCE_CONTROL_PHASE_SHIFT:
-            return player->GetTeamId() == GetControllingTeamId() && player->GetTeamId() == TEAM_ALLIANCE;
-        case SPELL_WINTERGRASP_HORDE_CONTROL_PHASE_SHIFT:
-            return player->GetTeamId() == GetControllingTeamId() && player->GetTeamId() == TEAM_HORDE;
-        default:
-            break;
-    }
-
-    return true;
-}
-
 uint8 BattlefieldWintergrasp::GetWintergraspGraveyardId(Creature* creature) const
 {
     switch (creature->GetSpawnId())
@@ -301,6 +269,38 @@ uint8 BattlefieldWintergrasp::GetWintergraspGraveyardId(Creature* creature) cons
     }
 
     return 0;
+}
+
+bool BattlefieldWintergrasp::IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 /*newArea*/) const
+{
+    if (!player)
+        return false;
+
+    switch (spellId)
+    {
+        case SPELL_WINTERGRASP_RESTRICTED_FLIGHT_AREA:
+            if (IsFlyingMountAllowed() || (!player->HasAuraType(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED) && !player->HasAuraType(SPELL_AURA_FLY)))
+                return false;
+            break;
+        case SPELL_WINTERGRASP_ESSENCE_OF_WINTERGRASP:
+            return IsEnabled() && (player->GetTeamId() == GetControllingTeamId()) && !IsWarTime();
+        case SPELL_WINTERGRASP_ESSENCE_OF_WINTERGRASP_NORTHREND:
+            return false;
+        case SPELL_WINTERGRASP_BATTLEGROUND_DAMPENING:
+            return IsEnabled() && IsWarTime();
+        case SPELL_WINTERGRASP_ALLIANCE_CONTROLS_FACTORY_PHASE_SHIFT:
+            return player->GetTeamId() != GetControllingTeamId() && player->GetTeamId() == TEAM_ALLIANCE;
+        case SPELL_WINTERGRASP_HORDE_CONTROLS_FACTORY_PHASE_SHIFT:
+            return player->GetTeamId() != GetControllingTeamId() && player->GetTeamId() == TEAM_HORDE;
+        case SPELL_WINTERGRASP_ALLIANCE_CONTROL_PHASE_SHIFT:
+            return player->GetTeamId() == GetControllingTeamId() && player->GetTeamId() == TEAM_ALLIANCE;
+        case SPELL_WINTERGRASP_HORDE_CONTROL_PHASE_SHIFT:
+            return player->GetTeamId() == GetControllingTeamId() && player->GetTeamId() == TEAM_HORDE;
+        default:
+            break;
+    }
+
+    return true;
 }
 
 WintergraspBuilding::WintergraspBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info) : BattlefieldBuilding(battlefield, info)
