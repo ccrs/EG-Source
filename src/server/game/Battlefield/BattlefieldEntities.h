@@ -186,12 +186,14 @@ public:
     PvPTeamId GetPvPTeamId() const override;
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     uint16 GetWorldSafeLocsEntryId() const { return WorldSafeLocsEntryId; }
+    bool IsSpellAreaForzed() const { return SpellAreaForzed; }
 
     uint8 Id;
     uint16 WorldSafeLocsEntryId;
     uint32 TextId;
     BattlefieldGraveyardState State;
     GuidUnorderedSet ResurrectionQueue;
+    bool SpellAreaForzed;
 };
 
 #endif

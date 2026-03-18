@@ -212,12 +212,42 @@ private:
 
 struct npc_wg_spirit_guide : public ScriptedAI
 {
-    npc_wg_spirit_guide(Creature* creature) : ScriptedAI(creature) { }
+    npc_wg_spirit_guide(Creature* creature) : ScriptedAI(creature), _graveyardId(0), _spellAreaForzed(false), _searchTimer(0) { }
 
-    void UpdateAI(uint32 /*diff*/) override
+    void InitializeAI() override
+    {
+        BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP));
+        if (wintergrasp)
+            if (uint8 graveyardId = wintergrasp->GetWintergraspGraveyardId(me))
+                if (BattlefieldGraveyard const* graveyard = wintergrasp->GetGraveyard(graveyardId))
+                {
+                    _graveyardId = graveyardId;
+                    _spellAreaForzed = graveyard->IsSpellAreaForzed();
+                    _searchTimer.Reset(2s);
+                }
+
+        ScriptedAI::InitializeAI();
+    }
+
+    void UpdateAI(uint32 diff) override
     {
         if (!me->HasUnitState(UNIT_STATE_CASTING))
             DoCast(me, SPELL_CHANNEL_SPIRIT_HEAL);
+
+        if (!_spellAreaForzed)
+            return;
+        _searchTimer.Update(diff);
+        if (_searchTimer.Passed())
+        {
+            _searchTimer.Reset(2s);
+            BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP));
+            if (!wintergrasp)
+                return;
+            if (BattlefieldGraveyard const* graveyard = wintergrasp->GetGraveyard(_graveyardId))
+            {
+                PvPTeamId teamId = graveyard->GetPvPTeamId();
+            }
+        }
     }
 
     bool OnGossipHello(Player* player) override
@@ -235,6 +265,10 @@ struct npc_wg_spirit_guide : public ScriptedAI
         CloseGossipMenuFor(player);
         return true;
     }
+private:
+    uint32 _graveyardId;
+    bool _spellAreaForzed;
+    TimeTracker _searchTimer;
 };
 
 struct npc_wg_queue : public ScriptedAI

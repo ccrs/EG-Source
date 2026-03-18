@@ -354,6 +354,8 @@ void WintergraspCapturePoint::InitializeState()
 
 WintergraspGraveyard::WintergraspGraveyard(Battlefield* battlefield, BattlefieldGraveyardInfo const info) : BattlefieldGraveyard(battlefield, info)
 {
+    if (Id == GRAVEYARD_WORKSHOP_NW)
+        SpellAreaForzed = true;
 }
 
 void WintergraspGraveyard::OnObjectCreate(WorldObject* object)
