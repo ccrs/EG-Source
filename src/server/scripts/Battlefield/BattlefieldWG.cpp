@@ -205,7 +205,6 @@ void BattlefieldWintergrasp::FillInitialWorldStates(WorldPackets::WorldState::In
     if (IsWarTime())
         timer = GetTimer() / 1000;
     packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_TIME_TO_END, GameTime::GetGameTime() + timer); // 3781
-    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE, GameTime::GetGameTime() + timer); // 4354
 
     for (WintergraspBuildingContainer::value_type const& building : _buildings)
         building.second->FillInitialWorldStates(packet);
@@ -216,13 +215,13 @@ void BattlefieldWintergrasp::SendGlobalWorldStates(Player const* player) const
     if (!IsEnabled())
         return;
 
-    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_SHOW_NOWAR_TIMER, IsWarTime() ? 0 : 1);
+    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_SHOW_NOWAR_TIMER, IsWarTime() ? 0 : 1); // 3801
 
     uint32 timer = 0;
-    if (IsWarTime())
-        timer = GetTimer() / 1000;
+    if (!IsWarTime())
+        timer = GameTime::GetGameTime() + (GetTimer() / uint32(1000));
 
-    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE, GameTime::GetGameTime() + timer);
+    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE, timer); // 4354
 }
 
 bool BattlefieldWintergrasp::IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 /*newArea*/) const
