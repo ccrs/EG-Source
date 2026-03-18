@@ -22,6 +22,7 @@
 #include "Object.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
+#include "World.h"
 #include "WorldPacket.h"
 #include "WorldStatePackets.h"
 #include <algorithm>
@@ -45,7 +46,7 @@ void BattlefieldEntity::OnObjectCreate(WorldObject* object)
     {
         if (Info.ObjectEntriesByPvPTeamId.contains(currentTeam))
         {
-            std::vector<uint32> factionEntries = Info.ObjectEntriesByPvPTeamId.at(currentTeam);
+            std::vector<uint32> const& factionEntries = Info.ObjectEntriesByPvPTeamId.at(currentTeam);
             if (std::find(factionEntries.begin(), factionEntries.end(), object->GetEntry()) != factionEntries.end())
                 ObjectGUIDsByPvPTeamId[currentTeam].insert(object->GetGUID());
         }
@@ -58,7 +59,7 @@ void BattlefieldEntity::OnObjectRemove(WorldObject* object)
     {
         if (Info.ObjectEntriesByPvPTeamId.contains(currentTeam))
         {
-            std::vector<uint32> factionEntries = Info.ObjectEntriesByPvPTeamId.at(currentTeam);
+            std::vector<uint32> const& factionEntries = Info.ObjectEntriesByPvPTeamId.at(currentTeam);
             if (std::find(factionEntries.begin(), factionEntries.end(), object->GetEntry()) != factionEntries.end())
                 ObjectGUIDsByPvPTeamId[currentTeam].erase(object->GetGUID());
         }
@@ -104,6 +105,11 @@ void BattlefieldBuilding::FillInitialWorldStates(WorldPackets::WorldState::InitW
     packet.Worldstates.emplace_back(Info.WorldState, State);
 }
 
+void BattlefieldBuilding::SaveWorldState()
+{
+    sWorld->setWorldState(Info.WorldState, State);
+}
+
 BattlefieldCapturePoint::BattlefieldCapturePoint(Battlefield* battlefield, BattlefieldEntityInfo const info) : BattlefieldEntity(battlefield, info), State(BATTLEFIELD_CAPTUREPOINT_STATE_NEUTRAL)
 {
 }
@@ -126,6 +132,11 @@ PvPTeamId BattlefieldCapturePoint::GetPvPTeamId() const
 void BattlefieldCapturePoint::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
 {
     packet.Worldstates.emplace_back(Info.WorldState, State);
+}
+
+void BattlefieldCapturePoint::SaveWorldState()
+{
+    sWorld->setWorldState(Info.WorldState, State);
 }
 
 BattlefieldGraveyard::BattlefieldGraveyard(Battlefield* battlefield, BattlefieldGraveyardInfo const info) : BattlefieldEntity(battlefield, info.Info), Id(info.Id), WorldSafeLocsEntryId(info.WorldSafeLocsEntryId), TextId(info.TextId), State(BATTLEFIELD_GRAVEYARD_STATE_NEUTRAL), SpellAreaForzed(false)
@@ -189,4 +200,9 @@ PvPTeamId BattlefieldGraveyard::GetPvPTeamId() const
 void BattlefieldGraveyard::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
 {
     packet.Worldstates.emplace_back(Info.WorldState, State);
+}
+
+void BattlefieldGraveyard::SaveWorldState()
+{
+    sWorld->setWorldState(Info.WorldState, State);
 }

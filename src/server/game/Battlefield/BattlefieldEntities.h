@@ -115,6 +115,7 @@ public:
     virtual PvPTeamId GetPvPTeamId() const { return PVP_TEAM_NEUTRAL; }
     virtual void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet);
     virtual void InitializeState() { }
+    virtual void SaveWorldState() { }
 
     bool ValidateObjectEntry(uint32 entry) const { return Info.ValidateObjectEntry(entry); }
     bool ValidateObjectGUID(ObjectGuid reference) const;
@@ -141,6 +142,7 @@ public:
 
     PvPTeamId GetPvPTeamId() const override;
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
+    void SaveWorldState() override;
 
     bool IsIntact() const { return State == BATTLEFIELD_BUILDING_STATE_NEUTRAL_INTACT || State == BATTLEFIELD_BUILDING_STATE_HORDE_INTACT || State == BATTLEFIELD_BUILDING_STATE_ALLIANCE_INTACT; }
     bool IsDestroyed() const { return State == BATTLEFIELD_BUILDING_STATE_NEUTRAL_DESTROYED || State == BATTLEFIELD_BUILDING_STATE_HORDE_DESTROYED || State == BATTLEFIELD_BUILDING_STATE_ALLIANCE_DESTROYED; }
@@ -159,6 +161,7 @@ public:
 
     PvPTeamId GetPvPTeamId() const override;
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
+    void SaveWorldState() override;
 
     BattlefieldCapturePointState State;
 };
@@ -185,6 +188,7 @@ public:
 
     PvPTeamId GetPvPTeamId() const override;
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
+    void SaveWorldState() override;
     uint16 GetWorldSafeLocsEntryId() const { return WorldSafeLocsEntryId; }
     bool IsSpellAreaForzed() const { return SpellAreaForzed; }
 

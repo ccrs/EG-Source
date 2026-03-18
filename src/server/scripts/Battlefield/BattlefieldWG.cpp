@@ -350,6 +350,7 @@ void WintergraspBuilding::OnObjectRemove(WorldObject* object)
 void WintergraspBuilding::InitializeState()
 {
     State = Battle->GetControllingTeam() == PVP_TEAM_HORDE ? BATTLEFIELD_BUILDING_STATE_HORDE_INTACT : BATTLEFIELD_BUILDING_STATE_ALLIANCE_INTACT;
+    SaveWorldState();
 }
 
 WintergraspCapturePoint::WintergraspCapturePoint(Battlefield* battlefield, BattlefieldEntityInfo const info) : BattlefieldCapturePoint(battlefield, info)

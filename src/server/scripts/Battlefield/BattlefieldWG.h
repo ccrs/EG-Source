@@ -306,6 +306,7 @@ public:
     void OnObjectCreate(WorldObject* object) override;
     void OnObjectRemove(WorldObject* object) override;
     void InitializeState() override;
+    void SaveWorldState() override { }
 };
 
 class TC_GAME_API BattlefieldWintergrasp : public Battlefield
