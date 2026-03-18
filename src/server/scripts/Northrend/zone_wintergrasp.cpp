@@ -246,7 +246,7 @@ struct npc_wg_spirit_guide : public ScriptedAI
                 return;
             if (BattlefieldGraveyard const* graveyard = wintergrasp->GetGraveyard(_graveyardId))
             {
-                PvPTeamId teamId = graveyard->GetPvPTeamId();
+                //PvPTeamId teamId = graveyard->GetPvPTeamId();
             }
         }
     }
