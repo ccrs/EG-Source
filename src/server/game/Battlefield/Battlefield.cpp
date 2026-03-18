@@ -20,6 +20,7 @@
 #include "BattlegroundPackets.h"
 #include "DBCStores.h"
 #include "MapManager.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
 #include "WorldPacket.h"
 #include "WorldStatePackets.h"
@@ -59,12 +60,33 @@ void Battlefield::Update(uint32 diff)
     }
 }
 
-void Battlefield::HandlePlayerEnterZone(Player* /*player*/)
+void Battlefield::HandlePlayerEnterZone(Player* player)
 {
+    _playerGUIDs.insert(player->GetGUID());
 }
 
-void Battlefield::HandlePlayerLeaveZone(Player* /*player*/)
+void Battlefield::HandlePlayerLeaveZone(Player* player)
 {
+    _playerGUIDs.erase(player->GetGUID());
+}
+
+void Battlefield::UpdateAreaDependentAuras()
+{
+    Map* battleMap = sMapMgr->FindMap(_mapId, 0);
+    for (auto itr = _playerGUIDs.begin(); itr != _playerGUIDs.end();)
+    {
+        if (Player* player = ObjectAccessor::GetPlayer(battleMap, *itr))
+        {
+            if (player->IsInWorld())
+            {
+                player->UpdateAreaDependentAuras(player->GetAreaId());
+                player->UpdateZoneDependentAuras(player->GetZoneId());
+            }
+            ++itr;
+        }
+        else
+            itr = _playerGUIDs.erase(itr);
+    }
 }
 
 void Battlefield::SendAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid source)
