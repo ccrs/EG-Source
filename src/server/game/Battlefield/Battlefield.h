@@ -93,7 +93,8 @@ public:
     void SendInitWorldStatesTo(Player* player);
 
     void EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer);
-    BattlefieldGraveyardPointer& GetGraveyard(uint8 graveyardId);
+    BattlefieldGraveyard* GetGraveyard(uint8 graveyardId);
+    BattlefieldGraveyard const* GetGraveyard(uint8 graveyardId) const;
 
     void SetMapId(uint32 mapId) { _mapId = mapId; }
 

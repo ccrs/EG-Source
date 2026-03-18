@@ -111,7 +111,7 @@ void BattlefieldWintergrasp::OnCreatureCreate(Creature* object)
         case NPC_WINTERGRASP_TAUNKA_SPIRIT_GUIDE:
         case NPC_WINTERGRASP_DWARVEN_SPIRIT_GUIDE:
             if (uint8 graveyardId = GetWintergraspGraveyardId(object))
-                if (BattlefieldGraveyardPointer& graveyard = GetGraveyard(graveyardId))
+                if (BattlefieldGraveyard* graveyard = GetGraveyard(graveyardId))
                     graveyard->OnObjectCreate(object);
             break;
         default:
@@ -126,7 +126,7 @@ void BattlefieldWintergrasp::OnCreatureRemove(Creature* object)
         case NPC_WINTERGRASP_TAUNKA_SPIRIT_GUIDE:
         case NPC_WINTERGRASP_DWARVEN_SPIRIT_GUIDE:
             if (uint8 graveyardId = GetWintergraspGraveyardId(object))
-                if (BattlefieldGraveyardPointer& graveyard = GetGraveyard(graveyardId))
+                if (BattlefieldGraveyard* graveyard = GetGraveyard(graveyardId))
                     graveyard->OnObjectRemove(object);
             break;
         default:

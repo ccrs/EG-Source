@@ -107,9 +107,14 @@ void Battlefield::EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& point
     _graveyards.emplace(id, std::move(pointer));
 }
 
-Battlefield::BattlefieldGraveyardPointer& Battlefield::GetGraveyard(uint8 graveyardId)
+BattlefieldGraveyard* Battlefield::GetGraveyard(uint8 graveyardId)
 {
-    return _graveyards[graveyardId];
+    return _graveyards.contains(graveyardId) ? _graveyards.find(graveyardId)->second.get() : nullptr;
+}
+
+BattlefieldGraveyard const* Battlefield::GetGraveyard(uint8 graveyardId) const
+{
+    return _graveyards.contains(graveyardId) ? _graveyards.find(graveyardId)->second.get() : nullptr;
 }
 
 PvPTeamId Battlefield::GetAttackingTeam() const
