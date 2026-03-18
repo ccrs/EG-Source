@@ -109,8 +109,8 @@ void BattlefieldWintergrasp::ChangeTeams(PvPTeamId newControllingTeam)
 {
     Battlefield::ChangeTeams(newControllingTeam);
 
-    sWorld->setWorldState(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, GetControllingTeam() == TEAM_HORDE ? 1 : 0);
-    sWorld->setWorldState(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, GetControllingTeam() == TEAM_ALLIANCE ? 1 : 0);
+    sWorld->setWorldState(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, GetControllingTeam() == PVP_TEAM_HORDE ? 1 : 0);
+    sWorld->setWorldState(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, GetControllingTeam() == PVP_TEAM_ALLIANCE ? 1 : 0);
 
     for (WintergraspBuildingContainer::value_type& buildingPair : _buildings)
         buildingPair.second->InitializeState();
@@ -238,8 +238,8 @@ void BattlefieldWintergrasp::OnGameObjectRemove(GameObject* object)
 
 void BattlefieldWintergrasp::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
 {
-    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, GetControllingTeam() == TEAM_HORDE ? 1 : 0); // 3802
-    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, GetControllingTeam() == TEAM_ALLIANCE ? 1 : 0); // 3803
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, GetControllingTeam() == PVP_TEAM_HORDE ? 1 : 0); // 3802
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, GetControllingTeam() == PVP_TEAM_ALLIANCE ? 1 : 0); // 3803
 
     if (IsEnabled())
     {
