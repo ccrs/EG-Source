@@ -170,6 +170,13 @@ void BattlefieldWintergrasp::OnGameObjectCreate(GameObject* object)
         case GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_1:
         case GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_2:
         case GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_3:
+        case GO_WINTERGRASP_FORTRESS_TOWER_1:
+        case GO_WINTERGRASP_FORTRESS_TOWER_2:
+        case GO_WINTERGRASP_FORTRESS_TOWER_3:
+        case GO_WINTERGRASP_FORTRESS_TOWER_4:
+        case GO_WINTERGRASP_TOWER_1:
+        case GO_WINTERGRASP_TOWER_2:
+        case GO_WINTERGRASP_TOWER_3:
             if (WintergraspBuildingPointer& building = _buildings[object->GetEntry()])
                 building->OnObjectCreate(object);
             break;
@@ -207,6 +214,13 @@ void BattlefieldWintergrasp::OnGameObjectRemove(GameObject* object)
         case GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_1:
         case GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_2:
         case GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_3:
+        case GO_WINTERGRASP_FORTRESS_TOWER_1:
+        case GO_WINTERGRASP_FORTRESS_TOWER_2:
+        case GO_WINTERGRASP_FORTRESS_TOWER_3:
+        case GO_WINTERGRASP_FORTRESS_TOWER_4:
+        case GO_WINTERGRASP_TOWER_1:
+        case GO_WINTERGRASP_TOWER_2:
+        case GO_WINTERGRASP_TOWER_3:
             if (WintergraspBuildingPointer& building = _buildings[object->GetEntry()])
                 building->OnObjectRemove(object);
             break;
@@ -217,15 +231,18 @@ void BattlefieldWintergrasp::OnGameObjectRemove(GameObject* object)
 
 void BattlefieldWintergrasp::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
 {
-    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_SHOW_WAR_TIMER, IsWarTime() ? 1 : 0); // 3710
-    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_SHOW_NOWAR_TIMER, IsWarTime() ? 0 : 1); // 3801
     packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_CONTROLLING_TEAM, GetControllingTeam()); // 3802
     packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_ATTACKING_TEAM, GetAttackingTeam()); // 3803
 
-    uint32 timer = 0;
-    if (IsWarTime())
-        timer = GameTime::GetGameTime() + (GetTimer() / uint32(1000));
-    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_TIME_TO_END, timer); // 3781
+    if (IsEnabled())
+    {
+        packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_SHOW_WAR_TIMER, IsWarTime() ? 1 : 0); // 3710
+        packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_SHOW_NOWAR_TIMER, IsWarTime() ? 0 : 1); // 3801
+        uint32 timer = 0;
+        if (IsWarTime())
+            timer = GameTime::GetGameTime() + (GetTimer() / uint32(1000));
+        packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_TIME_TO_END, timer); // 3781
+    }
 
     for (WintergraspBuildingContainer::value_type const& building : _buildings)
         building.second->FillInitialWorldStates(packet);
