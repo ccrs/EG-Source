@@ -104,3 +104,12 @@ INSERT INTO `spawn_group` (`groupId`,`spawnType`,`spawnId`) VALUES
 DELETE FROM `spell_script_names` WHERE `ScriptName`='spell_wintergrasp_waiting_to_resurrect';
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (2584, 'spell_wintergrasp_waiting_to_resurrect');
+
+DELETE FROM `spell_area` WHERE `area` = 4197;
+INSERT INTO `spell_area` (`area`, `spell`, `quest_start`, `quest_start_status`, `quest_end`, `quest_end_status`, `autocast`, `aura_spell`, `racemask`, `gender`) VALUES
+(4197, 55164, 0, 64, 0, 11, 1, 8326, 65527, 2),
+(4197, 55773, 0, 64, 0, 11, 1, 0, 690, 2),
+(4197, 55774, 0, 64, 0, 11, 1, 0, 1101, 2),
+(4197, 58045, 0, 64, 0, 11, 1, 0, 0, 2),
+(4197, 58730, 0, 64, 0, 11, 1, 0, 0, 2),
+(4197, 74411, 0, 64, 0, 11, 1, 0, 0, 2);
