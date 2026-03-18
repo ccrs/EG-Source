@@ -21,6 +21,7 @@
 #include "Battlefield/BattlefieldWG.h"
 #include "ConditionMgr.h"
 #include "Creature.h"
+#include "DBCStores.h"
 #include "DBCStructure.h"
 #include "GameObject.h"
 #include "GameObjectAI.h"
@@ -35,6 +36,7 @@
 #include "Timer.h"
 #include "Unit.h"
 #include "Vehicle.h"
+#include "WorldSession.h"
 #include <vector>
 
 enum ZoneWintergraspNPCTexts
@@ -212,12 +214,42 @@ private:
 
 struct npc_wg_spirit_guide : public ScriptedAI
 {
-    npc_wg_spirit_guide(Creature* creature) : ScriptedAI(creature) { }
+    npc_wg_spirit_guide(Creature* creature) : ScriptedAI(creature), _graveyardId(0), _spellAreaForzed(false), _searchTimer(0) { }
 
-    void UpdateAI(uint32 /*diff*/) override
+    void InitializeAI() override
+    {
+        BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP));
+        if (wintergrasp)
+            if (uint8 graveyardId = wintergrasp->GetWintergraspGraveyardId(me))
+                if (BattlefieldGraveyard const* graveyard = wintergrasp->GetGraveyard(graveyardId))
+                {
+                    _graveyardId = graveyardId;
+                    _spellAreaForzed = graveyard->IsSpellAreaForzed();
+                    _searchTimer.Reset(2s);
+                }
+
+        ScriptedAI::InitializeAI();
+    }
+
+    void UpdateAI(uint32 diff) override
     {
         if (!me->HasUnitState(UNIT_STATE_CASTING))
             DoCast(me, SPELL_CHANNEL_SPIRIT_HEAL);
+
+        if (!_spellAreaForzed)
+            return;
+        _searchTimer.Update(diff);
+        if (_searchTimer.Passed())
+        {
+            _searchTimer.Reset(2s);
+            BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP));
+            if (!wintergrasp)
+                return;
+            if (/*BattlefieldGraveyard const* graveyard = */wintergrasp->GetGraveyard(_graveyardId))
+            {
+                //PvPTeamId teamId = graveyard->GetPvPTeamId();
+            }
+        }
     }
 
     bool OnGossipHello(Player* player) override
@@ -225,16 +257,36 @@ struct npc_wg_spirit_guide : public ScriptedAI
         if (me->IsQuestGiver())
             player->PrepareQuestMenu(me->GetGUID());
 
+        if (_graveyardId)
+            if (BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP)))
+                for (uint8 itr = GRAVEYARD_WORKSHOP_NE; itr <= GRAVEYARD_ALLIANCE; ++itr)
+                {
+                    if (BattlefieldGraveyard const* targetGraveyard = wintergrasp->GetGraveyard(itr))
+                        if (TeamIdByPvPTeamId(targetGraveyard->GetPvPTeamId()) == player->GetTeamId())
+                            AddGossipItemFor(player, GOSSIP_ICON_CHAT, player->GetSession()->GetTrinityString(targetGraveyard->TextId), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + itr);
+                }
+
         SendGossipMenuFor(player, player->GetGossipTextId(me), me->GetGUID());
         return true;
     }
 
     bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
     {
-        /*uint32 const action = */player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
+        uint32 const action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
         CloseGossipMenuFor(player);
+
+        if (_graveyardId)
+            if (BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP)))
+                if (BattlefieldGraveyard const* graveyard = wintergrasp->GetGraveyard(action - GOSSIP_ACTION_INFO_DEF))
+                    if (TeamIdByPvPTeamId(graveyard->GetPvPTeamId()) == player->GetTeamId())
+                        if (WorldSafeLocsEntry const* safeLoc = sWorldSafeLocsStore.LookupEntry(graveyard->GetWorldSafeLocsEntryId()))
+                            player->TeleportTo(safeLoc->Continent, safeLoc->Loc.X, safeLoc->Loc.Y, safeLoc->Loc.Z, me->GetOrientation(), 0);
         return true;
     }
+private:
+    uint32 _graveyardId;
+    bool _spellAreaForzed;
+    TimeTracker _searchTimer;
 };
 
 struct npc_wg_queue : public ScriptedAI
@@ -527,7 +579,7 @@ class spell_wintergrasp_waiting_to_resurrect : public AuraScript
             return;
 
         if (Battlefield* wintergrasp = sBattlefieldMgr->GetBattlefield(owner->GetZoneId()))
-            wintergrasp->HandleRemovePlayerFromResurrectionQueue(owner->ToPlayer());
+            wintergrasp->RemovePlayerFromResurrectionQueue(owner->ToPlayer());
     }
 
     void Register() override

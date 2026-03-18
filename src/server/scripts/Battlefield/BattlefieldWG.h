@@ -83,13 +83,20 @@ enum WintergraspGameObjects
 {
     GO_WINTERGRASP_FORTRESS_WALL_1 = 190219,
     GO_WINTERGRASP_FORTRESS_WALL_2 = 190220,
+    GO_WINTERGRASP_FORTRESS_TOWER_1 = 190221,
+    GO_WINTERGRASP_TOWER_1 = 190356,
+    GO_WINTERGRASP_TOWER_2 = 190357,
+    GO_WINTERGRASP_TOWER_3 = 190358,
     GO_WINTERGRASP_FORTRESS_WALL_3 = 190369,
     GO_WINTERGRASP_FORTRESS_WALL_4 = 190370,
     GO_WINTERGRASP_FORTRESS_WALL_5 = 190371,
     GO_WINTERGRASP_FORTRESS_WALL_6 = 190372,
+    GO_WINTERGRASP_FORTRESS_TOWER_2 = 190373,
     GO_WINTERGRASP_FORTRESS_WALL_7 = 190374,
     GO_WINTERGRASP_FORTRESS_GATE = 190375,
     GO_WINTERGRASP_FORTRESS_WALL_8 = 190376,
+    GO_WINTERGRASP_FORTRESS_TOWER_3 = 190377,
+    GO_WINTERGRASP_FORTRESS_TOWER_4 = 190378,
     GO_WINTERGRASP_FORTRESS_WALL_9 = 191795,
     GO_WINTERGRASP_FORTRESS_WALL_10 = 191796,
     GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_1 = 191797,
@@ -186,6 +193,13 @@ enum WintergraspWorldstates
     WORLDSTATE_WINTERGRASP_FORTRESS_INTERIOR_WALL_1 = 3765,
     WORLDSTATE_WINTERGRASP_FORTRESS_INTERIOR_WALL_2 = 3771,
     WORLDSTATE_WINTERGRASP_FORTRESS_INTERIOR_WALL_3 = 3768,
+    WORLDSTATE_WINTERGRASP_FORTRESS_TOWER_1 = 3711,
+    WORLDSTATE_WINTERGRASP_FORTRESS_TOWER_2 = 3713,
+    WORLDSTATE_WINTERGRASP_FORTRESS_TOWER_3 = 3714,
+    WORLDSTATE_WINTERGRASP_FORTRESS_TOWER_4 = 3712,
+    WORLDSTATE_WINTERGRASP_TOWER_1 = 3704,
+    WORLDSTATE_WINTERGRASP_TOWER_2 = 3705,
+    WORLDSTATE_WINTERGRASP_TOWER_3 = 3706,
 
     WORLDSTATE_WINTERGRASP_WORKSHOP_NE = 3701,
     WORLDSTATE_WINTERGRASP_WORKSHOP_NW = 3700,
@@ -199,8 +213,8 @@ enum WintergraspWorldstates
     WORLDSTATE_WINTERGRASP_VEHICLE_ALLIANCE = 3680,
     WORLDSTATE_WINTERGRASP_MAX_VEHICLE_ALLIANCE = 3681,
 
-    WORLDSTATE_WINTERGRASP_DEFENDER_HORDE = 3802,
-    WORLDSTATE_WINTERGRASP_DEFENDER_ALLIANCE = 3803,
+    WORLDSTATE_WINTERGRASP_HORDE_DEFENDER = 3802,
+    WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER = 3803,
 
     WORLDSTATE_WINTERGRASP_TIMES_ATTACKED_HORDE = 4022,
     WORLDSTATE_WINTERGRASP_TIMES_ATTACKED_ALLIANCE = 4023,
@@ -209,7 +223,7 @@ enum WintergraspWorldstates
 
     WORLDSTATE_WINTERGRASP_SHOW_WAR_TIMER = 3710,
     WORLDSTATE_WINTERGRASP_TIME_TO_END = 3781,
-    WORLDSTATE_WINTERGRASP_SHOW_NOWAR_TIMER = 3801,
+    WORLDSTATE_WINTERGRASP_SHOW_COOLDOWN = 3801,
     WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE = 4354
 };
 
@@ -249,6 +263,14 @@ enum WintergraspWorldSafeLocs
 
 static uint32 constexpr MAPID_WINTERGRASP = 571; // Northrend
 
+namespace WorldPackets
+{
+    namespace WorldState
+    {
+        class InitWorldStates;
+    }
+}
+
 class Creature;
 class GameObject;
 class WorldObject;
@@ -261,6 +283,7 @@ public:
 
     void OnObjectCreate(WorldObject* object) override;
     void OnObjectRemove(WorldObject* object) override;
+    void InitializeState() override;
 };
 
 class WintergraspCapturePoint : public BattlefieldCapturePoint
@@ -271,6 +294,7 @@ public:
 
     void OnObjectCreate(WorldObject* object) override;
     void OnObjectRemove(WorldObject* object) override;
+    void InitializeState() override;
 };
 
 class WintergraspGraveyard : public BattlefieldGraveyard
@@ -281,6 +305,8 @@ public:
 
     void OnObjectCreate(WorldObject* object) override;
     void OnObjectRemove(WorldObject* object) override;
+    void InitializeState() override;
+    void SaveWorldState() override { }
 };
 
 class TC_GAME_API BattlefieldWintergrasp : public Battlefield
@@ -290,11 +316,15 @@ public:
     ~BattlefieldWintergrasp();
 
     bool SetupBattlefield() override;
+    void ChangeTeams(PvPTeamId newControllingTeam) override;
     void OnCreatureCreate(Creature* object) override;
     void OnCreatureRemove(Creature* object) override;
     void OnGameObjectCreate(GameObject* object) override;
     void OnGameObjectRemove(GameObject* object) override;
+    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void SendGlobalWorldStates(Player const* player) const override;
+
+    uint8 GetWintergraspGraveyardId(Creature* creature) const;
 
     bool IsFlyingMountAllowed() const override { return !IsEnabled() || (IsEnabled() && !IsWarTime()); }
     bool IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 newArea) const override;
@@ -308,8 +338,6 @@ private:
 
     BattlefieldWintergrasp(BattlefieldWintergrasp const&) = delete;
     BattlefieldWintergrasp& operator=(BattlefieldWintergrasp const&) = delete;
-
-    uint8 GetWintergraspGraveyardId(Creature* creature) const;
 
     WintergraspBuildingContainer _buildings;
 };

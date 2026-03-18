@@ -734,7 +734,7 @@ void WorldSession::HandleAreaSpiritHealerQueryOpcode(WorldPackets::Battleground:
         sBattlegroundMgr->SendAreaSpiritHealerQueryOpcode(_player, bg, areaSpiritHealerQuery.HealerGuid);
 
     if (Battlefield* bf = sBattlefieldMgr->GetBattlefield(_player->GetZoneId()))
-        bf->HandleAreaSpiritHealerQueryOpcode(_player, areaSpiritHealerQuery.HealerGuid);
+        bf->SendAreaSpiritHealerQueryOpcode(_player, areaSpiritHealerQuery.HealerGuid);
 }
 
 void WorldSession::HandleAreaSpiritHealerQueueOpcode(WorldPackets::Battleground::AreaSpiritHealerQueue& areaSpiritHealerQueue)
@@ -749,7 +749,7 @@ void WorldSession::HandleAreaSpiritHealerQueueOpcode(WorldPackets::Battleground:
     if (Battleground* bg = _player->GetBattleground())
         bg->AddPlayerToResurrectQueue(areaSpiritHealerQueue.HealerGuid, _player->GetGUID());
     else if (Battlefield* bf = sBattlefieldMgr->GetBattlefield(_player->GetZoneId()))
-        bf->HandleAddPlayerToResurrectionQueue(_player, areaSpiritHealerQueue.HealerGuid);
+        bf->AddPlayerToResurrectionQueue(_player, areaSpiritHealerQueue.HealerGuid);
 }
 
 void WorldSession::HandleHearthAndResurrect(WorldPackets::Battleground::HearthAndResurrect& /*hearthAndResurrect*/)

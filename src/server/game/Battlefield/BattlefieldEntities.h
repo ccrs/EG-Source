@@ -95,6 +95,14 @@ struct BattlefieldEntityInfo
     std::unordered_map<PvPTeamId, std::vector<uint32 /*entry*/>> ObjectEntriesByPvPTeamId;
 };
 
+namespace WorldPackets
+{
+    namespace WorldState
+    {
+        class InitWorldStates;
+    }
+}
+
 class BattlefieldEntity
 {
 public:
@@ -105,6 +113,9 @@ public:
     virtual void OnObjectRemove(WorldObject* object);
     virtual void Update(uint32 /*diff*/) { }
     virtual PvPTeamId GetPvPTeamId() const { return PVP_TEAM_NEUTRAL; }
+    virtual void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet);
+    virtual void InitializeState() { }
+    virtual void SaveWorldState() { }
 
     bool ValidateObjectEntry(uint32 entry) const { return Info.ValidateObjectEntry(entry); }
     bool ValidateObjectGUID(ObjectGuid reference) const;
@@ -130,6 +141,8 @@ public:
     virtual ~BattlefieldBuilding() { }
 
     PvPTeamId GetPvPTeamId() const override;
+    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
+    void SaveWorldState() override;
 
     bool IsIntact() const { return State == BATTLEFIELD_BUILDING_STATE_NEUTRAL_INTACT || State == BATTLEFIELD_BUILDING_STATE_HORDE_INTACT || State == BATTLEFIELD_BUILDING_STATE_ALLIANCE_INTACT; }
     bool IsDestroyed() const { return State == BATTLEFIELD_BUILDING_STATE_NEUTRAL_DESTROYED || State == BATTLEFIELD_BUILDING_STATE_HORDE_DESTROYED || State == BATTLEFIELD_BUILDING_STATE_ALLIANCE_DESTROYED; }
@@ -147,6 +160,8 @@ public:
     virtual ~BattlefieldCapturePoint() { }
 
     PvPTeamId GetPvPTeamId() const override;
+    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
+    void SaveWorldState() override;
 
     BattlefieldCapturePointState State;
 };
@@ -172,13 +187,17 @@ public:
     void ResurrectPlayers();
 
     PvPTeamId GetPvPTeamId() const override;
+    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
+    void SaveWorldState() override;
     uint16 GetWorldSafeLocsEntryId() const { return WorldSafeLocsEntryId; }
+    bool IsSpellAreaForzed() const { return SpellAreaForzed; }
 
     uint8 Id;
     uint16 WorldSafeLocsEntryId;
     uint32 TextId;
     BattlefieldGraveyardState State;
     GuidUnorderedSet ResurrectionQueue;
+    bool SpellAreaForzed;
 };
 
 #endif

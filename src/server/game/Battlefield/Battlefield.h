@@ -19,6 +19,7 @@
 #define TRINITY_BATTLEFIELD_H_
 
 #include "Common.h"
+#include "ObjectGuid.h"
 #include "SharedDefines.h"
 #include "Timer.h"
 #include "ZoneScript.h"
@@ -67,6 +68,7 @@ public:
 
     // Called on battlefield creation
     virtual bool SetupBattlefield();
+    virtual void ChangeTeams(PvPTeamId newControllingTeam);
     virtual void Update(uint32 diff);
     // Called when a player enters the battlefield zone
     virtual void HandlePlayerEnterZone(Player* player);
@@ -75,11 +77,11 @@ public:
     // Called when a player inside the battlefield zone kills a unit
     virtual void HandleKill(Player* /*killer*/, Unit* /*victim*/) { }
     // Called when a player queries a gossip from a spirit healer
-    virtual void HandleAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid source);
+    virtual void SendAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid source);
     // Called when a player moves into a resurrection queue
-    virtual void HandleAddPlayerToResurrectionQueue(Player* player, ObjectGuid source);
+    virtual void AddPlayerToResurrectionQueue(Player* player, ObjectGuid source);
     // Called when a player moves out of a resurrection queue
-    virtual void HandleRemovePlayerFromResurrectionQueue(Player* player);
+    virtual void RemovePlayerFromResurrectionQueue(Player* player);
     virtual void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& /*packet*/) { }
     virtual void SendGlobalWorldStates(Player const* /*player*/) const { }
     // Can players inside the battlefield zone use ground mounts?
@@ -89,8 +91,12 @@ public:
     // Is the referenced SpellArea spellId allowed for the referenced player and newArea?
     virtual bool IsSpellAreaAllowed(uint32 /*spellId*/, Player const* /*player*/, uint32 /*newArea*/) const { return false; }
 
+    void SendInitWorldStatesTo(Player* player);
+    void SendUpdateToPlayers();
+
     void EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer);
-    BattlefieldGraveyardPointer& GetGraveyard(uint8 graveyardId);
+    BattlefieldGraveyard* GetGraveyard(uint8 graveyardId);
+    BattlefieldGraveyard const* GetGraveyard(uint8 graveyardId) const;
 
     void SetMapId(uint32 mapId) { _mapId = mapId; }
 
@@ -117,17 +123,18 @@ public:
 protected:
     uint32 _mapId;
     bool _enabled;
-    uint32 _resurrectionBaseTimer;
+    bool _active;
+    PvPTeamId _controllingTeam;
+    CountdownTimer _timer;
 
 private:
     // constant information
     BattlefieldBattleId _battleId;
     uint32 _zoneId;
+    GuidUnorderedSet _playerGUIDs;
 
-    bool _active;
-    PvPTeamId _controllingTeam;
-    CountdownTimer _timer;
     BattlefieldGraveyardContainer _graveyards;
+    uint32 _resurrectionBaseTimer;
     CountdownTimer _resurrectionTimer;
 };
 

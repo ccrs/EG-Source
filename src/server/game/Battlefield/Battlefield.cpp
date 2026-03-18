@@ -20,10 +20,14 @@
 #include "BattlegroundPackets.h"
 #include "DBCStores.h"
 #include "MapManager.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
+#include "WorldPacket.h"
+#include "WorldStatePackets.h"
 #include <algorithm>
 
-Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) : _mapId(0), _enabled(false), _resurrectionBaseTimer(30 * IN_MILLISECONDS), _battleId(battleId), _zoneId(zoneId), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0), _resurrectionTimer(_resurrectionBaseTimer)
+Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) :
+    _mapId(0), _enabled(false), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0), _battleId(battleId), _zoneId(zoneId), _resurrectionBaseTimer(30 * IN_MILLISECONDS), _resurrectionTimer(_resurrectionBaseTimer)
 {
 }
 
@@ -34,6 +38,14 @@ Battlefield::~Battlefield()
 bool Battlefield::SetupBattlefield()
 {
     return true;
+}
+
+void Battlefield::ChangeTeams(PvPTeamId newControllingTeam)
+{
+    _controllingTeam = newControllingTeam;
+
+    for (BattlefieldGraveyardContainer::value_type& graveyardPair : _graveyards)
+        graveyardPair.second->InitializeState();
 }
 
 void Battlefield::Update(uint32 diff)
@@ -48,15 +60,37 @@ void Battlefield::Update(uint32 diff)
     }
 }
 
-void Battlefield::HandlePlayerEnterZone(Player* /*player*/)
+void Battlefield::HandlePlayerEnterZone(Player* player)
 {
+    _playerGUIDs.insert(player->GetGUID());
 }
 
-void Battlefield::HandlePlayerLeaveZone(Player* /*player*/)
+void Battlefield::HandlePlayerLeaveZone(Player* player)
 {
+    _playerGUIDs.erase(player->GetGUID());
 }
 
-void Battlefield::HandleAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid source)
+void Battlefield::SendUpdateToPlayers()
+{
+    Map* battleMap = sMapMgr->FindMap(_mapId, 0);
+    for (auto itr = _playerGUIDs.begin(); itr != _playerGUIDs.end();)
+    {
+        if (Player* player = ObjectAccessor::GetPlayer(battleMap, *itr))
+        {
+            if (player->IsInWorld())
+            {
+                player->UpdateAreaDependentAuras(player->GetAreaId());
+                player->UpdateZoneDependentAuras(player->GetZoneId());
+                SendInitWorldStatesTo(player);
+            }
+            ++itr;
+        }
+        else
+            itr = _playerGUIDs.erase(itr);
+    }
+}
+
+void Battlefield::SendAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid source)
 {
     WorldPackets::Battleground::AreaSpiritHealerTime areaSpiritHealerTime;
     areaSpiritHealerTime.HealerGuid = source;
@@ -64,7 +98,7 @@ void Battlefield::HandleAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid s
     player->SendDirectMessage(areaSpiritHealerTime.Write());
 }
 
-void Battlefield::HandleAddPlayerToResurrectionQueue(Player* player, ObjectGuid source)
+void Battlefield::AddPlayerToResurrectionQueue(Player* player, ObjectGuid source)
 {
     auto itr = std::find_if(_graveyards.begin(), _graveyards.end(), [&](BattlefieldGraveyardContainer::value_type const& pair) -> bool
     {
@@ -74,10 +108,21 @@ void Battlefield::HandleAddPlayerToResurrectionQueue(Player* player, ObjectGuid 
         itr->second->AddPlayerToResurrectionQueue(player);
 }
 
-void Battlefield::HandleRemovePlayerFromResurrectionQueue(Player* player)
+void Battlefield::RemovePlayerFromResurrectionQueue(Player* player)
 {
     for (BattlefieldGraveyardContainer::value_type const& pair : _graveyards)
         pair.second->RemovePlayerFromResurrectionQueue(player);
+}
+
+void Battlefield::SendInitWorldStatesTo(Player* player)
+{
+    WorldPackets::WorldState::InitWorldStates packet;
+    packet.MapID = _mapId;
+    packet.AreaID = _zoneId;
+    packet.SubareaID = player->GetAreaId();
+    FillInitialWorldStates(packet);
+
+    player->SendDirectMessage(packet.Write());
 }
 
 void Battlefield::EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer)
@@ -85,9 +130,14 @@ void Battlefield::EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& point
     _graveyards.emplace(id, std::move(pointer));
 }
 
-Battlefield::BattlefieldGraveyardPointer& Battlefield::GetGraveyard(uint8 graveyardId)
+BattlefieldGraveyard* Battlefield::GetGraveyard(uint8 graveyardId)
 {
-    return _graveyards[graveyardId];
+    return _graveyards.contains(graveyardId) ? _graveyards.find(graveyardId)->second.get() : nullptr;
+}
+
+BattlefieldGraveyard const* Battlefield::GetGraveyard(uint8 graveyardId) const
+{
+    return _graveyards.contains(graveyardId) ? _graveyards.find(graveyardId)->second.get() : nullptr;
 }
 
 PvPTeamId Battlefield::GetAttackingTeam() const
