@@ -204,7 +204,7 @@ class TC_GAME_API MotionMaster
         void MoveFace(WorldObject const* object, uint32 id = EVENT_FACE, Milliseconds duration = 0ms);
         void MoveFace(float orientation, uint32 id = EVENT_FACE, Milliseconds duration = 0ms);
 
-        void LaunchMoveSpline(std::function<void(Movement::MoveSplineInit& init)>&& initializer, uint32 id = 0, MovementGeneratorPriority priority = MOTION_PRIORITY_NORMAL, MovementGeneratorType type = EFFECT_MOTION_TYPE);
+        void LaunchMoveSpline(std::function<void(Movement::MoveSplineInit& init)>&& initializer, uint32 id = 0, MovementGeneratorPriority priority = MOTION_PRIORITY_NORMAL, MovementGeneratorType type = EFFECT_MOTION_TYPE, MovementGeneratorMode mode = MOTION_MODE_DEFAULT);
 
         void AddFlag(uint8 const flag) { _flags |= flag; }
         bool HasFlag(uint8 const flag) const { return (_flags & flag) != 0; }

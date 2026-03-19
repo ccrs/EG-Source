@@ -463,7 +463,7 @@ struct npc_bone_spike : public ScriptedAI
             init.DisableTransportPathTransformations();
             init.MoveTo(-0.02206125f, -0.02132235f, 5.514783f, false);
         };
-        passenger->GetMotionMaster()->LaunchMoveSpline(std::move(initializer), EVENT_VEHICLE_BOARD, MOTION_PRIORITY_HIGHEST);
+        passenger->GetMotionMaster()->LaunchMoveSpline(std::move(initializer), EVENT_VEHICLE_BOARD, MOTION_PRIORITY_HIGHEST, EFFECT_MOTION_TYPE, MOTION_MODE_OVERRIDE);
     }
 
     void UpdateAI(uint32 diff) override
