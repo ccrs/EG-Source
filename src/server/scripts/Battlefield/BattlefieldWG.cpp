@@ -312,7 +312,7 @@ bool BattlefieldWintergrasp::IsSpellAreaAllowed(uint32 spellId, Player const* pl
                 return false;
             break;
         case SPELL_WINTERGRASP_ESSENCE_OF_WINTERGRASP:
-            return player->GetTeamId() == GetControllingTeamId() && !IsWarTime();
+            return !IsWarTime();
         case SPELL_WINTERGRASP_ESSENCE_OF_WINTERGRASP_NORTHREND:
             return false;
         case SPELL_WINTERGRASP_BATTLEGROUND_DAMPENING:
