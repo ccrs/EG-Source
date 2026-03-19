@@ -789,6 +789,7 @@ void MotionMaster::MoveCharge(float x, float y, float z, float speed /*= SPEED_C
         TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::MoveCharge: '{}', charging point Id: {} (X: {}, Y: {}, Z: {})", _owner->GetGUID().ToString(), id, x, y, z);
         PointMovementGenerator<Player>* movement = new PointMovementGenerator<Player>(id, x, y, z, generatePath, speed);
         movement->Priority = MOTION_PRIORITY_HIGHEST;
+        movement->Mode = MOTION_MODE_OVERRIDE;
         movement->BaseUnitState = UNIT_STATE_CHARGING;
         Add(movement);
     }
@@ -797,6 +798,7 @@ void MotionMaster::MoveCharge(float x, float y, float z, float speed /*= SPEED_C
         TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::MoveCharge: '{}', charging point Id: {} (X: {}, Y: {}, Z: {})", _owner->GetGUID().ToString(), id, x, y, z);
         PointMovementGenerator<Creature>* movement = new PointMovementGenerator<Creature>(id, x, y, z, generatePath, speed);
         movement->Priority = MOTION_PRIORITY_HIGHEST;
+        movement->Mode = MOTION_MODE_OVERRIDE;
         movement->BaseUnitState = UNIT_STATE_CHARGING;
         Add(movement);
     }
@@ -842,6 +844,7 @@ void MotionMaster::MoveKnockbackFrom(float srcX, float srcY, float speedXY, floa
 
     GenericMovementGenerator* movement = new GenericMovementGenerator(std::move(initializer), EFFECT_MOTION_TYPE, 0);
     movement->Priority = MOTION_PRIORITY_HIGHEST;
+    movement->Mode = MOTION_MODE_OVERRIDE;
     movement->AddFlag(MOVEMENTGENERATOR_FLAG_PERSIST_ON_DEATH);
     Add(movement);
 }
@@ -888,6 +891,7 @@ void MotionMaster::MoveJump(float x, float y, float z, float o, float speedXY, f
 
     GenericMovementGenerator* movement = new GenericMovementGenerator(std::move(initializer), EFFECT_MOTION_TYPE, id);
     movement->Priority = MOTION_PRIORITY_HIGHEST;
+    movement->Mode = MOTION_MODE_OVERRIDE;
     movement->BaseUnitState = UNIT_STATE_JUMPING;
     movement->AddFlag(MOVEMENTGENERATOR_FLAG_PERSIST_ON_DEATH);
     Add(movement);
@@ -1024,6 +1028,7 @@ void MotionMaster::MoveFall(uint32 id/* = 0*/)
 
     GenericMovementGenerator* movement = new GenericMovementGenerator(std::move(initializer), EFFECT_MOTION_TYPE, id);
     movement->Priority = MOTION_PRIORITY_HIGHEST;
+    movement->Mode = MOTION_MODE_OVERRIDE;
     Add(movement);
 }
 
@@ -1172,7 +1177,7 @@ void MotionMaster::MoveFace(float orientation, uint32 id/* = EVENT_FACE*/, Milli
     Add(movement);
 }
 
-void MotionMaster::LaunchMoveSpline(std::function<void(Movement::MoveSplineInit& init)>&& initializer, uint32 id/*= 0*/, MovementGeneratorPriority priority/* = MOTION_PRIORITY_NORMAL*/, MovementGeneratorType type/*= EFFECT_MOTION_TYPE*/)
+void MotionMaster::LaunchMoveSpline(std::function<void(Movement::MoveSplineInit& init)>&& initializer, uint32 id/*= 0*/, MovementGeneratorPriority priority/* = MOTION_PRIORITY_NORMAL*/, MovementGeneratorType type/*= EFFECT_MOTION_TYPE*/, MovementGeneratorMode mode/* = MOTION_MODE_DEFAULT*/)
 {
     if (IsInvalidMovementGeneratorType(type))
     {
@@ -1183,6 +1188,7 @@ void MotionMaster::LaunchMoveSpline(std::function<void(Movement::MoveSplineInit&
     TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::LaunchMoveSpline: '{}', initiates spline Id: {} (Type: {}, Priority: {})", _owner->GetGUID().ToString(), id, type, priority);
 
     GenericMovementGenerator* movement = new GenericMovementGenerator(std::move(initializer), type, id);
+    movement->Mode = mode;
     movement->Priority = priority;
     Add(movement);
 }

@@ -12794,7 +12794,7 @@ void Unit::_ExitVehicle(Position const* exitPosition)
         init.SetFacing(pos.GetOrientation());
         init.SetTransportExit();
     };
-    GetMotionMaster()->LaunchMoveSpline(std::move(initializer), EVENT_VEHICLE_EXIT, MOTION_PRIORITY_HIGHEST);
+    GetMotionMaster()->LaunchMoveSpline(std::move(initializer), EVENT_VEHICLE_EXIT, MOTION_PRIORITY_HIGHEST, EFFECT_MOTION_TYPE, MOTION_MODE_OVERRIDE);
 
     if (player)
     {
