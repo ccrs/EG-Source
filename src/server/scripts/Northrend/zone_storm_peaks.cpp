@@ -206,7 +206,11 @@ static constexpr uint32 PATH_ESCORT_ICEFANG = 236818;
 
 struct npc_icefang : public EscortAI
 {
-    npc_icefang(Creature* creature) : EscortAI(creature) { }
+    npc_icefang(Creature* creature) : EscortAI(creature)
+    {
+        SetDespawnAtEnd(true);
+        SetDespawnAtFar(true);
+    }
 
     void AttackStart(Unit* /*who*/) override { }
     void JustEngagedWith(Unit* /*who*/) override { }
