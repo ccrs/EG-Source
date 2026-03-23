@@ -11,14 +11,18 @@
 #include "ObjectMgr.h"
 #include "Optional.h"
 #include "Player.h"
+#include "PlayerTaxi.h"
 #include "SharedDefines.h"
 #include "SmartAI.h"
 #include "SpellMgr.h"
 #include "SpellInfo.h"
+#include "StringConvert.h"
 #include "Transmogrification.h"
 #include "Unit.h"
+#include "Util.h"
 #include "World.h"
 #include <unordered_map>
+#include <vector>
 
 
 void Creature::ProcessDelayedLOSEntries()
@@ -214,6 +218,35 @@ void Player::_LoadAccountSharedSpells(PreparedQueryResult result)
                         break;
                 }
             }
+        }
+    }
+}
+
+void Player::_LoadAccountCharacters(PreparedQueryResult result)
+{
+    if (result)
+    {
+        if (HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_TAXI, CustomFlags::CUSTOM_FLAG_ACCOUNT_TAXI_ACTIVE))
+        {
+            do
+            {
+                Field* fields = result->Fetch();
+                std::string taximask = fields[0].GetString();
+                uint8 race = fields[1].GetUInt8();
+                uint8 characterClass = fields[2].GetUInt8();
+                if (Player::TeamForRace(race) != GetTeam())
+                    continue;
+                if (characterClass == CLASS_DEATH_KNIGHT)
+                    continue;
+
+                std::vector<std::string_view> tokens = Trinity::Tokenize(taximask, ' ', false);
+                for (size_t index = 0; (index < m_taxi.size()) && (index < tokens.size()); ++index)
+                {
+                    if (Optional<uint32> mask = Trinity::StringTo<uint32>(tokens[index]))
+                        m_taxi.AddSubmaskToTaximask(index, *mask);
+                }
+            }
+            while (result->NextRow());
         }
     }
 }

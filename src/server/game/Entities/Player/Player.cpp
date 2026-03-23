@@ -17493,6 +17493,8 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
     if (!m_taxi.LoadTaxiMask(fields[22].GetString()))                // must be before InitTaxiNodesForLevel
         TC_LOG_WARN("entities.player.loading", "Player::LoadFromDB: Player ({}) has invalid taximask ({}) in DB. Forced partial load.", GetGUID().ToString(), fields[22].GetString());
 
+    _LoadAccountCharacters(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_ACCOUNT_CHARACTERS));
+
     uint32 extraflags = fields[36].GetUInt16();
 
     _LoadPetStable(fields[37].GetUInt8(), holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_PET_SLOTS));

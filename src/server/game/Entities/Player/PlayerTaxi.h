@@ -55,6 +55,12 @@ class TC_GAME_API PlayerTaxi
                 return false;
         }
         void AppendTaximaskTo(ByteBuffer& data, bool all);
+        size_t size() const { return m_taximask.size(); }
+        void AddSubmaskToTaximask(uint32 field, TaxiMask::value_type submask)
+        {
+            if (field < m_taximask.size())
+                m_taximask[field] |= submask;
+        }
 
         // Destinations
         [[nodiscard]] bool LoadTaxiDestinationsFromString(std::string const& values, uint32 team);

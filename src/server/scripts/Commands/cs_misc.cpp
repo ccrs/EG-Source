@@ -1957,6 +1957,7 @@ public:
             handler->PSendSysMessage("| - XPRate flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS));
             handler->PSendSysMessage("| - Race Masquerade flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE));
             handler->PSendSysMessage("| - Weapon Skill flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_WEAPON_SKILL));
+            handler->PSendSysMessage("| - Account Taxi flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_ACCOUNT_TAXI));
         }
 
         return true;

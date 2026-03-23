@@ -25,9 +25,10 @@ public:
 
         static ChatCommandTable accountSettings =
         {
-            { "mount",  HandleAccountMount,  rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
-            { "riding", HandleAccountRiding, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
-            { "pet",    HandleAccountPet,    rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "mount",      HandleAccountMount,      rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "riding",     HandleAccountRiding,     rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "pet",        HandleAccountPet,        rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "flightPath", HandleAccountFlightPath, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
         };
 
         static ChatCommandTable customCharacterSettings =
@@ -254,6 +255,25 @@ public:
         {
             player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_WEAPON_SKILL, CustomFlags::CUSTOM_FLAG_WEAPON_SKILL_ACTIVE);
             handler->SendSysMessage("Weapon Skill setting deactivated, related skills may need leveling from now on.");
+        }
+        return true;
+    }
+
+    static bool HandleAccountFlightPath(ChatHandler* handler, bool active)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        if (!player)
+            return false;
+
+        if (active)
+        {
+            player->AddCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_TAXI, CustomFlags::CUSTOM_FLAG_ACCOUNT_TAXI_ACTIVE);
+            handler->SendSysMessage("Account flight path (same faction) transfering activated, it will be transfered on next character login.");
+        }
+        else
+        {
+            player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_TAXI, CustomFlags::CUSTOM_FLAG_ACCOUNT_TAXI_ACTIVE);
+            handler->SendSysMessage("Account flight path transfering deactivated.");
         }
         return true;
     }

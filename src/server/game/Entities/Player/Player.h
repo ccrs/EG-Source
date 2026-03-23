@@ -760,6 +760,7 @@ enum PlayerLoginQueryIndex
     PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS,
     PLAYER_LOGIN_QUERY_LOAD_TRANSMOGRIFICATIONS,
     PLAYER_LOGIN_QUERY_LOAD_ACCOUNT_SHARED_SPELLS,
+    PLAYER_LOGIN_QUERY_LOAD_ACCOUNT_CHARACTERS,
     MAX_PLAYER_LOGIN_QUERY
 };
 
@@ -938,6 +939,7 @@ enum CustomFlagsIndex : uint16
     CUSTOM_RACE_MASQUERADE = 5,
     CUSTOM_WEAPON_SKILL = 6,
     CUSTOM_ACCOUNT_PET = 7,
+    CUSTOM_ACCOUNT_TAXI = 8,
     CUSTOM_FLAGS_MAX
 };
 
@@ -975,6 +977,8 @@ enum CustomFlags : uint16
     CUSTOM_FLAG_WEAPON_SKILL_ACTIVE = 0x01,
 
     CUSTOM_FLAG_ACCOUNT_PET_ACTIVE = 0x01,
+
+    CUSTOM_FLAG_ACCOUNT_TAXI_ACTIVE = 0x01,
 };
 
 class TC_GAME_API Player : public Unit, public GridObject<Player>
@@ -2666,6 +2670,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void _LoadTransmogrifications(PreparedQueryResult result);
         void _LoadMasqueradeRace();
         void _LoadAccountSharedSpells(PreparedQueryResult result);
+        void _LoadAccountCharacters(PreparedQueryResult result);
 
         std::array<uint16, CUSTOM_FLAGS_MAX> _customFlags;
 
