@@ -1257,7 +1257,7 @@ void Player::Update(uint32 p_time)
     if (_masqueradeRaceDirty)
     {
         _masqueradeRaceDirty = false;
-        m_Events.AddEvent(new EG::CleanRaceMasquerade(this), m_Events.CalculateTime(1s));
+        m_Events.AddEvent(new EG::CleanRaceMasquerade(this), m_Events.CalculateTime(1s+500ms));
     }
 
     if (IsHasDelayedTeleport())
