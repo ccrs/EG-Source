@@ -60,6 +60,12 @@ struct boss_cyanigosa : public BossAI
             Talk(SAY_SLAY);
     }
 
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        instance->SetData(DATA_MAIN_EVENT_STATE, FAIL);
+        BossAI::EnterEvadeMode(why);
+    }
+
     void JustDied(Unit* /*killer*/) override
     {
         Talk(SAY_DEATH);

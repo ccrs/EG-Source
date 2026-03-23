@@ -84,6 +84,13 @@ struct boss_erekem : public BossAI
         instance->SetData(DATA_HANDLE_CELLS, DATA_EREKEM);
     }
 
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        instance->SetData(DATA_HANDLE_CELLS, DATA_EREKEM);
+        instance->SetData(DATA_MAIN_EVENT_STATE, FAIL);
+        BossAI::EnterEvadeMode(why);
+    }
+
     void KilledUnit(Unit* victim) override
     {
         if (victim->GetTypeId() == TYPEID_PLAYER)

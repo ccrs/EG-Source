@@ -57,6 +57,13 @@ struct boss_moragg : public BossAI
         instance->SetData(DATA_HANDLE_CELLS, DATA_MORAGG);
     }
 
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        instance->SetData(DATA_HANDLE_CELLS, DATA_MORAGG);
+        instance->SetData(DATA_MAIN_EVENT_STATE, FAIL);
+        BossAI::EnterEvadeMode(why);
+    }
+
     void UpdateAI(uint32 diff) override
     {
         if (!UpdateVictim())

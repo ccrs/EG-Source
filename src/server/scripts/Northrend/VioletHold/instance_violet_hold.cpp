@@ -371,6 +371,8 @@ class instance_violet_hold : public InstanceMapScript
                 switch (type)
                 {
                     case DATA_WAVE_COUNT:
+                        if (EventState != IN_PROGRESS)
+                            return;
                         WaveCount = data;
                         if (WaveCount)
                         {
@@ -397,14 +399,40 @@ class instance_violet_hold : public InstanceMapScript
                         }
                         break;
                     case DATA_MAIN_EVENT_STATE:
-                        EventState = data;
                         if (data == IN_PROGRESS) // Start event
                         {
-                            DoUpdateWorldState(WORLD_STATE_VH_WAVE_COUNT, WaveCount);
+                            if (GetBossState(DATA_CYANIGOSA) == DONE)
+                                return;
+                            EventState = data;
                             DoUpdateWorldState(WORLD_STATE_VH_PRISON_STATE, DoorIntegrity);
                             DoUpdateWorldState(WORLD_STATE_VH_SHOW, 1);
 
-                            WaveCount = 1;
+                            if (FirstBossId == 0)
+                                FirstBossId = urand(DATA_MORAGG, DATA_ZURAMAT);
+                            if (SecondBossId == 0)
+                                do
+                                {
+                                    SecondBossId = urand(DATA_MORAGG, DATA_ZURAMAT);
+                                } while (SecondBossId == FirstBossId);
+                            if (WaveCount == 0) // First time start
+                            {
+                                if (GetBossState(SecondBossId) == DONE)
+                                    WaveCount = 13;
+                                else if (GetBossState(FirstBossId) == DONE)
+                                    WaveCount = 7;
+                                else
+                                    WaveCount = 1;
+                            }
+                            else
+                            {
+                                if (WaveCount < 6)
+                                    WaveCount = 1;
+                                else if (WaveCount > 6 && WaveCount < 12)
+                                    WaveCount = 7;
+                                else if (WaveCount > 12 && WaveCount < 18)
+                                    WaveCount = 13;
+                            }
+                            DoUpdateWorldState(WORLD_STATE_VH_WAVE_COUNT, WaveCount);
                             Scheduler.Async(std::bind(&instance_violet_hold_InstanceMapScript::AddWave, this));
 
                             for (uint8 i = 0; i < ActivationCrystalCount; ++i)
@@ -419,6 +447,7 @@ class instance_violet_hold : public InstanceMapScript
                         }
                         else if (data == NOT_STARTED)
                         {
+                            EventState = data;
                             if (GameObject* mainDoor = GetGameObject(DATA_MAIN_DOOR))
                             {
                                 mainDoor->SetGoState(GO_STATE_ACTIVE);
@@ -435,6 +464,7 @@ class instance_violet_hold : public InstanceMapScript
                         }
                         else if (data == DONE)
                         {
+                            EventState = data;
                             if (GameObject* mainDoor = GetGameObject(DATA_MAIN_DOOR))
                             {
                                 mainDoor->SetGoState(GO_STATE_ACTIVE);
@@ -450,6 +480,8 @@ class instance_violet_hold : public InstanceMapScript
                             if (Creature* sinclari = GetCreature(DATA_SINCLARI))
                                 sinclari->AI()->DoAction(ACTION_SINCLARI_OUTRO);
                         }
+                        else
+                            EventState = data;
                         break;
                     case DATA_HANDLE_CELLS:
                         HandleCells(data, false);
@@ -718,14 +750,11 @@ class instance_violet_hold : public InstanceMapScript
                 if (bossId < DATA_CYANIGOSA || bossId > DATA_ZURAMAT)
                     return;
 
-                Creature* boss = GetCreature(bossId);
-                if (!boss)
-                    return;
-
                 switch (bossId)
                 {
                     case DATA_CYANIGOSA:
-                        boss->DespawnOrUnsummon();
+                        if (Creature* boss = GetCreature(bossId))
+                            boss->DespawnOrUnsummon();
                         break;
                     case DATA_EREKEM:
                         for (uint32 i = DATA_EREKEM_GUARD_1; i <= DATA_EREKEM_GUARD_2; ++i)
@@ -744,15 +773,17 @@ class instance_violet_hold : public InstanceMapScript
                         }
                         [[fallthrough]];
                     default:
-                        if (boss->isDead())
+                        if (Creature* boss = GetCreature(bossId))
                         {
-                            // respawn and update to a placeholder npc to avoid be looted again
-                            boss->Respawn();
-                            UpdateKilledBoss(boss);
-                        }
+                            if (boss->isDead())
+                                boss->Respawn();
 
-                        boss->GetMotionMaster()->MoveTargetedHome();
-                        boss->SetImmuneToAll(true);
+                            if (GetBossState(bossId) == DONE)
+                                UpdateKilledBoss(boss);
+
+                            boss->GetMotionMaster()->MoveTargetedHome();
+                            boss->SetImmuneToAll(true);
+                        }
                         break;
                 }
             }
@@ -764,21 +795,18 @@ class instance_violet_hold : public InstanceMapScript
                 switch (WaveCount)
                 {
                     case 6:
-                        if (FirstBossId == 0)
-                            FirstBossId = urand(DATA_MORAGG, DATA_ZURAMAT);
-                        if (Creature* sinclari = GetCreature(DATA_SINCLARI))
+                        if (GetBossState(FirstBossId) == DONE)
+                            SetData(DATA_WAVE_COUNT, WaveCount + 1);
+                        else if (Creature* sinclari = GetCreature(DATA_SINCLARI))
                         {
                             sinclari->SummonCreature(NPC_TELEPORTATION_PORTAL_INTRO, PortalIntroPositions[3], TEMPSUMMON_TIMED_DESPAWN, 3s);
                             sinclari->SummonCreature(NPC_SABOTEOUR, SaboteurSpawnLocation, TEMPSUMMON_DEAD_DESPAWN);
                         }
                         break;
                     case 12:
-                        if (SecondBossId == 0)
-                            do
-                            {
-                                SecondBossId = urand(DATA_MORAGG, DATA_ZURAMAT);
-                            } while (SecondBossId == FirstBossId);
-                        if (Creature* sinclari = GetCreature(DATA_SINCLARI))
+                        if (GetBossState(SecondBossId) == DONE)
+                            SetData(DATA_WAVE_COUNT, WaveCount + 1);
+                        else if (Creature* sinclari = GetCreature(DATA_SINCLARI))
                         {
                             sinclari->SummonCreature(NPC_TELEPORTATION_PORTAL_INTRO, PortalIntroPositions[3], TEMPSUMMON_TIMED_DESPAWN, 3s);
                             sinclari->SummonCreature(NPC_SABOTEOUR, SaboteurSpawnLocation, TEMPSUMMON_DEAD_DESPAWN);
@@ -859,7 +887,7 @@ class instance_violet_hold : public InstanceMapScript
             void Update(uint32 diff) override
             {
                 // if we don't have any player in the instance
-                if (!instance->HavePlayers())
+                if (CheckWipe())
                 {
                     if (EventState == IN_PROGRESS) // if event is in progress, mark as fail
                     {
@@ -888,9 +916,7 @@ class instance_violet_hold : public InstanceMapScript
                     ResetBossEncounter(SecondBossId);
                     ResetBossEncounter(DATA_CYANIGOSA);
 
-                    WaveCount = 0;
                     DoorIntegrity = 100;
-                    Defenseless = true;
                     SetData(DATA_MAIN_EVENT_STATE, NOT_STARTED);
 
                     Scheduler.CancelAll();

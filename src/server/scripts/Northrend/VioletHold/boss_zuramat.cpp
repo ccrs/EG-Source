@@ -81,6 +81,13 @@ struct boss_zuramat : public BossAI
         instance->SetData(DATA_HANDLE_CELLS, DATA_ZURAMAT);
     }
 
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        instance->SetData(DATA_HANDLE_CELLS, DATA_ZURAMAT);
+        instance->SetData(DATA_MAIN_EVENT_STATE, FAIL);
+        BossAI::EnterEvadeMode(why);
+    }
+
     void SummonedCreatureDies(Creature* summon, Unit* /*who*/) override
     {
         if (summon->GetEntry() == NPC_VOID_SENTRY)
