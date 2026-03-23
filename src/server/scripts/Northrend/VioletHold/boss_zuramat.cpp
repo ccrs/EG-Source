@@ -83,7 +83,6 @@ struct boss_zuramat : public BossAI
 
     void EnterEvadeMode(EvadeReason why) override
     {
-        instance->SetData(DATA_HANDLE_CELLS, DATA_ZURAMAT);
         instance->SetData(DATA_MAIN_EVENT_STATE, FAIL);
         BossAI::EnterEvadeMode(why);
     }

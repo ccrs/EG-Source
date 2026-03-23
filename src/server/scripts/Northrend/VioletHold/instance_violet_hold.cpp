@@ -480,6 +480,11 @@ class instance_violet_hold : public InstanceMapScript
                             if (Creature* sinclari = GetCreature(DATA_SINCLARI))
                                 sinclari->AI()->DoAction(ACTION_SINCLARI_OUTRO);
                         }
+                        else if (data == FAIL)
+                        {
+                            EventState = data;
+                            CheckEventState();
+                        }
                         else
                             EventState = data;
                         break;
@@ -945,6 +950,7 @@ class instance_violet_hold : public InstanceMapScript
                                 cyanigosa->RemoveAurasDueToSpell(SPELL_CYANIGOSA_ARCANE_POWER_STATE);
                                 cyanigosa->CastSpell(cyanigosa, SPELL_CYANIGOSA_TRANSFORM, true);
                                 cyanigosa->SetImmuneToAll(false);
+                                cyanigosa->SetReactState(REACT_AGGRESSIVE);
                             }
                         });
                     });

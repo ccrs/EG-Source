@@ -111,7 +111,6 @@ struct boss_ichoron : public BossAI
 
     void EnterEvadeMode(EvadeReason why) override
     {
-        instance->SetData(DATA_HANDLE_CELLS, DATA_ICHORON);
         instance->SetData(DATA_MAIN_EVENT_STATE, FAIL);
         BossAI::EnterEvadeMode(why);
     }

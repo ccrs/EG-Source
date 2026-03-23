@@ -103,7 +103,6 @@ struct boss_xevozz : public BossAI
 
     void EnterEvadeMode(EvadeReason why) override
     {
-        instance->SetData(DATA_HANDLE_CELLS, DATA_XEVOZZ);
         instance->SetData(DATA_MAIN_EVENT_STATE, FAIL);
         BossAI::EnterEvadeMode(why);
     }
