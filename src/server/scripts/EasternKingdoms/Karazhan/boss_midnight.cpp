@@ -110,7 +110,7 @@ public:
 
             scheduler.Schedule(Seconds(25), Seconds(45), [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.f, true))
                     DoCast(target,SPELL_INTANGIBLE_PRESENCE);
 
                 task.Repeat(Seconds(25), Seconds(45));
@@ -199,13 +199,13 @@ public:
             }
         }
 
-        void JustDied(Unit* /*killer*/) override
+        void JustDied(Unit* killer) override
         {
             Talk(SAY_DEATH);
             if (Unit* midnight = ObjectAccessor::GetUnit(*me, _midnightGUID))
                 midnight->KillSelf();
 
-            _JustDied();
+            BossAI::JustDied(killer);
         }
 
         void SetGUID(ObjectGuid const& guid, int32 id) override
