@@ -146,7 +146,7 @@ void Player::_LoadAccountSharedSpells(PreparedQueryResult result)
         bool searchForMounts = HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT, CustomFlags::CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE);
         bool searchForRiding = HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE);
         bool searchForPets = HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_PET, CustomFlags::CUSTOM_FLAG_ACCOUNT_PET_ACTIVE);
-        for (std::pair<uint32, uint32> currentValue : spellIdsByTeam)
+        for (std::pair<uint32, uint32> const& currentValue : spellIdsByTeam)
         {
             uint32 team = currentValue.first;
             uint32 spellId = currentValue.second;
@@ -280,7 +280,7 @@ void Player::_SaveTransmogrifications()
 
         // Only save items that are in inventory / bank / etc
         std::vector<ObjectGuid> items = sTransmogrification->GetItemList(this);
-        for (ObjectGuid itemGUID : items)
+        for (ObjectGuid const& itemGUID : items)
         {
             auto itr = _map.find(itemGUID);
             if (itr == _map.end())
@@ -374,7 +374,7 @@ Loot* Player::GetLootFromAOELoot(ObjectGuid lootGUID) const
     if (StoredLoot.empty() || StoredLoot.size() < 2)
         return nullptr;
 
-    for (LootReference currentLoot : StoredLoot)
+    for (LootReference const& currentLoot : StoredLoot)
     {
         if (currentLoot.ContainerEntityGUID == lootGUID)
             return currentLoot.RelatedLoot;
