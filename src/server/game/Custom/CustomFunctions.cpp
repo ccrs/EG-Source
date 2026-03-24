@@ -226,7 +226,7 @@ void Player::_LoadAccountCharacters(PreparedQueryResult result)
 {
     if (result)
     {
-        if (HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_TAXI, CustomFlags::CUSTOM_FLAG_ACCOUNT_TAXI_ACTIVE))
+        if (GetClass() != CLASS_DEATH_KNIGHT && HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_TAXI, CustomFlags::CUSTOM_FLAG_ACCOUNT_TAXI_ACTIVE))
         {
             do
             {
