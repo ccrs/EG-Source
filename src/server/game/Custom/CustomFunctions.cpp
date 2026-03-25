@@ -146,7 +146,7 @@ void Player::_LoadAccountSharedSpells(PreparedQueryResult result)
         bool searchForMounts = HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT, CustomFlags::CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE);
         bool searchForRiding = HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE);
         bool searchForPets = HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_PET, CustomFlags::CUSTOM_FLAG_ACCOUNT_PET_ACTIVE);
-        for (std::pair<uint32, uint32> const& currentValue : spellIdsByTeam)
+        for (std::unordered_multimap<uint32/*team*/, uint32/*spellId*/>::value_type const& currentValue : spellIdsByTeam)
         {
             uint32 team = currentValue.first;
             uint32 spellId = currentValue.second;
