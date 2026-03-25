@@ -99,10 +99,7 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 (@ENTRY, 0, 0, 0, 1, 0, 100, 1, 6000, 6000, 0, 0, 1, 0, 6000, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Time = 6 seconds (OOC) - Self: Talk 0 to invoker'),
 (@ENTRY, 0, 1, 0, 52, 0, 100, 0, 0, 27726, 0, 0, 1, 1, 18000, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'When text 0 said by creature Gorgonna (27726) is over - Self: Talk 1 to invoker'),
 (@ENTRY, 0, 2, 0, 52, 0, 100, 0, 1, 27726, 0, 0, 1, 2, 15000, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'When text 1 said by creature Gorgonna (27726) is over - Self: Talk 2 to invoker'),
-(@ENTRY, 0, 3, 0, 52, 0, 100, 0, 2, 27726, 0, 0, 1, 3, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'When text 2 said by creature Gorgonna (27726) is over - Self: Talk 3 to invoker'),
-(@ENTRY, 0, 4, 0, 75, 0, 100, 0, 0, 27727, 50, 2000, 49, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 'When creature Conqueror Krenna (27727) in range 50 (cooldown 2 sec) - Self: Attack Found creature');
+(@ENTRY, 0, 3, 0, 52, 0, 100, 0, 2, 27726, 0, 0, 1, 3, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'When text 2 said by creature Gorgonna (27726) is over - Self: Talk 3 to invoker');
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 27726 AND `SourceId` = 0;
-INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
-(22, 5, 27726, 0, 0, 21, 1, 32, 0, 0, 0, 'Object has unit state UNIT_STATE_CHASE');
