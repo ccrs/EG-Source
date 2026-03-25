@@ -38,3 +38,19 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 18179 AND `SourceId` = 0;
+
+ -- Rustblood smart ai
+SET @ENTRY := 27717;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 5000, 7000, 5000, 7000, 11, 42746, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 5 - 7 seconds (IC) - Self: Cast spell  Cleave (42746) on Victim'),
+(@ENTRY, 0, 1, 0, 9, 0, 100, 0, 0, 5, 22000, 30000, 11, 49398, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'When victim in range 0 - 5 yards (cooldown 22000 - 30000 ms) - Self: Cast spell  Knockback (49398) on Victim'),
+(@ENTRY, 0, 2, 0, 0, 0, 100, 0, 12000, 15000, 18000, 21000, 11, 14102, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 18 - 21 seconds (12 - 15s initially) (IC) - Self: Cast spell  Head Smash (14102) on Victim'),
+(@ENTRY, 0, 3, 0, 0, 0, 100, 0, 0, 3000, 12000, 12000, 11, 61893, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 12 - 12 seconds (0 - 3s initially) (IC) - Self: Cast spell  Lightning Bolt (61893) on Victim'),
+(@ENTRY, 0, 4, 0, 6, 0, 100, 0, 0, 0, 0, 0, 26, 12429, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On death - Killer: Call group event happened from quest The Conquest Pit: Blood and Metal (12429) on owner'),
+(@ENTRY, 0, 5, 6, 7, 0, 100, 0, 0, 0, 0, 0, 6, 12429, 0, 0, 0, 0, 0, 18, 25, 0, 0, 0, 0, 0, 0, 'On evade - Players in 25 yards: Fail quest The Conquest Pit: Blood and Metal (12429)'),
+(@ENTRY, 0, 6, 0, 61, 0, 100, 0, 0, 0, 0, 0, 41, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On evade - Self: Despawn instantly');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 27717 AND `SourceId` = 0;
