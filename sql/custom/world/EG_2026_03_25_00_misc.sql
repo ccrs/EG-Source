@@ -54,3 +54,19 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 27717 AND `SourceId` = 0;
+
+ -- Horgrenn Hellcleave smart ai
+SET @ENTRY := 27718;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 9, 0, 100, 0, 0, 10, 21000, 29000, 11, 16508, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'When victim in range 0 - 10 yards (cooldown 21000 - 29000 ms) - Self: Cast spell  Intimidating Roar (16508) on Victim'),
+(@ENTRY, 0, 1, 0, 0, 0, 100, 0, 3000, 6000, 8000, 12000, 11, 15572, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 8 - 12 seconds (3 - 6s initially) (IC) - Self: Cast spell  Sunder Armor (15572) on Victim'),
+(@ENTRY, 0, 2, 0, 0, 0, 100, 0, 9000, 12000, 12000, 16000, 11, 39171, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 12 - 16 seconds (9 - 12s initially) (IC) - Self: Cast spell  Mortal Strike (39171) on Victim'),
+(@ENTRY, 0, 3, 0, 0, 0, 100, 0, 13000, 15000, 13000, 18000, 11, 38618, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 13 - 18 seconds (13 - 15s initially) (IC) - Self: Cast spell  Whirlwind (38618) on Victim'),
+(@ENTRY, 0, 4, 0, 6, 0, 100, 0, 0, 0, 0, 0, 26, 12430, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On death - Killer: Call group event happened from quest The Conquest Pit: Death Is Likely (12430) on owner'),
+(@ENTRY, 0, 5, 6, 7, 0, 100, 0, 0, 0, 0, 0, 6, 12430, 0, 0, 0, 0, 0, 18, 25, 0, 0, 0, 0, 0, 0, 'On evade - Players in 25 yards: Fail quest The Conquest Pit: Death Is Likely (12430)'),
+(@ENTRY, 0, 6, 0, 61, 0, 100, 0, 0, 0, 0, 0, 41, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On evade - Self: Despawn instantly');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 27718 AND `SourceId` = 0;
