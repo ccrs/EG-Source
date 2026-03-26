@@ -432,7 +432,7 @@ class instance_violet_hold : public InstanceMapScript
                                 else if (WaveCount > 12 && WaveCount < 18)
                                     WaveCount = 13;
                             }
-                            DoUpdateWorldState(WORLD_STATE_VH_WAVE_COUNT, WaveCount);
+
                             Scheduler.Async(std::bind(&instance_violet_hold_InstanceMapScript::AddWave, this));
 
                             for (uint8 i = 0; i < ActivationCrystalCount; ++i)
@@ -455,7 +455,8 @@ class instance_violet_hold : public InstanceMapScript
                             }
 
                             DoUpdateWorldState(WORLD_STATE_VH_SHOW, 0);
-                            DoUpdateWorldState(WORLD_STATE_VH_WAVE_COUNT, WaveCount);
+                            if (WaveCount == 0)
+                                DoUpdateWorldState(WORLD_STATE_VH_WAVE_COUNT, WaveCount);
                             DoUpdateWorldState(WORLD_STATE_VH_PRISON_STATE, DoorIntegrity);
 
                             for (uint8 i = 0; i < ActivationCrystalCount; ++i)
