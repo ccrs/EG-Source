@@ -746,6 +746,12 @@ struct npc_violet_hold_teleportation_portal : public npc_violet_hold_teleportati
             me->DespawnOrUnsummon();
         }
     }
+
+    void OnDespawn() override
+    {
+        _summons.DespawnEntry(NPC_PORTAL_GUARDIAN);
+        _summons.DespawnEntry(NPC_PORTAL_KEEPER);
+    }
 };
 
 // 32174 - Teleportation Portal (Elite)
