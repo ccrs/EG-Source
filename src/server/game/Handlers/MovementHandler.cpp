@@ -421,8 +421,6 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
         else
             plrMover->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_IS_OUT_OF_BOUNDS);
 
-        sAnticheatMgr->OnPlayerMove(plrMover, movementInfo, opcode);
-
         // Whenever a player stops a movement action, an indoor/outdoor check is being performed
         switch (opcode)
         {
@@ -439,6 +437,8 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
             default:
                 break;
         }
+
+        sAnticheatMgr->OnPlayerMove(plrMover, movementInfo, opcode);
     }
 }
 
