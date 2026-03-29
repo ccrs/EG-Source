@@ -15,16 +15,16 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
 #include "halls_of_stone.h"
 #include "InstanceScript.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptedEscortAI.h"
 #include "ScriptedGossip.h"
+#include "ScriptMgr.h"
 #include "TemporarySummon.h"
 
-enum Texts
+enum BrannHoSTexts
 {
     SAY_KILL                            = 0,
     SAY_LOW_HEALTH                      = 1,
@@ -87,7 +87,7 @@ enum Texts
     TEXT_ID_PROGRESS                    = 13101
 };
 
-enum Creatures
+enum BrannHoSCreatures
 {
     NPC_TRIBUNAL_OF_THE_AGES       = 28234,
     NPC_BRANN_BRONZEBEARD          = 28070,
@@ -98,7 +98,7 @@ enum Creatures
     NPC_IRON_GOLEM_CUSTODIAN       = 27985,
 };
 
-enum Spells
+enum BrannHoSSpells
 {
     SPELL_STEALTH                       = 58506,
 
@@ -114,7 +114,7 @@ enum Spells
     SPELL_REWARD_ACHIEVEMENT            = 59046,
 };
 
-enum Misc
+enum BrannHoSMisc
 {
     QUEST_HALLS_OF_STONE                = 13207,
 
@@ -122,7 +122,7 @@ enum Misc
 
 };
 
-enum Gossip
+enum BrannHoSGossip
 {
     GOSSIP_ITEM_START_MID               = 9669,     //Brann, it would be our honor!
     GOSSIP_ITEM_START_OID               = 0,
@@ -130,10 +130,10 @@ enum Gossip
     GOSSIP_ITEM_PROGRESS_OID            = 0
 };
 
-static Position SpawnLocations[]=
+static Position const SpawnLocations[]=
 {
-    {946.992f, 397.016f, 208.374f, 0.0f},
-    {960.748f, 382.944f, 208.374f, 0.0f},
+    { 946.992f, 397.016f, 208.374f, 0.0f },
+    { 960.748f, 382.944f, 208.374f, 0.0f },
 };
 
 struct npc_tribuna_controller : public ScriptedAI
@@ -141,43 +141,31 @@ struct npc_tribuna_controller : public ScriptedAI
     npc_tribuna_controller(Creature* creature) : ScriptedAI(creature)
     {
         Initialize();
-        instance = creature->GetInstanceScript();
+        _instance = creature->GetInstanceScript();
         SetCombatMovement(false);
     }
 
     void Initialize()
     {
-        uiKaddrakEncounterTimer = 1500;
-        uiMarnakEncounterTimer = 10000;
-        uiAbedneumEncounterTimer = 10000;
+        _kaddrakEncounterTimer = 1500;
+        _marnakEncounterTimer = 10000;
+        _abedneumEncounterTimer = 10000;
 
-        bKaddrakActivated = false;
-        bMarnakActivated = false;
-        bAbedneumActivated = false;
+        _kaddrakActivated = false;
+        _marnakActivated = false;
+        _abedneumActivated = false;
     }
-
-    InstanceScript* instance;
-
-    uint32 uiKaddrakEncounterTimer;
-    uint32 uiMarnakEncounterTimer;
-    uint32 uiAbedneumEncounterTimer;
-
-    bool bKaddrakActivated;
-    bool bMarnakActivated;
-    bool bAbedneumActivated;
-
-    GuidList KaddrakGUIDList;
 
     void Reset() override
     {
         Initialize();
 
-        instance->HandleGameObject(instance->GetGuidData(DATA_GO_KADDRAK), false);
-        instance->HandleGameObject(instance->GetGuidData(DATA_GO_MARNAK), false);
-        instance->HandleGameObject(instance->GetGuidData(DATA_GO_ABEDNEUM), false);
-        instance->HandleGameObject(instance->GetGuidData(DATA_GO_SKY_FLOOR), false);
+        _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_KADDRAK), false);
+        _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_MARNAK), false);
+        _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_ABEDNEUM), false);
+        _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_SKY_FLOOR), false);
 
-        KaddrakGUIDList.clear();
+        _kaddrakGUIDList.clear();
     }
 
     void UpdateFacesList()
@@ -208,13 +196,13 @@ struct npc_tribuna_controller : public ScriptedAI
 
     void UpdateAI(uint32 diff) override
     {
-        if (bKaddrakActivated)
+        if (_kaddrakActivated)
         {
-            if (uiKaddrakEncounterTimer <= diff)
+            if (_kaddrakEncounterTimer <= diff)
             {
                 if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true))
-                    if (!KaddrakGUIDList.empty())
-                        for (GuidList::const_iterator itr = KaddrakGUIDList.begin(); itr != KaddrakGUIDList.end(); ++itr)
+                    if (!_kaddrakGUIDList.empty())
+                        for (GuidList::const_iterator itr = _kaddrakGUIDList.begin(); itr != _kaddrakGUIDList.end(); ++itr)
                         {
                             if (Creature* pKaddrak = ObjectAccessor::GetCreature(*me, *itr))
                             {
@@ -222,12 +210,14 @@ struct npc_tribuna_controller : public ScriptedAI
                                     pKaddrak->CastSpell(target, SPELL_GLARE_OF_THE_TRIBUNAL, true);
                             }
                         }
-                uiKaddrakEncounterTimer = 1500;
-            } else uiKaddrakEncounterTimer -= diff;
+                _kaddrakEncounterTimer = 1500;
+            }
+            else
+                _kaddrakEncounterTimer -= diff;
         }
-        if (bMarnakActivated)
+        if (_marnakActivated)
         {
-            if (uiMarnakEncounterTimer <= diff)
+            if (_marnakEncounterTimer <= diff)
             {
                 if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true))
                 {
@@ -238,12 +228,14 @@ struct npc_tribuna_controller : public ScriptedAI
                         summon->CastSpell(target, SPELL_DARK_MATTER, true);
                     }
                 }
-                uiMarnakEncounterTimer = urand(30000, 31000);
-            } else uiMarnakEncounterTimer -= diff;
+                _marnakEncounterTimer = urand(30000, 31000);
+            }
+            else
+                _marnakEncounterTimer -= diff;
         }
-        if (bAbedneumActivated)
+        if (_abedneumActivated)
         {
-            if (uiAbedneumEncounterTimer <= diff)
+            if (_abedneumEncounterTimer <= diff)
             {
                 if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true))
                 {
@@ -254,10 +246,23 @@ struct npc_tribuna_controller : public ScriptedAI
                         summon->CastSpell(target, SPELL_SEARING_GAZE, true);
                     }
                 }
-                uiAbedneumEncounterTimer = urand(30000, 31000);
-            } else uiAbedneumEncounterTimer -= diff;
+                _abedneumEncounterTimer = urand(30000, 31000);
+            }
+            else
+                _abedneumEncounterTimer -= diff;
         }
     }
+
+    bool _kaddrakActivated;
+    bool _marnakActivated;
+    bool _abedneumActivated;
+
+private:
+    InstanceScript* _instance;
+    uint32 _kaddrakEncounterTimer;
+    uint32 _marnakEncounterTimer;
+    uint32 _abedneumEncounterTimer;
+    GuidList _kaddrakGUIDList;
 };
 
 static constexpr uint32 PATH_ESCORT_BRANN = 224562;
@@ -267,30 +272,18 @@ struct npc_brann_hos : public EscortAI
     npc_brann_hos(Creature* creature) : EscortAI(creature)
     {
         Initialize();
-        instance = creature->GetInstanceScript();
+        _instance = creature->GetInstanceScript();
     }
 
     void Initialize()
     {
-        bIsLowHP = false;
-        bIsBattle = false;
-        uiStep = 0;
-        uiPhaseTimer = 0;
-        uiControllerGUID.Clear();
-        brannSparklinNews = true;
+        _lowHP = false;
+        _battle = false;
+        _step = 0;
+        _phaseTimer = 0;
+        _controllerGUID.Clear();
+        _brannSparklinNew = true;
     }
-
-    uint32 uiStep;
-    uint32 uiPhaseTimer;
-
-    ObjectGuid uiControllerGUID;
-    GuidList lDwarfGUIDList;
-
-    InstanceScript* instance;
-
-    bool bIsBattle;
-    bool bIsLowHP;
-    bool brannSparklinNews;
 
     void Reset() override
     {
@@ -300,21 +293,21 @@ struct npc_brann_hos : public EscortAI
 
             DespawnDwarf();
 
-            instance->SetBossState(DATA_TRIBUNAL_OF_AGES, NOT_STARTED);
+            _instance->SetBossState(DATA_TRIBUNAL_OF_AGES, NOT_STARTED);
         }
     }
 
     void DespawnDwarf()
     {
-        if (lDwarfGUIDList.empty())
+        if (_dwarfGUIDList.empty())
             return;
-        for (GuidList::const_iterator itr = lDwarfGUIDList.begin(); itr != lDwarfGUIDList.end(); ++itr)
+        for (GuidList::const_iterator itr = _dwarfGUIDList.begin(); itr != _dwarfGUIDList.end(); ++itr)
         {
-            Creature* temp = ObjectAccessor::GetCreature(*me, instance ? (*itr) : ObjectGuid::Empty);
+            Creature* temp = ObjectAccessor::GetCreature(*me, _instance ? (*itr) : ObjectGuid::Empty);
             if (temp && temp->IsAlive())
                 temp->DespawnOrUnsummon();
         }
-        lDwarfGUIDList.clear();
+        _dwarfGUIDList.clear();
     }
 
     void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
@@ -327,19 +320,19 @@ struct npc_brann_hos : public EscortAI
                     if (!creature->IsAlive())
                         creature->Respawn();
                     ENSURE_AI(npc_tribuna_controller, creature->AI())->UpdateFacesList();
-                    uiControllerGUID = creature->GetGUID();
+                    _controllerGUID = creature->GetGUID();
                 }
                 break;
             case 13:
                 Talk(SAY_EVENT_INTRO_1);
-                instance->SetBossState(DATA_TRIBUNAL_OF_AGES, IN_PROGRESS);
+                _instance->SetBossState(DATA_TRIBUNAL_OF_AGES, IN_PROGRESS);
                 SetEscortPaused(true);
                 JumpToNextStep(20000);
                 // @todo: There should be a pause here and a gossip should start the next step.
                 break;
             case 17:
                 Talk(SAY_EVENT_INTRO_2);
-                instance->HandleGameObject(instance->GetGuidData(DATA_GO_TRIBUNAL_CONSOLE), true);
+                _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_TRIBUNAL_CONSOLE), true);
                 me->SetStandState(UNIT_STAND_STATE_KNEEL);
                 SetEscortPaused(true);
                 JumpToNextStep(8500);
@@ -352,72 +345,72 @@ struct npc_brann_hos : public EscortAI
 
      void SpawnDwarf(uint32 uiType)
      {
-       switch (uiType)
-       {
-           case 1:
-           {
-               uint32 uiSpawnNumber = DUNGEON_MODE(2, 3);
-               for (uint8 i = 0; i < uiSpawnNumber; ++i)
-                   me->SummonCreature(NPC_DARK_RUNE_PROTECTOR, SpawnLocations[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
-               me->SummonCreature(NPC_DARK_RUNE_STORMCALLER, SpawnLocations[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
-               break;
-           }
-           case 2:
-               for (uint8 i = 0; i < 2; ++i)
-                   me->SummonCreature(NPC_DARK_RUNE_STORMCALLER, SpawnLocations[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
-               break;
-           case 3:
-               me->SummonCreature(NPC_IRON_GOLEM_CUSTODIAN, SpawnLocations[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
-               break;
-       }
+        switch (uiType)
+        {
+            case 1:
+            {
+                uint32 uiSpawnNumber = DUNGEON_MODE(2, 3);
+                for (uint8 i = 0; i < uiSpawnNumber; ++i)
+                    me->SummonCreature(NPC_DARK_RUNE_PROTECTOR, SpawnLocations[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
+                me->SummonCreature(NPC_DARK_RUNE_STORMCALLER, SpawnLocations[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
+                break;
+            }
+            case 2:
+                for (uint8 i = 0; i < 2; ++i)
+                    me->SummonCreature(NPC_DARK_RUNE_STORMCALLER, SpawnLocations[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
+                break;
+            case 3:
+                me->SummonCreature(NPC_IRON_GOLEM_CUSTODIAN, SpawnLocations[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
+                break;
+        }
      }
 
     void JustSummoned(Creature* summoned) override
     {
-        lDwarfGUIDList.push_back(summoned->GetGUID());
+        _dwarfGUIDList.push_back(summoned->GetGUID());
         AddThreat(me, 0.0f, summoned);
         summoned->AI()->AttackStart(me);
     }
 
     void JumpToNextStep(uint32 uiTimer)
     {
-      uiPhaseTimer = uiTimer;
-      ++uiStep;
+        _phaseTimer = uiTimer;
+        ++_step;
     }
 
     void StartWP()
     {
         me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
         SetEscortPaused(false);
-        uiStep = 1;
+        _step = 1;
         LoadPath(PATH_ESCORT_BRANN);
         Start();
     }
 
     void DamageTaken(Unit* /*done_by*/, uint32& /*damage*/, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
     {
-        if (instance->GetBossState(DATA_TRIBUNAL_OF_AGES) == IN_PROGRESS)
-            brannSparklinNews = false;
+        if (_instance->GetBossState(DATA_TRIBUNAL_OF_AGES) == IN_PROGRESS)
+            _brannSparklinNew = false;
     }
 
     uint32 GetData(uint32 type) const override
     {
         if (type == DATA_BRANN_SPARKLIN_NEWS)
-            return brannSparklinNews ? 1 : 0;
+            return _brannSparklinNew ? 1 : 0;
 
         return 0;
     }
 
     void UpdateEscortAI(uint32 uiDiff) override
     {
-        if (uiPhaseTimer <= uiDiff)
+        if (_phaseTimer <= uiDiff)
         {
-            switch (uiStep)
+            switch (_step)
             {
                 case 1:
-                    if (instance->GetBossState(DATA_TRIBUNAL_OF_AGES) != NOT_STARTED)
+                    if (_instance->GetBossState(DATA_TRIBUNAL_OF_AGES) != NOT_STARTED)
                         return;
-                    bIsBattle = false;
+                    _battle = false;
                     Talk(SAY_ESCORT_START);
                     JumpToNextStep(0);
                     break;
@@ -426,7 +419,7 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(0);
                     break;
                 case 5:
-                    if (Creature* temp = (ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ABEDNEUM))))
+                    if (Creature* temp = (ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_ABEDNEUM))))
                         temp->AI()->Talk(SAY_EVENT_INTRO_3_ABED);
                     JumpToNextStep(8500);
                     break;
@@ -435,15 +428,15 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(6500);
                     break;
                 case 7:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_KADDRAK)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_KADDRAK)))
                         temp->AI()->Talk(SAY_EVENT_A_2_KADD);
                     JumpToNextStep(12500);
                     break;
                 case 8:
                     Talk(SAY_EVENT_A_3);
-                    instance->HandleGameObject(instance->GetGuidData(DATA_GO_KADDRAK), true);
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, uiControllerGUID))
-                        ENSURE_AI(npc_tribuna_controller, temp->AI())->bKaddrakActivated = true;
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_KADDRAK), true);
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _controllerGUID))
+                        ENSURE_AI(npc_tribuna_controller, temp->AI())->_kaddrakActivated = true;
                     JumpToNextStep(5000);
                     break;
                 case 9:
@@ -456,16 +449,16 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(6000);
                     break;
                 case 11:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_MARNAK)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_MARNAK)))
                         temp->AI()->Talk(SAY_EVENT_B_2_MARN);
                     SpawnDwarf(1);
                     JumpToNextStep(20000);
                     break;
                 case 12:
                     Talk(SAY_EVENT_B_3);
-                    instance->HandleGameObject(instance->GetGuidData(DATA_GO_MARNAK), true);
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, uiControllerGUID))
-                        ENSURE_AI(npc_tribuna_controller, temp->AI())->bMarnakActivated = true;
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_MARNAK), true);
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _controllerGUID))
+                        ENSURE_AI(npc_tribuna_controller, temp->AI())->_marnakActivated = true;
                     JumpToNextStep(10000);
                     break;
                 case 13:
@@ -486,16 +479,16 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(20000);
                     break;
                 case 17:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ABEDNEUM)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_ABEDNEUM)))
                         temp->AI()->Talk(SAY_EVENT_C_2_ABED);
                     SpawnDwarf(1);
                     JumpToNextStep(20000);
                     break;
                 case 18:
                     Talk(SAY_EVENT_C_3);
-                    instance->HandleGameObject(instance->GetGuidData(DATA_GO_ABEDNEUM), true);
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, uiControllerGUID))
-                        ENSURE_AI(npc_tribuna_controller, temp->AI())->bAbedneumActivated = true;
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_ABEDNEUM), true);
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _controllerGUID))
+                        ENSURE_AI(npc_tribuna_controller, temp->AI())->_abedneumActivated = true;
                     JumpToNextStep(5000);
                     break;
                 case 19:
@@ -512,7 +505,7 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(20000);
                     break;
                 case 22:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ABEDNEUM)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_ABEDNEUM)))
                         temp->AI()->Talk(SAY_EVENT_D_2_ABED);
                     SpawnDwarf(1);
                     JumpToNextStep(5000);
@@ -535,7 +528,7 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(10000);
                     break;
                 case 27:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ABEDNEUM)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_ABEDNEUM)))
                         temp->AI()->Talk(SAY_EVENT_D_4_ABED);
                     SpawnDwarf(1);
                     JumpToNextStep(10000);
@@ -544,21 +537,21 @@ struct npc_brann_hos : public EscortAI
                     me->SetReactState(REACT_DEFENSIVE);
                     Talk(SAY_EVENT_END_01);
                     me->SetStandState(UNIT_STAND_STATE_STAND);
-                    instance->HandleGameObject(instance->GetGuidData(DATA_GO_SKY_FLOOR), true);
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, uiControllerGUID))
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_SKY_FLOOR), true);
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _controllerGUID))
                         temp->KillSelf();
-                    bIsBattle = true;
+                    _battle = true;
                     SetEscortPaused(false);
                     JumpToNextStep(6500);
                     break;
                 case 29:
                     Talk(SAY_EVENT_END_02);
-                    instance->SetBossState(DATA_TRIBUNAL_OF_AGES, DONE);
+                    _instance->SetBossState(DATA_TRIBUNAL_OF_AGES, DONE);
                     me->CastSpell(me, SPELL_REWARD_ACHIEVEMENT, true);
                     JumpToNextStep(5500);
                     break;
                 case 30:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ABEDNEUM)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_ABEDNEUM)))
                         temp->AI()->Talk(SAY_EVENT_END_03_ABED);
                     JumpToNextStep(8500);
                     break;
@@ -567,7 +560,7 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(11500);
                     break;
                 case 32:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ABEDNEUM)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_ABEDNEUM)))
                         temp->AI()->Talk(SAY_EVENT_END_05_ABED);
                     JumpToNextStep(11500);
                     break;
@@ -576,7 +569,7 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(4500);
                     break;
                 case 34:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ABEDNEUM)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_ABEDNEUM)))
                         temp->AI()->Talk(SAY_EVENT_END_07_ABED);
                     JumpToNextStep(22500);
                     break;
@@ -585,7 +578,7 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(7500);
                     break;
                 case 36:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_KADDRAK)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_KADDRAK)))
                         temp->AI()->Talk(SAY_EVENT_END_09_KADD);
                     JumpToNextStep(18500);
                     break;
@@ -594,7 +587,7 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(5500);
                     break;
                 case 38:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_KADDRAK)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_KADDRAK)))
                         temp->AI()->Talk(SAY_EVENT_END_11_KADD);
                     JumpToNextStep(20500);
                     break;
@@ -603,7 +596,7 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(2500);
                     break;
                 case 40:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_KADDRAK)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_KADDRAK)))
                         temp->AI()->Talk(SAY_EVENT_END_13_KADD);
                     JumpToNextStep(19500);
                     break;
@@ -612,7 +605,7 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(10500);
                     break;
                 case 42:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_MARNAK)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_MARNAK)))
                         temp->AI()->Talk(SAY_EVENT_END_15_MARN);
                     JumpToNextStep(6500);
                     break;
@@ -621,7 +614,7 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(6500);
                     break;
                 case 44:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_MARNAK)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_MARNAK)))
                         temp->AI()->Talk(SAY_EVENT_END_17_MARN);
                     JumpToNextStep(25500);
                     break;
@@ -630,7 +623,7 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(23500);
                     break;
                 case 46:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_MARNAK)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_MARNAK)))
                         temp->AI()->Talk(SAY_EVENT_END_19_MARN);
                     JumpToNextStep(3500);
                     break;
@@ -639,16 +632,16 @@ struct npc_brann_hos : public EscortAI
                     JumpToNextStep(8500);
                     break;
                 case 48:
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ABEDNEUM)))
+                    if (Creature* temp = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_ABEDNEUM)))
                         temp->AI()->Talk(SAY_EVENT_END_21_ABED);
                     JumpToNextStep(5500);
                     break;
                 case 49:
                 {
-                    instance->HandleGameObject(instance->GetGuidData(DATA_GO_KADDRAK), false);
-                    instance->HandleGameObject(instance->GetGuidData(DATA_GO_MARNAK), false);
-                    instance->HandleGameObject(instance->GetGuidData(DATA_GO_ABEDNEUM), false);
-                    instance->HandleGameObject(instance->GetGuidData(DATA_GO_SKY_FLOOR), false);
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_KADDRAK), false);
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_MARNAK), false);
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_ABEDNEUM), false);
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_SKY_FLOOR), false);
                     Player* player = GetPlayerForEscort();
                     if (player)
                         player->GroupEventHappens(QUEST_HALLS_OF_STONE, me);
@@ -660,15 +653,17 @@ struct npc_brann_hos : public EscortAI
                     SetEscortPaused(false);
                     break;
             }
-        } else uiPhaseTimer -= uiDiff;
+        }
+        else
+            _phaseTimer -= uiDiff;
 
-        if (!bIsLowHP && HealthBelowPct(30))
+        if (!_lowHP && HealthBelowPct(30))
         {
             Talk(SAY_LOW_HEALTH);
-            bIsLowHP = true;
+            _lowHP = true;
         }
-        else if (bIsLowHP && !HealthBelowPct(30))
-            bIsLowHP = false;
+        else if (_lowHP && !HealthBelowPct(30))
+            _lowHP = false;
 
         if (!UpdateVictim())
             return;
@@ -700,6 +695,16 @@ struct npc_brann_hos : public EscortAI
 
         return true;
     }
+
+private:
+    uint32 _step;
+    uint32 _phaseTimer;
+    ObjectGuid _controllerGUID;
+    GuidList _dwarfGUIDList;
+    InstanceScript* _instance;
+    bool _battle;
+    bool _lowHP;
+    bool _brannSparklinNew;
 };
 
 class achievement_brann_spankin_new : public AchievementCriteriaScript

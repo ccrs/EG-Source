@@ -15,13 +15,13 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "halls_of_stone.h"
 #include "Creature.h"
 #include "GameObject.h"
-#include "halls_of_stone.h"
 #include "InstanceScript.h"
 #include "Map.h"
 #include "Player.h"
+#include "ScriptMgr.h"
 
 DoorData const doorData[] =
 {
