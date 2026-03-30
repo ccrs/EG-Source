@@ -1,7 +1,7 @@
 --
-UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 192, `modelid1` = 27401 WHERE `entry` = 30898;
-UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 192, `modelid1` = 16925 WHERE `entry` = 30899;
-UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 192, `modelid1` = 27401 WHERE `entry` = 30897;
+UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 8384, `modelid1` = 27401 WHERE `entry` = 30898;
+UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 8384, `modelid1` = 16925 WHERE `entry` = 30899;
+UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 8384, `modelid1` = 27401 WHERE `entry` = 30897;
 
 DELETE FROM `creature_template_movement` WHERE `CreatureId` IN (30898, 30899, 30897);
 INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`) VALUES
@@ -33,9 +33,9 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 28237 AND `SourceId` = 0;
 
-UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 192, `modelid1` = 11686 WHERE `entry` = 28237;
+UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 8384, `modelid1` = 11686 WHERE `entry` = 28237;
 UPDATE `creature_template_movement` SET `Ground` = 1, `Swim` = 0 WHERE `CreatureId` = 28237;
-UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 192, `modelid1` = 11686 WHERE `entry` = 31875;
+UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 8384, `modelid1` = 11686 WHERE `entry` = 31875;
 UPDATE `creature_template_movement` SET `Ground` = 1, `Swim` = 0 WHERE `CreatureId` = 31875;
 
  -- Searing Gaze smart ai
