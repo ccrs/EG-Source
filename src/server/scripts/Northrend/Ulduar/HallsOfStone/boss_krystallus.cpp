@@ -112,7 +112,6 @@ struct boss_krystallus : public BossAI
                 case EVENT_GROUND_SLAM:
                     DoCastSelf(SPELL_GROUND_SLAM);
                     events.ScheduleEvent(EVENT_SHATTER, 10s);
-                    events.Repeat(15s, 18s);
                     break;
                 case EVENT_STOMP:
                     DoCastSelf(SPELL_STOMP);
@@ -120,6 +119,7 @@ struct boss_krystallus : public BossAI
                     break;
                 case EVENT_SHATTER:
                     DoCastSelf(SPELL_SHATTER);
+                    events.ScheduleEvent(EVENT_GROUND_SLAM, 15s, 18s);
                     break;
                 default:
                     break;
