@@ -15,18 +15,19 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
 #include "azjol_nerub.h"
 #include "InstanceScript.h"
 #include "Map.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
 #include "SpellAuras.h"
 #include "SpellHistory.h"
 #include "SpellScript.h"
 #include "TemporarySummon.h"
+#include "Optional.h"
 
 enum HadronoxEvents
 {
@@ -170,7 +171,7 @@ struct boss_hadronox : public BossAI
         events.CancelEventGroup(1);
         me->SetHomePosition(hadronoxStep[step]);
         me->GetMotionMaster()->Remove(CHASE_MOTION_TYPE);
-        me->GetMotionMaster()->MovePoint(1, hadronoxStep[step]);
+        me->GetMotionMaster()->MovePoint(1, hadronoxStep[step], true, Optional<float>{ }, true);
     }
 
     void SummonCrusherPack(HadronoxSummonGroups group)
