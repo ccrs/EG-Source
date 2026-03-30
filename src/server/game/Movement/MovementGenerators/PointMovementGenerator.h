@@ -39,6 +39,7 @@ class PointMovementGenerator : public MovementGeneratorMedium<T, PointMovementGe
 
         void UnitSpeedChanged() override { PointMovementGenerator<T>::AddFlag(MOVEMENTGENERATOR_FLAG_SPEED_UPDATE_PENDING); }
 
+        void SetForzeDestination(bool value) { _forzeDestination = value; }
         uint32 GetId() const { return _movementId; }
 
     private:
@@ -48,6 +49,7 @@ class PointMovementGenerator : public MovementGeneratorMedium<T, PointMovementGe
         float _x, _y, _z;
         float _speed;
         bool _generatePath;
+        bool _forzeDestination;
         //! if set then unit will turn to specified _orient in provided _pos
         Optional<float> _finalOrient;
 };

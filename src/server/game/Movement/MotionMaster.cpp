@@ -709,22 +709,28 @@ void MotionMaster::MoveFleeing(Unit* enemy, uint32 time)
         Add(new FleeingMovementGenerator<Player>(enemy->GetGUID()));
 }
 
-void MotionMaster::MovePoint(uint32 id, Position const& pos, bool generatePath/* = true*/, Optional<float> finalOrient/* = {}*/)
+void MotionMaster::MovePoint(uint32 id, Position const& pos, bool generatePath/* = true*/, Optional<float> finalOrient/* = {}*/, bool forzeDestination/* = false*/)
 {
-    MovePoint(id, pos.m_positionX, pos.m_positionY, pos.m_positionZ, generatePath, finalOrient);
+    MovePoint(id, pos.m_positionX, pos.m_positionY, pos.m_positionZ, generatePath, finalOrient, forzeDestination);
 }
 
-void MotionMaster::MovePoint(uint32 id, float x, float y, float z, bool generatePath, Optional<float> finalOrient)
+void MotionMaster::MovePoint(uint32 id, float x, float y, float z, bool generatePath, Optional<float> finalOrient, bool forzeDestination/* = false*/)
 {
     if (_owner->GetTypeId() == TYPEID_PLAYER)
     {
         TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::MovePoint: '{}', targeted point Id: {} (X: {}, Y: {}, Z: {})", _owner->GetGUID().ToString(), id, x, y, z);
-        Add(new PointMovementGenerator<Player>(id, x, y, z, generatePath, 0.0f, finalOrient));
+        PointMovementGenerator<Player>* newMovement = new PointMovementGenerator<Player>(id, x, y, z, generatePath, 0.0f, finalOrient);
+        if (forzeDestination)
+            newMovement->SetForzeDestination(true);
+        Add(newMovement);
     }
     else
     {
         TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::MovePoint: '{}', targeted point Id: {} (X: {}, Y: {}, Z: {})", _owner->GetGUID().ToString(), id, x, y, z);
-        Add(new PointMovementGenerator<Creature>(id, x, y, z, generatePath, 0.0f, finalOrient));
+        PointMovementGenerator<Creature>* newMovement = new PointMovementGenerator<Creature>(id, x, y, z, generatePath, 0.0f, finalOrient);
+        if (forzeDestination)
+            newMovement->SetForzeDestination(true);
+        Add(newMovement);
     }
 }
 
