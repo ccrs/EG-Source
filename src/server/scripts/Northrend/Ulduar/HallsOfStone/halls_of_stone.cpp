@@ -16,7 +16,6 @@
  */
 
 #include "halls_of_stone.h"
-#include "Containers.h"
 #include "InstanceScript.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
@@ -656,26 +655,22 @@ private:
 
     void _SpawnDwarf(uint32 type)
     {
-        auto getPosition = [=](uint8 index) -> Position const
-        {
-            return me->GetRandomPoint(SpawnLocations[index], frand(0.f, 3.f));
-        };
         switch (type)
         {
             case 1:
             {
                 uint32 spawnNumber = DUNGEON_MODE(2, 3);
                 for (uint8 i = 0; i < spawnNumber; ++i)
-                    me->SummonCreature(NPC_DARK_RUNE_PROTECTOR, getPosition(urand(0, 1)), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
-                me->SummonCreature(NPC_DARK_RUNE_STORMCALLER, getPosition(urand(0, 1)), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
+                    me->SummonCreature(NPC_DARK_RUNE_PROTECTOR, me->GetRandomPoint(SpawnLocations[urand(0, 1)], frand(0.f, 3.f)), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
+                me->SummonCreature(NPC_DARK_RUNE_STORMCALLER, me->GetRandomPoint(SpawnLocations[urand(0, 1)], frand(0.f, 3.f)), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
                 break;
             }
             case 2:
                 for (uint8 i = 0; i < 2; ++i)
-                    me->SummonCreature(NPC_DARK_RUNE_STORMCALLER, getPosition(urand(0, 1)), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
+                    me->SummonCreature(NPC_DARK_RUNE_STORMCALLER, me->GetRandomPoint(SpawnLocations[urand(0, 1)], frand(0.f, 3.f)), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
                 break;
             case 3:
-                me->SummonCreature(NPC_IRON_GOLEM_CUSTODIAN, getPosition(urand(0, 1)), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
+                me->SummonCreature(NPC_IRON_GOLEM_CUSTODIAN, me->GetRandomPoint(SpawnLocations[urand(0, 1)], frand(0.f, 3.f)), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
                 break;
         }
     }
