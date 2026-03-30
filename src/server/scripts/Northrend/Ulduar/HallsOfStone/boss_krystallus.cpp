@@ -143,7 +143,7 @@ class spell_krystallus_shatter : public SpellScript
         if (Unit* target = GetHitUnit())
         {
             target->RemoveAurasDueToSpell(SPELL_STONED);
-            target->CastSpell(nullptr, SPELL_SHATTER_EFFECT, true);
+            target->CastSpell(nullptr, SPELL_SHATTER_EFFECT, CastSpellExtraArgs(true).SetOriginalCaster(GetCaster()->GetGUID()));
         }
     }
 
@@ -164,12 +164,17 @@ class spell_krystallus_shatter_effect : public SpellScript
             return;
 
         float radius = GetEffectInfo(EFFECT_0).CalcRadius(GetCaster());
-        if (!radius)
+        if (radius <= 0.0f)
             return;
 
         float distance = GetCaster()->GetDistance2d(GetHitUnit());
-        if (distance > 1.0f)
-            SetHitDamage(int32(GetHitDamage() * ((radius - distance) / radius)));
+        if (distance <= 1.0f)
+            return;
+
+        float t = std::max(0.0f, 1.0f - distance / radius);
+        float multiplier = t * t;
+
+        SetHitDamage(int32(GetHitDamage() * multiplier));
     }
 
     void Register() override
