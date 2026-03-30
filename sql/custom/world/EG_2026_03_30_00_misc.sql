@@ -52,8 +52,8 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 28265 AND `SourceId` = 0;
 
-UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 192, `modelid1` = 11686 WHERE `entry` = 28265;
-UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 192, `modelid1` = 11686 WHERE `entry` = 31878;
+UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 8384, `modelid1` = 11686 WHERE `entry` = 28265;
+UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 8384, `modelid1` = 11686 WHERE `entry` = 31878;
 DELETE FROM `creature_template_movement` WHERE `CreatureId` IN (28265, 31878);
 INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`) VALUES
 (28265, 1, 0, 0, 0),
