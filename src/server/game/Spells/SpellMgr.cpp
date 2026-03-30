@@ -4976,6 +4976,25 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->RecoveryTime = 43200000; // 12 hours
     });
 
+    // Glare of the Tribunal
+    // Summon Dark Matter Target
+    // Summon Searing Gaze Target
+    ApplySpellFix({ 50988, 59870, 51003, 51146 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->MaxAffectedTargets = 1;
+        spellInfo->AttributesEx |= SPELL_ATTR1_NO_THREAT;
+        spellInfo->AttributesEx2 |= SPELL_ATTR2_CAN_TARGET_NOT_IN_LOS;
+        spellInfo->AttributesEx6 |= SPELL_ATTR6_CAN_TARGET_INVISIBLE;
+    });
+
+    // Searing Gaze
+    ApplySpellFix({ 51136, 59867, 51125, 59866 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->AttributesEx |= SPELL_ATTR1_NO_THREAT;
+        spellInfo->AttributesEx2 |= SPELL_ATTR2_CAN_TARGET_NOT_IN_LOS;
+        spellInfo->AttributesEx6 |= SPELL_ATTR6_CAN_TARGET_INVISIBLE;
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];

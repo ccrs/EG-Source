@@ -43,7 +43,9 @@ enum HOSDataTypes
     DATA_GO_MARNAK,
     DATA_GO_ABEDNEUM,
     DATA_GO_SKY_FLOOR,
-    DATA_GO_TRIBUNAL_CHEST
+    DATA_GO_TRIBUNAL_CHEST,
+    DATA_TRIBUNAL_OF_THE_AGES,
+    DATA_DARK_MATTER
 };
 
 enum HOSCreatureIds
@@ -54,7 +56,9 @@ enum HOSCreatureIds
     NPC_MARNAK                  = 30897,
     NPC_KADDRAK                 = 30898,
     NPC_ABEDNEUM                = 30899,
-    NPC_BRANN                   = 28070
+    NPC_BRANN                   = 28070,
+    NPC_TRIBUNAL_OF_THE_AGES    = 28234,
+    NPC_DARK_MATTER             = 28235
 };
 
 enum HOSGameObjectIds
@@ -69,6 +73,11 @@ enum HOSGameObjectIds
     GO_TRIBUNAL_CHEST           = 190586,
     GO_TRIBUNAL_CHEST_HERO      = 193996,
     GO_TRIBUNAL_SKY_FLOOR       = 191527
+};
+
+enum HOSSpellIds
+{
+    SPELL_KILL_TRIBUNAL_ADD     = 51289,
 };
 
 template <class AI, class T>

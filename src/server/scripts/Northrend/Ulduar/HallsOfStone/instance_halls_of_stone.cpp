@@ -37,6 +37,8 @@ ObjectData const creatureData[] =
     { NPC_KADDRAK,                  DATA_KADDRAK                },
     { NPC_MARNAK,                   DATA_MARNAK                 },
     { NPC_ABEDNEUM,                 DATA_ABEDNEUM               },
+    { NPC_TRIBUNAL_OF_THE_AGES,     DATA_TRIBUNAL_OF_THE_AGES   },
+    { NPC_DARK_MATTER,              DATA_DARK_MATTER            },
     { 0,                            0                           } // END
 };
 
@@ -92,8 +94,12 @@ class instance_halls_of_stone : public InstanceMapScript
                 {
                     case DATA_TRIBUNAL_OF_AGES:
                         if (state == DONE)
+                        {
+                            if (Creature* tribunal = GetCreature(DATA_TRIBUNAL_OF_THE_AGES))
+                                tribunal->CastSpell(tribunal, SPELL_KILL_TRIBUNAL_ADD);
                             if (GameObject* go = GetGameObject(DATA_GO_TRIBUNAL_CHEST))
                                 go->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
+                        }
                         break;
                     default:
                         break;
