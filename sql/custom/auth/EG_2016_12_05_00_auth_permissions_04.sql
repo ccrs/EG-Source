@@ -15,9 +15,13 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (196, 205), -- Command: rbac account revoke
 (196, 206), -- Command: rbac list
 (196, 218), -- Command: account addon
+(196, 219), -- Command: account create
+(196, 220), -- Command: account delete
+(196, 224), -- Command: account onlinelist
 (196, 225), -- Command: account password
 (196, 226), -- Command: account set
 (196, 227), -- Command: account set addon
+(196, 228), -- Command: account seclevel
 (196, 257), -- Command: bf
 (196, 258), -- Command: bf start
 (196, 259), -- Command: bf stop
