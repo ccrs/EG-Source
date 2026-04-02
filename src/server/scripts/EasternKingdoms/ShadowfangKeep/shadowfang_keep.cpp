@@ -66,6 +66,7 @@ public:
         npc_shadowfang_prisonerAI(Creature* creature) : EscortAI(creature)
         {
             instance = creature->GetInstanceScript();
+            creature->SetFaction(FACTION_FRIENDLY);
         }
 
         InstanceScript* instance;
