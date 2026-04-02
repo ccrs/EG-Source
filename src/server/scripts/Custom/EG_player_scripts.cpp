@@ -106,7 +106,7 @@ class EG_WorldChat : public PlayerScript
 
         void OnChat(Player* player, uint32 /*type*/, uint32 lang, std::string& msg, Channel* channel) override
         {
-            if (sWorld->getBoolConfig(CONFIG_WORLD_CHAT) && lang != LANG_ADDON && channel->GetName() == WORLD_CHAT)
+            if (sWorld->getBoolConfig(CONFIG_WORLD_CHAT) && lang != LANG_ADDON && IsWorldChat(channel->GetName()))
             {
                 if (!player->isGMChat())
                     msg = Trinity::StringFormat("[{}] {}", player->GetTeamId() == TeamId::TEAM_ALLIANCE ? "|cff3399FFA|r" : "|cffCC0000H|r", msg);

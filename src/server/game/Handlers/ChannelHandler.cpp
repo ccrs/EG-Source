@@ -68,7 +68,7 @@ void WorldSession::HandleJoinChannel(WorldPacket& recvPacket)
 
     std::string worldChannelName = channelName;
     strToLower(worldChannelName);
-    if (!channelId && worldChannelName == WORLD_CHAT)
+    if (!channelId && IsWorldChat(worldChannelName))
     {
         if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
         {
@@ -129,7 +129,7 @@ void WorldSession::HandleLeaveChannel(WorldPacket& recvPacket)
 
     std::string worldChannelName = channelName;
     strToLower(worldChannelName);
-    if (!channelId && worldChannelName == WORLD_CHAT)
+    if (!channelId && IsWorldChat(worldChannelName))
     {
         if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
             if (Channel* channel = cMgr->GetCustomChannel(worldChannelName))

@@ -20,6 +20,7 @@
 
 #include "Common.h"
 #include "ObjectGuid.h"
+#include "Util.h"
 #include <ctime>
 #include <map>
 #include <unordered_set>
@@ -117,6 +118,13 @@ enum ChannelMemberFlags
 };
 
 static constexpr std::string_view WORLD_CHAT = "world";
+static constexpr std::string_view WORLD_CHAT_ES = "world-es";
+
+static bool IsWorldChat(std::string name)
+{
+    strToLower(name);
+    return name == WORLD_CHAT || name == WORLD_CHAT_ES;
+}
 
 class TC_GAME_API Channel
 {
