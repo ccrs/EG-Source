@@ -50,8 +50,6 @@ struct boss_aeonus : public BossAI
 {
     boss_aeonus(Creature* creature) : BossAI(creature, TYPE_AEONUS) { }
 
-    void Reset() override { }
-
     void JustEngagedWith(Unit* /*who*/) override
     {
         events.ScheduleEvent(EVENT_SANDBREATH, 15s, 30s);
@@ -59,6 +57,7 @@ struct boss_aeonus : public BossAI
         events.ScheduleEvent(EVENT_FRENZY, 30s, 45s);
 
         Talk(SAY_AGGRO);
+        instance->SetData(TYPE_RIFT, DONE);
     }
 
     void MoveInLineOfSight(Unit* who) override
@@ -80,7 +79,6 @@ struct boss_aeonus : public BossAI
     {
         Talk(SAY_DEATH);
 
-        instance->SetData(TYPE_RIFT, DONE);
         instance->SetData(TYPE_MEDIVH, DONE); // FIXME: later should be removed
     }
 

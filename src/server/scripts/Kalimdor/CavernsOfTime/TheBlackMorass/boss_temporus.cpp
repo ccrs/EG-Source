@@ -50,8 +50,6 @@ struct boss_temporus : public BossAI
 {
     boss_temporus(Creature* creature) : BossAI(creature, TYPE_TEMPORUS) { }
 
-    void Reset() override { }
-
     void JustEngagedWith(Unit* /*who*/) override
     {
         events.ScheduleEvent(EVENT_HASTE, 15s, 23s);

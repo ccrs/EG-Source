@@ -50,8 +50,6 @@ struct boss_chrono_lord_deja : public BossAI
 {
     boss_chrono_lord_deja(Creature* creature) : BossAI(creature, TYPE_CRONO_LORD_DEJA) { }
 
-    void Reset() override { }
-
     void JustEngagedWith(Unit* /*who*/) override
     {
         events.ScheduleEvent(EVENT_ARCANE_BLAST, 18s, 23s);

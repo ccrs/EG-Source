@@ -56,10 +56,10 @@ struct Wave
 
 static Wave RiftWaves[]=
 {
-    { RIFT_BOSS,             0s },
+    { RIFT_BOSS,            90s },
     { NPC_CRONO_LORD_DEJA,   0s },
-    { RIFT_BOSS,           120s },
-    { NPC_TEMPORUS,        140s },
+    { RIFT_BOSS,            90s },
+    { NPC_TEMPORUS,          0s },
     { RIFT_BOSS,           120s },
     { NPC_AEONUS,            0s }
 };
@@ -84,6 +84,7 @@ public:
         instance_the_black_morass_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
         {
             SetHeaders(DataHeader);
+            SetBossNumber(EncounterCount);
             Clear();
         }
 
@@ -226,8 +227,10 @@ public:
             case TYPE_RIFT:
                 if (data == SPECIAL)
                 {
-                    if (mRiftPortalCount < 7)
-                        ScheduleEventNextPortal(5s);
+                    if (mRiftPortalCount == 6 || mRiftPortalCount == 12)
+                        ScheduleEventNextPortal(90s);
+                    else
+                        ScheduleEventNextPortal(10s);
                 }
                 else
                     m_auiEncounter[1] = data;
@@ -259,7 +262,7 @@ public:
             return ObjectGuid::Empty;
         }
 
-        Creature* SummonedPortalBoss(Creature* me)
+        Creature* SummonedPortalBoss(Creature* reference)
         {
             uint32 entry = RiftWaves[GetRiftWaveId()].PortalBoss;
 
@@ -268,12 +271,12 @@ public:
 
             TC_LOG_DEBUG("scripts", "Instance The Black Morass: Summoning rift boss entry {}.", entry);
 
-            Position pos = me->GetRandomNearPosition(10.0f);
+            Position pos = reference->GetRandomNearPosition(10.0f);
 
             //normalize Z-level if we can, if rift is not at ground level.
-            pos.m_positionZ = std::max(me->GetMap()->GetHeight(pos.m_positionX, pos.m_positionY, MAX_HEIGHT), me->GetMap()->GetWaterLevel(pos.m_positionX, pos.m_positionY));
+            pos.m_positionZ = reference->GetMap()->GetWaterOrGroundLevel(reference->GetPhaseMask(), pos.m_positionX, pos.m_positionY, MAX_HEIGHT);
 
-            if (Creature* summon = me->SummonCreature(entry, pos, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 10min))
+            if (Creature* summon = reference->SummonCreature(entry, pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10min))
                 return summon;
 
             TC_LOG_DEBUG("scripts", "Instance The Black Morass: What just happened there? No boss, no loot, no fun...");
@@ -293,9 +296,7 @@ public:
 
                 _currentRiftId = tmp;
 
-                Creature* temp = medivh->SummonCreature(NPC_TIME_RIFT,
-                    PortalLocation[tmp][0], PortalLocation[tmp][1], PortalLocation[tmp][2], PortalLocation[tmp][3],
-                    TEMPSUMMON_CORPSE_DESPAWN);
+                Creature* temp = medivh->SummonCreature(NPC_TIME_RIFT, PortalLocation[tmp][0], PortalLocation[tmp][1], PortalLocation[tmp][2], PortalLocation[tmp][3], TEMPSUMMON_CORPSE_DESPAWN);
                 if (temp)
                 {
                     if (Creature* boss = SummonedPortalBoss(temp))
@@ -328,6 +329,12 @@ public:
 
             if (Events.ExecuteEvent() == EVENT_NEXT_PORTAL)
             {
+                if (mRiftPortalCount == 6 || mRiftPortalCount == 12)
+                    SetData(TYPE_RIFT, SPECIAL);
+
+                if (mRiftPortalCount == 18)
+                    return;
+
                 ++mRiftPortalCount;
                 DoUpdateWorldState(WORLD_STATE_BM_RIFT, mRiftPortalCount);
                 DoSpawnPortal();

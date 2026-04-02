@@ -15,7 +15,8 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "the_black_morass.h"
+#include "CommonHelpers.h"
 #include "InstanceScript.h"
 #include "Log.h"
 #include "Map.h"
@@ -23,8 +24,8 @@
 #include "Player.h"
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
+#include "ScriptMgr.h"
 #include "SpellInfo.h"
-#include "the_black_morass.h"
 
 enum MedivhBm
 {
@@ -194,7 +195,15 @@ struct npc_medivh_bm : public ScriptedAI
     void JustDied(Unit* killer) override
     {
         if (killer && killer->GetEntry() == me->GetEntry())
+        {
+            DoAddEvent(2s, new Trinity::Helpers::Events::GenericEvent(me, [this](WorldObject* owner)
+            {
+                owner->ToCreature()->Respawn();
+                instance->SetData(TYPE_MEDIVH, NOT_STARTED);
+                return true;
+            }));
             return;
+        }
 
         Talk(SAY_DEATH);
     }
@@ -366,7 +375,7 @@ struct npc_time_rift : public ScriptedAI
             TimeRiftWave_Timer = 15000;
         } else TimeRiftWave_Timer -= diff;
 
-        if (me->IsNonMeleeSpellCast(false))
+        if (!me->IsAlive() || me->IsNonMeleeSpellCast(false))
             return;
 
         TC_LOG_DEBUG("scripts", "npc_time_rift: not casting anylonger, i need to die.");
