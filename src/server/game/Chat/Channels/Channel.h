@@ -120,12 +120,6 @@ enum ChannelMemberFlags
 static constexpr std::string_view WORLD_CHAT = "world";
 static constexpr std::string_view WORLD_CHAT_ES = "world-es";
 
-static bool IsWorldChat(std::string name)
-{
-    strToLower(name);
-    return name == WORLD_CHAT || name == WORLD_CHAT_ES;
-}
-
 class TC_GAME_API Channel
 {
     struct PlayerInfo
@@ -164,6 +158,12 @@ class TC_GAME_API Channel
     public:
         Channel(uint32 channelId, uint32 team = 0, AreaTableEntry const* zoneEntry = nullptr);  // built-in channel ctor
         Channel(std::string const& name, uint32 team, std::string const& banList = "");         // custom player channel ctor
+
+        static bool IsWorldChat(std::string name)
+        {
+            strToLower(name);
+            return name == WORLD_CHAT || name == WORLD_CHAT_ES;
+        }
 
         static void GetChannelName(std::string& channelName, uint32 channelId, LocaleConstant locale, AreaTableEntry const* zoneEntry);
         std::string GetName(LocaleConstant locale = DEFAULT_LOCALE) const;
