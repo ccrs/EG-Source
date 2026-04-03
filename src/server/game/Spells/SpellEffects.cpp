@@ -20,6 +20,7 @@
 #include "Battleground.h"
 #include "CellImpl.h"
 #include "Common.h"
+#include "CommonHelpers.h"
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "DatabaseEnv.h"
@@ -2829,10 +2830,10 @@ void Spell::EffectTameCreature()
     if (!pet)                                               // in very specific state like near world end/etc.
         return;
 
+    uint8 level = (creatureTarget->GetLevel() < (unitCaster->GetLevel() - 5)) ? (unitCaster->GetLevel() - 5) : creatureTarget->GetLevel();
+
     // "kill" original creature
     creatureTarget->DespawnOrUnsummon();
-
-    uint8 level = (creatureTarget->GetLevel() < (unitCaster->GetLevel() - 5)) ? (unitCaster->GetLevel() - 5) : creatureTarget->GetLevel();
 
     // prepare visual effect for levelup
     pet->SetUInt32Value(UNIT_FIELD_LEVEL, level - 1);
@@ -2845,6 +2846,19 @@ void Spell::EffectTameCreature()
 
     // caster have pet now
     unitCaster->SetMinion(pet, true);
+
+    pet->SetControlled(true, UNIT_STATE_ROOT);
+    pet->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
+    pet->SetUnitFlag(UNIT_FLAG_NOT_ATTACKABLE_1);
+
+    pet->m_Events.AddEventAtOffset(new Trinity::Helpers::Events::GenericEvent(pet, [](WorldObject* owner)
+    {
+        Creature* pet = owner->ToCreature();
+        pet->SetControlled(false, UNIT_STATE_ROOT);
+        pet->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
+        pet->RemoveUnitFlag(UNIT_FLAG_NOT_ATTACKABLE_1);
+        return true;
+    }), 2s);
 
     pet->InitTalentForLevel();
 
