@@ -12,3 +12,14 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 24137 AND `SourceId` = 0;
+
+UPDATE `creature_template` SET `unit_flags` = 32832 WHERE `entry` = 657;
+UPDATE `creature_template` SET `unit_flags` = 32768 WHERE `entry` = 3450;
+UPDATE `creature_template` SET `unit_flags` = 32832 WHERE `entry` = 3947;
+UPDATE `creature_template` SET `unit_flags` = 32832 WHERE `entry` = 1732;
+UPDATE `creature_template` SET `unit_flags` = 32832 WHERE `entry` = 636;
+UPDATE `creature_template` SET `unit_flags` = 32832 WHERE `entry` = 646;
+UPDATE `creature_template` SET `unit_flags` = 32832 WHERE `entry` = 639;
+UPDATE `creature_template` SET `unit_flags` = 32768 WHERE `entry` = 4416;
+UPDATE `creature_template` SET `unit_flags` = 32832 WHERE `entry` = 634;
+UPDATE `creature_template` SET `unit_flags` = 32832 WHERE `entry` = 4417;
