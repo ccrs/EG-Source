@@ -172,7 +172,7 @@ class spell_krystallus_shatter_effect : public SpellScript
             return;
 
         float t = std::max(0.0f, 1.0f - distance / radius);
-        float multiplier = t * t;
+        float multiplier = std::pow(t, 3.0f);
 
         SetHitDamage(int32(GetHitDamage() * multiplier));
     }
