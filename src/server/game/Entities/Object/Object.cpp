@@ -1714,12 +1714,12 @@ bool WorldObject::CanDetectStealthOf(WorldObject const* obj, bool checkAlert) co
     if (unit)
         combatReach = unit->GetCombatReach();
 
-    if (distance < combatReach)
-        return true;
-
     // Only check back for units, it does not make sense for gameobjects
     if (unit && !HasInArc(float(M_PI), obj))
         return false;
+
+    if (distance < combatReach)
+        return true;
 
     // Traps should detect stealth always
     if (GameObject const* go = ToGameObject())
