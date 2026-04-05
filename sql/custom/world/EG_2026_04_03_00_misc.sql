@@ -178,3 +178,24 @@ DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` 
 DELETE FROM `creature_template_movement` WHERE `CreatureId` IN (28938);
 INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`) VALUES
 (28938, 1, 1, 0, 1);
+
+ -- Depleted War Golem smart ai
+SET @ENTRY := 27017;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 9 AND `entryOrGuid` IN (2701700);
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 38, 0, 100, 0, 0, 1, 4000, 4000, 80, 2701700, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On data[0] set to 1 (wait 4000 - 4000 ms before next event trigger) - Self: Start timed action list id #Depleted War Golem #0 (2701700) (update always) // -inline'),
+(@ENTRY * 100, 9, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 69, 0, 0, 0, 0, 0, 0, 19, 26407, 25, 1, 0, 0, 0, 0, 'After 0 seconds - Self: Move to Closest dead creature Lightning Sentry (26407) in 25 yards'),
+(@ENTRY * 100, 9, 1, 0, 0, 0, 100, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 0 seconds - Self: Talk 0 to invoker'),
+(@ENTRY * 100, 9, 2, 0, 0, 0, 100, 0, 3000, 3000, 0, 0, 11, 47799, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 3 seconds - Self: Cast spell  Charge War Golem (47799) on Self'),
+(@ENTRY * 100, 9, 3, 0, 0, 0, 100, 0, 5000, 5000, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 5 seconds - Self: Talk 1 to invoker'),
+(@ENTRY * 100, 9, 4, 0, 0, 0, 100, 0, 0, 0, 0, 0, 11, 47797, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 'After 0 seconds - Self: Cast spell  War Golem Charge Credit (47797) on Owner/Summoner'),
+(@ENTRY * 100, 9, 5, 0, 0, 0, 100, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'After 0 seconds - Self: Evade'),
+(@ENTRY, 0, 1, 0, 31, 0, 100, 0, 47797, 0, 0, 0, 41, 2000, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On spell War Golem Charge Credit (47797)  hit a target - Self: Despawn in 2 s');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 27017 AND `SourceId` = 0;
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+(22, 2, 27017, 0, 0, 48, 0, 12138, 0, 8, 0, 'Action invoker 0 quest ... Or Maybe We Don\'t (12138) objective == 8'),
+(22, 2, 27017, 0, 1, 48, 0, 12198, 0, 8, 0, 'Action invoker 0 quest ... Or Maybe We Don\'t (12198) objective == 8');
