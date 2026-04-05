@@ -1161,7 +1161,8 @@ enum TheStormKingsVengeance
 {
     SPELL_RIDE_GYMER            = 43671,
     SPELL_GRABBED               = 55424,
-    SPELL_VARGUL_EXPLOSION      = 55569
+    SPELL_VARGUL_EXPLOSION      = 55569,
+    SPELL_VARGUL_EXPLOSION_TRIGGERED = 55571
 };
 
 // 55516 - Gymer's Grab
@@ -1214,6 +1215,26 @@ class spell_zuldrak_gymers_throw : public SpellScript
     void Register() override
     {
         OnEffectHitTarget += SpellEffectFn(spell_zuldrak_gymers_throw::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 55569 - Vargul Explosion
+class spell_zuldrak_vargul_explosion : public AuraScript
+{
+    PrepareAuraScript(spell_zuldrak_vargul_explosion);
+
+    void PeriodicTick(AuraEffect const* /*aurEff*/)
+    {
+        if (Unit* caster = GetCaster())
+        {
+            PreventDefaultAction();
+            caster->CastSpell(nullptr, SPELL_VARGUL_EXPLOSION_TRIGGERED, true);
+        }
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_zuldrak_vargul_explosion::PeriodicTick, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
     }
 };
 
@@ -1349,6 +1370,7 @@ void AddSC_zuldrak()
     RegisterSpellScript(spell_zuldrak_zuldrak_rat);
     RegisterSpellScript(spell_zuldrak_gymers_grab);
     RegisterSpellScript(spell_zuldrak_gymers_throw);
+    RegisterSpellScript(spell_zuldrak_vargul_explosion);
     RegisterSpellScript(spell_zuldrak_have_ingredient);
     RegisterSpellScript(spell_zuldrak_summon_escort_aura);
 }
