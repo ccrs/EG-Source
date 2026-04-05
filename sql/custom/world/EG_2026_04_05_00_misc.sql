@@ -31,3 +31,14 @@ INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry
 (13, 1, 55519, 0, 0, 31, 0, 3, 29897, 0, 0, 'Potential target of the spell is creature, entry is Reanimated Corpse (29897)');
 
 UPDATE `creature` SET `spawntimesecs` = 5 WHERE `Id` = 29897 AND `phaseMask` = 256;
+
+ -- Stormforged Iron Giant smart ai
+SET @ENTRY := 29375;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 0, 10000, 20000, 25000, 11, 57741, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Every 20 - 25 seconds (0 - 10s initially) (IC) - Self: Cast spell  Shockwave (57741) on Self'),
+(@ENTRY, 0, 1, 0, 8, 0, 100, 0, 55818, 0, 0, 0, 134, 55512, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On spell  Hurl Boulder (55818) hit - Caster: Cast spell  Call of Earth (55512) with flags triggered on Self');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 29375 AND `SourceId` = 0;
