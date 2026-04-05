@@ -164,3 +164,17 @@ INSERT INTO `creature_loot_template` (`Entry`, `Item`, `Reference`, `Chance`, `Q
 (26409, 43467, 0, 0.2, 0, 1, 0, 1, 1, ''),
 (26409, 43507, 0, 0.1, 0, 1, 0, 1, 1, ''),
 (26409, 43851, 0, 23, 0, 1, 0, 1, 1, '');
+
+ -- Charged Sentry Totem smart ai
+SET @ENTRY := 28938;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 60, 0, 100, 0, 1000, 2000, 2000, 4000, 11, 52705, 0, 0, 0, 0, 0, 25, 30, 0, 0, 0, 0, 0, 0, 'Every 2 - 4 seconds (1 - 2s initially) - Self: Cast spell  Sentry Shock (52705) on Closest enemy creature in 30 yards');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 28938 AND `SourceId` = 0;
+
+DELETE FROM `creature_template_movement` WHERE `CreatureId` IN (28938);
+INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`) VALUES
+(28938, 1, 1, 0, 1);
