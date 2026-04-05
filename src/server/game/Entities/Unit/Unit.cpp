@@ -880,7 +880,11 @@ bool Unit::HasBreakableByDamageCrowdControlAura(Unit* excludeCasterChannel) cons
         if (!victim->ToCreature()->hasLootRecipient())
             victim->ToCreature()->SetLootRecipient(attacker);
 
-        if (!attacker || attacker->IsControlledByPlayer() || (attacker->ToTempSummon() && attacker->ToTempSummon()->GetSummonerUnit() && attacker->ToTempSummon()->GetSummonerUnit()->GetTypeId() == TYPEID_PLAYER))
+        if (!attacker ||
+            attacker->IsControlledByPlayer() ||
+            attacker->GetCharmerOrOwnerPlayerOrPlayerItself() ||
+            (attacker->ToTempSummon() && attacker->ToTempSummon()->GetSummonerUnit() && attacker->ToTempSummon()->GetSummonerUnit()->GetTypeId() == TYPEID_PLAYER)
+        )
             victim->ToCreature()->LowerPlayerDamageReq(health < damage ?  health : damage);
     }
 
