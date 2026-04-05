@@ -199,3 +199,31 @@ DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` 
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
 (22, 2, 27017, 0, 0, 48, 0, 12138, 0, 8, 0, 'Action invoker 0 quest ... Or Maybe We Don\'t (12138) objective == 8'),
 (22, 2, 27017, 0, 1, 48, 0, 12198, 0, 8, 0, 'Action invoker 0 quest ... Or Maybe We Don\'t (12198) objective == 8');
+
+ -- Horrified Drakkari Warrior smart ai
+SET @ENTRY := 26582;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 1, 63, 0, 100, 0, 0, 0, 0, 0, 48, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just created - Self: Set active'),
+(@ENTRY, 0, 1, 2, 61, 0, 100, 0, 0, 0, 0, 0, 88, 2658200, 2658201, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just created - Self: Call random timed action list between range Horrified Drakkari Warrior #0 (2658200) and Horrified Drakkari Warrior #1 (2658201) (update always)'),
+(@ENTRY, 0, 2, 0, 61, 0, 100, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just created - Self: Talk 0 to invoker'),
+(@ENTRY, 0, 3, 4, 40, 0, 100, 0, 20, 0, 0, 0, 41, 15000, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On wapoint 20 of any path reached - Self: Despawn in 15 s'),
+(@ENTRY, 0, 4, 0, 61, 0, 100, 0, 0, 0, 0, 0, 89, 20, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On wapoint 20 of any path reached - Self: Move randomly in radius 20 yards');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 26582 AND `SourceId` = 0;
+
+ -- Horrified Drakkari Shaman smart ai
+SET @ENTRY := 26583;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 1, 63, 0, 100, 0, 0, 0, 0, 0, 48, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just created - Self: Set active'),
+(@ENTRY, 0, 1, 2, 61, 0, 100, 0, 0, 0, 0, 0, 88, 2658200, 2658201, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just created - Self: Call random timed action list between range Horrified Drakkari Warrior #0 (2658200) and Horrified Drakkari Warrior #1 (2658201) (update always)'),
+(@ENTRY, 0, 2, 0, 61, 0, 100, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just created - Self: Talk 0 to invoker'),
+(@ENTRY, 0, 3, 4, 40, 0, 100, 0, 20, 0, 0, 0, 41, 15000, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On wapoint 20 of any path reached - Self: Despawn in 15 s'),
+(@ENTRY, 0, 4, 0, 61, 0, 100, 0, 0, 0, 0, 0, 89, 20, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On wapoint 20 of any path reached - Self: Move randomly in radius 20 yards');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 26583 AND `SourceId` = 0;
