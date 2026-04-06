@@ -66,7 +66,6 @@ public:
         npc_shadowfang_prisonerAI(Creature* creature) : EscortAI(creature)
         {
             instance = creature->GetInstanceScript();
-            creature->SetFaction(FACTION_FRIENDLY);
         }
 
         InstanceScript* instance;
@@ -109,7 +108,11 @@ public:
             }
         }
 
-        void Reset() override { }
+        void Reset() override
+        {
+            me->SetFaction(FACTION_FRIENDLY);
+        }
+
         void JustEngagedWith(Unit* /*who*/) override { }
 
         bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
