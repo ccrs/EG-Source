@@ -67,3 +67,8 @@ INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry
 (22, 3, 25284, 0, 0, 32, 0, 16, 0, 0, 0, 'Action invoker is of type player'),
 (22, 4, 25284, 0, 0, 9, 0, 11611, 0, 0, 0, 'Action invoker has quest Taken by the Scourge (11611) active'),
 (22, 4, 25284, 0, 0, 32, 0, 16, 0, 0, 0, 'Action invoker is of type player');
+
+ -- Crystalline Frayer smart ai
+SET @ENTRY := 26793;
+UPDATE `creature_template` SET `AIName` = '', `ScriptName` = 'EG_npc_crystalline_frayer' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;

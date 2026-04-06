@@ -1,6 +1,8 @@
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "Containers.h"
+#include "GameObject.h"
+#include "GameObjectData.h"
 #include "ObjectAccessor.h"
 #include "PassiveAI.h"
 #include "Player.h"
@@ -677,10 +679,169 @@ private:
     uint32 _counter;
 };
 
+enum CrystallineFrayerMisc
+{
+    SPELL_AURA_OF_REGENERATION = 52067,
+    SPELL_AURA_OF_REGENERATION_HC = 57056,
+    SPELL_CRYSTAL_BLOOM = 48058,
+    SPELL_ENSNARE = 48053,
+    SPELL_SEED_POD = 48082,
+    SPELL_SUMM_SEED_POD = 52796,
+
+    GO_POD = 191016,
+
+    EVENT_ENSNARE = 1,
+    EVENT_AURA_CHECK = 2,
+
+    DATA_ORMOROK = 3,
+};
+
+struct EG_npc_crystalline_frayer : public ScriptedAI
+{
+    EG_npc_crystalline_frayer(Creature* creature) : ScriptedAI(creature)
+    {
+        _setPod = 0;
+    }
+
+    void Reset() override
+    {
+        me->SetVisible(true);
+        _events.Reset();
+        if (GameObject* pod = ObjectAccessor::GetGameObject(*me, _pod))
+        {
+            pod->SetRespawnTime(0);
+            pod->Delete();
+        }
+        _pod.Clear();
+        me->RemoveAllAuras();
+        _setPod = 0;
+        me->SetReactState(REACT_AGGRESSIVE);
+    }
+
+    void JustEngagedWith(Unit* /*who*/) override
+    {
+        DoCast(me, SPELL_CRYSTAL_BLOOM);
+        _events.ScheduleEvent(EVENT_ENSNARE, 2s, 5s);
+    }
+
+    void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
+    {
+        if (_setPod == 0 && damage >= me->GetHealth())
+        {
+            me->RemoveAllAuras();
+            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
+            me->SetImmuneToAll(true);
+            me->SetReactState(REACT_PASSIVE);
+            _setPod = 1;
+            damage = 0;
+            EnterEvadeMode(EVADE_REASON_OTHER);
+            DoCast(me, SPELL_SEED_POD, true);
+            DoCast(me, IsHeroic() ? SPELL_AURA_OF_REGENERATION_HC : SPELL_AURA_OF_REGENERATION, true);
+            _SummPod();
+            me->SetVisible(false);
+            _events.Reset();
+            _events.ScheduleEvent(EVENT_AURA_CHECK, 1s);
+        }
+    }
+
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        if (!_EnterEvadeMode(why))
+            return;
+
+        if (_setPod == 1)
+            return;
+
+        if (why == EVADE_REASON_VEHICLE_EVADE)
+        {
+            Reset();
+            return;
+        }
+
+        if (me->GetVehicle()) // otherwise me will be in evade mode forever
+        {
+            Reset();
+            return;
+        }
+
+        if (Unit* owner = me->GetCharmerOrOwner())
+        {
+            me->GetMotionMaster()->Clear();
+            me->GetMotionMaster()->MoveFollow(owner, PET_FOLLOW_DIST, me->GetFollowAngle());
+        }
+        else
+        {
+            me->AddUnitState(UNIT_STATE_EVADE);
+            me->GetMotionMaster()->MoveTargetedHome();
+        }
+
+        Reset();
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (_setPod != 1 && !UpdateVictim())
+            return;
+
+        _events.Update(diff);
+
+        while (uint32 eventId = _events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case EVENT_ENSNARE:
+                    DoCastVictim(SPELL_ENSNARE);
+                    _events.ScheduleEvent(EVENT_ENSNARE, 3s, 6s);
+                    break;
+                case EVENT_AURA_CHECK:
+                    if (!me->HasAura(SPELL_SEED_POD))
+                    {
+                        if (GameObject* pod = ObjectAccessor::GetGameObject(*me, _pod))
+                        {
+                            pod->SetRespawnTime(0);
+                            pod->Delete();
+                        }
+                        _pod.Clear();
+                        me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
+                        me->SetVisible(true);
+                        me->SetImmuneToAll(false);
+                        me->SetReactState(REACT_AGGRESSIVE);
+                        DoCast(me, SPELL_CRYSTAL_BLOOM);
+                        _events.ScheduleEvent(EVENT_ENSNARE, 2s, 5s);
+                        _setPod = 2;
+                    }
+                    else
+                        _events.ScheduleEvent(EVENT_AURA_CHECK, 1s);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        DoMeleeAttackIfReady();
+    }
+
+private:
+    void _SummPod()
+    {
+        QuaternionData rotation = QuaternionData::fromEulerAnglesZYX(me->GetOrientation(), 0.f, 0.f);
+        if (GameObject* go = me->SummonGameObject(GO_POD, me->GetPosition(), rotation, 90s))
+        {
+            go->SetSpellId(SPELL_SUMM_SEED_POD);
+            _pod = go->GetGUID();
+        }
+    }
+
+    EventMap _events;
+    ObjectGuid _pod;
+    int _setPod;
+};
+
 void AddSC_EG_gen_npc_scripts()
 {
     RegisterCreatureAI(EG_npc_damage_test_controller);
     RegisterCreatureAI(EG_npc_damage_test_dummy);
     RegisterCreatureAI(EG_npc_evolving_ectoplasm);
     RegisterCreatureAI(EG_npc_plague_slime);
+    RegisterCreatureAI(EG_npc_crystalline_frayer);
 }
