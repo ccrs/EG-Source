@@ -5050,7 +5050,7 @@ void Player::UpdateDamageDoneMods(WeaponAttackType attackType, int32 skipEnchant
     }
 
     float amount = 0.0f;
-    Item* item = GetWeaponForAttack(attackType, true);
+    Item* item = GetWeaponForDamageMods(attackType);
     if (!item)
         return;
 
