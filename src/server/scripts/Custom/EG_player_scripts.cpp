@@ -87,7 +87,7 @@ class EG_AccountSpells : public PlayerScript
                                 player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
                             break;
                         case 54197: // Cold Weather Flying (Passive)
-                            if (player->GetLevel() >= 77)
+                            if (player->GetLevel() >= 68)
                                 player->LearnSpell(relatedInfo->Id, false);
                             break;
                     }

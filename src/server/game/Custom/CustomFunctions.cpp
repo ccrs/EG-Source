@@ -211,7 +211,7 @@ void Player::_LoadAccountSharedSpells(PreparedQueryResult result)
                             LearnSpell(33388, false); // Apprentice Riding (Apprentice)
                         break;
                     case 54197: // Cold Weather Flying (Passive)
-                        if (GetLevel() >= 77)
+                        if (GetLevel() >= 68)
                             LearnSpell(relatedInfo->Id, false);
                         break;
                     default:
