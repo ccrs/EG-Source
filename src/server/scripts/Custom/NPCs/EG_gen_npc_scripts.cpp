@@ -3,6 +3,7 @@
 #include "Containers.h"
 #include "GameObject.h"
 #include "GameObjectData.h"
+#include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "PassiveAI.h"
 #include "Player.h"
