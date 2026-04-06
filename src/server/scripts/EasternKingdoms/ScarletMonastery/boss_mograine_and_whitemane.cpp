@@ -207,6 +207,10 @@ public:
                 me->SetReactState(REACT_AGGRESSIVE);
                 _canDie = true;
                 DoCastSelf(SPELL_RETRIBUTION_AURA, true);
+            }).Schedule(4s, [this](TaskContext /*context*/)
+            {
+                if (Creature* whitemane = instance->GetCreature(DATA_WHITEMANE))
+                    DoCast(whitemane, SPELL_LAY_ONHANDS);
             });
         }
     }
@@ -262,6 +266,7 @@ public:
         _killYellTimer.Reset(0s);
 
         DoCastSelf(SPELL_RETRIBUTION_AURA);
+        me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
         me->SetReactState(REACT_AGGRESSIVE);
     }
 
@@ -350,11 +355,13 @@ public:
 
     void DamageTaken(Unit* /*who*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
     {
-        // When Whitemane falls below 50% cast Deep sleep and schedule to ressurrect
+        // When Whitemane falls below 50% cast Deep sleep and schedule to resurrect
         if (me->HealthBelowPctDamaged(50, damage) && !_ressurectionInProgress)
         {
             _ressurectionInProgress = true;
             _canDie = false;
+
+            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
 
             // Cancel all combat events
             _events.CancelEvent(EVENT_HEAL);
@@ -419,6 +426,7 @@ private:
 
         _canDie = true;
 
+        me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
         me->SetReactState(REACT_AGGRESSIVE);
 
         if (me->GetVictim())
