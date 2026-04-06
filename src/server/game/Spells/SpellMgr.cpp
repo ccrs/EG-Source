@@ -4995,6 +4995,15 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->AttributesEx6 |= SPELL_ATTR6_CAN_TARGET_INVISIBLE;
     });
 
+    // 45526 Freed Warsong Mage
+    // 45527 Freed Warsong Shaman
+    // 45514 Freed Warsong Warrior
+    ApplySpellFix({ 45526, 45527, 45514 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).TargetA = SpellImplicitTargetInfo(TARGET_DEST_TARGET_ENEMY);
+        spellInfo->ExplicitTargetMask = 0;
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];
