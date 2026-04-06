@@ -72,3 +72,7 @@ INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry
 SET @ENTRY := 26793;
 UPDATE `creature_template` SET `AIName` = '', `ScriptName` = 'EG_npc_crystalline_frayer' WHERE `entry` = @ENTRY;
 DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+
+DELETE FROM `spell_script_names` WHERE `spell_id` IN (605);
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(605, 'EG_spell_priest_mind_control');

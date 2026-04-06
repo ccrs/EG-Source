@@ -24,6 +24,7 @@ void AddSC_EG_transmogrification();
 
 void AddSC_EG_gen_spell_scripts();
 void AddSC_EG_item_spell_scripts();
+void AddSC_EG_priest_spell_scripts();
 
 void AddSC_EG_achievement_scripts();
 void AddSC_EG_areatrigger_scripts();
@@ -42,6 +43,7 @@ void AddCustomScripts()
 
     AddSC_EG_gen_spell_scripts();
     AddSC_EG_item_spell_scripts();
+    AddSC_EG_priest_spell_scripts();
 
     AddSC_EG_achievement_scripts();
     AddSC_EG_areatrigger_scripts();
