@@ -2,6 +2,8 @@
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "DatabaseEnv.h"
+#include "Item.h"
+#include "ItemTemplate.h"
 #include "Map.h"
 #include "MotionMaster.h"
 #include "Log.h"
@@ -64,6 +66,27 @@ void Creature::InsertLOSEntry(ObjectGuid guid)
         _uniqueLOSEntries.insert(guid);
         _LOSQueue.push_back(guid);
     }
+}
+
+Item* Player::GetWeaponForDamageMods(WeaponAttackType attackType) const
+{
+    uint8 slot;
+    switch (attackType)
+    {
+        case BASE_ATTACK:   slot = EQUIPMENT_SLOT_MAINHAND; break;
+        case OFF_ATTACK:    slot = EQUIPMENT_SLOT_OFFHAND;  break;
+        case RANGED_ATTACK: slot = EQUIPMENT_SLOT_RANGED;   break;
+        default: return nullptr;
+    }
+
+    Item* item = GetUseableItemByPos(INVENTORY_SLOT_BAG_0, slot);
+    if (!item || item->GetTemplate()->Class != ITEM_CLASS_WEAPON)
+        return nullptr;
+
+    if (item->IsBroken())
+        return nullptr;
+
+    return item;
 }
 
 void Player::_LoadCustomSettings(PreparedQueryResult result)
