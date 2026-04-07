@@ -5152,7 +5152,7 @@ void Spell::HandleThreatSpells()
             if (!target->CanHaveThreatList())
                 continue;
 
-            target->GetThreatManager().AddThreat(unitCaster, threatToAdd, m_spellInfo, true);
+            target->GetThreatManager().AddThreat(unitCaster, threatToAdd, m_spellInfo);
         }
     }
     TC_LOG_DEBUG("spells", "Spell {}, added an additional {} threat for {} {} target(s)", m_spellInfo->Id, threat, IsPositive() ? "assisting" : "harming", uint32(m_UniqueTargetInfo.size()));
