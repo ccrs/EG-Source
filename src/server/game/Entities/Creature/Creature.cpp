@@ -258,7 +258,8 @@ Creature::Creature(bool isWorldObject): Unit(isWorldObject), MapObject(), m_grou
     m_meleeDamageSchoolMask(SPELL_SCHOOL_MASK_NORMAL), m_originalEntry(0), m_homePosition(), m_transportHomePosition(),
     m_creatureInfo(nullptr), m_creatureData(nullptr), m_stringIds(), _waypointPathId(0), _currentWaypointNodeInfo(0, 0),
     m_formation(nullptr), m_triggerJustAppeared(true), m_respawnCompatibilityMode(false), _lastDamagedTime(0),
-    _regenerateHealth(true), _regenerateHealthLock(false), _storedMovementFlags(0), _moveInLOSLockStatus(LOS_LOCK_SPAWN), _LOSLockDelay(2s)
+    _regenerateHealth(true), _regenerateHealthLock(false), _storedMovementFlags(0), _moveInLOSLockStatus(LOS_LOCK_SPAWN), _LOSLockDelay(2s),
+    m_BaseAttackPower(0), m_BaseRangedAttackPower(0)
 {
     m_regenTimer = CREATURE_REGEN_INTERVAL;
     m_valuesCount = UNIT_END;
@@ -1490,6 +1491,9 @@ void Creature::UpdateLevelDependantStats()
 
     SetStatFlatModifier(UNIT_MOD_ATTACK_POWER, BASE_VALUE, stats->AttackPower);
     SetStatFlatModifier(UNIT_MOD_ATTACK_POWER_RANGED, BASE_VALUE, stats->RangedAttackPower);
+    // Save the variables to be called in UpdateAttackPowerAndDamage -- same as obsolete SetStatFlatModifier(UNIT_MOD_ATTACK_POWER)
+    m_BaseAttackPower = attackPower;
+    m_BaseRangedAttackPower = rangedAttackPower;
 
     float armor = (float)stats->GenerateArmor(cInfo); /// @todo Why is this treated as uint32 when it's a float?
     SetStatFlatModifier(UNIT_MOD_ARMOR, BASE_VALUE, armor);

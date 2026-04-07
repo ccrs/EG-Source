@@ -175,8 +175,6 @@ enum UnitMods
     UNIT_MOD_RESISTANCE_FROST,
     UNIT_MOD_RESISTANCE_SHADOW,
     UNIT_MOD_RESISTANCE_ARCANE,
-    UNIT_MOD_ATTACK_POWER,
-    UNIT_MOD_ATTACK_POWER_RANGED,
     UNIT_MOD_DAMAGE_MAINHAND,
     UNIT_MOD_DAMAGE_OFFHAND,
     UNIT_MOD_DAMAGE_RANGED,
@@ -598,6 +596,26 @@ struct SpellPeriodicAuraLogInfo
     uint32 resist;
     float  multiplier;
     bool   critical;
+};
+
+struct AttackPowerModInfo
+{
+    float positiveMods = 0; // int16 in client
+    float negativeMods = 0; // int16 in client
+    float multiplier = 1.0f;
+};
+enum AttackPowerModType
+{
+    AP_MOD_POSITIVE_FLAT,
+    AP_MOD_NEGATIVE_FLAT,
+    AP_MOD_PCT,
+    AP_MOD_TYPE_COUNT,
+};
+enum AttackPowerModIndex
+{
+    MELEE_AP_MODS,
+    RANGED_AP_MODS,
+    AP_MODS_COUNT,
 };
 
 uint32 createProcHitMask(SpellNonMeleeDamage* damageInfo, SpellMissInfo missCondition);
@@ -1518,6 +1536,9 @@ class TC_GAME_API Unit : public WorldObject
         float GetFlatModifierValue(UnitMods unitMod, UnitModifierFlatType modifierType) const;
         float GetPctModifierValue(UnitMods unitMod, UnitModifierPctType modifierType) const;
 
+        bool HandleAttackPowerModifier(AttackPowerModIndex index, AttackPowerModType modifierType, float amount, bool apply);
+        float GetAttackPowerModifierValue(AttackPowerModIndex index, AttackPowerModType modifierType) const;
+
         void UpdateUnitMod(UnitMods unitMod);
 
         // only players have item requirements
@@ -1883,6 +1904,7 @@ class TC_GAME_API Unit : public WorldObject
 
         float m_auraFlatModifiersGroup[UNIT_MOD_END][MODIFIER_TYPE_FLAT_END];
         float m_auraPctModifiersGroup[UNIT_MOD_END][MODIFIER_TYPE_PCT_END];
+        AttackPowerModInfo m_attackPowerMods[AP_MODS_COUNT]; // Handle both flat + pct
         float m_weaponDamage[MAX_ATTACK][2][2];
         bool m_canModifyStats;
 
