@@ -1931,7 +1931,7 @@ bool Creature::CheckNoGrayAggroConfig(uint32 playerLevel, uint32 creatureLevel) 
     return false;
 }
 
-float Creature::GetAttackDistance(Unit const* player) const
+float Creature::GetAttackDistance(Unit const* target) const
 {
     float aggroRate = sWorld->getRate(RATE_CREATURE_AGGRO);
     if (aggroRate == 0)
@@ -1941,8 +1941,12 @@ float Creature::GetAttackDistance(Unit const* player) const
     float maxRadius = (45.0f * sWorld->getRate(RATE_CREATURE_AGGRO));
     float minRadius = (5.0f * sWorld->getRate(RATE_CREATURE_AGGRO));
 
+    // user "owner" Player as reference
+    Player* player = target->GetCharmerOrOwnerPlayerOrPlayerItself();
+    uint32 const targetLevel = player ? player->GetLevel() : target->GetLevel();
+
     uint8 expansionMaxLevel = uint8(GetMaxLevelForExpansion(GetCreatureTemplate()->expansion));
-    int32 levelDifference = GetLevel() - player->GetLevel();
+    int32 levelDifference = GetLevel() - targetLevel;
 
     // The aggro radius for creatures with equal level as the player is 20 yards.
     // The combatreach should not get taken into account for the distance so we drop it from the range (see Supremus as expample)
@@ -1955,14 +1959,18 @@ float Creature::GetAttackDistance(Unit const* player) const
     if (float(GetLevel() + 5) <= sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
     {
         aggroRadius += GetTotalAuraModifier(SPELL_AURA_MOD_DETECT_RANGE);
-        aggroRadius += player->GetTotalAuraModifier(SPELL_AURA_MOD_DETECTED_RANGE);
+
+        if (player)
+            aggroRadius += player->GetTotalAuraModifier(SPELL_AURA_MOD_DETECTED_RANGE);
+        else
+            aggroRadius += target->GetTotalAuraModifier(SPELL_AURA_MOD_DETECTED_RANGE);
     }
 
     // The aggro range of creatures with higher levels than the total player level for the expansion should get the maxlevel treatment
     // This makes sure that creatures such as bosses wont have a bigger aggro range than the rest of the npc's
     // The following code is used for blizzlike behaivior such as skippable bosses
     if (GetLevel() > expansionMaxLevel)
-        aggroRadius = baseAggroDistance + float(expansionMaxLevel - player->GetLevel());
+        aggroRadius = baseAggroDistance + float(expansionMaxLevel - targetLevel);
 
     // Make sure that we wont go over the total range limits
     if (aggroRadius > maxRadius)

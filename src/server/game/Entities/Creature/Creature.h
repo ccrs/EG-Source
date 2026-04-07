@@ -244,7 +244,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         uint32 m_spells[MAX_CREATURE_SPELLS];
 
         bool CanStartAttack(Unit const* u, bool force) const;
-        float GetAttackDistance(Unit const* player) const;
+        float GetAttackDistance(Unit const* target) const;
         float GetAggroRange(Unit const* target) const;
 
         void SendAIReaction(AiReaction reactionType);
