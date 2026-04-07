@@ -4549,7 +4549,7 @@ Corpse* Player::CreateCorpse()
 
     _corpseLocation.WorldRelocate(*this);
 
-    _cfb1 = ((0x00) | (GetMasqueradeRace() << 8) | (GetNativeGender() << 16) | (GetSkinId() << 24));
+    _cfb1 = ((0x00) | (GetRace() << 8) | (GetNativeGender() << 16) | (GetSkinId() << 24));
     _cfb2 = (GetFaceId() | (GetHairStyleId() << 8) | (GetHairColorId() << 16) | (GetFacialStyle() << 24));
 
     corpse->SetUInt32Value(CORPSE_FIELD_BYTES_1, _cfb1);
@@ -4564,7 +4564,7 @@ Corpse* Player::CreateCorpse()
         flags |= CORPSE_FLAG_LOOTABLE;                      // to be able to remove insignia
     corpse->SetUInt32Value(CORPSE_FIELD_FLAGS, flags);
 
-    corpse->SetUInt32Value(CORPSE_FIELD_DISPLAY_ID, GetNativeDisplayId());
+    corpse->SetUInt32Value(CORPSE_FIELD_DISPLAY_ID, GetOriginalDisplayId());
 
     corpse->SetUInt32Value(CORPSE_FIELD_GUILD, GetGuildId());
 
