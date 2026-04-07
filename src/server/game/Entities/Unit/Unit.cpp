@@ -1495,22 +1495,31 @@ void Unit::DealMeleeDamage(CalcDamageInfo* damageInfo, bool durabilityLoss)
         GetTypeId() != TYPEID_PLAYER && !ToCreature()->IsControlledByPlayer() && !victim->HasInArc(float(M_PI), this)
         && (victim->GetTypeId() == TYPEID_PLAYER || !victim->ToCreature()->isWorldBoss())&& !victim->IsVehicle())
     {
-        // 20% base chance
-        float chance = 20.0f;
 
-        // there is a newbie protection, at level 10 just 7% base chance; assuming linear function
-        if (victim->GetLevel() < 30)
-            chance = 0.65f * victim->GetLevel() + 0.5f;
+        // Calculate total damage
+        uint32 totalDamage = 0;
+        for (uint8 i = 0; i < MAX_ITEM_PROTO_DAMAGES; ++i)
+            totalDamage += damageInfo->Damages[i].Damage;
 
-        uint32 const victimDefense = victim->GetDefenseSkillValue();
-        uint32 const attackerMeleeSkill = GetMaxSkillValueForLevel();
+        if (totalDamage > 0)
+        {
+            // 20% base chance
+            float chance = 20.0f;
 
-        chance *= attackerMeleeSkill / float(victimDefense) * 0.16f;
+            // there is a newbie protection, at level 10 just 7% base chance; assuming linear function
+            if (victim->GetLevel() < 30)
+                chance = 0.65f * victim->GetLevel() + 0.5f;
 
-        // -probability is between 0% and 40%
-        RoundToInterval(chance, 0.0f, 40.0f);
-        if (roll_chance_f(chance))
-            CastSpell(victim, 1604 /*SPELL_DAZED*/, true);
+            uint32 const victimDefense = victim->GetDefenseSkillValue();
+            float const attackerMeleeSkill = GetMaxSkillValueForLevel();
+
+            chance *= attackerMeleeSkill / float(victimDefense) * 0.16f;
+
+            // -probability is between 0% and 40%
+            RoundToInterval(chance, 0.0f, 40.0f);
+            if (roll_chance_f(chance))
+                CastSpell(victim, 1604 /*SPELL_DAZED*/, true);
+        }
     }
 
     if (GetTypeId() == TYPEID_PLAYER)
