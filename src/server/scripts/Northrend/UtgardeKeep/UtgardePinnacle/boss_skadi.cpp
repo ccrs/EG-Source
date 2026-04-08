@@ -15,17 +15,18 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "utgarde_pinnacle.h"
+#include "CommonHelpers.h"
 #include "GridNotifiers.h"
 #include "InstanceScript.h"
 #include "MotionMaster.h"
 #include "MoveSplineInit.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "SpellAuras.h"
 #include "SpellScript.h"
 #include "TemporarySummon.h"
-#include "utgarde_pinnacle.h"
 #include "Vehicle.h"
 
 enum Spells
@@ -183,7 +184,14 @@ struct boss_skadi : public BossAI
             case NPC_YMIRJAR_WITCH_DOCTOR:
             case NPC_YMIRJAR_HARPOONER:
                 if (firstWaveSummoned)
-                    summon->GetMotionMaster()->MovePoint(POINT_1, SecondaryWavesInitialPoint);
+                    summon->SetReactState(REACT_PASSIVE);
+                    DoAddEvent(2s, new Trinity::Helpers::Events::GenericEvent(summon, [](WorldObject* owner)
+                    {
+                        Creature* summon = owner->ToCreature();
+                        summon->SetReactState(REACT_AGGRESSIVE);
+                        summon->GetMotionMaster()->MovePoint(POINT_1, SecondaryWavesInitialPoint);
+                        return true;
+                    }), summon);
                 break;
             default:
                 break;
