@@ -460,7 +460,7 @@ bool Player::CleanMasqueradeRaceValue()
 
 void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicleExitParameters params)
 {
-    if (params.ExitSpline)
+    if (params.ExitSpline && !m_Events.HasEventType(EventType::EVENT_TYPE_VEHICLE_JOIN))
     {
         std::function<void(Movement::MoveSplineInit&)> initializer = [=, this, vehicleCollisionHeight = vehicle->GetBase()->GetCollisionHeight()](Movement::MoveSplineInit& init)
         {
@@ -480,7 +480,7 @@ void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicl
     if (Player* player = ToPlayer())
     {
         player->SetCanTeleport(true);
-        if (params.ResummonPet)
+        if (params.ResummonPet && !m_Events.HasEventType(EventType::EVENT_TYPE_VEHICLE_JOIN))
             player->ResummonPetTemporaryUnSummonedIfAny();
     }
 
