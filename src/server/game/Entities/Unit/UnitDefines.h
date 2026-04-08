@@ -429,4 +429,12 @@ enum CommandStates : uint8
     COMMAND_ABANDON = 3
 };
 
+struct UnitVehicleExitParameters
+{
+    bool ExitSpline = true;
+    bool ResummonPet = true;
+    bool Evade = false;
+    bool Despawn = true;
+};
+
 #endif // UnitDefines_h__
