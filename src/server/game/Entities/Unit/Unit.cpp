@@ -12800,47 +12800,7 @@ void Unit::_ExitVehicle(Position const* exitPosition)
         }
     }
 
-    std::function<void(Movement::MoveSplineInit&)> initializer = [=, this, vehicleCollisionHeight = vehicle->GetBase()->GetCollisionHeight()](Movement::MoveSplineInit& init)
-    {
-        float height = pos.GetPositionZ() + vehicleCollisionHeight;
-
-        // Creatures without inhabit type air should begin falling after exiting the vehicle
-        if (GetTypeId() == TYPEID_UNIT && !CanFly() && height > GetMap()->GetWaterOrGroundLevel(GetPhaseMask(), pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ() + vehicleCollisionHeight, &height))
-            init.SetFall();
-
-        init.MoveTo(pos.GetPositionX(), pos.GetPositionY(), height, false);
-        init.SetFacing(pos.GetOrientation());
-        init.SetTransportExit();
-    };
-    GetMotionMaster()->LaunchMoveSpline(std::move(initializer), EVENT_VEHICLE_EXIT, MOTION_PRIORITY_HIGHEST, EFFECT_MOTION_TYPE, MOTION_MODE_OVERRIDE);
-
-    if (player)
-    {
-        player->SetCanTeleport(true);
-        player->ResummonPetTemporaryUnSummonedIfAny();
-    }
-
-    if (vehicle->GetBase()->HasUnitTypeMask(UNIT_MASK_MINION) && vehicle->GetBase()->GetTypeId() == TYPEID_UNIT)
-        if (((Minion*)vehicle->GetBase())->GetOwner() == this)
-            vehicle->GetBase()->ToCreature()->DespawnOrUnsummon(vehicle->GetDespawnDelay());
-
-    if (HasUnitTypeMask(UNIT_MASK_ACCESSORY))
-    {
-        // Vehicle just died, we die too
-        if (vehicle->GetBase()->getDeathState() == JUST_DIED)
-            setDeathState(JUST_DIED);
-        // If for other reason we as minion are exiting the vehicle (ejected, master dismounted) - unsummon
-        else
-            ToTempSummon()->UnSummon(2000); // Approximation
-    }
-    else if (wasEvading && GetTypeId() == TYPEID_UNIT)
-    {
-        Creature* toCreature = ToCreature();
-        toCreature->SetSpawnHealth();
-        toCreature->LoadCreaturesAddon();
-        if (toCreature->IsVehicle())
-            toCreature->GetVehicleKit()->Reset(true);
-    }
+    ExitVehicleHandling(vehicle, pos, UnitVehicleExitParameters{ .Evade = wasEvading });
 }
 
 void Unit::BuildMovementPacket(ByteBuffer *data) const
