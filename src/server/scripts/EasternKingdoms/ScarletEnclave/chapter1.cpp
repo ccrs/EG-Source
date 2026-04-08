@@ -447,9 +447,9 @@ struct npc_eye_of_acherus : public ScriptedAI
         _events.ScheduleEvent(EVENT_ANNOUNCE_LAUNCH_TO_DESTINATION, 7s);
     }
 
-    void OnCharmed(bool apply) override
+    void OnCharmed(bool/* isNew*/) override
     {
-        if (!apply)
+        if (!me->IsCharmed())
         {
             me->GetCharmerOrOwner()->RemoveAurasDueToSpell(SPELL_THE_EYE_OF_ACHERUS);
             me->GetCharmerOrOwner()->RemoveAurasDueToSpell(SPELL_EYE_OF_ACHERUS_FLIGHT_BOOST);
