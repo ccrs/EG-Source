@@ -489,10 +489,7 @@ void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicl
     {
         if (vehicle->GetBase()->HasUnitTypeMask(UNIT_MASK_MINION) && vehicle->GetBase()->GetTypeId() == TYPEID_UNIT)
             if (((Minion*)vehicle->GetBase())->GetOwner() == this)
-            {
                 vehicle->GetBase()->ToCreature()->DespawnOrUnsummon(vehicle->GetDespawnDelay());
-                despawn = true;
-            }
 
         if (HasUnitTypeMask(UNIT_MASK_ACCESSORY))
         {
