@@ -1,5 +1,6 @@
 #include "Creature.h"
 #include "CreatureAI.h"
+#include "CommonHelpers.h"
 #include "Containers.h"
 #include "GameObject.h"
 #include "GameObjectData.h"
@@ -10,6 +11,7 @@
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
 #include "ScriptMgr.h"
+#include "SmartAI.h"
 #include "SpellAuras.h"
 #include "SpellAuraEffects.h"
 #include "SpellInfo.h"
@@ -838,6 +840,37 @@ private:
     int _setPod;
 };
 
+struct EG_npc_eidolon_watcher : public SmartAI
+{
+    EG_npc_eidolon_watcher(Creature* creature) : SmartAI(creature) { }
+
+    void IsSummonedBy(WorldObject* summoner) override
+    {
+        SmartAI::IsSummonedBy(summoner);
+        Unit* summonerUnit = summoner->ToUnit();
+        if (!summonerUnit)
+            return;
+
+        _passengerInitialPosition = summonerUnit->GetPosition();
+    }
+
+    void GetUnitVehicleExitParameters(UnitVehicleExitParameters& parameters, Unit* passenger) override
+    {
+        parameters.ExitSpline = false;
+        parameters.ResummonPet = false;
+
+        passenger->m_Events.AddEventAtOffset(new Trinity::Helpers::Events::GenericEvent(passenger, [destination = _passengerInitialPosition](WorldObject* owner)
+        {
+            if (Player* ownerPlayer = owner->ToPlayer())
+                ownerPlayer->NearTeleportTo(destination);
+            return true;
+        }), 1ms);
+    }
+
+private:
+    Position _passengerInitialPosition;
+};
+
 void AddSC_EG_gen_npc_scripts()
 {
     RegisterCreatureAI(EG_npc_damage_test_controller);
@@ -845,4 +878,5 @@ void AddSC_EG_gen_npc_scripts()
     RegisterCreatureAI(EG_npc_evolving_ectoplasm);
     RegisterCreatureAI(EG_npc_plague_slime);
     RegisterCreatureAI(EG_npc_crystalline_frayer);
+    RegisterCreatureAI(EG_npc_eidolon_watcher);
 }
