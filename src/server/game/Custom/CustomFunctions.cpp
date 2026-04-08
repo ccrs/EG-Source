@@ -6,6 +6,8 @@
 #include "ItemTemplate.h"
 #include "Map.h"
 #include "MotionMaster.h"
+#include "MoveSpline.h"
+#include "MoveSplineInit.h"
 #include "Log.h"
 #include "Object.h"
 #include "ObjectAccessor.h"
@@ -19,9 +21,12 @@
 #include "SpellMgr.h"
 #include "SpellInfo.h"
 #include "StringConvert.h"
+#include "TemporarySummon.h"
 #include "Transmogrification.h"
 #include "Unit.h"
 #include "Util.h"
+#include "Vehicle.h"
+#include "VehicleDefines.h"
 #include "World.h"
 #include <unordered_map>
 #include <vector>
@@ -451,6 +456,63 @@ bool Player::CleanMasqueradeRaceValue()
 
     ForceValuesUpdateAtIndex(UNIT_FIELD_BYTES_0);
     return true;
+}
+
+void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicleExitParameters params)
+{
+    if (params.ExitSpline)
+    {
+        std::function<void(Movement::MoveSplineInit&)> initializer = [=, this, vehicleCollisionHeight = vehicle->GetBase()->GetCollisionHeight()](Movement::MoveSplineInit& init)
+        {
+            float height = pos.GetPositionZ() + vehicleCollisionHeight;
+
+            // Creatures without inhabit type air should begin falling after exiting the vehicle
+            if (GetTypeId() == TYPEID_UNIT && !CanFly() && height > GetMap()->GetWaterOrGroundLevel(GetPhaseMask(), pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ() + vehicleCollisionHeight, &height))
+                init.SetFall();
+
+            init.MoveTo(pos.GetPositionX(), pos.GetPositionY(), height, false);
+            init.SetFacing(pos.GetOrientation());
+            init.SetTransportExit();
+        };
+        GetMotionMaster()->LaunchMoveSpline(std::move(initializer), EVENT_VEHICLE_EXIT, MOTION_PRIORITY_HIGHEST, EFFECT_MOTION_TYPE, MOTION_MODE_OVERRIDE);
+    }
+
+    if (Player* player = ToPlayer())
+    {
+        player->SetCanTeleport(true);
+        if (params.ResummonPet)
+            player->ResummonPetTemporaryUnSummonedIfAny();
+    }
+
+    bool despawn = false;
+    if (params.Despawn)
+    {
+        if (vehicle->GetBase()->HasUnitTypeMask(UNIT_MASK_MINION) && vehicle->GetBase()->GetTypeId() == TYPEID_UNIT)
+            if (((Minion*)vehicle->GetBase())->GetOwner() == this)
+            {
+                vehicle->GetBase()->ToCreature()->DespawnOrUnsummon(vehicle->GetDespawnDelay());
+                despawn = true;
+            }
+
+        if (HasUnitTypeMask(UNIT_MASK_ACCESSORY))
+        {
+            // Vehicle just died, we die too
+            if (vehicle->GetBase()->getDeathState() == JUST_DIED)
+                setDeathState(JUST_DIED);
+            // If for other reason we as minion are exiting the vehicle (ejected, master dismounted) - unsummon
+            else
+                ToTempSummon()->UnSummon(2000); // Approximation
+            despawn = true;
+        }
+    }
+    if (!despawn && params.Evade && GetTypeId() == TYPEID_UNIT)
+    {
+        Creature* toCreature = ToCreature();
+        toCreature->SetSpawnHealth();
+        toCreature->LoadCreaturesAddon();
+        if (toCreature->IsVehicle())
+            toCreature->GetVehicleKit()->Reset(true);
+    }
 }
 
 void WorldObject::GetNearPoint2D(WorldObject const* searcher, Position const* reference, float& x, float& y, float distance, float absAngle) const
