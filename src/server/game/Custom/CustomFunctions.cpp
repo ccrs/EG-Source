@@ -84,21 +84,24 @@ Item* Player::GetWeaponForDamageMods(WeaponAttackType attackType) const
 
 void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicleExitParameters params)
 {
-    if (params.ExitSpline && !m_Events.HasEventType(EventType::EVENT_TYPE_VEHICLE_JOIN))
+    if (params.ExitSpline && IsInWorld() && !m_Events.HasEventType(EventType::EVENT_TYPE_VEHICLE_JOIN))
     {
-        std::function<void(Movement::MoveSplineInit&)> initializer = [=, this, vehicleCollisionHeight = vehicle->GetBase()->GetCollisionHeight()](Movement::MoveSplineInit& init)
+        if (IsAlive())
         {
-            float height = pos.GetPositionZ() + vehicleCollisionHeight;
+            std::function<void(Movement::MoveSplineInit&)> initializer = [=, this, vehicleCollisionHeight = vehicle->GetBase()->GetCollisionHeight()](Movement::MoveSplineInit& init)
+            {
+                float height = pos.GetPositionZ() + vehicleCollisionHeight;
 
-            // Creatures without inhabit type air should begin falling after exiting the vehicle
-            if (GetTypeId() == TYPEID_UNIT && !CanFly() && height > GetMap()->GetWaterOrGroundLevel(GetPhaseMask(), pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ() + vehicleCollisionHeight, &height))
-                init.SetFall();
+                // Creatures without inhabit type air should begin falling after exiting the vehicle
+                if (GetTypeId() == TYPEID_UNIT && !CanFly() && height > GetMap()->GetWaterOrGroundLevel(GetPhaseMask(), pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ() + vehicleCollisionHeight, &height))
+                    init.SetFall();
 
-            init.MoveTo(pos.GetPositionX(), pos.GetPositionY(), height, false);
-            init.SetFacing(pos.GetOrientation());
-            init.SetTransportExit();
-        };
-        GetMotionMaster()->LaunchMoveSpline(std::move(initializer), EVENT_VEHICLE_EXIT, MOTION_PRIORITY_HIGHEST, EFFECT_MOTION_TYPE, MOTION_MODE_OVERRIDE);
+                init.MoveTo(pos.GetPositionX(), pos.GetPositionY(), height, false);
+                init.SetFacing(pos.GetOrientation());
+                init.SetTransportExit();
+            };
+            GetMotionMaster()->LaunchMoveSpline(std::move(initializer), EVENT_VEHICLE_EXIT, MOTION_PRIORITY_HIGHEST, EFFECT_MOTION_TYPE, MOTION_MODE_OVERRIDE);
+        }
     }
 
     if (Player* player = ToPlayer())
