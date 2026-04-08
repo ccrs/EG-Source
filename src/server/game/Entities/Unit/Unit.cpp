@@ -12748,6 +12748,11 @@ void Unit::_ExitVehicle(Position const* exitPosition)
     if (!m_vehicle)
         return;
 
+    UnitVehicleExitParameters parameters = UnitVehicleExitParameters{ };
+    if (Creature* creature = m_vehicle->GetBase()->ToCreature())
+        if (creature->IsAIEnabled())
+            creature->AI()->GetUnitVehicleExitParameters(parameters, this);
+
     // This should be done before dismiss, because there may be some aura removal
     VehicleSeatAddon const* seatAddon = m_vehicle->GetSeatAddonForSeatOfPassenger(this);
     Vehicle* vehicle = m_vehicle->RemovePassenger(this);
@@ -12770,6 +12775,8 @@ void Unit::_ExitVehicle(Position const* exitPosition)
     bool wasEvading = HasUnitState(UNIT_STATE_EVADE);
     if (wasEvading)
         ClearUnitState(UNIT_STATE_EVADE);
+    else if (parameters.Evade)
+        parameters.Evade = false;
 
     if (player)
         player->SetFallInformation(0, GetPositionZ());
@@ -12799,11 +12806,6 @@ void Unit::_ExitVehicle(Position const* exitPosition)
                 pos.Relocate({ seatAddon->ExitParameterX, seatAddon->ExitParameterY, seatAddon->ExitParameterZ, seatAddon->ExitParameterO });
         }
     }
-
-    UnitVehicleExitParameters parameters = UnitVehicleExitParameters{ .Evade = wasEvading };
-    if (Creature* creature = vehicle->GetBase()->ToCreature())
-        if (creature->IsAIEnabled())
-            creature->AI()->GetUnitVehicleExitParameters(parameters, this);
 
     ExitVehicleHandling(vehicle, pos, parameters);
 }
