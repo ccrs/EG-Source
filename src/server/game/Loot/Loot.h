@@ -23,6 +23,7 @@
 #include "ObjectGuid.h"
 #include "RefManager.h"
 #include "SharedDefines.h"
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -241,8 +242,8 @@ struct TC_GAME_API Loot
     void NotifyItemRemoved(uint8 lootIndex);
     void NotifyQuestItemRemoved(uint8 questIndex);
     void NotifyMoneyRemoved();
-    void AddLooter(ObjectGuid GUID) { PlayersLooting.insert(GUID); }
-    void RemoveLooter(ObjectGuid GUID) { PlayersLooting.erase(GUID); }
+    void AddLooter(ObjectGuid const& guid);
+    void RemoveLooter(ObjectGuid const& guid);
 
     void generateMoneyLoot(uint32 minAmount, uint32 maxAmount);
     bool FillLoot(uint32 lootId, LootStore const& store, Player* lootOwner, bool personal, bool noEmptyError = false, uint16 lootMode = LOOT_MODE_DEFAULT);
@@ -256,19 +257,20 @@ struct TC_GAME_API Loot
     bool hasItemFor(Player const* player) const;
     bool hasOverThresholdItem() const;
 
-    private:
-        void FillNotNormalLootFor(Player* player, bool presentAtLooting);
-        NotNormalLootItemList* FillFFALoot(Player* player);
-        NotNormalLootItemList* FillQuestLoot(Player* player);
-        NotNormalLootItemList* FillNonQuestNonFFAConditionalLoot(Player* player, bool presentAtLooting);
+private:
+    void FillNotNormalLootFor(Player* player, bool presentAtLooting);
+    NotNormalLootItemList* FillFFALoot(Player* player);
+    NotNormalLootItemList* FillQuestLoot(Player* player);
+    NotNormalLootItemList* FillNonQuestNonFFAConditionalLoot(Player* player, bool presentAtLooting);
 
-        GuidSet PlayersLooting;
-        NotNormalLootItemMap PlayerQuestItems;
-        NotNormalLootItemMap PlayerFFAItems;
-        NotNormalLootItemMap PlayerNonQuestNonFFAConditionalItems;
+    GuidSet PlayersLooting;
+    std::mutex PlayersLootingMutex;
+    NotNormalLootItemMap PlayerQuestItems;
+    NotNormalLootItemMap PlayerFFAItems;
+    NotNormalLootItemMap PlayerNonQuestNonFFAConditionalItems;
 
-        // All rolls are registered here. They need to know, when the loot is not valid anymore
-        LootValidatorRefManager i_LootValidatorRefManager;
+    // All rolls are registered here. They need to know, when the loot is not valid anymore
+    LootValidatorRefManager i_LootValidatorRefManager;
 };
 
 struct TC_GAME_API LootProcessResult

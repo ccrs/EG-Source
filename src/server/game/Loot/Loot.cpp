@@ -26,6 +26,7 @@
 #include "Player.h"
 #include "Random.h"
 #include "World.h"
+#include <vector>
 
  //
  // --------- LootItem ---------
@@ -399,33 +400,72 @@ NotNormalLootItemList* Loot::FillNonQuestNonFFAConditionalLoot(Player* player, b
 
 void Loot::NotifyItemRemoved(uint8 lootIndex)
 {
-    // notify all players that are looting this that the item was removed
-    // convert the index to the slot the player sees
-    GuidSet::iterator i_next;
-    for (GuidSet::iterator i = PlayersLooting.begin(); i != PlayersLooting.end(); i = i_next)
+    std::vector<ObjectGuid> snapshot;
+    snapshot.reserve(PlayersLooting.size());
+
     {
-        i_next = i;
-        ++i_next;
-        if (Player* player = ObjectAccessor::FindPlayer(*i))
+        std::lock_guard<std::mutex> lock(PlayersLootingMutex);
+        snapshot.assign(PlayersLooting.begin(), PlayersLooting.end());
+    }
+
+    std::vector<ObjectGuid> toErase;
+    toErase.reserve(snapshot.size());
+
+    for (ObjectGuid const& guid : snapshot)
+    {
+        if (Player* player = ObjectAccessor::FindPlayer(guid))
             player->SendNotifyLootItemRemoved(lootIndex);
         else
-            PlayersLooting.erase(i);
+            toErase.push_back(guid);
+    }
+
+    if (!toErase.empty())
+    {
+        std::lock_guard<std::mutex> lock(PlayersLootingMutex);
+        for (ObjectGuid const& guid : toErase)
+            PlayersLooting.erase(guid);
     }
 }
 
 void Loot::NotifyMoneyRemoved()
 {
-    // notify all players that are looting this that the money was removed
-    GuidSet::iterator i_next;
-    for (GuidSet::iterator i = PlayersLooting.begin(); i != PlayersLooting.end(); i = i_next)
+    std::vector<ObjectGuid> snapshot;
+    snapshot.reserve(PlayersLooting.size());
+
     {
-        i_next = i;
-        ++i_next;
-        if (Player* player = ObjectAccessor::FindPlayer(*i))
+        std::lock_guard<std::mutex> lock(PlayersLootingMutex);
+        snapshot.assign(PlayersLooting.begin(), PlayersLooting.end());
+    }
+
+    std::vector<ObjectGuid> toErase;
+    toErase.reserve(snapshot.size());
+
+    for (ObjectGuid const& guid : snapshot)
+    {
+        if (Player* player = ObjectAccessor::FindPlayer(guid))
             player->SendNotifyLootMoneyRemoved();
         else
-            PlayersLooting.erase(i);
+            toErase.push_back(guid);
     }
+
+    if (!toErase.empty())
+    {
+        std::lock_guard<std::mutex> lock(PlayersLootingMutex);
+        for (ObjectGuid const& guid : toErase)
+            PlayersLooting.erase(guid);
+    }
+}
+
+void Loot::AddLooter(ObjectGuid const& guid)
+{
+    std::lock_guard<std::mutex> lock(PlayersLootingMutex);
+    PlayersLooting.insert(guid);
+}
+
+void Loot::RemoveLooter(ObjectGuid const& guid)
+{
+    std::lock_guard<std::mutex> lock(PlayersLootingMutex);
+    PlayersLooting.erase(guid);
 }
 
 void Loot::NotifyQuestItemRemoved(uint8 questIndex)
@@ -435,30 +475,47 @@ void Loot::NotifyQuestItemRemoved(uint8 questIndex)
     // (other questitems can be looted by each group member)
     // bit inefficient but isn't called often
 
-    GuidSet::iterator i_next;
-    for (GuidSet::iterator i = PlayersLooting.begin(); i != PlayersLooting.end(); i = i_next)
+    std::vector<ObjectGuid> snapshot;
+    snapshot.reserve(PlayersLooting.size());
+
     {
-        i_next = i;
-        ++i_next;
-        if (Player* player = ObjectAccessor::FindPlayer(*i))
+        std::lock_guard<std::mutex> lock(PlayersLootingMutex);
+        snapshot.assign(PlayersLooting.begin(), PlayersLooting.end());
+    }
+
+    std::vector<ObjectGuid> toErase;
+    toErase.reserve(snapshot.size());
+
+    for (ObjectGuid const& guid : snapshot)
+    {
+        if (Player* player = ObjectAccessor::FindPlayer(guid))
         {
             NotNormalLootItemMap::const_iterator pq = PlayerQuestItems.find(player->GetGUID());
             if (pq != PlayerQuestItems.end() && pq->second)
             {
-                // find where/if the player has the given item in it's vector
+                // find where/if the player has the given item in its vector
                 NotNormalLootItemList& pql = *pq->second;
 
                 uint8 j;
                 for (j = 0; j < pql.size(); ++j)
+                {
                     if (pql[j].index == questIndex)
                         break;
+                }
 
                 if (j < pql.size())
                     player->SendNotifyLootItemRemoved(items.size() + j);
             }
         }
         else
-            PlayersLooting.erase(i);
+            toErase.push_back(guid);
+    }
+
+    if (!toErase.empty())
+    {
+        std::lock_guard<std::mutex> lock(PlayersLootingMutex);
+        for (ObjectGuid const& guid : toErase)
+            PlayersLooting.erase(guid);
     }
 }
 
