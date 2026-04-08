@@ -124,7 +124,11 @@ class TC_GAME_API VehicleJoinEvent : public BasicEvent
 {
     friend class Vehicle;
     protected:
-        VehicleJoinEvent(Vehicle* v, Unit* u) : Target(v), Passenger(u), Seat(Target->Seats.end()) { }
+        VehicleJoinEvent(Vehicle* v, Unit* u) : Target(v), Passenger(u), Seat(Target->Seats.end())
+        {
+            Type = EventType::EVENT_TYPE_VEHICLE_JOIN;
+        }
+
         bool Execute(uint64, uint32) override;
         void Abort(uint64) override;
 

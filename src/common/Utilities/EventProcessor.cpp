@@ -131,3 +131,12 @@ void EventProcessor::ModifyEventTime(BasicEvent* event, Milliseconds newTime)
         break;
     }
 }
+
+bool EventProcessor::HasEventType(EventType type) const
+{
+    for (auto itr = m_events.begin(); itr != m_events.end(); ++itr)
+        if (itr->second->Type == type)
+            return true;
+
+    return false;
+}

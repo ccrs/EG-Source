@@ -28,6 +28,12 @@ class EventProcessor;
 
 // Note. All times are in milliseconds here.
 
+enum EventType : uint8
+{
+    EVENT_TYPE_GENERIC = 0,
+    EVENT_TYPE_VEHICLE_JOIN = 1
+};
+
 class TC_COMMON_API BasicEvent
 {
         friend class EventProcessor;
@@ -57,6 +63,7 @@ class TC_COMMON_API BasicEvent
         // Aborts the event at the next update tick
         void ScheduleAbort();
 
+        EventType Type = EventType::EVENT_TYPE_GENERIC;
     private:
         void SetAborted();
         bool IsRunning() const { return (m_abortState == AbortState::STATE_RUNNING); }
@@ -110,6 +117,7 @@ class TC_COMMON_API EventProcessor
         is_lambda_event<T> AddEventAtOffset(T&& event, Milliseconds offset, Milliseconds offset2) { AddEventAtOffset(new LambdaBasicEvent<T>(std::move(event)), offset, offset2); }
         void ModifyEventTime(BasicEvent* event, Milliseconds newTime);
         Milliseconds CalculateTime(Milliseconds t_offset) const { return Milliseconds(m_time) + t_offset; }
+        bool HasEventType(EventType type) const;
 
     protected:
         uint64 m_time;
