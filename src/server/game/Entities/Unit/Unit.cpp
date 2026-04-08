@@ -12805,7 +12805,12 @@ void Unit::_ExitVehicle(Position const* exitPosition)
         }
     }
 
-    ExitVehicleHandling(vehicle, pos, UnitVehicleExitParameters{ .Evade = wasEvading });
+    UnitVehicleExitParameters parameters = UnitVehicleExitParameters{ .Evade = wasEvading };
+    if (Creature* creature = vehicle->GetBase()->ToCreature())
+        if (creature->IsAIEnabled())
+            creature->AI()->GetUnitVehicleExitParameters(parameters, this);
+
+    ExitVehicleHandling(vehicle, pos, parameters);
 }
 
 void Unit::BuildMovementPacket(ByteBuffer *data) const

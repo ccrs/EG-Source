@@ -32,6 +32,7 @@ class GameObject;
 class PlayerAI;
 class WorldObject;
 struct Position;
+struct UnitVehicleExitParameters;
 
 typedef std::vector<AreaBoundary const*> CreatureBoundary;
 
@@ -237,6 +238,7 @@ class TC_GAME_API CreatureAI : public UnitAI
         /// == Fields =======================================
 
         virtual void PassengerBoarded(Unit* /*passenger*/, int8 /*seatId*/, bool /*apply*/) { }
+        virtual void GetUnitVehicleExitParameters(UnitVehicleExitParameters& /*paramters*/, Unit* /*passenger*/) { }
 
         virtual void OnSpellClick(Unit* /*clicker*/, bool /*spellClickHandled*/) { }
 

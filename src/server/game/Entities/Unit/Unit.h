@@ -1757,13 +1757,6 @@ class TC_GAME_API Unit : public WorldObject
 
         // Should only be called by AuraEffect::HandleAuraControlVehicle(AuraApplication const* auraApp, uint8 mode, bool apply) const;
         void _ExitVehicle(Position const* exitPosition = nullptr);
-        struct UnitVehicleExitParameters
-        {
-            bool ExitSpline = true;
-            bool ResummonPet = true;
-            bool Evade = false;
-            bool Despawn = true;
-        };
         void ExitVehicleHandling(Vehicle* vehicle, Position const& exitPosition, UnitVehicleExitParameters params);
         void _EnterVehicle(Vehicle* vehicle, int8 seatId, AuraApplication const* aurApp = nullptr);
 
