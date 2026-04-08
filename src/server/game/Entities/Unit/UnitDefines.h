@@ -433,7 +433,7 @@ struct UnitVehicleExitParameters
 {
     bool ExitSpline = true;
     bool ResummonPet = true;
-    bool Evade = false;
+    bool Evade = true;
     bool Despawn = true;
 };
 
