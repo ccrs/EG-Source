@@ -15,20 +15,21 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "utgarde_pinnacle.h"
 #include "Player.h"
+#include "G3DPosition.hpp"
 #include "GameObject.h"
 #include "InstanceScript.h"
 #include "MotionMaster.h"
 #include "MoveSplineInit.h"
 #include "ObjectAccessor.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "SpellInfo.h"
 #include "SpellScript.h"
 #include "TemporarySummon.h"
-#include "utgarde_pinnacle.h"
 
-enum Spells
+enum SvalaSpells
 {
     SPELL_SVALA_TRANSFORMING1                     = 54140,
     SPELL_SVALA_TRANSFORMING2                     = 54205,
@@ -60,7 +61,7 @@ enum Spells
     H_SPELL_VOLATILE_INFECTION                    = 59228
 };
 
-enum Yells
+enum SvalaYells
 {
     // Svala
     SAY_SVALA_INTRO_0                             = 0,
@@ -78,7 +79,7 @@ enum Yells
     SAY_DIALOG_OF_ARTHAS_2                        = 1
 };
 
-enum Creatures
+enum SvalaCreatures
 {
     NPC_ARTHAS                                      = 29280, // Image of Arthas
     NPC_RITUAL_CHANNELER                            = 27281,
@@ -88,7 +89,7 @@ enum Creatures
     NPC_SCOURGE_HULK                                = 26555
 };
 
-enum Phases
+enum SvalaPhases
 {
     IDLE        = 1,
     INTRO,
@@ -97,7 +98,7 @@ enum Phases
     SVALADEAD
 };
 
-enum Events
+enum SvalaEvents
 {
     //INTRO
     EVENT_INTRO_SVALA_TALK_0    = 1,
@@ -122,7 +123,7 @@ enum Events
     EVENT_FINISH_RITUAL
 };
 
-enum Misc
+enum SvalaMisc
 {
     DATA_INCREDIBLE_HULK        = 2043
 };
@@ -133,7 +134,7 @@ Position const spectatorWP[2] =
     {297.69f, -275.81f, 86.36f, 0.0f }
 };
 
-Position const ArthasPos = { 295.81f, -366.16f, 92.57f, 1.58f };
+Position const SvalaArthasPos = { 295.81f, -366.16f, 92.57f, 1.58f };
 
 struct boss_svala : public BossAI
 {
@@ -194,7 +195,7 @@ struct boss_svala : public BossAI
             if (GameObject* mirror = instance->GetGameObject(DATA_UTGARDE_MIRROR))
                 mirror->SetGoState(GO_STATE_READY);
 
-            if (Creature* arthas = me->SummonCreature(NPC_ARTHAS, ArthasPos, TEMPSUMMON_MANUAL_DESPAWN))
+            if (Creature* arthas = me->SummonCreature(NPC_ARTHAS, SvalaArthasPos, TEMPSUMMON_MANUAL_DESPAWN))
             {
                 arthas->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
                 _arthasGUID = arthas->GetGUID();
@@ -284,6 +285,7 @@ struct boss_svala : public BossAI
                     events.ScheduleEvent(EVENT_INTRO_TRANSFORM_2, 6200ms, 0, INTRO);
                     break;
                 case EVENT_INTRO_TRANSFORM_2:
+                {
                     DoCastSelf(SPELL_SVALA_TRANSFORMING2);
                     if (Creature* arthas = ObjectAccessor::GetCreature(*me, _arthasGUID))
                     {
@@ -292,9 +294,19 @@ struct boss_svala : public BossAI
                     }
                     me->RemoveAllAuras();
                     me->UpdateEntry(NPC_SVALA_SORROWGRAVE);
+                    me->RemoveUnitMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
+                    me->SetDisableGravity(true);
+                    G3D::Vector3 destination = PositionToVector3(me->GetPosition());
+                    std::function<void(Movement::MoveSplineInit&)> initializer = [destination](Movement::MoveSplineInit& init)
+                    {
+                        init.MoveTo(destination);
+                        init.SetFly();
+                    };
+                    me->GetMotionMaster()->LaunchMoveSpline(std::move(initializer));
                     me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
                     events.ScheduleEvent(EVENT_INTRO_SVALA_TALK_1, 2s, 0, INTRO);
                     break;
+                }
                 case EVENT_INTRO_SVALA_TALK_1:
                     Talk(SAY_SVALA_INTRO_1);
                     events.ScheduleEvent(EVENT_INTRO_ARTHAS_TALK_1, 12s, 0, INTRO);
@@ -313,9 +325,14 @@ struct boss_svala : public BossAI
                     break;
                 case EVENT_INTRO_RELOCATE_SVALA:
                 {
-                    me->SetDisableGravity(false);
                     me->SetHover(true);
-                    me->GetMotionMaster()->MoveFall();
+                    G3D::Vector3 destination = PositionToVector3(me->GetPosition());
+                    destination.z = me->GetFloorZ() + me->GetFloatValue(UNIT_FIELD_HOVERHEIGHT);
+                    std::function<void(Movement::MoveSplineInit&)> initializer = [destination](Movement::MoveSplineInit& init)
+                    {
+                        init.MoveTo(destination);
+                    };
+                    me->GetMotionMaster()->LaunchMoveSpline(std::move(initializer));
 
                     events.ScheduleEvent(EVENT_INTRO_DESPAWN_ARTHAS, 3s, 0, INTRO);
                     break;
@@ -350,7 +367,6 @@ struct boss_svala : public BossAI
                         me->SetReactState(REACT_PASSIVE);
                         me->AttackStop();
                         me->StopMoving();
-                        me->SetDisableGravity(true);
                         instance->SetGuidData(DATA_SACRIFICED_PLAYER, sacrificeTarget->GetGUID());
                         Talk(SAY_SACRIFICE_PLAYER);
                         DoCast(sacrificeTarget, SPELL_RITUAL_PREPARATION);
@@ -370,7 +386,6 @@ struct boss_svala : public BossAI
                     DoCastSelf(SPELL_RITUAL_STRIKE_TRIGGER, true);
                     break;
                 case EVENT_FINISH_RITUAL:
-                    me->SetDisableGravity(false);
                     me->SetReactState(REACT_AGGRESSIVE);
                     events.SetPhase(NORMAL);
                     events.ScheduleEvent(EVENT_SINISTER_STRIKE, 7s, 0, NORMAL);
