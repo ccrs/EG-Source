@@ -184,6 +184,7 @@ struct boss_skadi : public BossAI
             case NPC_YMIRJAR_WITCH_DOCTOR:
             case NPC_YMIRJAR_HARPOONER:
                 if (firstWaveSummoned)
+                {
                     summon->SetReactState(REACT_PASSIVE);
                     DoAddEvent(2s, new Trinity::Helpers::Events::GenericEvent(summon, [](WorldObject* owner)
                     {
@@ -192,6 +193,7 @@ struct boss_skadi : public BossAI
                         summon->GetMotionMaster()->MovePoint(POINT_1, SecondaryWavesInitialPoint);
                         return true;
                     }), summon);
+                }
                 break;
             default:
                 break;
