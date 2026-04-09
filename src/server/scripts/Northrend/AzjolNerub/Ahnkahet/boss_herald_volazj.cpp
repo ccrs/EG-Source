@@ -237,10 +237,10 @@ struct boss_volazj : public BossAI
             for (auto i = players.begin(); i != players.end(); ++i)
             {
                 Player* player = i->GetSource();
-                if (!player || !player->IsAlive())
+                if (!player || !player->IsAlive() || player->IsGameMaster())
                     continue;
                 // Summon clone
-                if (TempSummon* summon = me->SummonCreature(NPC_TWISTED_VISAGE, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), me->GetOrientation(), TEMPSUMMON_CORPSE_DESPAWN))
+                if (TempSummon* summon = me->SummonCreature(NPC_TWISTED_VISAGE, me->GetRandomNearPosition(10.f), TEMPSUMMON_CORPSE_DESPAWN, 2s))
                 {
                     // clone
                     player->CastSpell(summon, SPELL_CLONE_PLAYER, true);
@@ -249,11 +249,10 @@ struct boss_volazj : public BossAI
                     player->CastSpell(summon, SPELL_TWISTED_VISAGE_VISUAL_OFFHAND_WEAPON, true);
                     summon->GetAI()->SetData(DATA_TWISTED_VISAGE_PLAYER_CLASS, player->GetClass());
                     summon->GetAI()->SetData(DATA_TWISTED_VISAGE_PLAYER_SPEC, Trinity::Helpers::Entity::GetPlayerSpecialization(player));
-                    summon->SetReactState(REACT_PASSIVE);
-                    summon->EngageWithTarget(player);
-                    SetAggressiveStateAfter(2s, summon, true);
                     // set phase
                     summon->SetPhaseMask((1 << (4 + _insanityHandled)), true);
+                    summon->SetReactState(REACT_PASSIVE);
+                    SetAggressiveStateAfter(2s, summon, true);
                 }
             }
             ++_insanityHandled;
