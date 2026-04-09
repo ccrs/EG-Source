@@ -407,6 +407,11 @@ private:
     uint32 _insanityHandled;
 };
 
+#define MAIN_CAST_TIMER 3s
+#define MAIN_CAST_TIMER_REPEAT 3s, 7s
+#define MAIN_MELEE_TIMER 5s
+#define MAIN_MELEE_TIMER_REPEAT 5s, 10s
+
 struct npc_twisted_visage : public ScriptedAI
 {
     npc_twisted_visage(Creature* creature) : ScriptedAI(creature), _playerClass(CLASS_NONE), _playerSpec(0) { }
@@ -479,11 +484,11 @@ struct npc_twisted_visage : public ScriptedAI
                     switch (data)
                     {
                         case SPEC_WARRIOR_ARMS:
-                            _scheduler.Schedule(3s, [this](TaskContext mortalStrike)
+                            _scheduler.Schedule(MAIN_MELEE_TIMER, [this](TaskContext mortalStrike)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_MORTAL_STRIKE);
-                                mortalStrike.Repeat(3s, 5s);
-                            }).Schedule(5s, [this](TaskContext harmstring)
+                                mortalStrike.Repeat(MAIN_MELEE_TIMER_REPEAT);
+                            }).Schedule(10s, 15s, [this](TaskContext harmstring)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_HAMSTRING);
                                 harmstring.Repeat(7s, 15s);
@@ -496,25 +501,25 @@ struct npc_twisted_visage : public ScriptedAI
                                 if (!me->IsWithinCombatRange(me->GetVictim(), 8.0f))
                                 {
                                     DoCastVictim(SPELL_TWISTED_VISAGE_INTERCEPT);
-                                    intercept.Repeat(12s);
+                                    intercept.Repeat(20s);
                                 }
                                 else
                                     intercept.Repeat(1s);
-                            }).Schedule(3s, [this](TaskContext bloodthirst)
+                            }).Schedule(MAIN_MELEE_TIMER, [this](TaskContext bloodthirst)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_BLOODTHIRST);
-                                bloodthirst.Repeat(3s, 5s);
+                                bloodthirst.Repeat(MAIN_MELEE_TIMER_REPEAT);
                             });
                             break;
                         case SPEC_WARRIOR_PROTECTION:
-                            _scheduler.Schedule(5s, [this](TaskContext thunderClap)
+                            _scheduler.Schedule(10s, [this](TaskContext thunderClap)
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_THUNDER_CLAP);
-                                thunderClap.Repeat(7s, 15s);
-                            }).Schedule(3s, [this](TaskContext devastate)
+                                thunderClap.Repeat(10s, 20s);
+                            }).Schedule(MAIN_MELEE_TIMER, [this](TaskContext devastate)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_DEVASTATE);
-                                devastate.Repeat(3s, 5s);
+                                devastate.Repeat(MAIN_MELEE_TIMER_REPEAT);
                             });
                             break;
                     }
@@ -526,11 +531,11 @@ struct npc_twisted_visage : public ScriptedAI
                             _scheduler.Schedule(5s, [this](TaskContext consecration)
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_CONSECRATION);
-                                consecration.Repeat(5s, 10s);
-                            }).Schedule(2s, [this](TaskContext avengersShield)
+                                consecration.Repeat(10s, 20s);
+                            }).Schedule(5s, 10s, [this](TaskContext avengersShield)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_AVENGER__S_SHIELD);
-                                avengersShield.Repeat(7s, 15s);
+                                avengersShield.Repeat(10s, 20s);
                             });
                             break;
                         default:
@@ -538,24 +543,24 @@ struct npc_twisted_visage : public ScriptedAI
                             _scheduler.Schedule(5s, [this](TaskContext consecration)
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_CONSECRATION);
-                                consecration.Repeat(7s, 15s);
+                                consecration.Repeat(10s, 20s);
                             }).Schedule(2s, [this](TaskContext /*sealCommand*/)
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_SEAL_OF_COMMAND);
-                            }).Schedule(3s, [this](TaskContext judgementLight)
+                            }).Schedule(MAIN_MELEE_TIMER, [this](TaskContext judgementLight)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_JUDGEMENT_OF_LIGHT);
-                                judgementLight.Repeat(3s, 5s);
+                                judgementLight.Repeat(MAIN_MELEE_TIMER_REPEAT);
                             });
                             break;
                     }
                     break;
                 case CLASS_HUNTER:
-                    _scheduler.Schedule(2s, [this](TaskContext shoot)
+                    _scheduler.Schedule(5s, [this](TaskContext shoot)
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_SHOOT);
-                        shoot.Repeat(1s, 4s);
-                    }).Schedule(5s, [this](TaskContext disengage)
+                        shoot.Repeat(5s, 10s);
+                    }).Schedule(5s, 10s, [this](TaskContext disengage)
                     {
                         if (me->IsWithinCombatRange(me->GetVictim(), 4.0f))
                         {
@@ -568,28 +573,28 @@ struct npc_twisted_visage : public ScriptedAI
                     break;
                 case CLASS_ROGUE:
                     me->SetCanDualWield(true);
-                    _scheduler.Schedule(5s, [this](TaskContext eviscerate)
+                    _scheduler.Schedule(5s, 10s, [this](TaskContext eviscerate)
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_EVISCERATE);
-                        eviscerate.Repeat(7s, 15s);
-                    }).Schedule(2s, [this](TaskContext sinisterStrike)
+                        eviscerate.Repeat(10s, 25s);
+                    }).Schedule(MAIN_MELEE_TIMER, [this](TaskContext sinisterStrike)
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_SINISTER_STRIKE);
-                        sinisterStrike.Repeat(3s, 5s);
+                        sinisterStrike.Repeat(MAIN_MELEE_TIMER_REPEAT);
                     });
                     break;
                 case CLASS_PRIEST:
                     switch (data)
                     {
                         case SPEC_PRIEST_SHADOW:
-                            _scheduler.Schedule(5s, [this](TaskContext shadowWordPain)
+                            _scheduler.Schedule(5s, 10s, [this](TaskContext shadowWordPain)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_SHADOW_WORD_PAIN);
-                                shadowWordPain.Repeat(7s, 15s);
-                            }).Schedule(2s, [this](TaskContext mindFlay)
+                                shadowWordPain.Repeat(10s, 20s);
+                            }).Schedule(MAIN_CAST_TIMER, [this](TaskContext mindFlay)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_MIND_FLAY);
-                                mindFlay.Repeat(3s, 5s);
+                                mindFlay.Repeat(MAIN_CAST_TIMER_REPEAT);
                             });
                             break;
                         default:
@@ -598,7 +603,7 @@ struct npc_twisted_visage : public ScriptedAI
                                 if (Unit* target = DoFindLowestHPFriendlyInRange(40.f))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_RENEW);
-                                    renew.Repeat(2s, 5s);
+                                    renew.Repeat(5s, 10s);
                                 }
                                 else
                                     renew.Repeat(1s);
@@ -607,7 +612,7 @@ struct npc_twisted_visage : public ScriptedAI
                                 if (Unit* target = DoFindLowestHPFriendlyInRange(40.f))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_GREATER_HEAL);
-                                    greaterHeal.Repeat(4s, 6s);
+                                    greaterHeal.Repeat(10s, 20s);
                                 }
                                 else
                                     greaterHeal.Repeat(1s);
@@ -621,14 +626,14 @@ struct npc_twisted_visage : public ScriptedAI
                         if (!me->IsWithinCombatRange(me->GetVictim(), 3.0f))
                         {
                             DoCastVictim(SPELL_TWISTED_VISAGE_DEATH_GRIP);
-                            deathGrip.Repeat(12s);
+                            deathGrip.Repeat(10s, 20s);
                         }
                         else
                             deathGrip.Repeat(1s);
-                    }).Schedule(2s, [this](TaskContext plagueStrike)
+                    }).Schedule(MAIN_MELEE_TIMER, [this](TaskContext plagueStrike)
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_PLAGUE_STRIKE);
-                        plagueStrike.Repeat(3s, 5s);
+                        plagueStrike.Repeat(MAIN_MELEE_TIMER_REPEAT);
                     });
                     break;
                 case CLASS_SHAMAN:
@@ -636,30 +641,30 @@ struct npc_twisted_visage : public ScriptedAI
                     {
                         default:
                         case SPEC_SHAMAN_ELEMENTAL:
-                            _scheduler.Schedule(5s, [this](TaskContext thunderstorm)
+                            _scheduler.Schedule(5s, 10s, [this](TaskContext thunderstorm)
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_THUNDERSTORM);
-                                thunderstorm.Repeat(5s, 10s);
-                            }).Schedule(2s, [this](TaskContext lightningBolt)
+                                thunderstorm.Repeat(5s, 20s);
+                            }).Schedule(MAIN_CAST_TIMER, [this](TaskContext lightningBolt)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_LIGHTNING_BOLT);
-                                lightningBolt.Repeat(3s, 5s);
+                                lightningBolt.Repeat(MAIN_CAST_TIMER_REPEAT);
                             });
                             break;
                         case SPEC_SHAMAN_ENHANCEMENT:
-                            _scheduler.Schedule(2s, [this](TaskContext earthShock)
+                            _scheduler.Schedule(5s, 10s, [this](TaskContext earthShock)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_EARTH_SHOCK);
-                                earthShock.Repeat(3s, 5s);
+                                earthShock.Repeat(10s, 15s);
                             });
                             break;
                         case SPEC_SHAMAN_RESTORATION:
-                            _scheduler.Schedule(2s, [this](TaskContext earthShield)
+                            _scheduler.Schedule(5s, [this](TaskContext earthShield)
                             {
                                 if (Unit* target = DoFindLowestHPFriendlyInRange(40.f))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_EARTH_SHIELD);
-                                    earthShield.Repeat(4s, 6s);
+                                    earthShield.Repeat(10s, 20s);
                                 }
                                 else
                                     earthShield.Repeat(1s);
@@ -668,7 +673,7 @@ struct npc_twisted_visage : public ScriptedAI
                                 if (Unit* target = DoFindLowestHPFriendlyInRange(40.f))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_HEALING_WEAVE);
-                                    healingWave.Repeat(4s, 6s);
+                                    healingWave.Repeat(10s, 20s);
                                 }
                                 else
                                     healingWave.Repeat(1s);
@@ -677,39 +682,39 @@ struct npc_twisted_visage : public ScriptedAI
                     }
                     break;
                 case CLASS_MAGE:
-                    _scheduler.Schedule(5s, [this](TaskContext frostNova)
+                    _scheduler.Schedule(5s, 10s, [this](TaskContext frostNova)
                     {
                         DoCastSelf(SPELL_TWISTED_VISAGE_FROST_NOVA);
-                        frostNova.Repeat(7s, 15s);
-                    }).Schedule(2s, [this](TaskContext fireball)
+                        frostNova.Repeat(10s, 20s);
+                    }).Schedule(MAIN_CAST_TIMER, [this](TaskContext fireball)
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_FIREBALL);
-                        fireball.Repeat(3s, 5s);
+                        fireball.Repeat(MAIN_CAST_TIMER_REPEAT);
                     });
                     break;
                 case CLASS_WARLOCK:
-                    _scheduler.Schedule(2s, [this](TaskContext corruption)
+                    _scheduler.Schedule(5s, 10s, [this](TaskContext corruption)
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_CORRUPTION);
-                        corruption.Repeat(6s, 10s);
-                    }).Schedule(3s, [this](TaskContext shadowBolt)
+                        corruption.Repeat(5s, 20s);
+                    }).Schedule(MAIN_CAST_TIMER, [this](TaskContext shadowBolt)
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_SHADOW_BOLT);
-                        shadowBolt.Repeat(3s, 5s);
+                        shadowBolt.Repeat(MAIN_CAST_TIMER_REPEAT);
                     });
                     break;
                 case CLASS_DRUID:
                     switch (data)
                     {
                         case SPEC_DRUID_BALANCE:
-                            _scheduler.Schedule(2s, [this](TaskContext moonfire)
+                            _scheduler.Schedule(5s, 10s, [this](TaskContext moonfire)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_MOONFIRE);
-                                moonfire.Repeat(3s, 5s);
-                            }).Schedule(3s, [this](TaskContext wrath)
+                                moonfire.Repeat(5s, 10s);
+                            }).Schedule(MAIN_CAST_TIMER, [this](TaskContext wrath)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_WRATH);
-                                wrath.Repeat(3s, 5s);
+                                wrath.Repeat(MAIN_CAST_TIMER_REPEAT);
                             });
                             break;
                         case SPEC_DRUID_FERAL:
@@ -717,14 +722,14 @@ struct npc_twisted_visage : public ScriptedAI
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_CAT_FORM);
                                 DoCastSelf(SPELL_TWISTED_VISAGE_INVISIBILITY_AND_STEALTH_DETECTION);
-                            }).Schedule(2s, [this](TaskContext mangle)
+                            }).Schedule(MAIN_MELEE_TIMER, [this](TaskContext mangle)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_MANGLE);
-                                mangle.Repeat(3s, 5s);
-                            }).Schedule(3s, [this](TaskContext rip)
+                                mangle.Repeat(MAIN_MELEE_TIMER_REPEAT);
+                            }).Schedule(10s, [this](TaskContext rip)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_RIP);
-                                rip.Repeat(3s, 5s);
+                                rip.Repeat(10s, 20s);
                             });
                             break;
                         default:
