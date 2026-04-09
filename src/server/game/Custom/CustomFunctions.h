@@ -4,6 +4,7 @@
 #include "SharedDefines.h"
 
 class Unit;
+class WorldObject;
 
 namespace EG
 {
@@ -19,6 +20,20 @@ namespace EG
         bool _playerOnly;
         bool _includeSelf;
         float _hp;
+    };
+
+    class AnyFriendlyUnitInObjectRangeCheck
+    {
+    public:
+        AnyFriendlyUnitInObjectRangeCheck(Unit const* source, float range, bool playerOnly = false, bool includeSelf = false) : _source(source), _range(range), _playerOnly(playerOnly), _includeSelf(includeSelf) { }
+
+        bool operator()(Unit* u) const;
+
+    private:
+        Unit const* _source;
+        float _range;
+        bool _playerOnly;
+        bool _includeSelf;
     };
 }
 
