@@ -20,6 +20,7 @@
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "InstanceScript.h"
+#include "Map.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 
