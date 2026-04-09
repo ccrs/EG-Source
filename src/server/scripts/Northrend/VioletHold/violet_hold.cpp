@@ -600,6 +600,8 @@ struct npc_azure_saboteur : public ScriptedAI
 
     void Reset() override
     {
+        me->SetReactState(REACT_PASSIVE);
+        me->SetImmuneToAll(true);
         _scheduler.CancelAll();
         _scheduler.Schedule(2s, [this](TaskContext /*task*/)
         {
