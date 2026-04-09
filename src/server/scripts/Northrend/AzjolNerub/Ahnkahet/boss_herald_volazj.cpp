@@ -251,8 +251,15 @@ struct boss_volazj : public BossAI
                     summon->GetAI()->SetData(DATA_TWISTED_VISAGE_PLAYER_SPEC, Trinity::Helpers::Entity::GetPlayerSpecialization(player));
                     // set phase
                     summon->SetPhaseMask((1 << (4 + _insanityHandled)), true);
-                    summon->SetReactState(REACT_PASSIVE);
-                    SetAggressiveStateAfter(2s, summon, true);
+                    DoAddEvent(1s, new Trinity::Helpers::Events::GenericEvent(summon, [targetGUID = player->GetGUID()](WorldObject* owner)
+                    {
+                        Creature* summon = owner->ToCreature();
+                        summon->SetReactState(REACT_AGGRESSIVE);
+                        if (summon->IsAlive())
+                            if (Unit* target = ObjectAccessor::GetUnit(*owner, targetGUID))
+                                summon->EngageWithTarget(target);
+                        return true;
+                    }), summon);
                 }
             }
             ++_insanityHandled;
@@ -719,8 +726,8 @@ struct npc_twisted_visage : public ScriptedAI
                         case SPEC_DRUID_FERAL:
                             _scheduler.Schedule(1ms, [this](TaskContext /*catForm*/)
                             {
-                                DoCastSelf(SPELL_TWISTED_VISAGE_CAT_FORM);
-                                DoCastSelf(SPELL_TWISTED_VISAGE_INVISIBILITY_AND_STEALTH_DETECTION);
+                                DoCastSelf(SPELL_TWISTED_VISAGE_CAT_FORM, true);
+                                DoCastSelf(SPELL_TWISTED_VISAGE_INVISIBILITY_AND_STEALTH_DETECTION, true);
                             }).Schedule(MAIN_MELEE_TIMER, [this](TaskContext mangle)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_MANGLE);
