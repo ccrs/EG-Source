@@ -15,18 +15,18 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "obsidian_sanctum.h"
 #include "CellImpl.h"
 #include "Containers.h"
 #include "GridNotifiersImpl.h"
 #include "InstanceScript.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
-#include "obsidian_sanctum.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "TemporarySummon.h"
 
-enum Enums
+enum SartharionEnums
 {
     //Sartharion Yell
     SAY_SARTHARION_AGGRO                        = 0,
@@ -74,7 +74,7 @@ enum Enums
     POINT_ID_LAND                               = 200
 };
 
-enum Misc
+enum SartharionMisc
 {
     DATA_CAN_LOOT           = 0
 };
@@ -151,6 +151,7 @@ struct boss_sartharion : public BossAI
         me->SetHomePosition(3246.57f, 551.263f, 58.6164f, 4.66003f);
 
         DrakeRespawn();
+        _EncounterCleanup();
         instance->SetBossState(DATA_PORTAL_OPEN, NOT_STARTED);
     }
 
@@ -181,6 +182,7 @@ struct boss_sartharion : public BossAI
     {
         Talk(SAY_SARTHARION_DEATH);
         _JustDied();
+        _EncounterCleanup();
 
         if (Creature* tenebron = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_TENEBRON)))
             if (tenebron->IsAlive())
@@ -381,10 +383,15 @@ struct boss_sartharion : public BossAI
 
     uint32 GetData(uint32 type) const override
     {
-        if (type == TWILIGHT_ACHIEVEMENTS)
+        if (type == DATA_TWILIGHT_ACHIEVEMENTS)
             return drakeCount;
 
         return 0;
+    }
+
+    void SetGUID(ObjectGuid const& guid, int32 /*id*/) override
+    {
+        _encounterGUIDs.push_back(guid);
     }
 
     // Selects a random Fire Cyclone and makes it cast Lava Strike.
@@ -505,10 +512,23 @@ struct boss_sartharion : public BossAI
     }
 
 private:
+    void _EncounterCleanup()
+    {
+        if (!_encounterGUIDs.empty())
+        {
+            for (ObjectGuid const& guid : _encounterGUIDs)
+                if (Creature* add = ObjectAccessor::GetCreature(*me, guid))
+                    add->DespawnOrUnsummon();
+
+            _encounterGUIDs.clear();
+        }
+    }
+
     bool _isBerserk;
     bool _isSoftEnraged;
     bool _isHardEnraged;
     uint8 drakeCount;
+    GuidVector _encounterGUIDs;
 };
 
 void AddSC_boss_sartharion()

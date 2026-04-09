@@ -15,14 +15,14 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "obsidian_sanctum.h"
 #include "CellImpl.h"
 #include "GridNotifiersImpl.h"
 #include "InstanceScript.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
-#include "obsidian_sanctum.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "TemporarySummon.h"
 
 enum Enums
@@ -80,14 +80,13 @@ enum Enums
 
     SPELL_FLAME_TSUNAMI_DMG_AURA                = 57491,    // periodic damage, npc has this aura
     SPELL_FLAME_TSUNAMI_BUFF                    = 60430,
-    NPC_LAVA_BLAZE                              = 30643,    // adds spawning from flame strike
 
     //using these custom points for dragons start and end
     POINT_ID_INIT                               = 100,
     POINT_ID_LAND                               = 200
 };
 
-enum Misc
+enum ObsidianSanctumMisc
 {
     DATA_CAN_LOOT           = 0
 };
@@ -129,7 +128,7 @@ Position const TwilightEggsSarth[] =
     { 3257.54f, 502.285f, 58.2077f, 0.0f }
 };
 
-enum SharedTextIds
+enum ObsidianSanctumSharedTextIds
 {
     SAY_AGGRO                      = 0,
     SAY_SLAY                       = 1,
@@ -141,7 +140,7 @@ enum SharedTextIds
     WHISPER_OPENED_PORTAL          = 7
 };
 
-enum DragonEvents
+enum ObsidianSanctumDragonEvents
 {
     // Shared Events
     EVENT_FREE_MOVEMENT            = 1,
@@ -161,7 +160,7 @@ enum DragonEvents
 // to control each dragons common abilities
 struct dummy_dragonAI : public ScriptedAI
 {
-    dummy_dragonAI(Creature* creature) : ScriptedAI(creature)
+    dummy_dragonAI(Creature* creature) : ScriptedAI(creature), _summons(creature)
     {
         Initialize();
         instance = creature->GetInstanceScript();
@@ -180,6 +179,19 @@ struct dummy_dragonAI : public ScriptedAI
         if (me->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE))
             me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
 
+        switch (me->GetEntry())
+        {
+            case NPC_SHADRON:
+                if (Creature* acolyte = me->FindNearestCreature(NPC_ACOLYTE_OF_SHADRON, 100.0f))
+                    acolyte->DespawnOrUnsummon();
+                break;
+            case NPC_VESPERON:
+                if (Creature* acolyte = me->FindNearestCreature(NPC_ACOLYTE_OF_VESPERON, 100.0f))
+                    acolyte->DespawnOrUnsummon();
+                break;
+        }
+
+        _summons.DespawnAll();
         events.Reset();
         Initialize();
     }
@@ -216,14 +228,7 @@ struct dummy_dragonAI : public ScriptedAI
         // this is end, if we reach this, don't do much
         if (pointId == POINT_ID_LAND)
         {
-            me->GetMotionMaster()->Clear();
             DoZoneInCombat();
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0, true))
-            {
-                AddThreat(target, 1.0f);
-                me->Attack(target, true);
-                me->GetMotionMaster()->MoveChase(target);
-            }
 
             _canMoveFree = false;
             return;
@@ -315,6 +320,13 @@ struct dummy_dragonAI : public ScriptedAI
         // Refresh respawnTime so time again are set to 30secs?
     }
 
+    void JustSummoned(Creature* summon) override
+    {
+        _summons.Summon(summon);
+        if (me->IsInCombat())
+            DoZoneInCombat(summon);
+    }
+
     void KilledUnit(Unit* who) override
     {
         if (who->GetTypeId() == TYPEID_PLAYER)
@@ -352,6 +364,7 @@ struct dummy_dragonAI : public ScriptedAI
         }
 
         Talk(SAY_DEATH);
+        _summons.DespawnAll();
         me->RemoveAurasDueToSpell(spellId);
 
         instance->DoRemoveAurasDueToSpellOnPlayers(spellId);
@@ -399,13 +412,14 @@ struct dummy_dragonAI : public ScriptedAI
         }
     }
 
-    protected:
-        InstanceScript* instance;
-        EventMap events;
-        uint32   waypointId;
-        int32    portalRespawnTime;
-        bool     _canMoveFree;
-        bool     _canLoot;
+protected:
+    InstanceScript* instance;
+    EventMap events;
+    uint32   waypointId;
+    int32    portalRespawnTime;
+    bool     _canMoveFree;
+    bool     _canLoot;
+    SummonList _summons;
 };
 
 /*######
@@ -926,7 +940,7 @@ class achievement_twilight_assist : public AchievementCriteriaScript
 
         bool OnCheck(Player* /*player*/, Unit* target) override
         {
-            return target && target->GetAI()->GetData(TWILIGHT_ACHIEVEMENTS) >= 1;
+            return target && target->GetAI()->GetData(DATA_TWILIGHT_ACHIEVEMENTS) >= 1;
         }
 };
 
@@ -937,7 +951,7 @@ class achievement_twilight_duo : public AchievementCriteriaScript
 
         bool OnCheck(Player* /*player*/, Unit* target) override
         {
-            return target && target->GetAI()->GetData(TWILIGHT_ACHIEVEMENTS) >= 2;
+            return target && target->GetAI()->GetData(DATA_TWILIGHT_ACHIEVEMENTS) >= 2;
         }
 };
 
@@ -948,7 +962,7 @@ class achievement_twilight_zone : public AchievementCriteriaScript
 
         bool OnCheck(Player* /*player*/, Unit* target) override
         {
-            return target && target->GetAI()->GetData(TWILIGHT_ACHIEVEMENTS) == 3;
+            return target && target->GetAI()->GetData(DATA_TWILIGHT_ACHIEVEMENTS) == 3;
         }
 };
 

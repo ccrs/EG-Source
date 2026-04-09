@@ -32,7 +32,8 @@ enum OSDataTypes
     DATA_SHADRON                = 2,
     DATA_VESPERON               = 3,
     DATA_PORTAL_OPEN            = 4,
-    TWILIGHT_ACHIEVEMENTS       = 5
+    DATA_TWILIGHT_ACHIEVEMENTS  = 5,
+    DATA_GONNA_GO_WHEN_THE_VOLCANO_BLOWS = 6
 };
 
 enum OSCreaturesIds
@@ -40,12 +41,20 @@ enum OSCreaturesIds
     NPC_SARTHARION              = 28860,
     NPC_TENEBRON                = 30452,
     NPC_SHADRON                 = 30451,
-    NPC_VESPERON                = 30449
+    NPC_VESPERON                = 30449,
+    NPC_LAVA_BLAZE              = 30643,
+    NPC_SATH_TWILIGHT_WHELP     = 31214
 };
 
 enum OSGameObjectIds
 {
     GO_TWILIGHT_PORTAL          = 193988
+};
+
+enum OSCriteriaIds
+{
+    CRITERIA_VOLCANO_BLOWS_10   = 7326,
+    CRITERIA_VOLCANO_BLOWS_25   = 7327
 };
 
 template <class AI, class T>

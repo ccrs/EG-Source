@@ -10,3 +10,19 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 30330 AND `SourceId` = 0;
+
+DELETE FROM `disables` WHERE entry IN (7326, 7327) AND `sourceType` = 4;
+
+DELETE FROM `achievement_criteria_data` WHERE `criteria_id` IN (7326, 7327) AND `type` = 18;
+INSERT INTO `achievement_criteria_data` (`criteria_id`, `type`, `value1`, `value2`, `ScriptName`) VALUES
+(7326, 18, 0, 0, ''),
+(7327, 18, 0, 0, '');
+
+DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_lava_strike';
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(57591, 'EG_spell_lava_strike');
+
+UPDATE `areatrigger_teleport` SET `target_position_z`=66.549 WHERE `ID`=5243;
+UPDATE `areatrigger_teleport` SET `target_position_z`=-109.163 WHERE `ID`=5241;
+
+UPDATE `creature_template` SET `ScriptName`='npc_twilight_eggs' WHERE `entry`=31204;

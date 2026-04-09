@@ -1,5 +1,6 @@
 #include "ScriptMgr.h"
 #include "Creature.h"
+#include "InstanceScript.h"
 #include "Spell.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
@@ -221,6 +222,29 @@ class EG_spell_fiery_lance : public SpellScript
     }
 };
 
+enum LavaStrike
+{
+    DATA_GONNA_GO_WHEN_THE_VOLCANO_BLOWS = 6
+};
+
+class EG_spell_lava_strike : public SpellScript
+{
+    PrepareSpellScript(EG_spell_lava_strike);
+
+    void HandleEffect(SpellEffIndex /*effIndex*/)
+    {
+        Unit* target = GetHitUnit();
+
+        if (InstanceScript* instance = target->GetInstanceScript())
+            instance->SetGuidData(DATA_GONNA_GO_WHEN_THE_VOLCANO_BLOWS, target->GetGUID());
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_lava_strike::HandleEffect, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_Cosmetic___Divine_Shield_Blue);
@@ -231,4 +255,5 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_charm_drakuru_servant);
     RegisterSpellScript(EG_spell_prayer_beads);
     RegisterSpellScript(EG_spell_fiery_lance);
+    RegisterSpellScript(EG_spell_lava_strike);
 }

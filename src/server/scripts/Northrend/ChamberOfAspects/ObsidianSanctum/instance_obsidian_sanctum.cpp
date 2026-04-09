@@ -15,11 +15,13 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "obsidian_sanctum.h"
 #include "AreaBoundary.h"
 #include "Creature.h"
+#include "CreatureAI.h"
 #include "InstanceScript.h"
-#include "obsidian_sanctum.h"
+#include "Player.h"
+#include "ScriptMgr.h"
 
 /* Obsidian Sanctum encounters:
 0 - Sartharion
@@ -68,6 +70,13 @@ public:
                     creature->setActive(true);
                     creature->SetFarVisible(true);
                     break;
+                case NPC_LAVA_BLAZE:
+                case NPC_SATH_TWILIGHT_WHELP:
+                    if (Creature* sartharion = instance->GetCreature(GetGuidData(DATA_SARTHARION)))
+                        sartharion->AI()->SetGUID(creature->GetGUID());
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -79,6 +88,9 @@ public:
             switch (type)
             {
                 case DATA_SARTHARION:
+                    if (state == IN_PROGRESS)
+                        _playerGUIDs.clear();
+                    break;
                 case DATA_TENEBRON:
                 case DATA_SHADRON:
                 case DATA_VESPERON:
@@ -105,11 +117,30 @@ public:
             return ObjectGuid::Empty;
         }
 
+        void SetGuidData(uint32 id, ObjectGuid guid) override
+        {
+            if (id == DATA_GONNA_GO_WHEN_THE_VOLCANO_BLOWS)
+                _playerGUIDs.insert(guid);
+        }
+
+        bool CheckAchievementCriteriaMeet(uint32 criteriaId, Player const* player, Unit const* /* = nullptr */, uint32 /* = 0 */) override
+        {
+            switch (criteriaId)
+            {
+                case CRITERIA_VOLCANO_BLOWS_10:
+                case CRITERIA_VOLCANO_BLOWS_25:
+                    return _playerGUIDs.find(player->GetGUID()) == _playerGUIDs.end();
+            }
+
+            return false;
+        }
+
     protected:
         ObjectGuid sartharionGUID;
         ObjectGuid tenebronGUID;
         ObjectGuid shadronGUID;
         ObjectGuid vesperonGUID;
+        GuidUnorderedSet _playerGUIDs;
     };
 
     InstanceScript* GetInstanceScript(InstanceMap* map) const override
