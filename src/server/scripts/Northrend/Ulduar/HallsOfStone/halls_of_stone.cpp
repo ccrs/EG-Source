@@ -272,7 +272,6 @@ struct npc_brann_hos : public EscortAI
     void Initialize()
     {
         _lowHP = false;
-        _battle = false;
         _step = 0;
         _phaseTimer = 0;
         _brannSparklinNew = true;
@@ -355,7 +354,7 @@ struct npc_brann_hos : public EscortAI
                 case 1:
                     if (_instance->GetBossState(DATA_TRIBUNAL_OF_AGES) != NOT_STARTED)
                         return;
-                    _battle = false;
+
                     Talk(SAY_ESCORT_START);
                     _JumpToNextStep(0);
                     break;
@@ -479,26 +478,25 @@ struct npc_brann_hos : public EscortAI
                     _JumpToNextStep(10000);
                     break;
                 case 28:
-                    me->SetReactState(REACT_DEFENSIVE);
-                    Talk(SAY_EVENT_END_01);
-                    me->SetStandState(UNIT_STAND_STATE_STAND);
-                    _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_SKY_FLOOR), true);
-
                     if (Player* player = GetPlayerForEscort())
                         player->GroupEventHappens(QUEST_HALLS_OF_STONE, me);
+                    if (Creature* temp = _instance->GetCreature(DATA_TRIBUNAL_OF_THE_AGES))
+                        temp->AI()->DoAction(ACTION_RESET);
+                    _instance->SetBossState(DATA_TRIBUNAL_OF_AGES, DONE);
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_SKY_FLOOR), true);
 
-                    _battle = true;
+                    me->CastSpell(me, SPELL_REWARD_ACHIEVEMENT, true);
+                    me->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+                    me->SetNpcFlag(UNIT_NPC_FLAG_QUESTGIVER);
+                    me->SetStandState(UNIT_STAND_STATE_STAND);
+                    me->SetReactState(REACT_DEFENSIVE);
+                    Talk(SAY_EVENT_END_01);
+
                     SetEscortPaused(false);
                     _JumpToNextStep(6500);
                     break;
                 case 29:
                     Talk(SAY_EVENT_END_02);
-                    if (Creature* temp = _instance->GetCreature(DATA_TRIBUNAL_OF_THE_AGES))
-                        temp->AI()->DoAction(ACTION_RESET);
-                    _instance->SetBossState(DATA_TRIBUNAL_OF_AGES, DONE);
-                    me->CastSpell(me, SPELL_REWARD_ACHIEVEMENT, true);
-                    me->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
-                    me->SetNpcFlag(UNIT_NPC_FLAG_QUESTGIVER);
                     _JumpToNextStep(5500);
                     break;
                 case 30:
@@ -693,7 +691,6 @@ private:
     uint32 _phaseTimer;
     GuidList _dwarfGUIDList;
     InstanceScript* _instance;
-    bool _battle;
     bool _lowHP;
     bool _brannSparklinNew;
 };
