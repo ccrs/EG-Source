@@ -2,6 +2,7 @@
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "DatabaseEnv.h"
+#include "GridNotifiers.h"
 #include "Item.h"
 #include "ItemTemplate.h"
 #include "Map.h"
@@ -16,6 +17,7 @@
 #include "Optional.h"
 #include "Player.h"
 #include "PlayerTaxi.h"
+#include "ScriptedCreature.h"
 #include "SharedDefines.h"
 #include "SmartAI.h"
 #include "SpellMgr.h"
@@ -628,6 +630,15 @@ bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
     }
 
     return false;
+}
+
+Unit* ScriptedAI::DoFindLowestHPFriendlyInRange(float range, bool playerOnly, bool includeSelf) const
+{
+    Unit* unit = nullptr;
+    EG::MostHPMissingFriendlyUnitInRangeSearcher u_check(me, range, playerOnly, includeSelf);
+    Trinity::UnitLastSearcher<EG::MostHPMissingFriendlyUnitInRangeSearcher> searcher(me, unit, u_check);
+    Cell::VisitAllObjects(me, searcher, range);
+    return unit;
 }
 
 void SmartAI::SetCombatMovement()

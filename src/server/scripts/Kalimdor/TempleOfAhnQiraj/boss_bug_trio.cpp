@@ -264,7 +264,7 @@ struct boss_yauj : public BossAI
             switch (eventId)
             {
                 case EVENT_GREAT_HEAL:
-                    if (Unit* target = DoSelectLowestHpFriendly(250.0f))
+                    if (Unit* target = DoFindLowestHPFriendlyInRange(250.0f))
                         DoCast(target, SPELL_GREAT_HEAL);
                     events.Repeat(10s, 15s);
                     break;
