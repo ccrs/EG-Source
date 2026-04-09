@@ -22,7 +22,7 @@ namespace EG
         float _hp;
     };
 
-    class AnyFriendlyUnitInObjectRangeCheck
+    class TC_GAME_API AnyFriendlyUnitInObjectRangeCheck
     {
     public:
         AnyFriendlyUnitInObjectRangeCheck(Unit const* source, float range, bool playerOnly = false, bool includeSelf = false) : _source(source), _range(range), _playerOnly(playerOnly), _includeSelf(includeSelf) { }
