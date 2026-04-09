@@ -498,6 +498,7 @@ struct npc_brann_hos : public EscortAI
                     _instance->SetBossState(DATA_TRIBUNAL_OF_AGES, DONE);
                     me->CastSpell(me, SPELL_REWARD_ACHIEVEMENT, true);
                     me->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+                    me->SetNpcFlag(UNIT_NPC_FLAG_QUESTGIVER);
                     _JumpToNextStep(5500);
                     break;
                 case 30:
