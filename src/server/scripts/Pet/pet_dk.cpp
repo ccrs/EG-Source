@@ -68,7 +68,8 @@ struct npc_pet_dk_ebon_gargoyle : CasterAI
         {
             if (target->HasAura(SPELL_DK_SUMMON_GARGOYLE_1, ownerGuid))
             {
-                me->Attack(target, false);
+                AttackStart(target);
+                me->GetThreatManager().FixateTarget(target);
                 break;
             }
         }
@@ -100,6 +101,7 @@ struct npc_pet_dk_ebon_gargoyle : CasterAI
 
         //! HACK: Creature's can't have MOVEMENTFLAG_FLYING
         // Fly Away
+        me->SetDisableGravity(true);
         me->SetCanFly(true);
         me->SetSpeedRate(MOVE_FLIGHT, 0.75f);
         me->SetSpeedRate(MOVE_RUN, 0.75f);
