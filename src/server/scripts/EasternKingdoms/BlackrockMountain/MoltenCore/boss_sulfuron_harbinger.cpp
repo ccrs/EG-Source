@@ -153,7 +153,7 @@ struct npc_flamewaker_priest : public ScriptedAI
             switch (eventId)
             {
                 case EVENT_DARK_MENDING:
-                    if (Unit* target = DoSelectLowestHpFriendly(60.0f))
+                    if (Unit* target = DoFindLowestHPFriendlyInRange(60.0f))
                         DoCast(target, SPELL_DARK_MENDING);
                     _events.Repeat(15s, 20s);
                     break;

@@ -324,7 +324,7 @@ struct boss_blindeye_the_seer : public OgreBaseAI
         scheduler
             .Schedule(7s, [this](TaskContext task)
             {
-                if (Unit* target = DoSelectLowestHpFriendly(250.0f))
+                if (Unit* target = DoFindLowestHPFriendlyInRange(250.0f))
                     DoCast(target, SPELL_HEAL);
                 task.Repeat(7s);
             })

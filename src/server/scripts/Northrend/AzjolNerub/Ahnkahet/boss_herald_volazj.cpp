@@ -587,7 +587,7 @@ struct npc_twisted_visage : public ScriptedAI
                         default:
                             _scheduler.Schedule(2s, [this](TaskContext renew)
                             {
-                                if (Unit* target = DoSelectLowestHpFriendly(40.f))
+                                if (Unit* target = DoFindLowestHPFriendlyInRange(40.f))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_RENEW);
                                     renew.Repeat(2s, 5s);
@@ -596,7 +596,7 @@ struct npc_twisted_visage : public ScriptedAI
                                     renew.Repeat(1s);
                             }).Schedule(4s, [this](TaskContext greaterHeal)
                             {
-                                if (Unit* target = DoSelectLowestHpFriendly(40.f))
+                                if (Unit* target = DoFindLowestHPFriendlyInRange(40.f))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_GREATER_HEAL);
                                     greaterHeal.Repeat(4s, 6s);
@@ -648,7 +648,7 @@ struct npc_twisted_visage : public ScriptedAI
                         case SPEC_SHAMAN_RESTORATION:
                             _scheduler.Schedule(2s, [this](TaskContext earthShield)
                             {
-                                if (Unit* target = DoSelectLowestHpFriendly(40.f))
+                                if (Unit* target = DoFindLowestHPFriendlyInRange(40.f))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_EARTH_SHIELD);
                                     earthShield.Repeat(4s, 6s);
@@ -657,7 +657,7 @@ struct npc_twisted_visage : public ScriptedAI
                                     earthShield.Repeat(1s);
                             }).Schedule(4s, [this](TaskContext healingWave)
                             {
-                                if (Unit* target = DoSelectLowestHpFriendly(40.f))
+                                if (Unit* target = DoFindLowestHPFriendlyInRange(40.f))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_HEALING_WEAVE);
                                     healingWave.Repeat(4s, 6s);
@@ -722,7 +722,7 @@ struct npc_twisted_visage : public ScriptedAI
                         case SPEC_DRUID_RESTORATION:
                             _scheduler.Schedule(2s, [this](TaskContext lifebloom)
                             {
-                                if (Unit* target = DoSelectLowestHpFriendly(40.f))
+                                if (Unit* target = DoFindLowestHPFriendlyInRange(40.f))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_LIFEBLOOM);
                                     lifebloom.Repeat(4s, 6s);
@@ -731,7 +731,7 @@ struct npc_twisted_visage : public ScriptedAI
                                     lifebloom.Repeat(1s);
                             }).Schedule(4s, [this](TaskContext nourish)
                             {
-                                if (Unit* target = DoSelectLowestHpFriendly(40.f))
+                                if (Unit* target = DoFindLowestHPFriendlyInRange(40.f))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_NOURISH);
                                     nourish.Repeat(4s, 6s);
