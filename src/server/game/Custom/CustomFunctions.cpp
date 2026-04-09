@@ -1,4 +1,5 @@
 #include "CustomFunctions.h"
+#include "Containers.h"
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "DatabaseEnv.h"
@@ -619,7 +620,7 @@ bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
 
     if (((_playerOnly && unit->IsPlayer()) || !_playerOnly)
         && unit->IsAlive()
-        && unit->IsInCombat()
+        && ((_source->IsInCombat() && unit->IsInCombat()) || (!_source->IsInCombat()))
         && _source->IsValidAssistTarget(unit)
         && _source->IsWithinDistInMap(unit, _range)
         && unit->GetHealthPct() < _hp
@@ -632,12 +633,48 @@ bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
     return false;
 }
 
+bool EG::AnyFriendlyUnitInObjectRangeCheck::operator()(Unit* unit) const
+{
+    if (!unit->IsAlive())
+        return false;
+
+    if (_includeSelf && _source == unit)
+        return true;
+
+    if (((_playerOnly && unit->IsPlayer()) || !_playerOnly)
+        && unit->IsAlive()
+        && ((_source->IsInCombat() && unit->IsInCombat()) || (!_source->IsInCombat()))
+        && _source->IsValidAssistTarget(unit)
+        && _source->IsWithinDistInMap(unit, _range)
+    )
+        return true;
+
+    return false;
+}
+
 Unit* ScriptedAI::DoFindLowestHPFriendlyInRange(float range, bool playerOnly, bool includeSelf) const
 {
+    std::list<Unit*> potentialFriendlies;
+    EG::AnyFriendlyUnitInObjectRangeCheck checker(me, range, playerOnly, includeSelf);
+    Trinity::UnitListSearcher<EG::AnyFriendlyUnitInObjectRangeCheck> searcher(me, potentialFriendlies, checker);
+    Cell::VisitGridObjects(me, searcher, range);
+    if (potentialFriendlies.empty())
+        return nullptr;
+
     Unit* unit = nullptr;
-    EG::MostHPMissingFriendlyUnitInRangeSearcher u_check(me, range, playerOnly, includeSelf);
-    Trinity::UnitLastSearcher<EG::MostHPMissingFriendlyUnitInRangeSearcher> searcher(me, unit, u_check);
-    Cell::VisitAllObjects(me, searcher, range);
+    float hp = 100.f;
+    Trinity::Containers::RandomShuffle(potentialFriendlies);
+    for (Unit* potential : potentialFriendlies)
+    {
+        if (potential->GetHealthPct() < hp)
+        {
+            unit = potential;
+            hp = unit->GetHealthPct();
+        }
+    }
+    if (!unit)
+        unit = *potentialFriendlies.begin();
+
     return unit;
 }
 
