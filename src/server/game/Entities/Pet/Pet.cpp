@@ -26,6 +26,7 @@
 #include "PetPackets.h"
 #include "Player.h"
 #include "QueryHolder.h"
+#include "ScriptMgr.h"
 #include "Spell.h"
 #include "SpellAuraEffects.h"
 #include "SpellAuras.h"
@@ -751,6 +752,10 @@ void Pet::GivePetXP(uint32 xp)
     // If pet is detected to be at, or above(?) the players level, don't hand out XP
     if (petlevel >= maxlevel)
        return;
+
+    if (GetOwnerGUID().IsPlayer())
+        if (Player* owner = GetOwner())
+            sScriptMgr->OnGivePlayerXP(owner, xp, nullptr);
 
     uint32 nextLvlXP = GetUInt32Value(UNIT_FIELD_PETNEXTLEVELEXP);
     uint32 curXP = GetUInt32Value(UNIT_FIELD_PETEXPERIENCE);
