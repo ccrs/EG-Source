@@ -654,7 +654,7 @@ bool EG::AnyFriendlyUnitInObjectRangeCheck::operator()(Unit* unit) const
 
 Unit* ScriptedAI::DoFindLowestHPFriendlyInRange(float range, bool playerOnly, bool includeSelf) const
 {
-    std::list<Unit*> potentialFriendlies;
+    std::vector<Unit*> potentialFriendlies;
     EG::AnyFriendlyUnitInObjectRangeCheck checker(me, range, playerOnly, includeSelf);
     Trinity::UnitListSearcher<EG::AnyFriendlyUnitInObjectRangeCheck> searcher(me, potentialFriendlies, checker);
     Cell::VisitGridObjects(me, searcher, range);
