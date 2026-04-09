@@ -15,13 +15,13 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "nexus.h"
 #include "Creature.h"
 #include "GameObject.h"
 #include "InstanceScript.h"
 #include "Map.h"
-#include "nexus.h"
 #include "Player.h"
+#include "ScriptMgr.h"
 
 class instance_nexus : public InstanceMapScript
 {
@@ -60,6 +60,21 @@ class instance_nexus : public InstanceMapScript
                     case NPC_COMMANDER_STOUTBEARD:
                         if (ServerAllowsTwoSideGroups())
                             creature->SetFaction(FACTION_MONSTER_2);
+                        break;
+                    case NPC_CRYSTALLINE_FRAYER:
+                        crystallineFrayerGUIDs.insert(creature->GetGUID());
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            void OnCreatureRemove(Creature* creature) override
+            {
+                switch (creature->GetEntry())
+                {
+                    case NPC_CRYSTALLINE_FRAYER:
+                        crystallineFrayerGUIDs.erase(creature->GetGUID());
                         break;
                     default:
                         break;
@@ -144,6 +159,10 @@ class instance_nexus : public InstanceMapScript
                         {
                             if (GameObject* sphere = instance->GetGameObject(OrmoroksContainmentSphere))
                                 sphere->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
+                            GuidUnorderedSet toDespawn = crystallineFrayerGUIDs;
+                            for (ObjectGuid const& guid : toDespawn)
+                                if (Creature* crystallineFrayer = instance->GetCreature(guid))
+                                    crystallineFrayer->DespawnOrUnsummon();
                         }
                         break;
                     default:
@@ -181,6 +200,7 @@ class instance_nexus : public InstanceMapScript
             ObjectGuid OrmoroksContainmentSphere;
             ObjectGuid TelestrasContainmentSphere;
             uint32 _teamInInstance;
+            GuidUnorderedSet crystallineFrayerGUIDs;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override

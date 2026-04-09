@@ -55,7 +55,9 @@ enum NEXCreatureIds
     NPC_HORDE_RANGER                  = 26801,
     NPC_HORDE_CLERIC                  = 26803,
     NPC_HORDE_COMMANDER               = 27947,
-    NPC_COMMANDER_KOLURG              = 26798
+    NPC_COMMANDER_KOLURG              = 26798,
+
+    NPC_CRYSTALLINE_FRAYER            = 26793
 };
 
 enum NEXGameObjectIds
