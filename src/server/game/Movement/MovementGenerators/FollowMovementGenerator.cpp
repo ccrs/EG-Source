@@ -23,6 +23,7 @@
 #include "Optional.h"
 #include "PathGenerator.h"
 #include "Pet.h"
+#include "Player.h"
 #include "Unit.h"
 #include "Util.h"
 
