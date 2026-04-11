@@ -133,11 +133,10 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
 
                 // pets are allowed to "cheat" on pathfinding when following their master
                 bool allowShortcut = false;
-                if (Pet* oPet = owner->ToPet())
-                {
-                    if (target->GetGUID() == oPet->GetOwnerGUID())
-                        allowShortcut = true;
-                }
+                if (!owner->GetCharmerOrOwnerGUID().IsEmpty() && target->GetGUID() == owner->GetCharmerOrOwnerGUID())
+                    allowShortcut = true;
+                else if (owner->IsPet() && owner->ToPet()->GetOwner()->GetGUID() == target->GetGUID())
+                    allowShortcut = true;
 
                 bool success = _path->CalculatePath(x, y, z, allowShortcut);
                 if (!success || (_path->GetPathType() & PATHFIND_NOPATH))
