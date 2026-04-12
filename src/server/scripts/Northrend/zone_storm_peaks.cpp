@@ -612,7 +612,8 @@ struct npc_wild_wyrm : public VehicleAI
                 break;
             }
             case POINT_FALL:
-                DoCastAOE(SPELL_EJECT_ALL_PASSENGERS);
+                DoCastAOE(SPELL_EJECT_ALL_PASSENGERS, true);
+                me->SetControlled(true, UNIT_STATE_STUNNED);
                 me->KillSelf();
                 break;
             default:
@@ -646,6 +647,7 @@ struct npc_wild_wyrm : public VehicleAI
 
                 me->ReplaceAllNpcFlags(UNIT_NPC_FLAG_NONE);
 
+                me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
                 me->GetMotionMaster()->MoveFall(POINT_FALL);
             });
         }
@@ -693,6 +695,12 @@ struct npc_wild_wyrm : public VehicleAI
 
             context.Repeat();
         });
+    }
+
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        DoCastAOE(SPELL_EJECT_ALL_PASSENGERS, true);
+        VehicleAI::EnterEvadeMode(why);
     }
 
     bool EvadeCheck() const
