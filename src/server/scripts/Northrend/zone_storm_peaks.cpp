@@ -572,7 +572,7 @@ struct npc_wild_wyrm : public VehicleAI
                 break;
             case ACTION_GRIP_LOST:
                 DoCastAOE(SPELL_EJECT_PASSENGER_1, true);
-                EnterEvadeMode();
+                EnterEvadeMode(EVADE_REASON_OTHER);
                 break;
             case ACTION_FATAL_STRIKE_MISS:
                 Talk(SAY_STRIKE_MISS, player);
