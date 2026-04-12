@@ -584,7 +584,6 @@ void PetAI::StopAttack()
 {
     if (!me->IsAlive())
     {
-        me->GetMotionMaster()->Clear();
         me->GetMotionMaster()->MoveIdle();
         me->CombatStop();
         return;
