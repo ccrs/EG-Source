@@ -5004,6 +5004,12 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->ExplicitTargetMask = 0;
     });
 
+    // Pound
+    ApplySpellFix({ 53472, 59433 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_2).Effect = SPELL_EFFECT_NONE;
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];
