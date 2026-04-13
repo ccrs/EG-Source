@@ -140,7 +140,8 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
                     allowShortcut = true;
 
                 bool success = _path->CalculatePath(x, y, z, allowShortcut);
-                if (!success || (_path->GetPathType() & PATHFIND_NOPATH))
+                bool noPathFound = success && (_path->GetPathType() & PATHFIND_NOPATH);
+                if ((!success && !allowShortcut) || (success && !allowShortcut && noPathFound))
                 {
                     owner->StopMoving();
                     return true;
@@ -150,7 +151,10 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
                 AddFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED);
 
                 Movement::MoveSplineInit init(owner);
-                init.MovebyPath(_path->GetPath());
+                if (success && !noPathFound)
+                    init.MovebyPath(_path->GetPath());
+                else
+                    init.MoveTo(x, y, z, false, true);
                 init.SetWalk(_run.has_value() ? !_run.value() : owner->IsWalking());
                 init.SetFacing(target->GetOrientation());
                 init.Launch();
