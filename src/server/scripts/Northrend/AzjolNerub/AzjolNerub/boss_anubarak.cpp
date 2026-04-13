@@ -37,8 +37,8 @@ enum AzjolAnubarakSpells
     SPELL_IMPALE_VISUAL         = 53455,
     SPELL_IMPALE_DAMAGE         = 53454,
     SPELL_LEECHING_SWARM        = 53467,
-    SPELL_POUND                 = 59433,
-    SPELL_POUND_DAMAGE          = 59432,
+    SPELL_POUND                 = 53472,
+    SPELL_POUND_DAMAGE          = 53509,
     SPELL_CARRION_BEETLES       = 53520,
     SPELL_CARRION_BEETLE        = 53521,
 
@@ -47,7 +47,7 @@ enum AzjolAnubarakSpells
     SPELL_SUMMON_GUARDIAN       = 53614,
     SPELL_SUMMON_VENOMANCER     = 53615,
 
-    SPELL_DART                  = 59349,
+    SPELL_DART                  = 53602,
     SPELL_BACKSTAB              = 52540,
     SPELL_ASSASSIN_VISUAL       = 53611,
     SPELL_SUNDER_ARMOR          = 53618,
