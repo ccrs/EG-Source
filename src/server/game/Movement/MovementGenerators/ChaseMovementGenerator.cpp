@@ -109,6 +109,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
     Optional<ChaseAngle> angle = useChaseAngle ? _angle : Optional<ChaseAngle>();
 
     // periodically check if we're already in the expected range...
+    bool syncFacingOrientation = false;
     _rangeCheckTimer.Update(diff);
     if (_rangeCheckTimer.Passed())
     {
@@ -229,6 +230,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
                 return true;
             }
         }
+        syncFacingOrientation = true;
     }
 
     // if we're done moving, we want to clean up
@@ -244,6 +246,8 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
     }
 
     // and then, finally, we're done for the tick
+    if (syncFacingOrientation)
+        owner->SetInFront(target);
     return true;
 }
 
