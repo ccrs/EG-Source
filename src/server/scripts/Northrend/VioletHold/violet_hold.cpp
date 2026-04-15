@@ -840,8 +840,16 @@ struct violet_hold_trashAI : public EscortAI
 
     void Reset() override
     {
-        if (!me->HasReactState(REACT_DEFENSIVE))
-            _scheduler.CancelAll();
+        _scheduler.CancelAll();
+        if (me->HasReactState(REACT_DEFENSIVE))
+        {
+            _scheduler.Schedule(2s, [this](TaskContext destroyDoorCheck)
+            {
+                if (!me->HasAura(SPELL_DESTROY_DOOR_SEAL))
+                    DoCastAOE(SPELL_DESTROY_DOOR_SEAL);
+                destroyDoorCheck.Repeat(3s);
+            });
+        }
     }
 
     template <size_t N>
@@ -911,13 +919,14 @@ struct violet_hold_trashAI : public EscortAI
             {
                 if (!me->HasAura(SPELL_DESTROY_DOOR_SEAL))
                     DoCastAOE(SPELL_DESTROY_DOOR_SEAL);
-                destroyDoorCheck.Repeat();
+                destroyDoorCheck.Repeat(3s);
             });
         }
     }
 
     void JustEngagedWith(Unit* who) override
     {
+        _scheduler.CancelAll();
         if (me->HasReactState(REACT_DEFENSIVE))
             return;
 
