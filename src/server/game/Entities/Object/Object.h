@@ -321,6 +321,7 @@ struct FindCreatureOptions
 struct FindGameObjectOptions
 {
     Optional<uint32> GameObjectId;
+    std::unordered_set<uint32> GameObjectIds;
     Optional<std::string_view> StringId;
 
     Optional<bool> IsSummon;
