@@ -97,6 +97,22 @@ void Unit::InterruptSpellsCastedOnMe(bool killDelayed, bool interruptFriendlySpe
 
     for (const auto& target : targets)
     {
+        if (target->GetVictim() == this)
+        {
+            if (Player* player = target->ToPlayer())
+            {
+                player->ClearUnitState(UNIT_STATE_MELEE_ATTACKING);
+                player->InterruptSpell(CURRENT_MELEE_SPELL);
+                player->SendMeleeAttackStop(this);
+                player->SendAttackSwingCancelAttack();
+            }
+            else
+            {
+                target->InterruptSpell(CURRENT_MELEE_SPELL);
+                target->SendMeleeAttackStop(this);
+            }
+        }
+
         if (!interruptFriendlySpells && IsFriendlyTo(target))
             continue;
 
