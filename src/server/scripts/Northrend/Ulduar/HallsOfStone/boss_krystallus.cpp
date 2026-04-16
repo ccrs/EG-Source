@@ -16,6 +16,7 @@
  */
 
 #include "halls_of_stone.h"
+#include "GridNotifiers.h"
 #include "ScriptedCreature.h"
 #include "ScriptMgr.h"
 #include "SpellInfo.h"
@@ -158,6 +159,11 @@ class spell_krystallus_shatter_effect : public SpellScript
 {
     PrepareSpellScript(spell_krystallus_shatter_effect);
 
+    void RemoveInvalidTargets(std::list<WorldObject*>& targets)
+    {
+        targets.remove_if(Trinity::ObjectTypeIdCheck(TYPEID_PLAYER, false));
+    }
+
     void CalculateDamage()
     {
         if (!GetHitUnit())
@@ -179,6 +185,7 @@ class spell_krystallus_shatter_effect : public SpellScript
 
     void Register() override
     {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_krystallus_shatter_effect::RemoveInvalidTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ALLY);
         OnHit += SpellHitFn(spell_krystallus_shatter_effect::CalculateDamage);
     }
 };
