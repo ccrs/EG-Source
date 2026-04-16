@@ -365,6 +365,9 @@ struct boss_algalon_the_observer : public BossAI
 
     void JustEngagedWith(Unit* who) override
     {
+        if (_fightWon)
+            return;
+
         Milliseconds introDelay = 0ms;
         me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
         me->SetImmuneToNPC(true);
@@ -489,6 +492,8 @@ struct boss_algalon_the_observer : public BossAI
             damage = 0;
             events.SetPhase(PHASE_ROLE_PLAY);
             me->SetReactState(REACT_PASSIVE);
+            me->CastStop();
+            me->InterruptNonMeleeSpells(true);
             me->AttackStop();
             me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
             DoCastSelf(SPELL_SELF_STUN);
