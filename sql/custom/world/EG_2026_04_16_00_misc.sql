@@ -44,3 +44,15 @@ DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId`=13 AND `SourceEntry`=63
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES 
 (13, 3, 63528, 0, 0, 31, 0, 3, 33699, 0, 0, 0, 0, '', 'Supercharged - Target Storm Tempered Keeper'),
 (13, 3, 63528, 0, 1, 31, 0, 3, 33722, 0, 0, 0, 0, '', 'Supercharged - Target Storm Tempered Keeper');
+
+--
+DELETE FROM `achievement_criteria_data` WHERE `type`=18 AND `criteria_id` IN (10090, 10091, 10423, 10425, 10422, 10424);
+INSERT INTO `achievement_criteria_data` (`criteria_id`, `type`, `value1`, `value2`, `ScriptName`) VALUES 
+(10090, 18, 0, 0, ''),
+(10091, 18, 0, 0, ''),
+(10423, 18, 0, 0, ''),
+(10425, 18, 0, 0, ''),
+(10422, 18, 0, 0, ''),
+(10424, 18, 0, 0, '');
+
+DELETE FROM `disables` WHERE `sourceType`=4 AND `entry` IN (10090, 10091, 10423, 10425, 10422, 10424);

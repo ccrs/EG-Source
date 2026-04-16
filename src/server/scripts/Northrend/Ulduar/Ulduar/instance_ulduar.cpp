@@ -187,6 +187,10 @@ class instance_ulduar : public InstanceMapScript
 
                 memset(_summonObservationRingKeeper, 0, sizeof(_summonObservationRingKeeper));
                 memset(_summonYSKeeper, 0, sizeof(_summonYSKeeper));
+
+                _activeTowers = false;
+                _destroyedTowers = 0;
+                _stunned = 1;
             }
 
             void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override
@@ -747,6 +751,9 @@ class instance_ulduar : public InstanceMapScript
                     case DATA_ACTIVE_TOWERS:
                         _activeTowers = data ? true : false;
                         break;
+                    case DATA_STUNNED:
+                        _stunned = data;
+                        break;
                     default:
                         break;
                 }
@@ -912,6 +919,18 @@ class instance_ulduar : public InstanceMapScript
                     case CRITERIA_C_O_U_YOGG_SARON_10:
                     case CRITERIA_C_O_U_YOGG_SARON_25:
                         return (_CoUAchivePlayerDeathMask & (1 << DATA_YOGG_SARON)) == 0;
+                    case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_10_SB:
+                    case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_25_SB:
+                        if (Creature* stormcaller = instance->GetCreature(AssemblyGUIDs[2]))
+                            return _stunned == 1 && stormcaller->AI()->GetData(1 /*DATA_PHASE_3*/) == 1;
+                    case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_10_S:
+                    case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_25_S:
+                        if (Creature* steelbreaker = instance->GetCreature(AssemblyGUIDs[0]))
+                            return _stunned == 1 && steelbreaker->AI()->GetData(1 /*DATA_PHASE_3*/) == 1;
+                    case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_10_RM:
+                    case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_25_RM:
+                        if (Creature* runeMaster = instance->GetCreature(AssemblyGUIDs[1]))
+                            return _stunned == 1 && runeMaster->AI()->GetData(1 /*DATA_PHASE_3*/) == 1;
                 }
 
                 return false;
@@ -1103,6 +1122,7 @@ class instance_ulduar : public InstanceMapScript
             uint32 _CoUAchivePlayerDeathMask;
             bool _activeTowers;
             uint32 _destroyedTowers;
+            uint8 _stunned;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override
