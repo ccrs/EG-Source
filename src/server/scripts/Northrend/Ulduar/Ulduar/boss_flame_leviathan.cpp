@@ -1723,7 +1723,7 @@ class spell_systems_shutdown : public SpellScriptLoader
 
                 //! This could probably in the SPELL_EFFECT_SEND_EVENT handler too:
                 owner->StopMoving();
-                owner->GetMotionMaster()->Clear();
+                owner->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
                 owner->AddUnitState(UNIT_STATE_STUNNED | UNIT_STATE_ROOT);
                 owner->SetUnitFlag(UNIT_FLAG_STUNNED);
                 owner->RemoveAurasDueToSpell(SPELL_GATHERING_SPEED);

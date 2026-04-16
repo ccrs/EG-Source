@@ -196,10 +196,7 @@ class boss_steelbreaker : public CreatureScript
                         if (phase >= 3)
                             events.RescheduleEvent(EVENT_OVERWHELMING_POWER, 2s, 5s);
                         if (me->GetVictim())
-                        {
-                            me->GetMotionMaster()->Clear();
                             me->GetMotionMaster()->MoveChase(me->GetVictim());
-                        }
                         break;
                     case ACTION_ADD_CHARGE:
                         DoCast(me, SPELL_ELECTRICAL_CHARGE, true);
@@ -351,10 +348,7 @@ class boss_runemaster_molgeim : public CreatureScript
                         if (phase >= 3)
                             events.RescheduleEvent(EVENT_RUNE_OF_SUMMONING, 20s, 30s);
                         if (me->GetVictim())
-                        {
-                            me->GetMotionMaster()->Clear();
                             me->GetMotionMaster()->MoveChase(me->GetVictim());
-                        }
                         break;
                     }
                 }
@@ -537,10 +531,7 @@ class boss_stormcaller_brundir : public CreatureScript
                             me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_STUN, true); // Apply immumity to stuns
                         }
                         if (me->GetVictim())
-                        {
-                            me->GetMotionMaster()->Clear();
-                            me->GetMotionMaster()->MoveChase(me->GetVictim(), 50.0f);
-                        }
+                            me->GetMotionMaster()->MoveChase(me->GetVictim(), 40.0f);
                         break;
                     }
                 }
