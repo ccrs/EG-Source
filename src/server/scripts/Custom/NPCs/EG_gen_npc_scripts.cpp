@@ -1053,6 +1053,178 @@ private:
     bool _damaged;
 };
 
+enum StormTemperedKeeperMisc
+{
+    NPC_CHARGED_SPHERE = 33715,
+    NPC_KEEPER_1 = 33699,
+    NPC_KEEPER_2 = 33722,
+
+    SPELL_FORKED_LIGHTNING = 63541,
+    SPELL_SEPARATION_ANXIETY = 63539,
+    SPELL_SUMMON_SPHERE = 63527,
+    SPELL_VENGEFUL_SURGE = 63630,
+    SPELL_CHARGED_SPHERE = 63537,
+    SPELL_SUPERCHARGED = 63528,
+
+    DATA_SPHERE_GUID = 1,
+
+    EVENT_FORKED_LIGHTNING = 1,
+    EVENT_SUMMON_SPHERE,
+    EVENT_CHECK_KEEPER,
+};
+
+struct EG_npc_storm_tempered_keeper : public ScriptedAI
+{
+    EG_npc_storm_tempered_keeper(Creature* creature) : ScriptedAI(creature), _summons(creature) { }
+
+    void Reset() override
+    {
+        _events.Reset();
+        _summons.DespawnAll();
+        _otherKeeper.Clear();
+        _chargedSphere.Clear();
+        _keeperDead = false;
+        me->RemoveAurasDueToSpell(SPELL_VENGEFUL_SURGE);
+        me->RemoveAurasDueToSpell(SPELL_SEPARATION_ANXIETY);
+    }
+
+    void JustSummoned(Creature* summon) override
+    {
+        _summons.Summon(summon);
+        if (summon->GetEntry() == NPC_CHARGED_SPHERE)
+        {
+            summon->SetReactState(REACT_PASSIVE);
+            summon->CastSpell(summon, SPELL_CHARGED_SPHERE);
+            if (Creature* othKeeper = ObjectAccessor::GetCreature(*me, _otherKeeper))
+            {
+                summon->GetMotionMaster()->MoveChase(othKeeper, 0.f, false);
+                othKeeper->AI()->SetGUID(summon->GetGUID(), DATA_SPHERE_GUID);
+                DoAddEvent(2s, new Trinity::Helpers::Events::GenericEvent(summon, [targetGUID = _otherKeeper](WorldObject* owner)
+                {
+                    Creature* sphere = owner->ToCreature();
+                    if (!sphere->IsAlive())
+                        return true;
+                    if (Creature* othKeeper = ObjectAccessor::GetCreature(*sphere, targetGUID))
+                        if (othKeeper->IsAlive())
+                            return false;
+
+                    sphere->DespawnOrUnsummon();
+                    return true;
+                }), summon);
+            }
+            else
+                summon->DespawnOrUnsummon();
+        }
+    }
+
+    void SummonedCreatureDespawn(Creature* summon) override
+    {
+        if (summon->GetEntry() == NPC_CHARGED_SPHERE)
+        {
+            _chargedSphere.Clear();
+            if (Creature* othKeeper = ObjectAccessor::GetCreature(*me, _otherKeeper))
+                othKeeper->AI()->SetGUID(ObjectGuid::Empty, DATA_SPHERE_GUID);
+        }
+    }
+
+    void SetGUID(ObjectGuid const& guid, int32 type) override
+    {
+        if (type == DATA_SPHERE_GUID)
+            _chargedSphere = guid;
+    }
+
+    void JustEngagedWith(Unit* who) override
+    {
+        if (Creature* othKeeper = me->FindNearestCreature(me->GetEntry() == NPC_KEEPER_1 ? NPC_KEEPER_2 : NPC_KEEPER_1, 100.0f, true))
+        {
+            _otherKeeper = othKeeper->GetGUID();
+            if (!othKeeper->IsInCombat())
+            {
+                othKeeper->EngageWithTarget(who);
+                othKeeper->AI()->AttackStart(who);
+            }
+        }
+        else
+        {
+            _keeperDead = true;
+            DoCast(me, SPELL_SEPARATION_ANXIETY);
+            DoCast(me, SPELL_VENGEFUL_SURGE);
+        }
+        _events.ScheduleEvent(EVENT_FORKED_LIGHTNING, 5s, 10s);
+        _events.ScheduleEvent(EVENT_SUMMON_SPHERE, 10s, 30s);
+        _events.ScheduleEvent(EVENT_CHECK_KEEPER, 1s);
+    }
+
+    void MoveInLineOfSight(Unit* who) override
+    {
+        if (who->GetEntry() == NPC_CHARGED_SPHERE && who->GetGUID() == _chargedSphere)
+        {
+            if (who->GetDistance(me) <= 2.5f)
+            {
+                who->CastSpell(me, SPELL_SUPERCHARGED, true);
+                who->KillSelf();
+                _chargedSphere.Clear();
+            }
+        }
+
+        ScriptedAI::MoveInLineOfSight(who);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        _events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        if (uint32 eventId = _events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case EVENT_FORKED_LIGHTNING:
+                    DoCastVictim(SPELL_FORKED_LIGHTNING);
+                    _events.ScheduleEvent(EVENT_FORKED_LIGHTNING, 10s, 15s);
+                    break;
+                case EVENT_SUMMON_SPHERE:
+                    if (!_keeperDead)
+                        DoCast(SPELL_SUMMON_SPHERE);
+                    _events.ScheduleEvent(EVENT_SUMMON_SPHERE, 20s, 35s);
+                    break;
+                case EVENT_CHECK_KEEPER:
+                    if (Creature* othKeeper = ObjectAccessor::GetCreature(*me, _otherKeeper))
+                    {
+                        if (!me->IsWithinDist(othKeeper, 20.0f) && !me->HasAura(SPELL_SEPARATION_ANXIETY))
+                            DoCastSelf(SPELL_SEPARATION_ANXIETY);
+
+                        if (!othKeeper->IsAlive() && !_keeperDead)
+                        {
+                            _keeperDead = true;
+                            DoCastSelf(SPELL_VENGEFUL_SURGE, true);
+                        }
+                    }
+                    _events.ScheduleEvent(EVENT_CHECK_KEEPER, 1s);
+                    break;
+                default:
+                    break;
+            }
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+        }
+
+        DoMeleeAttackIfReady();
+    }
+
+private:
+    EventMap _events;
+    SummonList _summons;
+    ObjectGuid _otherKeeper;
+    ObjectGuid _chargedSphere;
+    bool _keeperDead;
+};
+
 void AddSC_EG_gen_npc_scripts()
 {
     RegisterCreatureAI(EG_npc_damage_test_controller);
@@ -1063,4 +1235,5 @@ void AddSC_EG_gen_npc_scripts()
     RegisterCreatureAI(EG_npc_eidolon_watcher);
     RegisterCreatureAI(EG_npc_ulduar_tower_gauntlet_generator);
     RegisterCreatureAI(EG_npc_arachnopod_destroyer);
+    RegisterCreatureAI(EG_npc_storm_tempered_keeper);
 }

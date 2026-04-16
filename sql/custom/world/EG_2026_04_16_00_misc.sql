@@ -34,3 +34,13 @@ UPDATE `creature` SET `spawntimesecs`=604800 WHERE `id`=33838 AND `guid` IN (137
 
 --
 UPDATE `creature_template` SET `ScriptName`='EG_npc_ulduar_tower_gauntlet_generator' WHERE `entry` IN (33571, 34159);
+
+--
+UPDATE `creature_template` SET `ScriptName`='EG_npc_storm_tempered_keeper' WHERE `entry` IN (33699, 33722);
+
+UPDATE `creature_template` SET `mechanic_immune_mask`=1 | 2 | 4 | 8 | 16 | 32 | 64 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 65536 | 131072 | 67108864 | 536870912, `flags_extra`=2 WHERE `entry` IN (33715, 33756);
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId`=13 AND `SourceEntry`=63528;
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES 
+(13, 3, 63528, 0, 0, 31, 0, 3, 33699, 0, 0, 0, 0, '', 'Supercharged - Target Storm Tempered Keeper'),
+(13, 3, 63528, 0, 1, 31, 0, 3, 33722, 0, 0, 0, 0, '', 'Supercharged - Target Storm Tempered Keeper');
