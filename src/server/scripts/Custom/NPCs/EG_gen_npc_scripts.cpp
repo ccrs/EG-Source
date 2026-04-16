@@ -912,6 +912,65 @@ class ArachnopodDestroyerChargeTargetSelector
         Creature const* _owner;
 };
 
+enum UlduarTowerGauntletGeneratorMisc
+{
+    NPC_DEMOLISHER = 33109,
+    NPC_CHOPPER = 33062,
+    NPC_SIEGE_ENGINE = 33060,
+    NPC_STEELFORGED_DEFENDER = 33572,
+};
+
+struct EG_npc_ulduar_tower_gauntlet_generator : public ScriptedAI
+{
+    EG_npc_ulduar_tower_gauntlet_generator(Creature* creature) : ScriptedAI(creature)
+    {
+        _summonTimer = 2000;
+    }
+
+    void Reset() override
+    {
+        GameObject* beacon = me->FindNearestGameObjectWithOptions(5.f, FindGameObjectOptions{ .GameObjectIds = { 194398, 194399, 194400, 194401, 194402, 194403, 194404, 194405, 194406, 194407, 194408, 194409, 194410, 194411, 194412, 194413, 194414, 194415, 194506 } });
+        if (beacon)
+        {
+            if (beacon->GetGoState() == GO_STATE_DESTROYED)
+                me->DespawnOrUnsummon();
+            _beaconGuid = beacon->GetGUID();
+        }
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (_summonTimer <= diff)
+        {
+            GameObject* beacon = ObjectAccessor::GetGameObject(*me, _beaconGuid);
+            if (!_beaconGuid.IsEmpty() && (!beacon || beacon->GetGoState() == GO_STATE_DESTROYED))
+            {
+                me->DespawnOrUnsummon();
+                return;
+            }
+            Creature* target = me->FindNearestCreature(NPC_SIEGE_ENGINE, 100.0f, true);
+            if (!target)
+                target = me->FindNearestCreature(NPC_DEMOLISHER, 100.0f, true);
+            if (!target)
+                target = me->FindNearestCreature(NPC_CHOPPER, 100.0f, true);
+            if (target)
+                if (Creature* summon = me->SummonCreature(NPC_STEELFORGED_DEFENDER, me->GetPosition(), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10s))
+                {
+                    summon->AI()->AttackStart(target);
+                    if (!summon->IsEngaged())
+                        summon->DespawnOrUnsummon();
+                }
+
+            _summonTimer = 3000;
+        }
+        else
+            _summonTimer -= diff;
+    }
+private:
+    uint32 _summonTimer;
+    ObjectGuid _beaconGuid;
+};
+
 struct EG_npc_arachnopod_destroyer : public ScriptedAI
 {
     EG_npc_arachnopod_destroyer(Creature* creature) : ScriptedAI(creature) { }
@@ -1002,5 +1061,6 @@ void AddSC_EG_gen_npc_scripts()
     RegisterCreatureAI(EG_npc_plague_slime);
     RegisterCreatureAI(EG_npc_crystalline_frayer);
     RegisterCreatureAI(EG_npc_eidolon_watcher);
+    RegisterCreatureAI(EG_npc_ulduar_tower_gauntlet_generator);
     RegisterCreatureAI(EG_npc_arachnopod_destroyer);
 }

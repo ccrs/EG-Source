@@ -31,3 +31,6 @@ INSERT INTO `spelldifficulty_dbc` (`id`, `spellid0`, `spellid1`, `spellid2`, `sp
 
 -- Enslaved Fire Elemental
 UPDATE `creature` SET `spawntimesecs`=604800 WHERE `id`=33838 AND `guid` IN (137557, 137558, 137559);
+
+--
+UPDATE `creature_template` SET `ScriptName`='EG_npc_ulduar_tower_gauntlet_generator' WHERE `entry` IN (33571, 34159);
