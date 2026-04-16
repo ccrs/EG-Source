@@ -872,46 +872,6 @@ private:
     Position _passengerInitialPosition;
 };
 
-enum ArachnopodDestroyerMisc
-{
-    NPC_CLOCKWORK_MECHANIC = 34184,
-
-    SPELL_FLAME_SPRAY = 64717,
-    SPELL_CHARGED_LEAP = 64779,
-    SPELL_MACHINE_GUN = 64776,
-    SPELL_DAMAGED = 64770,
-
-    EVENT_FLAME_SPRAY = 1,
-    EVENT_CHARGED_LEAP,
-    EVENT_MACHINE_GUN,
-};
-
-class ArachnopodDestroyerChargeTargetSelector
-{
-    public:
-        explicit ArachnopodDestroyerChargeTargetSelector(Creature* owner) : _owner(owner) { };
-
-        bool operator()(WorldObject* object) const
-        {
-            if (Unit* unit = object->ToUnit())
-            {
-                if (unit->GetTypeId() != TYPEID_PLAYER)
-                    return false;
-
-                if (!_owner->CanCreatureAttack(unit))
-                    return false;
-
-                float distance = _owner->GetDistance(object);
-                if (distance > 10.0f || distance < 40.0f)
-                    return true;
-            }
-
-            return false;
-        }
-    private:
-        Creature const* _owner;
-};
-
 enum UlduarTowerGauntletGeneratorMisc
 {
     NPC_DEMOLISHER = 33109,
@@ -969,6 +929,46 @@ struct EG_npc_ulduar_tower_gauntlet_generator : public ScriptedAI
 private:
     uint32 _summonTimer;
     ObjectGuid _beaconGuid;
+};
+
+enum ArachnopodDestroyerMisc
+{
+    NPC_CLOCKWORK_MECHANIC = 34184,
+
+    SPELL_FLAME_SPRAY = 64717,
+    SPELL_CHARGED_LEAP = 64779,
+    SPELL_MACHINE_GUN = 64776,
+    SPELL_DAMAGED = 64770,
+
+    EVENT_FLAME_SPRAY = 1,
+    EVENT_CHARGED_LEAP,
+    EVENT_MACHINE_GUN,
+};
+
+class ArachnopodDestroyerChargeTargetSelector
+{
+    public:
+        explicit ArachnopodDestroyerChargeTargetSelector(Creature* owner) : _owner(owner) { };
+
+        bool operator()(WorldObject* object) const
+        {
+            if (Unit* unit = object->ToUnit())
+            {
+                if (unit->GetTypeId() != TYPEID_PLAYER)
+                    return false;
+
+                if (!_owner->CanCreatureAttack(unit))
+                    return false;
+
+                float distance = _owner->GetDistance(object);
+                if (distance > 10.0f || distance < 40.0f)
+                    return true;
+            }
+
+            return false;
+        }
+    private:
+        Creature const* _owner;
 };
 
 struct EG_npc_arachnopod_destroyer : public ScriptedAI
