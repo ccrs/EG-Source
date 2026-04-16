@@ -299,12 +299,12 @@ class instance_ulduar : public InstanceMapScript
                         break;
 
                     // Freya
-                    case NPC_IRONBRANCH:
+                    case NPC_BRIGHTLEAF:
                         ElderGUIDs[0] = creature->GetGUID();
                         if (GetBossState(DATA_FREYA) == DONE)
                             creature->DespawnOrUnsummon();
                         break;
-                    case NPC_BRIGHTLEAF:
+                    case NPC_IRONBRANCH:
                         ElderGUIDs[1] = creature->GetGUID();
                         if (GetBossState(DATA_FREYA) == DONE)
                             creature->DespawnOrUnsummon();
