@@ -140,6 +140,8 @@ ObjectData const objectData[] =
     { 0,                               0                         }
 };
 
+static Position const BrannRadioSummonPos = { -312.553f, 294.34140f, 525.1342f, 5.408990f };
+
 UlduarKeeperDespawnEvent::UlduarKeeperDespawnEvent(Creature* owner, Milliseconds despawnTimerOffset) : _owner(owner), _despawnTimer(despawnTimerOffset)
 {
 }
@@ -187,41 +189,6 @@ class instance_ulduar : public InstanceMapScript
                 memset(_summonYSKeeper, 0, sizeof(_summonYSKeeper));
             }
 
-            // Creatures
-            GuidVector LeviathanVehicleGUIDs;
-
-            ObjectGuid XTToyPileGUIDs[4];
-            ObjectGuid AssemblyGUIDs[3];
-
-            ObjectGuid ElderGUIDs[3];
-            ObjectGuid FreyaAchieveTriggerGUID;
-            ObjectGuid MimironVehicleGUIDs[3];
-            ObjectGuid KeeperGUIDs[4];
-
-            // GameObjects
-            ObjectGuid LeviathanGateGUID;
-            ObjectGuid KologarnChestGUID;
-            ObjectGuid KologarnBridgeGUID;
-            ObjectGuid ThorimDarkIronPortcullisGUID;
-            ObjectGuid CacheOfStormsGUID;
-            ObjectGuid CacheOfStormsHardmodeGUID;
-            ObjectGuid HodirRareCacheGUID;
-            ObjectGuid HodirChestGUID;
-            ObjectGuid MimironTramGUID;
-
-            ObjectGuid BrainRoomDoorGUIDs[3];
-
-            // Miscellaneous
-            uint32 TeamInInstance;
-            uint32 ColossusData;
-            uint8 elderCount;
-            uint8 illusion;
-            uint8 keepersCount;
-            bool conSpeedAtory;
-            bool lumberjacked;
-            bool Unbroken;
-            bool IsDriveMeCrazyEligible;
-
             void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override
             {
                 packet.Worldstates.emplace_back(WORLD_STATE_ALGALON_TIMER_ENABLED, (_algalonTimer && _algalonTimer <= 60) ? 1 : 0);
@@ -231,7 +198,21 @@ class instance_ulduar : public InstanceMapScript
             void OnPlayerEnter(Player* player) override
             {
                 if (!TeamInInstance)
+                {
                     TeamInInstance = player->GetTeam();
+
+                    if (GetBossState(DATA_FLAME_LEVIATHAN) != DONE)
+                    {
+                        std::vector<RespawnInfo const*> data;
+                        instance->GetRespawnInfo(data, SPAWN_TYPEMASK_ALL);
+                        if (!data.empty())
+                        {
+                            for (RespawnInfo const* info : data)
+                                if (info->entry == NPC_SALVAGED_DEMOLISHER || info->entry == NPC_SALVAGED_SIEGE_ENGINE || info->entry == NPC_SALVAGED_CHOPPER)
+                                    instance->Respawn(info->type, info->spawnId);
+                        }
+                    }
+                }
 
                 if (_summonAlgalon)
                 {
@@ -560,20 +541,16 @@ class instance_ulduar : public InstanceMapScript
                 {
                     // Flame Leviathan's Tower Event triggers
                     case EVENT_TOWER_OF_STORM_DESTROYED:
-                        if (Creature* flameLeviathan = GetCreature(DATA_FLAME_LEVIATHAN))
-                            flameLeviathan->AI()->DoAction(ACTION_TOWER_OF_STORM_DESTROYED);
+                        _destroyedTowers |= ACTION_TOWER_OF_STORM_DESTROYED;
                         break;
                     case EVENT_TOWER_OF_FROST_DESTROYED:
-                        if (Creature* flameLeviathan = GetCreature(DATA_FLAME_LEVIATHAN))
-                            flameLeviathan->AI()->DoAction(ACTION_TOWER_OF_FROST_DESTROYED);
+                        _destroyedTowers |= ACTION_TOWER_OF_FROST_DESTROYED;
                         break;
                     case EVENT_TOWER_OF_FLAMES_DESTROYED:
-                        if (Creature* flameLeviathan = GetCreature(DATA_FLAME_LEVIATHAN))
-                            flameLeviathan->AI()->DoAction(ACTION_TOWER_OF_FLAMES_DESTROYED);
+                        _destroyedTowers |= ACTION_TOWER_OF_FLAMES_DESTROYED;
                         break;
                     case EVENT_TOWER_OF_LIFE_DESTROYED:
-                        if (Creature* flameLeviathan = GetCreature(DATA_FLAME_LEVIATHAN))
-                            flameLeviathan->AI()->DoAction(ACTION_TOWER_OF_LIFE_DESTROYED);
+                        _destroyedTowers |= ACTION_TOWER_OF_LIFE_DESTROYED;
                         break;
 
                     // Hodir Event triggers
@@ -740,8 +717,12 @@ class instance_ulduar : public InstanceMapScript
                         ColossusData = data;
                         if (data >= 2 && GetBossState(DATA_FLAME_LEVIATHAN) == NOT_STARTED)
                         {
-                            _events.ScheduleEvent(EVENT_LEVIATHAN_BREAK_DOOR, 5s);
-                            SaveToDB();
+                            if (Creature* radio = instance->SummonCreature(NPC_BRONZEBEARD_RADIO, BrannRadioSummonPos))
+                            {
+                                radio->AI()->Talk(SAY_BRANN_RADIO_LEVIATHAN);
+                                if (GetBossState(DATA_FLAME_LEVIATHAN) != DONE)
+                                    _events.ScheduleEvent(EVENT_BRANN_RADIO, 8s);
+                            }
                         }
                         break;
                     case DATA_UNBROKEN:
@@ -762,6 +743,9 @@ class instance_ulduar : public InstanceMapScript
                         break;
                     case DATA_ALGALON_SUMMON_STATE:
                         _algalonSummoned = true;
+                        break;
+                    case DATA_ACTIVE_TOWERS:
+                        _activeTowers = data ? true : false;
                         break;
                     default:
                         break;
@@ -846,6 +830,11 @@ class instance_ulduar : public InstanceMapScript
                             case ALLIANCE: return 1;
                             case HORDE: return 2;
                         }
+                        break;
+                    case DATA_ACTIVE_TOWERS:
+                        return _activeTowers ? 1 : 0;
+                    case DATA_DESTROYED_TOWERS:
+                        return _destroyedTowers;
                     default:
                         break;
                 }
@@ -936,6 +925,8 @@ class instance_ulduar : public InstanceMapScript
                     data << ' ' << uint32(!KeeperGUIDs[i].IsEmpty() ? 1 : 0);
 
                 data << ' ' << _CoUAchivePlayerDeathMask;
+                data << ' ' << uint32(_activeTowers ? 1 : 0);
+                data << ' ' << _destroyedTowers;
             }
 
             void ReadSaveDataMore(std::istringstream& data) override
@@ -974,6 +965,11 @@ class instance_ulduar : public InstanceMapScript
                     _summonObservationRingKeeper[3] = true;
 
                 data >> _CoUAchivePlayerDeathMask;
+
+                data >> tempState;
+                _activeTowers = tempState != 0;
+
+                data >> _destroyedTowers;
             }
 
             void Update(uint32 diff) override
@@ -1006,6 +1002,16 @@ class instance_ulduar : public InstanceMapScript
                             for (auto const& vehicleGuid : LeviathanVehicleGUIDs)
                                 if (Creature* vehicleCreature = instance->GetCreature(vehicleGuid))
                                     DespawnLeviatanVehicle(vehicleCreature);
+                            break;
+                        case EVENT_BRANN_RADIO:
+                            if (Creature* radio = GetCreature(DATA_BRONZEBEARD_RADIO))
+                                radio->AI()->Talk(SAY_BRANN_RADIO_LEVIATHAN2);
+                            _events.ScheduleEvent(EVENT_BRANN_RADIO2, 5s);
+                            break;
+                        case EVENT_BRANN_RADIO2:
+                            if (Creature* radio = GetCreature(DATA_BRONZEBEARD_RADIO))
+                                radio->AI()->Talk(SAY_BRANN_RADIO_LEVIATHAN3);
+                            _events.ScheduleEvent(EVENT_LEVIATHAN_BREAK_DOOR, 5s);
                             break;
                         case EVENT_LEVIATHAN_BREAK_DOOR:
                             if (Creature* leviathan = GetCreature(DATA_FLAME_LEVIATHAN))
@@ -1056,6 +1062,36 @@ class instance_ulduar : public InstanceMapScript
             }
 
         private:
+            // Creatures
+            GuidVector LeviathanVehicleGUIDs;
+            ObjectGuid XTToyPileGUIDs[4];
+            ObjectGuid AssemblyGUIDs[3];
+            ObjectGuid ElderGUIDs[3];
+            ObjectGuid FreyaAchieveTriggerGUID;
+            ObjectGuid MimironVehicleGUIDs[3];
+            ObjectGuid KeeperGUIDs[4];
+            // GameObjects
+            ObjectGuid LeviathanGateGUID;
+            ObjectGuid KologarnChestGUID;
+            ObjectGuid KologarnBridgeGUID;
+            ObjectGuid ThorimDarkIronPortcullisGUID;
+            ObjectGuid CacheOfStormsGUID;
+            ObjectGuid CacheOfStormsHardmodeGUID;
+            ObjectGuid HodirRareCacheGUID;
+            ObjectGuid HodirChestGUID;
+            ObjectGuid MimironTramGUID;
+            ObjectGuid BrainRoomDoorGUIDs[3];
+            // Miscellaneous
+            uint32 TeamInInstance;
+            uint32 ColossusData;
+            uint8 elderCount;
+            uint8 illusion;
+            uint8 keepersCount;
+            bool conSpeedAtory;
+            bool lumberjacked;
+            bool Unbroken;
+            bool IsDriveMeCrazyEligible;
+
             EventMap _events;
             uint32 _algalonTimer;
             bool _summonAlgalon;
@@ -1065,6 +1101,8 @@ class instance_ulduar : public InstanceMapScript
             uint32 _maxArmorItemLevel;
             uint32 _maxWeaponItemLevel;
             uint32 _CoUAchivePlayerDeathMask;
+            bool _activeTowers;
+            uint32 _destroyedTowers;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override
