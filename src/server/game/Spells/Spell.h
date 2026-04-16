@@ -20,6 +20,7 @@
 
 #include "ConditionMgr.h"
 #include "DBCEnums.h"
+#include "EventProcessor.h"
 #include "ObjectGuid.h"
 #include "Position.h"
 #include "SharedDefines.h"
