@@ -18,6 +18,7 @@
 #include "SpellMgr.h"
 #include "StringFormat.h"
 #include "TemporarySummon.h"
+#include "Vehicle.h"
 
 enum TestDummyModes
 {
@@ -871,6 +872,128 @@ private:
     Position _passengerInitialPosition;
 };
 
+enum ArachnopodDestroyerMisc
+{
+    NPC_CLOCKWORK_MECHANIC = 34184,
+
+    SPELL_FLAME_SPRAY = 64717,
+    SPELL_CHARGED_LEAP = 64779,
+    SPELL_MACHINE_GUN = 64776,
+    SPELL_DAMAGED = 64770,
+
+    EVENT_FLAME_SPRAY = 1,
+    EVENT_CHARGED_LEAP,
+    EVENT_MACHINE_GUN,
+};
+
+class ArachnopodDestroyerChargeTargetSelector
+{
+    public:
+        explicit ArachnopodDestroyerChargeTargetSelector(Creature* owner) : _owner(owner) { };
+
+        bool operator()(WorldObject* object) const
+        {
+            if (Unit* unit = object->ToUnit())
+            {
+                if (unit->GetTypeId() != TYPEID_PLAYER)
+                    return false;
+
+                if (!_owner->CanCreatureAttack(unit))
+                    return false;
+
+                float distance = _owner->GetDistance(object);
+                if (distance > 10.0f || distance < 40.0f)
+                    return true;
+            }
+
+            return false;
+        }
+    private:
+        Creature const* _owner;
+};
+
+struct EG_npc_arachnopod_destroyer : public ScriptedAI
+{
+    EG_npc_arachnopod_destroyer(Creature* creature) : ScriptedAI(creature) { }
+
+    void Reset() override
+    {
+        ScriptedAI::Reset();
+        _events.Reset();
+        _damaged = false;
+    }
+
+    void PassengerBoarded(Unit* who, int8 /*seatId*/, bool apply) override
+    {
+        if (!apply)
+        {
+            if (Creature* mechanic = who->ToCreature())
+                if (mechanic->GetEntry() == NPC_CLOCKWORK_MECHANIC)
+                    mechanic->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+            if (who->IsPlayer())
+                DoZoneInCombat();
+        }
+    }
+
+    void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
+    {
+        if (!_damaged && me->HealthBelowPctDamaged(20, damage))
+        {
+            _damaged = true;
+            _events.Reset();
+            DoCastSelf(SPELL_DAMAGED, true);
+            if (Vehicle* vechicle = me->GetVehicleKit())
+                vechicle->RemoveAllPassengers();
+        }
+    }
+
+    void JustEngagedWith(Unit* /*who*/) override
+    {
+        _events.ScheduleEvent(EVENT_FLAME_SPRAY, 2s, 8s);
+        _events.ScheduleEvent(EVENT_CHARGED_LEAP, 5s, 15s);
+        _events.ScheduleEvent(EVENT_MACHINE_GUN, 1s, 6s);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        _events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        while (uint32 eventId = _events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case EVENT_FLAME_SPRAY:
+                    DoCastVictim(SPELL_FLAME_SPRAY);
+                    _events.ScheduleEvent(EVENT_FLAME_SPRAY, 8s, 12s);
+                    break;
+                case EVENT_CHARGED_LEAP:
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, ArachnopodDestroyerChargeTargetSelector(me)))
+                        DoCast(target, SPELL_CHARGED_LEAP);
+                    _events.ScheduleEvent(EVENT_CHARGED_LEAP, 25s, 35s);
+                    break;
+                case EVENT_MACHINE_GUN:
+                    DoCastVictim(SPELL_MACHINE_GUN);
+                    _events.ScheduleEvent(EVENT_MACHINE_GUN, 6s, 10s);
+                    break;
+            }
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+        }
+
+        DoMeleeAttackIfReady();
+    }
+
+private:
+    EventMap _events;
+    bool _damaged;
+};
+
 void AddSC_EG_gen_npc_scripts()
 {
     RegisterCreatureAI(EG_npc_damage_test_controller);
@@ -879,4 +1002,5 @@ void AddSC_EG_gen_npc_scripts()
     RegisterCreatureAI(EG_npc_plague_slime);
     RegisterCreatureAI(EG_npc_crystalline_frayer);
     RegisterCreatureAI(EG_npc_eidolon_watcher);
+    RegisterCreatureAI(EG_npc_arachnopod_destroyer);
 }
