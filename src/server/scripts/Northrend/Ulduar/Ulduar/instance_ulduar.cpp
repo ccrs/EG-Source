@@ -923,14 +923,17 @@ class instance_ulduar : public InstanceMapScript
                     case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_25_SB:
                         if (Creature* stormcaller = instance->GetCreature(AssemblyGUIDs[2]))
                             return _stunned == 1 && stormcaller->AI()->GetData(1 /*DATA_PHASE_3*/) == 1;
+                        break;
                     case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_10_S:
                     case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_25_S:
                         if (Creature* steelbreaker = instance->GetCreature(AssemblyGUIDs[0]))
                             return _stunned == 1 && steelbreaker->AI()->GetData(1 /*DATA_PHASE_3*/) == 1;
+                        break;
                     case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_10_RM:
                     case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_25_RM:
                         if (Creature* runeMaster = instance->GetCreature(AssemblyGUIDs[1]))
                             return _stunned == 1 && runeMaster->AI()->GetData(1 /*DATA_PHASE_3*/) == 1;
+                        break;
                 }
 
                 return false;
