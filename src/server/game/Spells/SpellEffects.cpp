@@ -3616,6 +3616,8 @@ void Spell::EffectSanctuary()
     if (!unitTarget)
         return;
 
+    unitTarget->InterruptSpellsCastedOnMe(true);
+
     if (unitTarget->GetTypeId() == TYPEID_PLAYER && !unitTarget->GetMap()->IsDungeon())
     {
         // stop all pve combat for players outside dungeons, suppress pvp combat
