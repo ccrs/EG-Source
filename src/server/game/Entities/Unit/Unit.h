@@ -872,6 +872,7 @@ class TC_GAME_API Unit : public WorldObject
         Unit* SelectNearbyTarget(Unit* exclude = nullptr, float dist = NOMINAL_MELEE_RANGE) const;
         void SendMeleeAttackStop(Unit* victim = nullptr);
         void SendMeleeAttackStart(Unit* victim);
+        void InterruptSpellsCastedOnMe(bool killDelayed = false, bool interruptFriendlySpells = false);
 
         void AddUnitState(uint32 f) { m_state |= f; }
         bool HasUnitState(const uint32 f) const { return (m_state & f) != 0; }

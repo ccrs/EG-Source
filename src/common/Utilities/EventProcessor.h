@@ -31,7 +31,8 @@ class EventProcessor;
 enum EventType : uint8
 {
     EVENT_TYPE_GENERIC = 0,
-    EVENT_TYPE_VEHICLE_JOIN = 1
+    EVENT_TYPE_VEHICLE_JOIN = 1,
+    EVENT_TYPE_SPELL = 2
 };
 
 class TC_COMMON_API BasicEvent
@@ -119,6 +120,7 @@ class TC_COMMON_API EventProcessor
         Milliseconds CalculateTime(Milliseconds t_offset) const { return Milliseconds(m_time) + t_offset; }
         bool HasEventType(EventType type) const;
 
+        std::multimap<uint64, BasicEvent*> const& GetEvents() const { return m_events; }
     protected:
         uint64 m_time;
         std::multimap<uint64, BasicEvent*> m_events;

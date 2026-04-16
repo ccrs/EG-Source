@@ -1677,7 +1677,7 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
                 break;
             case SPELLFAMILY_ROGUE:
                 // Remove Vanish on stealth remove
-                if (GetId() == 1784)
+                if (GetSpellInfo()->SpellFamilyFlags[0] & 0x00400000) // Stealth
                     target->RemoveAurasWithFamily(SPELLFAMILY_ROGUE, flag96(0x0000800, 0, 0), target->GetGUID());
                 break;
             case SPELLFAMILY_PALADIN:

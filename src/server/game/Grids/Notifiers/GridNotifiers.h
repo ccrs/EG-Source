@@ -1460,51 +1460,54 @@ namespace Trinity
     template <typename Customizer = InRangeCheckCustomizer>
     class GameObjectWithOptionsInObjectRangeCheck
     {
-    public:
-        GameObjectWithOptionsInObjectRangeCheck(WorldObject const& obj, Customizer& customizer, FindGameObjectOptions const& args)
-            : i_obj(obj), i_args(args), i_customizer(customizer) { }
+        public:
+            GameObjectWithOptionsInObjectRangeCheck(WorldObject const& obj, Customizer& customizer, FindGameObjectOptions const& args)
+                : i_obj(obj), i_args(args), i_customizer(customizer) { }
 
-        bool operator()(GameObject const* go) const
-        {
-            if (i_args.IsSpawned.has_value() && i_args.IsSpawned != go->isSpawned()) // Despawned
-                return false;
+            bool operator()(GameObject const* go) const
+            {
+                if (i_args.IsSpawned.has_value() && i_args.IsSpawned != go->isSpawned()) // Despawned
+                    return false;
 
-            if (go->GetGUID() == i_obj.GetGUID())
-                return false;
+                if (go->GetGUID() == i_obj.GetGUID())
+                    return false;
 
-            if (!i_customizer.Test(go))
-                return false;
+                if (!i_customizer.Test(go))
+                    return false;
 
-            if (i_args.GameObjectId && go->GetEntry() != i_args.GameObjectId)
-                return false;
+                if (i_args.GameObjectId && go->GetEntry() != i_args.GameObjectId)
+                    return false;
 
-            if (i_args.StringId && !go->HasStringId(*i_args.StringId))
-                return false;
+                if (!i_args.GameObjectIds.empty() && !i_args.GameObjectIds.contains(go->GetEntry()))
+                    return false;
 
-            if (i_args.IsSummon.has_value() && (go->GetSpawnId() == 0) != i_args.IsSummon)
-                return false;
+                if (i_args.StringId && !go->HasStringId(*i_args.StringId))
+                    return false;
 
-            if ((i_args.OwnerGuid && go->GetOwnerGUID() != i_args.OwnerGuid)
-                || (i_args.PrivateObjectOwnerGuid && go->GetPrivateObjectOwner() != i_args.PrivateObjectOwnerGuid))
-                return false;
+                if (i_args.IsSummon.has_value() && (go->GetSpawnId() == 0) != i_args.IsSummon)
+                    return false;
 
-            if (i_args.IgnorePrivateObjects && go->IsPrivateObject())
-                return false;
+                if ((i_args.OwnerGuid && go->GetOwnerGUID() != i_args.OwnerGuid)
+                    || (i_args.PrivateObjectOwnerGuid && go->GetPrivateObjectOwner() != i_args.PrivateObjectOwnerGuid))
+                    return false;
 
-            if (i_args.IgnoreNotOwnedPrivateObjects && !go->CheckPrivateObjectOwnerVisibility(&i_obj))
-                return false;
+                if (i_args.IgnorePrivateObjects && go->IsPrivateObject())
+                    return false;
 
-            if (i_args.GameObjectType && go->GetGoType() != i_args.GameObjectType)
-                return false;
+                if (i_args.IgnoreNotOwnedPrivateObjects && !go->CheckPrivateObjectOwnerVisibility(&i_obj))
+                    return false;
 
-            i_customizer.Update(go);
-            return true;
-        }
+                if (i_args.GameObjectType && go->GetGoType() != i_args.GameObjectType)
+                    return false;
 
-    private:
-        WorldObject const& i_obj;
-        FindGameObjectOptions const& i_args;
-        Customizer& i_customizer;
+                i_customizer.Update(go);
+                return true;
+            }
+
+        private:
+            WorldObject const& i_obj;
+            FindGameObjectOptions const& i_args;
+            Customizer& i_customizer;
     };
 
     class AnyPlayerInObjectRangeCheck

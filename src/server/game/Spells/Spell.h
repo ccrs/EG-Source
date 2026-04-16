@@ -20,6 +20,7 @@
 
 #include "ConditionMgr.h"
 #include "DBCEnums.h"
+#include "EventProcessor.h"
 #include "ObjectGuid.h"
 #include "Position.h"
 #include "SharedDefines.h"
@@ -713,6 +714,25 @@ class TC_GAME_API Spell
 
         Spell(Spell const& right) = delete;
         Spell& operator=(Spell const& right) = delete;
+};
+
+class TC_GAME_API SpellEvent : public BasicEvent
+{
+public:
+    explicit SpellEvent(Spell* spell);
+    ~SpellEvent();
+
+    bool Execute(uint64 e_time, uint32 p_time) override;
+    void Abort(uint64 e_time) override;
+    bool IsDeletable() const override;
+    Spell const* GetSpell() const { return m_Spell.get(); }
+    Spell* GetSpell() { return m_Spell.get(); }
+    Trinity::unique_weak_ptr<Spell> GetSpellWeakPtr() const { return m_Spell; }
+
+    std::string GetDebugInfo() const { return m_Spell->GetDebugInfo(); }
+
+protected:
+    Trinity::unique_trackable_ptr<Spell> m_Spell;
 };
 
 namespace Trinity

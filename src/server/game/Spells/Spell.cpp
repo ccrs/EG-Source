@@ -488,24 +488,6 @@ SpellValue::SpellValue(SpellInfo const* proto)
     CriticalChance = 0.0f;
 }
 
-class TC_GAME_API SpellEvent : public BasicEvent
-{
-public:
-    explicit SpellEvent(Spell* spell);
-    ~SpellEvent();
-
-    bool Execute(uint64 e_time, uint32 p_time) override;
-    void Abort(uint64 e_time) override;
-    bool IsDeletable() const override;
-    Spell const* GetSpell() const { return m_Spell.get(); }
-    Trinity::unique_weak_ptr<Spell> GetSpellWeakPtr() const { return m_Spell; }
-
-    std::string GetDebugInfo() const { return m_Spell->GetDebugInfo(); }
-
-protected:
-    Trinity::unique_trackable_ptr<Spell> m_Spell;
-};
-
 Spell::Spell(WorldObject* caster, SpellInfo const* info, TriggerCastFlags triggerFlags, ObjectGuid originalCasterGUID) :
 m_spellInfo(sSpellMgr->GetSpellForDifficultyFromSpell(info, caster)),
 m_caster((info->HasAttribute(SPELL_ATTR6_CAST_BY_CHARMER) && caster->GetCharmerOrOwner()) ? caster->GetCharmerOrOwner() : caster)
@@ -7609,6 +7591,7 @@ Unit* Spell::GetUnitCasterForEffectHandlers() const
 
 SpellEvent::SpellEvent(Spell* spell) : BasicEvent(), m_Spell(spell)
 {
+    Type = EventType::EVENT_TYPE_SPELL;
 }
 
 SpellEvent::~SpellEvent()
