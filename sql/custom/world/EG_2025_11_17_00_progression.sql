@@ -157,6 +157,7 @@ UPDATE `creature_loot_template` SET `item` = 40753 WHERE `item` = 47241 AND `ent
 33994, -- Emalon the Storm Watcher (1)
 31507, -- Erekem (1)
 31368, -- Gal'darah (1)
+31533, -- General Bjarngrim (1)
 29417, -- Gluth (1)
 30774, -- Gortok Palehoof (1)
 29955, -- Gothik the Harvester (1)
@@ -274,6 +275,26 @@ UPDATE `gameobject_loot_template` SET `item` = 45624 WHERE `item` = 47241 AND `e
 26962, -- Freya's Gift
 27030, -- Gift of the Observer
 26974); -- Gift of the Observer
+UPDATE `reference_loot_template` SET `Item` = 45624 WHERE `Item` = 47241 AND `entry` IN (
+34349
+-- 31311,Sartharion(1)
+-- 31311,Sartharion(1)
+-- 31311,Sartharion(1)
+-- 31313,Flame Leviathan
+-- 31313,Flame Leviathan
+-- 31313,Flame Leviathan
+-- 31313,Flame Leviathan
+-- 31313,Flame Leviathan
+-- 33288,Yogg-Saron
+-- 33288,Yogg-Saron
+-- 33955,Yogg-Saron(1)
+-- 33955,Yogg-Saron(1)
+-- 34003,Flame Leviathan(1)
+-- 34003,Flame Leviathan(1)
+-- 34003,Flame Leviathan(1)
+-- 34003,Flame Leviathan(1)
+-- 34003,Flame Leviathan(1)
+);
 
 -- Arenas
 DELETE FROM `disables` WHERE (`sourceType` = 3) AND (`entry` IN (10,11));
