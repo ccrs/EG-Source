@@ -254,10 +254,10 @@ Position const FlameLeviathanWipePosDemolisher[VEHICLE_SPAWNS] =
 
 Position const FlameLeviathanFreyaBeacons[FREYA_SPAWNS] =
 {
-    {377.02f, -119.10f, 409.81f, 0.0f},
-    {185.62f, -119.10f, 409.81f, 0.0f},
-    {377.02f, 54.78f, 409.81f, 0.0f},
-    {185.62f, 54.78f, 409.81f, 0.0f},
+    { 377.02f, -119.10f, 409.81f, 0.0f },
+    { 185.62f, -119.10f, 409.81f, 0.0f },
+    { 377.02f, 54.78f, 409.81f, 0.0f },
+    { 185.62f, 54.78f, 409.81f, 0.0f },
 };
 
 class boss_flame_leviathan : public CreatureScript
@@ -548,6 +548,7 @@ class boss_flame_leviathan : public CreatureScript
                     if (Unit* unitTarget = target->ToUnit())
                     {
                         _pursueTarget = target->GetGUID();
+                        AttackStart(unitTarget);
                         me->GetThreatManager().FixateTarget(unitTarget);
                         if (unitTarget->GetVehicleKit())
                             for (auto itr = unitTarget->GetVehicleKit()->Seats.begin(); itr != unitTarget->GetVehicleKit()->Seats.end(); ++itr)
@@ -604,10 +605,11 @@ class boss_flame_leviathan : public CreatureScript
                 if (me->isAttackReady())
                 {
                     Unit* target = ObjectAccessor::GetUnit(*me, _pursueTarget);
+                    if (!target && events.GetTimeUntilEvent(EVENT_PURSUE) > 5s)
+                        events.RescheduleEvent(EVENT_PURSUE, 3s);
 
                     // Pursue was unable to acquire a valid target, so get the current victim as target.
                     if (!target && me->GetVictim())
-
                         target = me->GetVictim();
 
                     if (me->IsWithinCombatRange(target, 30.0f))
