@@ -74,6 +74,7 @@ class TC_GAME_API Minion : public TempSummon
     public:
         Minion(SummonPropertiesEntry const* properties, Unit* owner, bool isWorldObject);
         void InitStats(uint32 duration) override;
+        void SetDisplayId(uint32 modelId) override;
         float GetNativeObjectScale() const override;
         void RemoveFromWorld() override;
         void setDeathState(DeathState s) override;

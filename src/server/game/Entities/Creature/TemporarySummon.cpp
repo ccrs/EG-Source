@@ -372,16 +372,16 @@ void Minion::InitStats(uint32 duration)
     SetFaction(GetOwner()->GetFaction());
 
     GetOwner()->SetMinion(this, true);
+}
+
+void Minion::SetDisplayId(uint32 modelId)
+{
+    uint32 value = modelId;
     if (IsPetGhoul())
         if (Player* owner = GetOwner()->ToPlayer())
-        {
             if (owner->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DEATH_KNIGHT_ACTIVE))
-            {
-                SetDisplayId(31006);
-                SetNativeDisplayId(31006);
-                SetObjectScale(0.2f);
-            }
-        }
+                value = 31006;
+    return TempSummon::SetDisplayId(value);
 }
 
 float Minion::GetNativeObjectScale() const
