@@ -372,6 +372,25 @@ void Minion::InitStats(uint32 duration)
     SetFaction(GetOwner()->GetFaction());
 
     GetOwner()->SetMinion(this, true);
+    if (IsPetGhoul())
+        if (Player* owner = GetOwner()->ToPlayer())
+        {
+            if (owner->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DEATH_KNIGHT_ACTIVE))
+            {
+                SetDisplayId(31006);
+                SetNativeDisplayId(31006);
+                SetObjectScale(0.2f);
+            }
+        }
+}
+
+float Minion::GetNativeObjectScale() const
+{
+    if (IsPetGhoul())
+        if (Player* owner = GetOwner()->ToPlayer())
+            if (owner->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DEATH_KNIGHT_ACTIVE))
+                return 0.2f;
+    return TempSummon::GetNativeObjectScale();
 }
 
 void Minion::RemoveFromWorld()

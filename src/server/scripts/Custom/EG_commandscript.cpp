@@ -39,6 +39,7 @@ public:
             { "xpRate",             HandleXPRate, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "masquerade",         HandleRaceMasquerade, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "weaponSkill",        HandleWeaponSkill, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "visuals",            HandleVisuals, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
         };
 
         static ChatCommandTable commandTable =
@@ -274,6 +275,41 @@ public:
         {
             player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_TAXI, CustomFlags::CUSTOM_FLAG_ACCOUNT_TAXI_ACTIVE);
             handler->SendSysMessage("Account flight path transfering deactivated.");
+        }
+        return true;
+    }
+
+    static bool HandleVisuals(ChatHandler* handler, bool active)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        if (!player)
+            return false;
+
+        if (player->GetClass() == CLASS_DRUID)
+        {
+            if (active)
+            {
+                player->AddCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE);
+                handler->SendSysMessage("Alternative visuals for druid activated.");
+            }
+            else
+            {
+                player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE);
+                handler->SendSysMessage("Alternative visuals for druid deactivated.");
+            }
+        }
+        else if (player->GetClass() == CLASS_DEATH_KNIGHT)
+        {
+            if (active)
+            {
+                player->AddCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DEATH_KNIGHT_ACTIVE);
+                handler->SendSysMessage("Alternative visuals for death knight activated.");
+            }
+            else
+            {
+                player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DEATH_KNIGHT_ACTIVE);
+                handler->SendSysMessage("Alternative visuals for death knight deactivated.");
+            }
         }
         return true;
     }

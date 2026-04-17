@@ -12317,7 +12317,13 @@ uint32 Unit::GetModelForForm(ShapeshiftForm form, uint32 spellId) const
     {
         switch (form)
         {
+            case FORM_MOONKIN:
+                if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE))
+                    return 12235;
+                break;
             case FORM_CAT:
+                if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE))
+                    return 28866;
                 // Based on Hair color
                 if (GetRace() == RACE_NIGHTELF)
                 {
@@ -12400,6 +12406,8 @@ uint32 Unit::GetModelForForm(ShapeshiftForm form, uint32 spellId) const
                     return 8571;
             case FORM_DIREBEAR:
             case FORM_BEAR:
+                if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE))
+                    return 913;
                 // Based on Hair color
                 if (GetRace() == RACE_NIGHTELF)
                 {
@@ -12480,10 +12488,14 @@ uint32 Unit::GetModelForForm(ShapeshiftForm form, uint32 spellId) const
                 else
                     return 2289;
             case FORM_FLIGHT:
+                if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE))
+                    return 23483;
                 if (Player::TeamForRace(GetRace()) == ALLIANCE)
                     return 20857;
                 return 20872;
             case FORM_FLIGHT_EPIC:
+                if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE))
+                    return 23483;
                 if (Player::TeamForRace(GetRace()) == ALLIANCE)
                     return 21243;
                 return 21244;

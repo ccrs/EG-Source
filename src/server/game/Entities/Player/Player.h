@@ -940,6 +940,7 @@ enum CustomFlagsIndex : uint16
     CUSTOM_WEAPON_SKILL = 6,
     CUSTOM_ACCOUNT_PET = 7,
     CUSTOM_ACCOUNT_TAXI = 8,
+    CUSTOM_VISUALS = 9,
     CUSTOM_FLAGS_MAX
 };
 
@@ -979,6 +980,9 @@ enum CustomFlags : uint16
     CUSTOM_FLAG_ACCOUNT_PET_ACTIVE = 0x01,
 
     CUSTOM_FLAG_ACCOUNT_TAXI_ACTIVE = 0x01,
+
+    CUSTOM_FLAG_VISUALS_DRUID_ACTIVE = 0x01,
+    CUSTOM_FLAG_VISUALS_DEATH_KNIGHT_ACTIVE = 0x02,
 };
 
 class TC_GAME_API Player : public Unit, public GridObject<Player>
