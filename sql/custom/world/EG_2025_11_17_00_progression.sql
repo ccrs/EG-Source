@@ -1,8 +1,9 @@
 -- Instances and Raids
-DELETE FROM `disables` WHERE (`sourceType` = 2) AND (`entry` IN (249,631,632,649,650,658,668,724));
-DELETE FROM `disables` WHERE (`sourceType` = 8) AND (`entry` IN (249,631,632,649,650,658,668,724));
+DELETE FROM `disables` WHERE (`sourceType` = 2) AND (`entry` IN (249,603,631,632,649,650,658,668,724));
+DELETE FROM `disables` WHERE (`sourceType` = 8) AND (`entry` IN (249,603,631,632,649,650,658,668,724));
 INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, `comment`) VALUES
 (2, 249, 3, '', '', "Onyxia\'s Lair"),
+(2, 603, 3, '', '', "Ulduar"),
 (2, 631, 15, '', '', 'Icecrown Citadel'),
 (2, 632, 3, '', '', 'The Forge of Souls'),
 (2, 649, 15, '', '', 'Trial of the Crusader'),
@@ -11,6 +12,7 @@ INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, 
 (2, 668, 3, '', '', 'Halls of Reflection'),
 (2, 724, 15, '', '', 'Ruby Sanctum'),
 (8, 249, 3, '', '', "Onyxia\'s Lair"),
+(8, 603, 3, '', '', "Ulduar"),
 (8, 631, 15, '', '', 'Icecrown Citadel'),
 (8, 632, 3, '', '', 'The Forge of Souls'),
 (8, 649, 15, '', '', 'Trial of the Crusader'),
