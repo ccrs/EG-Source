@@ -1,5 +1,48 @@
 -- Pool of Tar
-UPDATE `creature_template` SET `flags_extra`=`flags_extra`|1073741824 WHERE `entry`=33090;
+UPDATE `creature_template` SET `flags_extra` = 1073750080 WHERE `entry` = 33090;
+-- Mimiron's inferno
+UPDATE `creature_template` SET `flags_extra` = 8320 WHERE `entry` = 33370;
+UPDATE `creature_template` SET `flags_extra` = 8384 WHERE `entry` = 33369;
+
+DELETE FROM `vehicle_template_accessory` WHERE `entry` = 33369;
+INSERT INTO `vehicle_template_accessory` (`entry`, `accessory_entry`, `seat_id`, `minion`, `summontype`, `summontimer`, `description`) VALUES
+(33369, 33370, 0, 1, 5, 0, 'Mimiron\'s Inferno Targetting Reticle seat 0: Mimiron\'s Inferno');
+
+DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 13) AND (`SourceEntry` IN (62909));
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+(13, 1, 62909, 0, 0, 31, 0, 3, 33369, 0, 0, 'Potential target of the spell is creature, entry is Mimiron\'s Inferno Targetting Reticle (33369)');
+
+-- Thorim's hammer
+UPDATE `creature_template` SET `flags_extra` = 8320 WHERE `entry` = 33365;
+UPDATE `creature_template` SET `flags_extra` = 8384 WHERE `entry` = 33364;
+
+DELETE FROM `vehicle_template_accessory` WHERE `entry` = 33364;
+INSERT INTO `vehicle_template_accessory` (`entry`, `accessory_entry`, `seat_id`, `minion`, `summontype`, `summontimer`, `description`) VALUES
+(33364, 33365, 0, 1, 5, 0, 'Thorim\'s Hammer Targetting Reticle seat 0: Thorim\'s Hammer');
+
+-- Hodir's fury
+UPDATE `creature_template` SET `flags_extra` = 8320 WHERE `entry` = 33212;
+UPDATE `creature_template` SET `flags_extra` = 8384 WHERE `entry` = 33108;
+
+DELETE FROM `vehicle_template_accessory` WHERE `entry` = 33108;
+INSERT INTO `vehicle_template_accessory` (`entry`, `accessory_entry`, `seat_id`, `minion`, `summontype`, `summontimer`, `description`) VALUES
+(33108, 33212, 0, 1, 5, 0, 'Hodir\'s Fury Targetting Reticle seat 0: Hodir\'s Fury');
+
+DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 13) AND (`SourceEntry` IN (62533));
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+(13, 1, 62533, 0, 0, 31, 0, 3, 33108, 0, 0, 'Potential target of the spell is creature, entry is Hodir\'s Fury Targetting Reticle (33108)');
+
+-- Freya's ward
+UPDATE `creature_template` SET `flags_extra` = 8320 WHERE `entry` = 33367;
+UPDATE `creature_template` SET `flags_extra` = 8384 WHERE `entry` = 33366;
+
+DELETE FROM `vehicle_template_accessory` WHERE `entry` = 33366;
+INSERT INTO `vehicle_template_accessory` (`entry`, `accessory_entry`, `seat_id`, `minion`, `summontype`, `summontimer`, `description`) VALUES
+(33366, 33367, 0, 1, 5, 0, 'Freya\'s Ward Targetting Reticle seat 0: Freya\'s Ward');
+
+DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 13) AND (`SourceEntry` IN (62906));
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+(13, 1, 62906, 0, 0, 31, 0, 3, 33366, 0, 0, 'Potential target of the spell is creature, entry is Freya\'s Ward Targetting Reticle (33366)');
 
 -- Freya's adds
 UPDATE `creature_template` SET `mechanic_immune_mask`= 

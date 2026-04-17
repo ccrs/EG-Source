@@ -65,7 +65,6 @@ enum FlameLeviathanSpells
     SPELL_MIMIRON_S_INFERNO        = 62909, // Tower of Flames
     SPELL_HODIR_S_FURY             = 62533, // Tower of Frost
     SPELL_FREYA_S_WARD             = 62906, // Tower of Nature
-    SPELL_FREYA_SUMMONS            = 62947, // Tower of Nature
     //TOWER ap & health spells
     SPELL_BUFF_TOWER_OF_STORMS     = 65076,
     SPELL_BUFF_TOWER_OF_FLAMES     = 65075,
@@ -73,12 +72,7 @@ enum FlameLeviathanSpells
     SPELL_BUFF_TOWER_OF_LIFE       = 64482,
     //Additional Spells
     SPELL_LASH                     = 65062,
-    SPELL_FREYA_S_WARD_EFFECT_1    = 62947,
-    SPELL_FREYA_S_WARD_EFFECT_2    = 62907,
     SPELL_AUTO_REPAIR              = 62705,
-    AURA_DUMMY_BLUE                = 63294,
-    AURA_DUMMY_GREEN               = 63295,
-    AURA_DUMMY_YELLOW              = 63292,
     SPELL_LIQUID_PYRITE            = 62494,
     SPELL_DUSTY_EXPLOSION          = 63360,
     SPELL_DUST_CLOUD_IMPACT        = 54740,
@@ -86,6 +80,10 @@ enum FlameLeviathanSpells
     SPELL_RIDE_VEHICLE             = 46598,
     // Ulduar Colossus
     SPELL_GROUND_SLAM              = 62625,
+    SPELL_LIGHTNING_SKYBEAM        = 62897,
+    SPELL_RED_SKYBEAM              = 63772,
+    SPELL_BLUE_SKYBEAM             = 63769,
+    SPELL_GREEN_SKYBEAM            = 62895,
 };
 
 enum FlameLeviathanCreatures
@@ -94,14 +92,14 @@ enum FlameLeviathanCreatures
     NPC_MECHANOLIFT                = 33214,
     NPC_LIQUID                     = 33189,
     NPC_CONTAINER                  = 33218,
-    NPC_THORIM_BEACON              = 33365,
-    NPC_MIMIRON_BEACON             = 33370,
-    NPC_HODIR_BEACON               = 33212,
-    NPC_FREYA_BEACON               = 33367,
-    NPC_THORIM_TARGET_BEACON       = 33364,
-    NPC_MIMIRON_TARGET_BEACON      = 33369,
-    NPC_HODIR_TARGET_BEACON        = 33108,
-    NPC_FREYA_TARGET_BEACON        = 33366,
+    NPC_THORIM_BEACON              = 33364,
+    NPC_THORIM_HAMMER              = 33365,
+    NPC_MIMIRON_BEACON             = 33369,
+    NPC_MIMIRON_INFERNO            = 33370,
+    NPC_HODIR_BEACON               = 33108,
+    NPC_HODIR_FURY                 = 33212,
+    NPC_FREYA_BEACON               = 33366,
+    NPC_FREYA_WARD                 = 33367,
     NPC_ULDUAR_GAUNTLET_GENERATOR  = 34159, // 33571, // Trigger tied to towers
 };
 
@@ -151,6 +149,7 @@ enum FlameLeviathanMisc
     DATA_ORBIT_ACHIEVEMENTS    = 1,
     VEHICLE_SPAWNS             = 5,
     FREYA_SPAWNS               = 4,
+    HODIR_SPAWNS               = 2,
     POINT_ENGAGE               = 1
 };
 
@@ -258,6 +257,12 @@ Position const FlameLeviathanFreyaBeacons[FREYA_SPAWNS] =
     { 185.62f, -119.10f, 409.81f, 0.0f },
     { 377.02f, 54.78f, 409.81f, 0.0f },
     { 185.62f, 54.78f, 409.81f, 0.0f },
+};
+
+Position const FlameLeviathanHodirBeacons[HODIR_SPAWNS] =
+{
+    { 219.9013f, 7.913357f, 409.7861f, 0.0f },
+    { 326.0777f, -74.99034f, 409.887f, 0.0f },
 };
 
 class boss_flame_leviathan : public CreatureScript
@@ -502,35 +507,37 @@ class boss_flame_leviathan : public CreatureScript
                             events.CancelEvent(EVENT_REPAIR);
                             break;
                         case EVENT_THORIM_S_HAMMER: // Tower of Storms
-                            for (uint8 i = 0; i < 7; ++i)
+                            if (Creature* thorim = DoSummon(NPC_THORIM_BEACON, me, float(urand(20, 60)), 8s, TEMPSUMMON_TIMED_DESPAWN))
                             {
-                                if (Creature* thorim = DoSummon(NPC_THORIM_BEACON, me, float(urand(20, 60)), 20s, TEMPSUMMON_TIMED_DESPAWN))
-                                    thorim->GetMotionMaster()->MoveRandom(100.f);
+                                thorim->GetMotionMaster()->MoveRandom(100.f);
+                                thorim->CastSpell(thorim, SPELL_LIGHTNING_SKYBEAM, true);
                             }
                             Talk(SAY_TOWER_STORM);
                             events.CancelEvent(EVENT_THORIM_S_HAMMER);
                             break;
                         case EVENT_MIMIRON_S_INFERNO: // Tower of Flames
-                            me->SummonCreature(NPC_MIMIRON_BEACON, FlameLeviathanInfernoStart);
+                            if (Creature* mimiron = DoSummon(NPC_MIMIRON_BEACON, FlameLeviathanInfernoStart, 0s))
+                                mimiron->CastSpell(mimiron, SPELL_RED_SKYBEAM, true);
                             Talk(SAY_TOWER_FLAME);
                             events.CancelEvent(EVENT_MIMIRON_S_INFERNO);
                             break;
-                        case EVENT_HODIR_S_FURY:      // Tower of Frost
-                            for (uint8 i = 0; i < 7; ++i)
+                        case EVENT_HODIR_S_FURY: // Tower of Frost
+                            for (Position const& currentPosition : FlameLeviathanHodirBeacons)
                             {
-                                if (Creature* hodir = DoSummon(NPC_HODIR_BEACON, me, 50, 0s))
-                                    hodir->GetMotionMaster()->MoveRandom(100.f);
+                                Position pos = currentPosition;
+                                me->MovePosition(pos, 50.f * (float)rand_norm(), (float)rand_norm() * static_cast<float>(2 * M_PI));
+                                if (Creature* hodir = DoSummon(NPC_HODIR_BEACON, pos, 0s))
+                                    hodir->CastSpell(hodir, SPELL_BLUE_SKYBEAM, true);
                             }
                             Talk(SAY_TOWER_FROST);
                             events.CancelEvent(EVENT_HODIR_S_FURY);
                             break;
-                        case EVENT_FREYA_S_WARD:    // Tower of Nature
+                        case EVENT_FREYA_S_WARD: // Tower of Nature
                             Talk(SAY_TOWER_NATURE);
-                            for (int32 i = 0; i < 4; ++i)
-                                me->SummonCreature(NPC_FREYA_BEACON, FlameLeviathanFreyaBeacons[i]);
+                            for (Position const& currentPosition : FlameLeviathanFreyaBeacons)
+                                if (TempSummon* summon = me->SummonCreature(NPC_FREYA_BEACON, currentPosition))
+                                    summon->CastSpell(summon, SPELL_GREEN_SKYBEAM, true);
 
-                            if (Unit* target = SelectTarget(SelectTargetMethod::Random))
-                                DoCast(target, SPELL_FREYA_S_WARD);
                             events.CancelEvent(EVENT_FREYA_S_WARD);
                             break;
                     }
@@ -1019,31 +1026,27 @@ class npc_thorims_hammer : public CreatureScript
             npc_thorims_hammerAI(Creature* creature) : ScriptedAI(creature)
             {
                 creature->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-                creature->CastSpell(me, AURA_DUMMY_BLUE, true);
                 creature->SetReactState(REACT_PASSIVE);
-                cooldown = 1 * IN_MILLISECONDS;
+                _cooldown.Reset(4s);
             }
 
-            void MoveInLineOfSight(Unit* who) override
+            void JustSummoned(Creature* summon) override
             {
-                if (who->IsCharmedOwnedByPlayerOrPlayer() && me->IsInRange(who, 0.f, 10.f, false) && cooldown == 0)
-                {
-                    if (Creature* trigger = me->SummonCreature(NPC_THORIM_TARGET_BEACON, me->GetPosition(), TEMPSUMMON_TIMED_DESPAWN, 2s))
-                        trigger->CastSpell(trigger, SPELL_THORIM_S_HAMMER, true);
-                    cooldown = 2 * IN_MILLISECONDS;
-                }
+                if (summon->GetEntry() == NPC_THORIM_HAMMER)
+                    _spellCaster = summon->GetGUID();
             }
 
             void UpdateAI(uint32 diff) override
             {
-                if (!me->HasAura(AURA_DUMMY_BLUE))
-                    me->CastSpell(me, AURA_DUMMY_BLUE, true);
-
-                if (cooldown)
-                    cooldown -= diff;
+                _cooldown.Update(diff);
+                if (_cooldown.Passed)
+                    if (Creature* caster = ObjectAccessor::GetCreature(*me, _spellCaster))
+                        caster->CastSpell(nullptr, SPELL_THORIM_S_HAMMER);
             }
+
         private:
-            uint32 cooldown;
+            TimeTracker _cooldown;
+            ObjectGuid _spellCaster;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -1056,63 +1059,58 @@ static constexpr uint32 PATH_ESCORT_MIMIRONS_INFERNO = 266962;
 
 class npc_mimirons_inferno : public CreatureScript
 {
-public:
-    npc_mimirons_inferno() : CreatureScript("npc_mimirons_inferno") { }
+    public:
+        npc_mimirons_inferno() : CreatureScript("npc_mimirons_inferno") { }
 
-    struct npc_mimirons_infernoAI : public EscortAI
-    {
-        npc_mimirons_infernoAI(Creature* creature) : EscortAI(creature)
+        struct npc_mimirons_infernoAI : public EscortAI
         {
-            Initialize();
-            creature->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
-            creature->CastSpell(creature, AURA_DUMMY_YELLOW, true);
-            creature->SetReactState(REACT_PASSIVE);
-        }
+            npc_mimirons_infernoAI(Creature* creature) : EscortAI(creature)
+            {
+                Initialize();
+                creature->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
+                creature->SetReactState(REACT_PASSIVE);
+            }
 
-        void Initialize()
-        {
-            infernoTimer = 2000;
-        }
+            void Initialize()
+            {
+                infernoTimer = 15000;
+            }
 
-        void Reset() override
-        {
-            Initialize();
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            EscortAI::UpdateAI(diff);
-
-            if (!HasEscortState(STATE_ESCORT_ESCORTING))
+            void Reset() override
             {
                 LoadPath(PATH_ESCORT_MIMIRONS_INFERNO);
                 Start(false, ObjectGuid::Empty, nullptr, false, true);
             }
-            else
+
+            void JustSummoned(Creature* summon) override
             {
+                if (summon->GetEntry() == NPC_MIMIRON_INFERNO)
+                    _spellCaster = summon->GetGUID();
+            }
+
+            void UpdateAI(uint32 diff) override
+            {
+                EscortAI::UpdateAI(diff);
+
                 if (infernoTimer <= diff)
                 {
-                    if (Creature* trigger = me->SummonCreature(NPC_MIMIRON_TARGET_BEACON, me->GetPosition(), TEMPSUMMON_TIMED_DESPAWN, 2s))
-                    {
-                        trigger->CastSpell(trigger, SPELL_MIMIRON_S_INFERNO, true);
-                        infernoTimer = 2000;
-                    }
+                    if (Creature* caster = ObjectAccessor::GetCreature(*me, _spellCaster))
+                        caster->CastSpell(nullptr, SPELL_MIMIRON_S_INFERNO);
+                    infernoTimer = 20000;
                 }
                 else
                     infernoTimer -= diff;
-
-                if (!me->HasAura(AURA_DUMMY_YELLOW))
-                    me->CastSpell(me, AURA_DUMMY_YELLOW, true);
             }
-        }
-    private:
-        uint32 infernoTimer;
-    };
 
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return GetUlduarAI<npc_mimirons_infernoAI>(creature);
-    }
+        private:
+            uint32 infernoTimer;
+            ObjectGuid _spellCaster;
+        };
+
+        CreatureAI* GetAI(Creature* creature) const override
+        {
+            return GetUlduarAI<npc_mimirons_infernoAI>(creature);
+        }
 };
 
 class npc_hodirs_fury : public CreatureScript
@@ -1125,32 +1123,42 @@ class npc_hodirs_fury : public CreatureScript
             npc_hodirs_furyAI(Creature* creature) : ScriptedAI(creature)
             {
                 creature->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-                creature->CastSpell(me, AURA_DUMMY_GREEN, true);
                 creature->SetReactState(REACT_PASSIVE);
-                cooldown = 1 * IN_MILLISECONDS;
+                _cooldown.Reset(3s);
             }
 
-            void MoveInLineOfSight(Unit* who) override
+            void JustSummoned(Creature* summon) override
             {
-                if (who->IsCharmedOwnedByPlayerOrPlayer() && me->IsInRange(who, 0.f, 7.f, false) && cooldown == 0)
-                {
-                    if (Creature* trigger = me->SummonCreature(NPC_HODIR_TARGET_BEACON, me->GetPosition(), TEMPSUMMON_TIMED_DESPAWN, 2s))
-                        trigger->CastSpell(trigger, SPELL_HODIR_S_FURY, true);
-                    cooldown = 2 * IN_MILLISECONDS;
-                }
+                if (summon->GetEntry() == NPC_HODIR_FURY)
+                    _spellCaster = summon->GetGUID();
+            }
+
+            void MovementInform(uint32 type, uint32 id) override
+            {
+                if (type != POINT_MOTION_TYPE || !id)
+                    return;
+
+                if (Creature* caster = ObjectAccessor::GetCreature(*me, _spellCaster))
+                    caster->CastSpell(nullptr, SPELL_HODIR_S_FURY);
             }
 
             void UpdateAI(uint32 diff) override
             {
-                if (!me->HasAura(AURA_DUMMY_GREEN))
-                    me->CastSpell(me, AURA_DUMMY_GREEN, true);
-
-                if (cooldown)
-                    cooldown -= diff;
+                _cooldown.Update(diff);
+                if (_cooldown.Passed())
+                {
+                    if (InstanceScript* instance = me->GetInstanceScript())
+                        if (Creature* leviathan = instance->GetCreature(DATA_FLAME_LEVIATHAN))
+                        {
+                            if (Unit* target = leviathan->AI()->SelectTarget(SelectTargetMethod::Random, 0))
+                                me->GetMotionMaster()->MovePoint(1, target->GetPosition());
+                        }
+                }
             }
 
         private:
-            uint32 cooldown;
+            TimeTracker _cooldown;
+            ObjectGuid _spellCaster;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -1169,7 +1177,6 @@ class npc_freyas_ward : public CreatureScript
             npc_freyas_wardAI(Creature* creature) : ScriptedAI(creature)
             {
                 Initialize();
-                creature->CastSpell(creature, AURA_DUMMY_GREEN, true);
                 creature->SetReactState(REACT_PASSIVE);
             }
 
@@ -1183,23 +1190,27 @@ class npc_freyas_ward : public CreatureScript
                 Initialize();
             }
 
+            void JustSummoned(Creature* summon) override
+            {
+                if (summon->GetEntry() == NPC_FREYA_WARD)
+                    _spellCaster = summon->GetGUID();
+            }
+
             void UpdateAI(uint32 diff) override
             {
                 if (summonTimer <= diff)
                 {
-                    DoCast(SPELL_FREYA_S_WARD_EFFECT_1);
-                    DoCast(SPELL_FREYA_S_WARD_EFFECT_2);
+                    if (Creature* caster = ObjectAccessor::GetCreature(*me, _spellCaster))
+                        caster->CastSpell(nullptr, SPELL_FREYA_S_WARD);
                     summonTimer = 20000;
                 }
                 else
                     summonTimer -= diff;
-
-                if (!me->HasAura(AURA_DUMMY_GREEN))
-                    me->CastSpell(me, AURA_DUMMY_GREEN, true);
             }
 
         private:
             uint32 summonTimer;
+            ObjectGuid _spellCaster;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -1238,7 +1249,7 @@ class npc_freya_ward_summon : public CreatureScript
 
                 if (lashTimer <= diff)
                 {
-                    DoCast(SPELL_LASH);
+                    DoCastVictim(SPELL_LASH);
                     lashTimer = 20000;
                 }
                 else
