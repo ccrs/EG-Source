@@ -318,7 +318,6 @@ class boss_flame_leviathan : public CreatureScript
             void JustEngagedWith(Unit* who) override
             {
                 BossAI::JustEngagedWith(who);
-                me->SetReactState(REACT_PASSIVE);
                 events.ScheduleEvent(EVENT_PURSUE, 1ms);
                 events.ScheduleEvent(EVENT_MISSILE, 1500ms, 4s);
                 events.ScheduleEvent(EVENT_VENT, 20s);
@@ -1030,23 +1029,15 @@ class npc_thorims_hammer : public CreatureScript
                 _cooldown.Reset(4s);
             }
 
-            void JustSummoned(Creature* summon) override
-            {
-                if (summon->GetEntry() == NPC_THORIM_HAMMER)
-                    _spellCaster = summon->GetGUID();
-            }
-
             void UpdateAI(uint32 diff) override
             {
                 _cooldown.Update(diff);
-                if (_cooldown.Passed)
-                    if (Creature* caster = ObjectAccessor::GetCreature(*me, _spellCaster))
-                        caster->CastSpell(nullptr, SPELL_THORIM_S_HAMMER);
+                if (_cooldown.Passed())
+                    DoCastAOE(SPELL_THORIM_S_HAMMER);
             }
 
         private:
             TimeTracker _cooldown;
-            ObjectGuid _spellCaster;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -1190,18 +1181,11 @@ class npc_freyas_ward : public CreatureScript
                 Initialize();
             }
 
-            void JustSummoned(Creature* summon) override
-            {
-                if (summon->GetEntry() == NPC_FREYA_WARD)
-                    _spellCaster = summon->GetGUID();
-            }
-
             void UpdateAI(uint32 diff) override
             {
                 if (summonTimer <= diff)
                 {
-                    if (Creature* caster = ObjectAccessor::GetCreature(*me, _spellCaster))
-                        caster->CastSpell(nullptr, SPELL_FREYA_S_WARD);
+                    DoCastAOE(SPELL_FREYA_S_WARD);
                     summonTimer = 20000;
                 }
                 else
@@ -1210,7 +1194,6 @@ class npc_freyas_ward : public CreatureScript
 
         private:
             uint32 summonTimer;
-            ObjectGuid _spellCaster;
         };
 
         CreatureAI* GetAI(Creature* creature) const override

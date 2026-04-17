@@ -1,8 +1,8 @@
 -- Pool of Tar
 UPDATE `creature_template` SET `flags_extra` = 1073750080 WHERE `entry` = 33090;
 -- Mimiron's inferno
-UPDATE `creature_template` SET `flags_extra` = 8320 WHERE `entry` = 33370;
-UPDATE `creature_template` SET `flags_extra` = 8384 WHERE `entry` = 33369;
+UPDATE `creature_template` SET `faction` = 1965,`flags_extra` = 8320 WHERE `entry` = 33370;
+UPDATE `creature_template` SET `faction` = 1965,`flags_extra` = 8384 WHERE `entry` = 33369;
 
 DELETE FROM `vehicle_template_accessory` WHERE `entry` = 33369;
 INSERT INTO `vehicle_template_accessory` (`entry`, `accessory_entry`, `seat_id`, `minion`, `summontype`, `summontimer`, `description`) VALUES
@@ -12,17 +12,34 @@ DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 13) AND (`SourceEntr
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
 (13, 1, 62909, 0, 0, 31, 0, 3, 33369, 0, 0, 'Potential target of the spell is creature, entry is Mimiron\'s Inferno Targetting Reticle (33369)');
 
+DELETE FROM `npc_spellclick_spells` WHERE `npc_entry` = 33369;
+INSERT INTO `npc_spellclick_spells` (`npc_entry`, `spell_id`, `cast_flags`, `user_type`) VALUES
+(33369, 46598, 1, 0);
+DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 18) AND (`SourceGroup` IN (33369));
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+(18, 33369, 46598, 0, 0, 31, 0, 3, 0, 0, 0, 'Clicker is creature');
+
+UPDATE `creature_template` SET `ScriptName` = 'npc_mimirons_inferno' WHERE `entry` = 33369;
+UPDATE `creature_template` SET `ScriptName` = '' WHERE `entry` = 33370;
+
 -- Thorim's hammer
-UPDATE `creature_template` SET `flags_extra` = 8320 WHERE `entry` = 33365;
-UPDATE `creature_template` SET `flags_extra` = 8384 WHERE `entry` = 33364;
+UPDATE `creature_template` SET `faction` = 1965,`flags_extra` = 8320 WHERE `entry` = 33365;
+UPDATE `creature_template` SET `faction` = 1965,`flags_extra` = 8384 WHERE `entry` = 33364;
 
 DELETE FROM `vehicle_template_accessory` WHERE `entry` = 33364;
 INSERT INTO `vehicle_template_accessory` (`entry`, `accessory_entry`, `seat_id`, `minion`, `summontype`, `summontimer`, `description`) VALUES
 (33364, 33365, 0, 1, 5, 0, 'Thorim\'s Hammer Targetting Reticle seat 0: Thorim\'s Hammer');
 
+DELETE FROM `npc_spellclick_spells` WHERE `npc_entry` = 33364;
+INSERT INTO `npc_spellclick_spells` (`npc_entry`, `spell_id`, `cast_flags`, `user_type`) VALUES
+(33364, 46598, 1, 0);
+DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 18) AND (`SourceGroup` IN (33364));
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+(18, 33364, 46598, 0, 0, 31, 0, 3, 0, 0, 0, 'Clicker is creature');
+
 -- Hodir's fury
-UPDATE `creature_template` SET `flags_extra` = 8320 WHERE `entry` = 33212;
-UPDATE `creature_template` SET `flags_extra` = 8384 WHERE `entry` = 33108;
+UPDATE `creature_template` SET `faction` = 1965,`flags_extra` = 8320 WHERE `entry` = 33212;
+UPDATE `creature_template` SET `faction` = 1965,`flags_extra` = 8384 WHERE `entry` = 33108;
 
 DELETE FROM `vehicle_template_accessory` WHERE `entry` = 33108;
 INSERT INTO `vehicle_template_accessory` (`entry`, `accessory_entry`, `seat_id`, `minion`, `summontype`, `summontimer`, `description`) VALUES
@@ -32,9 +49,19 @@ DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 13) AND (`SourceEntr
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
 (13, 1, 62533, 0, 0, 31, 0, 3, 33108, 0, 0, 'Potential target of the spell is creature, entry is Hodir\'s Fury Targetting Reticle (33108)');
 
+DELETE FROM `npc_spellclick_spells` WHERE `npc_entry` = 33108;
+INSERT INTO `npc_spellclick_spells` (`npc_entry`, `spell_id`, `cast_flags`, `user_type`) VALUES
+(33108, 46598, 1, 0);
+DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 18) AND (`SourceGroup` IN (33108));
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+(18, 33108, 46598, 0, 0, 31, 0, 3, 0, 0, 0, 'Clicker is creature');
+
+UPDATE `creature_template` SET `ScriptName` = 'npc_hodirs_fury' WHERE `entry` = 33108;
+UPDATE `creature_template` SET `ScriptName` = '' WHERE `entry` = 33212;
+
 -- Freya's ward
-UPDATE `creature_template` SET `flags_extra` = 8320 WHERE `entry` = 33367;
-UPDATE `creature_template` SET `flags_extra` = 8384 WHERE `entry` = 33366;
+UPDATE `creature_template` SET `faction` = 1965,`flags_extra` = 8320 WHERE `entry` = 33367;
+UPDATE `creature_template` SET `faction` = 1965,`flags_extra` = 8384 WHERE `entry` = 33366;
 
 DELETE FROM `vehicle_template_accessory` WHERE `entry` = 33366;
 INSERT INTO `vehicle_template_accessory` (`entry`, `accessory_entry`, `seat_id`, `minion`, `summontype`, `summontimer`, `description`) VALUES
@@ -43,6 +70,13 @@ INSERT INTO `vehicle_template_accessory` (`entry`, `accessory_entry`, `seat_id`,
 DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 13) AND (`SourceEntry` IN (62906));
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
 (13, 1, 62906, 0, 0, 31, 0, 3, 33366, 0, 0, 'Potential target of the spell is creature, entry is Freya\'s Ward Targetting Reticle (33366)');
+
+DELETE FROM `npc_spellclick_spells` WHERE `npc_entry` = 33366;
+INSERT INTO `npc_spellclick_spells` (`npc_entry`, `spell_id`, `cast_flags`, `user_type`) VALUES
+(33366, 46598, 1, 0);
+DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 18) AND (`SourceGroup` IN (33366));
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+(18, 33366, 46598, 0, 0, 31, 0, 3, 0, 0, 0, 'Clicker is creature');
 
 -- Freya's adds
 UPDATE `creature_template` SET `mechanic_immune_mask`= 
