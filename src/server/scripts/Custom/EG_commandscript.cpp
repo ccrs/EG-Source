@@ -1,6 +1,7 @@
 #include "Chat.h"
 #include "CustomFunctions.h"
 #include "ObjectMgr.h"
+#include "Pet.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "SmartEnum.h"
@@ -285,32 +286,41 @@ public:
         if (!player)
             return false;
 
-        if (player->GetClass() == CLASS_DRUID)
+        CustomFlags flag = CustomFlags::CUSTOM_FLAG_NONE;
+        switch (player->GetClass())
         {
+            case CLASS_DRUID:
+                flag = CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE;
+                break;
+            case CLASS_DEATH_KNIGHT:
+                flag = CustomFlags::CUSTOM_FLAG_VISUALS_DEATH_KNIGHT_ACTIVE;
+                break;
+            case CLASS_SHAMAN:
+                flag = CustomFlags::CUSTOM_FLAG_VISUALS_SHAMAN_ACTIVE;
+                break;
+            case CLASS_WARLOCK:
+                flag = CustomFlags::CUSTOM_FLAG_VISUALS_WARLOCK_ACTIVE;
+                break;
+            case CLASS_MAGE:
+                flag = CustomFlags::CUSTOM_FLAG_VISUALS_MAGE_ACTIVE;
+                break;
+            default:
+                break;
+        }
+
+        if (flag != CustomFlags::CUSTOM_FLAG_NONE)
             if (active)
             {
-                player->AddCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE);
-                handler->SendSysMessage("Alternative visuals for druid activated.");
+                player->AddCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, flag);
+                handler->SendSysMessage("Alternative visuals activated.");
             }
             else
             {
-                player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE);
-                handler->SendSysMessage("Alternative visuals for druid deactivated.");
+                player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, flag);
+                if (Pet* pet = player->GetPet())
+                    pet->Remove(PET_SAVE_NOT_IN_SLOT, true);
+                handler->SendSysMessage("Alternative visuals deactivated.");
             }
-        }
-        else if (player->GetClass() == CLASS_DEATH_KNIGHT)
-        {
-            if (active)
-            {
-                player->AddCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DEATH_KNIGHT_ACTIVE);
-                handler->SendSysMessage("Alternative visuals for death knight activated.");
-            }
-            else
-            {
-                player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DEATH_KNIGHT_ACTIVE);
-                handler->SendSysMessage("Alternative visuals for death knight deactivated.");
-            }
-        }
         return true;
     }
 };

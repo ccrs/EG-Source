@@ -2022,13 +2022,50 @@ float Pet::GetNativeObjectScale() const
 
         return scale;
     }
+    if (Player* owner = GetOwner()->ToPlayer())
+        if (owner->GetClass() == CLASS_WARLOCK && owner->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_WARLOCK_ACTIVE))
+            switch (GetEntry())
+            {
+                case 1863: // Succubus
+                    return 0.5f;
+                case 417: // Felhunter
+                    return 0.5f;
+                default:
+                    break;
+            }
 
     return Guardian::GetNativeObjectScale();
 }
 
 void Pet::SetDisplayId(uint32 modelId)
 {
-    Guardian::SetDisplayId(modelId);
+    uint32 model = modelId;
+    if (Player* owner = GetOwner()->ToPlayer())
+    {
+        if (owner->GetClass() == CLASS_WARLOCK && owner->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_WARLOCK_ACTIVE))
+            switch (GetEntry())
+            {
+                case 1860: // Voidwalker
+                    model = 19196;
+                    break;
+                case 1863: // Succubus
+                    model = 22596;
+                    break;
+                case 416: // Imp
+                    model = 18878;
+                    break;
+                case 417: // Felhunter
+                    model = 19976;
+                    break;
+                case 17252: // Felguard
+                    model = 22811;
+                    break;
+                default:
+                    break;
+            }
+    }
+
+    Guardian::SetDisplayId(model);
 
     if (!isControlled())
         return;

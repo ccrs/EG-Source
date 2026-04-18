@@ -12317,9 +12317,18 @@ uint32 Unit::GetModelForForm(ShapeshiftForm form, uint32 spellId) const
     {
         switch (form)
         {
+            case FORM_TRAVEL:
+                if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE))
+                {
+                    if (Player::TeamForRace(GetRace()) == ALLIANCE)
+                        return 598;
+                    else
+                        return 945;
+                }
+                break;
             case FORM_MOONKIN:
                 if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE))
-                    return 12235;
+                    return 17867;
                 break;
             case FORM_CAT:
                 if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE))
@@ -12499,6 +12508,8 @@ uint32 Unit::GetModelForForm(ShapeshiftForm form, uint32 spellId) const
                 if (Player::TeamForRace(GetRace()) == ALLIANCE)
                     return 21243;
                 return 21244;
+            case FORM_GHOSTWOLF:
+                break;
             default:
                 break;
         }

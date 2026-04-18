@@ -381,6 +381,10 @@ void Minion::SetDisplayId(uint32 modelId)
         if (Player* owner = GetOwner()->ToPlayer())
             if (owner->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DEATH_KNIGHT_ACTIVE))
                 value = 31006;
+    if (GetEntry() == 89)
+        if (Player* owner = GetOwner()->ToPlayer())
+            if (owner->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_WARLOCK_ACTIVE))
+                value = 21145;
     return TempSummon::SetDisplayId(value);
 }
 
@@ -390,6 +394,10 @@ float Minion::GetNativeObjectScale() const
         if (Player* owner = GetOwner()->ToPlayer())
             if (owner->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DEATH_KNIGHT_ACTIVE))
                 return 0.2f;
+    if (GetEntry() == 89)
+        if (Player* owner = GetOwner()->ToPlayer())
+            if (owner->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_WARLOCK_ACTIVE))
+                return 0.1f;
     return TempSummon::GetNativeObjectScale();
 }
 

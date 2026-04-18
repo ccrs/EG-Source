@@ -2104,6 +2104,8 @@ void AuraEffect::HandleAuraTransform(AuraApplication const* aurApp, uint8 mode, 
                         if (Unit* caster = GetCaster())
                             if (caster->HasAura(52648))         // Glyph of the Penguin
                                 model_id = 26452;
+                            else if (caster->IsPlayer() && caster->ToPlayer()->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_MAGE_ACTIVE))
+                                model_id = 1060;
 
                     target->SetDisplayId(model_id);
 
