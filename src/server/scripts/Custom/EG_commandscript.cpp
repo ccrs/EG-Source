@@ -309,6 +309,7 @@ public:
         }
 
         if (flag != CustomFlags::CUSTOM_FLAG_NONE)
+        {
             if (active)
             {
                 player->AddCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, flag);
@@ -321,6 +322,7 @@ public:
                     pet->Remove(PET_SAVE_NOT_IN_SLOT, true);
                 handler->SendSysMessage("Alternative visuals deactivated.");
             }
+        }
         return true;
     }
 };
