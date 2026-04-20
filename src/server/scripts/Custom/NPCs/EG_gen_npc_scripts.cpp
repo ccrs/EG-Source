@@ -885,38 +885,42 @@ struct EG_npc_ulduar_tower_gauntlet_generator : public ScriptedAI
     EG_npc_ulduar_tower_gauntlet_generator(Creature* creature) : ScriptedAI(creature)
     {
         _summonTimer = 2000;
+        _summon = false;
     }
 
     void Reset() override
     {
-        GameObject* beacon = me->FindNearestGameObjectWithOptions(5.f, FindGameObjectOptions{ .GameObjectIds = { 194398, 194399, 194400, 194401, 194402, 194403, 194404, 194405, 194406, 194407, 194408, 194409, 194410, 194411, 194412, 194413, 194414, 194415, 194506 } });
+        GameObject* beacon = me->FindNearestGameObjectWithOptions(10.f, FindGameObjectOptions{ .GameObjectIds = { 194375, 194370, 194371, 194377,
+            194398, 194399, 194400, 194401, 194402, 194403, 194404, 194405, 194406, 194407, 194408, 194409, 194410, 194411, 194412, 194413, 194414, 194415, 194506 } });
         if (beacon)
         {
-            if (beacon->GetGoState() == GO_STATE_DESTROYED)
+            if (beacon->GetDestructibleState() == GO_DESTRUCTIBLE_DESTROYED)
+            {
                 me->DespawnOrUnsummon();
+                _summon = false;
+            }
+            _summon = true;
             _beaconGuid = beacon->GetGUID();
         }
     }
 
     void UpdateAI(uint32 diff) override
     {
-        if (_summonTimer <= diff)
+        if (_summon && _summonTimer <= diff)
         {
             GameObject* beacon = ObjectAccessor::GetGameObject(*me, _beaconGuid);
-            if (!_beaconGuid.IsEmpty() && (!beacon || beacon->GetGoState() == GO_STATE_DESTROYED))
+            if (!_beaconGuid.IsEmpty() && (!beacon || beacon->GetDestructibleState() == GO_DESTRUCTIBLE_DESTROYED))
             {
                 me->DespawnOrUnsummon();
+                _summon = false;
                 return;
             }
-            Creature* target = me->FindNearestCreature(NPC_SIEGE_ENGINE, 100.0f, true);
-            if (!target)
-                target = me->FindNearestCreature(NPC_DEMOLISHER, 100.0f, true);
-            if (!target)
-                target = me->FindNearestCreature(NPC_CHOPPER, 100.0f, true);
-            if (target)
+            std::list<Creature*> targets;
+            me->GetCreatureListWithOptionsInGrid(targets, 60.0f, FindCreatureOptions{ .CreatureIds = { NPC_DEMOLISHER, NPC_CHOPPER, NPC_SIEGE_ENGINE }, .IsAlive = true });
+            if (!targets.empty())
                 if (Creature* summon = me->SummonCreature(NPC_STEELFORGED_DEFENDER, me->GetPosition(), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10s))
                 {
-                    summon->AI()->AttackStart(target);
+                    summon->AI()->AttackStart(Trinity::Containers::SelectRandomContainerElement(targets));
                     if (!summon->IsEngaged())
                         summon->DespawnOrUnsummon();
                 }
@@ -928,6 +932,7 @@ struct EG_npc_ulduar_tower_gauntlet_generator : public ScriptedAI
     }
 private:
     uint32 _summonTimer;
+    bool _summon;
     ObjectGuid _beaconGuid;
 };
 
