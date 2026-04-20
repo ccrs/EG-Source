@@ -2028,8 +2028,6 @@ float Pet::GetNativeObjectScale() const
             {
                 case 1863: // Succubus
                     return 0.5f;
-                case 417: // Felhunter
-                    return 0.5f;
                 default:
                     break;
             }
@@ -2055,7 +2053,7 @@ void Pet::SetDisplayId(uint32 modelId)
                     model = 18878;
                     break;
                 case 417: // Felhunter
-                    model = 19976;
+                    model = 1468;
                     break;
                 case 17252: // Felguard
                     model = 22811;

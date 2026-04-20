@@ -291,10 +291,19 @@ class spell_pal_avenging_wrath : public AuraScript
 
         // Blizz seems to just apply aura without bothering to cast
         target->AddAura(SPELL_PALADIN_IMMUNE_SHIELD_MARKER, target);
+
+        if (Player* owner = target->ToPlayer())
+            if (owner->GetClass() == CLASS_PALADIN && owner->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_PALADIN_ACTIVE))
+            {
+                owner->SetDisplayId(22209);
+                owner->Yell("For the Light!", Language::LANG_UNIVERSAL);
+            }
     }
 
     void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
+        if (GetTarget()->GetDisplayId() == 22209)
+            GetTarget()->RestoreDisplayId();
         GetTarget()->RemoveAurasDueToSpell(SPELL_PALADIN_SANCTIFIED_WRATH);
     }
 

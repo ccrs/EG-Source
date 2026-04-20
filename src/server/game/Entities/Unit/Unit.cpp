@@ -12321,7 +12321,7 @@ uint32 Unit::GetModelForForm(ShapeshiftForm form, uint32 spellId) const
                 if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE))
                 {
                     if (Player::TeamForRace(GetRace()) == ALLIANCE)
-                        return 598;
+                        return 11454;
                     else
                         return 945;
                 }

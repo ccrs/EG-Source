@@ -304,6 +304,9 @@ public:
             case CLASS_MAGE:
                 flag = CustomFlags::CUSTOM_FLAG_VISUALS_MAGE_ACTIVE;
                 break;
+            case CLASS_PALADIN:
+                flag = CustomFlags::CUSTOM_FLAG_VISUALS_PALADIN_ACTIVE;
+                break;
             default:
                 break;
         }

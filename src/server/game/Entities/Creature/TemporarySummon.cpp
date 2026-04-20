@@ -384,7 +384,7 @@ void Minion::SetDisplayId(uint32 modelId)
     if (GetEntry() == 89)
         if (Player* owner = GetOwner()->ToPlayer())
             if (owner->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_WARLOCK_ACTIVE))
-                value = 21145;
+                value = 18139;
     return TempSummon::SetDisplayId(value);
 }
 
@@ -397,7 +397,7 @@ float Minion::GetNativeObjectScale() const
     if (GetEntry() == 89)
         if (Player* owner = GetOwner()->ToPlayer())
             if (owner->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_WARLOCK_ACTIVE))
-                return 0.1f;
+                return 0.3f;
     return TempSummon::GetNativeObjectScale();
 }
 
