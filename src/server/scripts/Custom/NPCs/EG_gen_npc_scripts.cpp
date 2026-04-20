@@ -1195,7 +1195,9 @@ struct EG_npc_storm_tempered_keeper : public ScriptedAI
                     break;
                 case EVENT_SUMMON_SPHERE:
                     if (!_keeperDead)
-                        DoCast(SPELL_SUMMON_SPHERE);
+                        if (Creature* othKeeper = ObjectAccessor::GetCreature(*me, _otherKeeper))
+                            if (!othKeeper->HasAura(SPELL_SUPERCHARGED))
+                                DoCast(SPELL_SUMMON_SPHERE);
                     _events.ScheduleEvent(EVENT_SUMMON_SPHERE, 20s, 35s);
                     break;
                 case EVENT_CHECK_KEEPER:
