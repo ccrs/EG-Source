@@ -22,6 +22,10 @@ INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry
 UPDATE `creature_template` SET `ScriptName` = 'npc_mimirons_inferno' WHERE `entry` = 33369;
 UPDATE `creature_template` SET `ScriptName` = '' WHERE `entry` = 33370;
 
+DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_flame_leviathan_mimirons_inferno';
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(62910, 'EG_spell_flame_leviathan_mimirons_inferno');
+
 -- Thorim's hammer
 UPDATE `creature_template` SET `faction` = 1965,`flags_extra` = 8320 WHERE `entry` = 33365;
 UPDATE `creature_template` SET `faction` = 1965,`flags_extra` = 8384 WHERE `entry` = 33364;
@@ -36,6 +40,10 @@ INSERT INTO `npc_spellclick_spells` (`npc_entry`, `spell_id`, `cast_flags`, `use
 DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 18) AND (`SourceGroup` IN (33364));
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
 (18, 33364, 46598, 0, 0, 31, 0, 3, 0, 0, 0, 'Clicker is creature');
+
+DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 13) AND (`SourceEntry` IN (62911));
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+(13, 1, 62911, 0, 0, 31, 0, 3, 33364, 0, 0, 'Potential target of the spell is creature, entry is Thorim\'s Hammer Targetting Reticle (33364)');
 
 -- Hodir's fury
 UPDATE `creature_template` SET `faction` = 1965,`flags_extra` = 8320 WHERE `entry` = 33212;

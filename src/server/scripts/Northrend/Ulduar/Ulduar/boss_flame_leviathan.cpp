@@ -506,14 +506,27 @@ class boss_flame_leviathan : public CreatureScript
                             events.CancelEvent(EVENT_REPAIR);
                             break;
                         case EVENT_THORIM_S_HAMMER: // Tower of Storms
-                            if (Creature* thorim = DoSummon(NPC_THORIM_BEACON, me, float(urand(20, 60)), 8s, TEMPSUMMON_TIMED_DESPAWN))
+                        {
+                            uint8 count = 0;
+                            for (auto const& summonGUID : summons)
+                                if (Creature* summon = ObjectAccessor::GetCreature(*me, summonGUID))
+                                    if (summon->GetEntry() == NPC_THORIM_BEACON)
+                                        ++count;
+                            if (count < 4)
                             {
-                                thorim->GetMotionMaster()->MoveRandom(100.f);
-                                thorim->CastSpell(thorim, SPELL_LIGHTNING_SKYBEAM, true);
+                                Position pos = me->GetPosition();
+                                me->MovePosition(pos, frand(30.f, 70.f) * (float)rand_norm(), (float)rand_norm() * static_cast<float>(2 * M_PI));
+                                if (Creature* thorim = DoSummon(NPC_THORIM_BEACON, pos, 8s, TEMPSUMMON_TIMED_DESPAWN))
+                                {
+                                    thorim->GetMotionMaster()->MoveRandom(100.f);
+                                    thorim->CastSpell(thorim, SPELL_LIGHTNING_SKYBEAM, true);
+                                }
                             }
-                            Talk(SAY_TOWER_STORM);
-                            events.CancelEvent(EVENT_THORIM_S_HAMMER);
+                            if (count == 0)
+                                Talk(SAY_TOWER_STORM);
+                            events.ScheduleEvent(EVENT_THORIM_S_HAMMER, count < 4 ? 1s : 6s);
                             break;
+                        }
                         case EVENT_MIMIRON_S_INFERNO: // Tower of Flames
                             if (Creature* mimiron = DoSummon(NPC_MIMIRON_BEACON, FlameLeviathanInfernoStart, 0s))
                                 mimiron->CastSpell(mimiron, SPELL_RED_SKYBEAM, true);
@@ -1027,17 +1040,22 @@ class npc_thorims_hammer : public CreatureScript
                 creature->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                 creature->SetReactState(REACT_PASSIVE);
                 _cooldown.Reset(4s);
+                _casted = false;
             }
 
             void UpdateAI(uint32 diff) override
             {
                 _cooldown.Update(diff);
-                if (_cooldown.Passed())
+                if (!_casted && _cooldown.Passed())
+                {
+                    _casted = true;
                     DoCastAOE(SPELL_THORIM_S_HAMMER);
+                }
             }
 
         private:
             TimeTracker _cooldown;
+            bool _casted;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -1071,6 +1089,8 @@ class npc_mimirons_inferno : public CreatureScript
             {
                 LoadPath(PATH_ESCORT_MIMIRONS_INFERNO);
                 Start(false, ObjectGuid::Empty, nullptr, false, true);
+                SetDespawnAtFar(false);
+                SetDespawnAtEnd(false);
             }
 
             void JustSummoned(Creature* summon) override
@@ -1085,9 +1105,10 @@ class npc_mimirons_inferno : public CreatureScript
 
                 if (infernoTimer <= diff)
                 {
+                    me->PauseMovement(4000, MOTION_SLOT_DEFAULT);
                     if (Creature* caster = ObjectAccessor::GetCreature(*me, _spellCaster))
                         caster->CastSpell(nullptr, SPELL_MIMIRON_S_INFERNO);
-                    infernoTimer = 20000;
+                    infernoTimer = 24000;
                 }
                 else
                     infernoTimer -= diff;
@@ -1095,6 +1116,7 @@ class npc_mimirons_inferno : public CreatureScript
 
         private:
             uint32 infernoTimer;
+            TimeTracker _pauseTimer;
             ObjectGuid _spellCaster;
         };
 
@@ -1116,6 +1138,7 @@ class npc_hodirs_fury : public CreatureScript
                 creature->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                 creature->SetReactState(REACT_PASSIVE);
                 _cooldown.Reset(3s);
+                _moving = false;
             }
 
             void JustSummoned(Creature* summon) override
@@ -1131,18 +1154,23 @@ class npc_hodirs_fury : public CreatureScript
 
                 if (Creature* caster = ObjectAccessor::GetCreature(*me, _spellCaster))
                     caster->CastSpell(nullptr, SPELL_HODIR_S_FURY);
+                _cooldown.Reset(5s);
+                _moving = false;
             }
 
             void UpdateAI(uint32 diff) override
             {
                 _cooldown.Update(diff);
-                if (_cooldown.Passed())
+                if (!_moving && _cooldown.Passed())
                 {
                     if (InstanceScript* instance = me->GetInstanceScript())
                         if (Creature* leviathan = instance->GetCreature(DATA_FLAME_LEVIATHAN))
                         {
                             if (Unit* target = leviathan->AI()->SelectTarget(SelectTargetMethod::Random, 0))
-                                me->GetMotionMaster()->MovePoint(1, target->GetPosition());
+                            {
+                                me->GetMotionMaster()->MovePoint(1, target->GetPositionX(), target->GetPositionY(), target->GetFloorZ());
+                                _moving = true;
+                            }
                         }
                 }
             }
@@ -1150,6 +1178,7 @@ class npc_hodirs_fury : public CreatureScript
         private:
             TimeTracker _cooldown;
             ObjectGuid _spellCaster;
+            bool _moving;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -1173,7 +1202,7 @@ class npc_freyas_ward : public CreatureScript
 
             void Initialize()
             {
-                summonTimer = 5000;
+                _summonTimer.Reset(5s);
             }
 
             void Reset() override
@@ -1183,17 +1212,16 @@ class npc_freyas_ward : public CreatureScript
 
             void UpdateAI(uint32 diff) override
             {
-                if (summonTimer <= diff)
+                _summonTimer.Update(diff);
+                if (_summonTimer.Passed())
                 {
                     DoCastAOE(SPELL_FREYA_S_WARD);
-                    summonTimer = 20000;
+                    _summonTimer.Reset(30s);
                 }
-                else
-                    summonTimer -= diff;
             }
 
         private:
-            uint32 summonTimer;
+            TimeTracker _summonTimer;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -1223,6 +1251,9 @@ class npc_freya_ward_summon : public CreatureScript
             void Reset() override
             {
                 Initialize();
+                if (InstanceScript* instance = me->GetInstanceScript())
+                    if (Creature* leviathan = instance->GetCreature(DATA_FLAME_LEVIATHAN))
+                        leviathan->AI()->JustSummoned(me);
             }
 
             void UpdateAI(uint32 diff) override
@@ -1897,6 +1928,30 @@ class spell_vehicle_throw_passenger : public SpellScriptLoader
         }
 };
 
+// 62910 - Mimiron's Inferno
+class EG_spell_flame_leviathan_mimirons_inferno : public SpellScript
+{
+    PrepareSpellScript(EG_spell_flame_leviathan_mimirons_inferno);
+
+    void FilterTargets(std::list<WorldObject*>& targets)
+    {
+        targets.remove_if([](WorldObject* obj) -> bool
+        {
+            // remove GMs
+            if (Player* player = obj->ToPlayer())
+                return player->IsGameMaster();
+
+            return !obj->IsUnit() || (!obj->GetCharmerOrOwnerPlayerOrPlayerItself() && !obj->ToUnit()->GetControllingPlayer());
+        });
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(EG_spell_flame_leviathan_mimirons_inferno::FilterTargets, EFFECT_0, TARGET_UNIT_DEST_AREA_ENEMY);
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(EG_spell_flame_leviathan_mimirons_inferno::FilterTargets, EFFECT_1, TARGET_UNIT_DEST_AREA_ENEMY);
+    }
+};
+
 void AddSC_boss_flame_leviathan()
 {
     new boss_flame_leviathan();
@@ -1934,4 +1989,5 @@ void AddSC_boss_flame_leviathan()
     new spell_systems_shutdown();
     new spell_pursue();
     new spell_vehicle_throw_passenger();
+    RegisterSpellScript(EG_spell_flame_leviathan_mimirons_inferno);
 }
