@@ -12498,13 +12498,13 @@ uint32 Unit::GetModelForForm(ShapeshiftForm form, uint32 spellId) const
                     return 2289;
             case FORM_FLIGHT:
                 if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE))
-                    return 23483;
+                    return 20589;
                 if (Player::TeamForRace(GetRace()) == ALLIANCE)
                     return 20857;
                 return 20872;
             case FORM_FLIGHT_EPIC:
                 if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE))
-                    return 23483;
+                    return 20589;
                 if (Player::TeamForRace(GetRace()) == ALLIANCE)
                     return 21243;
                 return 21244;
