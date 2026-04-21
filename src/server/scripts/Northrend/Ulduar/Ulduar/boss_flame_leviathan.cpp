@@ -125,8 +125,9 @@ enum FlameLeviathanEvents
     EVENT_MIMIRON_S_INFERNO    = 9,    // Tower of Flames
     EVENT_HODIR_S_FURY         = 10,   // Tower of Frost
     EVENT_FREYA_S_WARD         = 11,   // Tower of Nature
+    EVENT_CHECK_WIPE           = 12,
     // Ulduar Colossus
-    EVENT_GROUND_SLAM          = 12,
+    EVENT_GROUND_SLAM,
 };
 
 enum FlameLeviathanSeats
@@ -325,6 +326,7 @@ class boss_flame_leviathan : public CreatureScript
                 events.ScheduleEvent(EVENT_SHUTDOWN, 150s);
                 events.ScheduleEvent(EVENT_SPEED, 15s);
                 events.ScheduleEvent(EVENT_SUMMON, 1s);
+                events.RescheduleEvent(EVENT_CHECK_WIPE, 5s);
 
                 CheckTowers();
             }
@@ -525,7 +527,7 @@ class boss_flame_leviathan : public CreatureScript
                             }
                             if (count == 0)
                                 Talk(SAY_TOWER_STORM);
-                            events.ScheduleEvent(EVENT_THORIM_S_HAMMER, count < 4 ? 1s : 6s);
+                            events.RescheduleEvent(EVENT_THORIM_S_HAMMER, count < 4 ? 1s : 6s);
                             break;
                         }
                         case EVENT_MIMIRON_S_INFERNO: // Tower of Flames
@@ -553,6 +555,30 @@ class boss_flame_leviathan : public CreatureScript
 
                             events.CancelEvent(EVENT_FREYA_S_WARD);
                             break;
+                        case EVENT_CHECK_WIPE:
+                        {
+                            auto combatReferences = me->GetCombatManager().GetPvECombatRefs();
+                            if (combatReferences.empty())
+                            {
+                                EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
+                                break;
+                            }
+
+                            bool evade = true;
+                            for (std::unordered_map<ObjectGuid, CombatReference*>::value_type current : combatReferences)
+                            {
+                                if (current.second->GetOther(me)->IsCharmedOwnedByPlayerOrPlayer() || current.second->GetOther(me)->IsControlledByPlayer())
+                                {
+                                    evade = false;
+                                    break;
+                                }
+                            }
+                            if (evade)
+                                EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
+                            else
+                                events.RescheduleEvent(EVENT_CHECK_WIPE, 5s);
+                            break;
+                        }
                     }
 
                     if (me->HasUnitState(UNIT_STATE_CASTING))
