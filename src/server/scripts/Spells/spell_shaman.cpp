@@ -261,6 +261,9 @@ class spell_sha_bloodlust : public SpellScript
     void RemoveInvalidTargets(std::list<WorldObject*>& targets)
     {
         targets.remove_if(Trinity::UnitAuraCheck(true, SPELL_SHAMAN_SATED));
+        targets.remove_if(Trinity::UnitAuraCheck(true, SPELL_SHAMAN_EXHAUSTION));
+        targets.remove_if(Trinity::UnitAuraCheck(true, 32182));
+        targets.remove_if(Trinity::UnitAuraCheck(true, 2825));
     }
 
     void ApplyDebuff()
@@ -860,7 +863,10 @@ class spell_sha_heroism : public SpellScript
 
     void RemoveInvalidTargets(std::list<WorldObject*>& targets)
     {
+        targets.remove_if(Trinity::UnitAuraCheck(true, SPELL_SHAMAN_SATED));
         targets.remove_if(Trinity::UnitAuraCheck(true, SPELL_SHAMAN_EXHAUSTION));
+        targets.remove_if(Trinity::UnitAuraCheck(true, 32182));
+        targets.remove_if(Trinity::UnitAuraCheck(true, 2825));
     }
 
     void ApplyDebuff()
