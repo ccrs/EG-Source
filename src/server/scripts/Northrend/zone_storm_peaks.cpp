@@ -208,8 +208,6 @@ struct npc_icefang : public EscortAI
 {
     npc_icefang(Creature* creature) : EscortAI(creature)
     {
-        SetDespawnAtEnd(true);
-        SetDespawnAtFar(true);
     }
 
     void AttackStart(Unit* /*who*/) override { }
@@ -224,6 +222,8 @@ struct npc_icefang : public EscortAI
             {
                 LoadPath(PATH_ESCORT_ICEFANG);
                 Start(false, who->GetGUID());
+                SetDespawnAtEnd(true);
+                SetDespawnAtFar(true);
             }
         }
     }
