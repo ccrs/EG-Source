@@ -608,9 +608,8 @@ class boss_flame_leviathan : public CreatureScript
                 switch (id)
                 {
                     case POINT_ENGAGE:
-                        me->SetReactState(REACT_AGGRESSIVE);
                         me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
-                        DoZoneInCombat();
+                        SetAggressiveStateAfter(2s);
                     default:
                         break;
                 }
@@ -1807,7 +1806,7 @@ class FlameLeviathanPursuedTargetSelector
                 return true;
 
             //! NPC entries must match
-            if (creatureTarget->GetEntry() != NPC_SALVAGED_DEMOLISHER && creatureTarget->GetEntry() != NPC_SALVAGED_SIEGE_ENGINE)
+            if (creatureTarget->GetEntry() != NPC_SALVAGED_DEMOLISHER && creatureTarget->GetEntry() != NPC_SALVAGED_SIEGE_ENGINE && creatureTarget->GetEntry() != NPC_SALVAGED_CHOPPER)
                 return true;
 
             //! NPC must be a valid vehicle installation
