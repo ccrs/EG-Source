@@ -1080,7 +1080,7 @@ bool WorldObject::IsInWorldPvpZone() const
     switch (GetZoneId())
     {
         case AREA_WINTERGRASP: // Wintergrasp
-            return sBattlefieldMgr->GetEnabledBattlefield(GetZoneId());
+            return true;
         default:
             return false;
     }
