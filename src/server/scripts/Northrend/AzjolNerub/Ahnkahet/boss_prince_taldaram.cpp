@@ -83,7 +83,7 @@ enum PrinceTaldaramEvents
 };
 
 float constexpr PrinceTaldaramSphereDistance = 25.f;
-float constexpr PrinceTaldaramSphereAngleOffset = float(M_PI) / 2.f;
+float constexpr PrinceTaldaramSphereAngleOffset = 2.18166f;
 float constexpr PrinceTaldaramGroundPositionZ = 11.30809f;
 
 struct boss_prince_taldaram : public BossAI
