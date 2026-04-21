@@ -595,6 +595,17 @@ class instance_ulduar : public InstanceMapScript
                     case DATA_FLAME_LEVIATHAN:
                         if (state == DONE)
                             _events.ScheduleEvent(EVENT_DESPAWN_LEVIATHAN_VEHICLES, 5s);
+                        else if (state == FAIL)
+                        {
+                            std::vector<RespawnInfo const*> data;
+                            instance->GetRespawnInfo(data, SPAWN_TYPEMASK_ALL);
+                            if (!data.empty())
+                            {
+                                for (RespawnInfo const* info : data)
+                                    if (info->entry == NPC_SALVAGED_DEMOLISHER || info->entry == NPC_SALVAGED_SIEGE_ENGINE || info->entry == NPC_SALVAGED_CHOPPER)
+                                        instance->Respawn(info->type, info->spawnId);
+                            }
+                        }
                         break;
                     case DATA_IGNIS:
                     case DATA_RAZORSCALE:
