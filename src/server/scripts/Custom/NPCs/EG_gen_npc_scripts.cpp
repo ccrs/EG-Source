@@ -925,7 +925,7 @@ struct EG_npc_ulduar_tower_gauntlet_generator : public ScriptedAI
                         summon->DespawnOrUnsummon();
                 }
 
-            _summonTimer = 3000;
+            _summonTimer = 2000;
         }
         else
             _summonTimer -= diff;
