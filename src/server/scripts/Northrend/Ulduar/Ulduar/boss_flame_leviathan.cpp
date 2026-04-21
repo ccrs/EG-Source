@@ -74,6 +74,7 @@ enum FlameLeviathanSpells
     SPELL_LASH                     = 65062,
     SPELL_AUTO_REPAIR              = 62705,
     SPELL_LIQUID_PYRITE            = 62494,
+    SPELL_LIQUID_PYRITE_RELOAD     = 62496,
     SPELL_DUSTY_EXPLOSION          = 63360,
     SPELL_DUST_CLOUD_IMPACT        = 54740,
     AURA_STEALTH_DETECTION         = 18950,
@@ -90,7 +91,7 @@ enum FlameLeviathanCreatures
 {
     NPC_SEAT                       = 33114,
     NPC_MECHANOLIFT                = 33214,
-    NPC_LIQUID                     = 33189,
+    NPC_LIQUID_PYRITE              = 33189,
     NPC_CONTAINER                  = 33218,
     NPC_THORIM_BEACON              = 33364,
     NPC_THORIM_HAMMER              = 33365,
@@ -487,8 +488,7 @@ class boss_flame_leviathan : public CreatureScript
                             break;
                         case EVENT_SUMMON:
                             if (summons.size() < 15)
-                                if (Creature* lift = DoSummonFlyer(NPC_MECHANOLIFT, me, 30.0f, 50.0f, 0s))
-                                    lift->GetMotionMaster()->MoveRandom(100);
+                                DoSummonFlyer(NPC_MECHANOLIFT, me, 30.0f, 50.0f, 0s);
                             events.ScheduleEvent(EVENT_SUMMON, 2s);
                             break;
                         case EVENT_SHUTDOWN:
@@ -880,28 +880,23 @@ class npc_mechanolift : public CreatureScript
             npc_mechanoliftAI(Creature* creature) : PassiveAI(creature)
             {
                 Initialize();
-                ASSERT(me->GetVehicleKit());
             }
 
             void Initialize()
             {
-                MoveTimer = 0;
+                _moveTimer = 0;
             }
-
-            uint32 MoveTimer;
 
             void Reset() override
             {
                 Initialize();
-                me->GetMotionMaster()->MoveRandom(50);
+                me->GetMotionMaster()->MoveRandom(50.f);
             }
 
             void JustDied(Unit* /*killer*/) override
             {
-                me->GetMotionMaster()->MoveTargetedHome();
-                DoCast(SPELL_DUSTY_EXPLOSION);
-                Creature* liquid = DoSummon(NPC_LIQUID, me, 0);
-                if (liquid)
+                DoCastAOE(SPELL_DUSTY_EXPLOSION, true);
+                if (Creature* liquid = DoSummon(NPC_LIQUID_PYRITE, me, 0.f))
                 {
                     liquid->CastSpell(liquid, SPELL_LIQUID_PYRITE, true);
                     liquid->CastSpell(liquid, SPELL_DUST_CLOUD_IMPACT, true);
@@ -917,20 +912,22 @@ class npc_mechanolift : public CreatureScript
 
             void UpdateAI(uint32 diff) override
             {
-                if (MoveTimer <= diff)
+                if (_moveTimer <= diff)
                 {
                     if (me->GetVehicleKit()->HasEmptySeat(-1))
                     {
-                        Creature* container = me->FindNearestCreature(NPC_CONTAINER, 50, true);
+                        Creature* container = me->FindNearestCreature(NPC_CONTAINER, 50.f, true);
                         if (container && !container->GetVehicle())
-                            me->GetMotionMaster()->MovePoint(1, container->GetPositionX(), container->GetPositionY(), container->GetPositionZ());
+                            me->GetMotionMaster()->MovePoint(1, container->GetPosition());
                     }
 
-                    MoveTimer = 30000; //check next 30 seconds
+                    _moveTimer = 30000; //check next 30 seconds
                 }
                 else
-                    MoveTimer -= diff;
+                    _moveTimer -= diff;
             }
+        private:
+            uint32 _moveTimer;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -1370,6 +1367,21 @@ class npc_lorekeeper : public CreatureScript
         {
             return GetUlduarAI<npc_lorekeeperAI>(creature);
         }
+};
+
+struct EG_npc_salvaged_demolisher_mechanic_seat : public VehicleAI
+{
+    EG_npc_salvaged_demolisher_mechanic_seat(Creature* creature) : VehicleAI(creature) { }
+
+    void PassengerBoarded(Unit* who, int8 /*seatId*/, bool apply) override
+    {
+        if (apply)
+            if (who->GetEntry() == NPC_LIQUID_PYRITE)
+            {
+                me->CastSpell(me, SPELL_LIQUID_PYRITE_RELOAD, true);
+                who->ToCreature()->DespawnOrUnsummon(5s);
+            }
+    }
 };
 
 class go_ulduar_tower : public GameObjectScript
@@ -1952,6 +1964,33 @@ class EG_spell_flame_leviathan_mimirons_inferno : public SpellScript
     }
 };
 
+// 62479 Grab Crate - Main
+// -- Effect 0 - SPELL_EFFECT_DUMMY - 62480
+// -- Effect 1 - SPELL_EFFECT_SCRIPT_EFFECT - 62480
+// -- Effect 2 - 62482
+// 62480 Grenades
+// 62482 Grab Crate - Triggered
+// 67387 Grab Crate
+// -- Effect 0 - SPELL_EFFECT_SCRIPT_EFFECT - 63827
+// 63827 Ride Vehicle
+class EG_spell_flame_leviathan_grab_crate_triggered : public SpellScript
+{
+    PrepareSpellScript(EG_spell_flame_leviathan_grab_crate_triggered);
+
+    void HandleDummy(SpellEffIndex effIndex)
+    {
+        PreventHitEffect(effIndex);
+        if (Unit* caster = GetCaster())
+            if (Vehicle* vehicle = caster->GetVehicle())
+                GetHitUnit()->CastSpell(vehicle->GetBase(), GetSpellInfo()->GetEffect(effIndex).CalcValue(), true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_flame_leviathan_grab_crate_triggered::HandleDummy, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
 void AddSC_boss_flame_leviathan()
 {
     new boss_flame_leviathan();
@@ -1970,6 +2009,7 @@ void AddSC_boss_flame_leviathan()
     new npc_freya_ward_summon();
     new npc_brann_bronzebeard_ulduar_intro();
     new npc_lorekeeper();
+    RegisterUlduarCreatureAI(EG_npc_salvaged_demolisher_mechanic_seat);
     new go_ulduar_tower();
 
     new achievement_three_car_garage_demolisher();
@@ -1990,4 +2030,5 @@ void AddSC_boss_flame_leviathan()
     new spell_pursue();
     new spell_vehicle_throw_passenger();
     RegisterSpellScript(EG_spell_flame_leviathan_mimirons_inferno);
+    RegisterSpellScript(EG_spell_flame_leviathan_grab_crate_triggered);
 }

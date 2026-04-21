@@ -5025,6 +5025,12 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->AttributesEx |= SPELL_ATTR1_NO_THREAT;
     });
 
+    // Liquid Pyrite
+    ApplySpellFix({ 62496 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
+    });
+
     // Dominate Mind
     ApplySpellFix({ 63713 }, [](SpellInfo* spellInfo)
     {

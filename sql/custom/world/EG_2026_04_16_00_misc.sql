@@ -8,6 +8,15 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 33572 AND `SourceId` = 0;
 
+DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 13) AND (`SourceEntry` IN (62496));
+
+DELETE FROM `spell_script_names` WHERE `ScriptName` IN('EG_spell_flame_leviathan_grab_crate_triggered');
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(62482, 'EG_spell_flame_leviathan_grab_crate_triggered');
+
+UPDATE `creature_template` SET `ScriptName` = '' WHERE `entry` = 33109;
+UPDATE `creature_template` SET `ScriptName` = 'EG_npc_salvaged_demolisher_mechanic_seat' WHERE `entry` = 33167;
+
 -- Pool of Tar
 UPDATE `creature_template` SET `flags_extra` = 1073750080 WHERE `entry` = 33090;
 -- Mimiron's inferno

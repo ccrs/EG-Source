@@ -3583,25 +3583,6 @@ void Spell::EffectScriptEffect()
 
                     return;
                 }
-                case 62482: // Grab Crate
-                {
-                    if (!unitCaster)
-                        return;
-
-                    if (unitTarget)
-                    {
-                        if (Unit* seat = unitCaster->GetVehicleBase())
-                        {
-                            if (Unit* parent = seat->GetVehicleBase())
-                            {
-                                /// @todo a hack, range = 11, should after some time cast, otherwise too far
-                                unitCaster->CastSpell(parent, 62496, true);
-                                unitTarget->CastSpell(parent, m_spellInfo->GetEffect(EFFECT_0).CalcValue());
-                            }
-                        }
-                    }
-                    return;
-                }
             }
             break;
         }
