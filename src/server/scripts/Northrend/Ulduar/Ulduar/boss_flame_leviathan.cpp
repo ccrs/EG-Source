@@ -470,8 +470,9 @@ class boss_flame_leviathan : public CreatureScript
                     switch (eventId)
                     {
                         case EVENT_PURSUE:
-                            Talk(SAY_TARGET);
-                            DoCast(SPELL_PURSUED);  // Will select target in spellscript
+                            _pursueTarget.Clear();
+                            if (SpellCastResult::SPELL_CAST_OK == DoCast(SPELL_PURSUED))  // Will select target in spellscript
+                                Talk(SAY_TARGET);
                             events.ScheduleEvent(EVENT_PURSUE, 35s);
                             break;
                         case EVENT_MISSILE:
