@@ -188,7 +188,7 @@ struct EG_npc_damage_test_dummy : public NullCreatureAI
         damage = 0;
     }
 
-    void EnterEvadeMode(EvadeReason /*why*/) { }
+    void EnterEvadeMode(EvadeReason /*why*/) override { }
 
 private:
     std::string pretty(uint32 value)
@@ -944,6 +944,7 @@ enum ArachnopodDestroyerMisc
     SPELL_CHARGED_LEAP = 64779,
     SPELL_MACHINE_GUN = 64776,
     SPELL_DAMAGED = 64770,
+    SPELL_STUN_SELF = 25900,
 
     EVENT_FLAME_SPRAY = 1,
     EVENT_CHARGED_LEAP,
@@ -993,9 +994,10 @@ struct EG_npc_arachnopod_destroyer : public ScriptedAI
         {
             if (Creature* mechanic = who->ToCreature())
                 if (mechanic->GetEntry() == NPC_CLOCKWORK_MECHANIC)
+                {
+                    mechanic->RemoveAurasDueToSpell(SPELL_STUN_SELF);
                     mechanic->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-            if (who->IsPlayer())
-                DoZoneInCombat();
+                }
         }
     }
 
@@ -1008,7 +1010,19 @@ struct EG_npc_arachnopod_destroyer : public ScriptedAI
             DoCastSelf(SPELL_DAMAGED, true);
             if (Vehicle* vechicle = me->GetVehicleKit())
                 vechicle->RemoveAllPassengers();
+
+            me->SetRegenerateHealth(false);
+            me->SetFaction(FACTION_ESCORTEE_N_NEUTRAL_ACTIVE);
+            me->GetCombatManager().RevalidateCombat();
         }
+    }
+
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        if (me->GetFaction() == FACTION_ESCORTEE_N_NEUTRAL_ACTIVE)
+            _EnterEvadeMode();
+        else
+            ScriptedAI::EnterEvadeMode(why);
     }
 
     void JustEngagedWith(Unit* /*who*/) override

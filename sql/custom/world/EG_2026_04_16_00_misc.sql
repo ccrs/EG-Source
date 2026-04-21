@@ -102,22 +102,41 @@ UPDATE `creature_template` SET `mechanic_immune_mask`=
 (33385, 33397, 33396, 33088, 33168, 33228);
 
 --
+UPDATE `creature_template` SET `VehicleId` = 399 WHERE `entry` = 34214;
 UPDATE `creature_template` SET `AIName`='', `ScriptName`='EG_npc_arachnopod_destroyer' WHERE `entry`=34183;
 DELETE FROM `smart_scripts` WHERE `source_type`=0 AND `entryorguid` IN (34183);
 
-DELETE FROM `creature_template_spell` WHERE `CreatureID` = 34183;
+DELETE FROM `creature_template_spell` WHERE `CreatureID` IN(34183, 34214);
 INSERT INTO `creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES
 (34183, 0, 64717, 0),
 (34183, 1, 64779, 0),
-(34183, 2, 64776, 0);
+(34183, 2, 64776, 0),
+(34214, 0, 64717, 0),
+(34214, 1, 64779, 0),
+(34214, 2, 64776, 0);
 
-DELETE FROM `vehicle_template_accessory` WHERE `entry`=34183;
+DELETE FROM `vehicle_template_accessory` WHERE `entry`IN(34183, 34214);
 INSERT INTO `vehicle_template_accessory` (`entry`, `accessory_entry`, `seat_id`, `minion`, `description`, `summontype`, `summontimer`) VALUES 
-(34183, 34184, 1, 0, 'Arachnopod - Clockwork Mechanic', 6, 500);
+(34183, 34184, 1, 0, 'Arachnopod - Clockwork Mechanic', 6, 500),
+(34214, 34184, 1, 0, 'Arachnopod - Clockwork Mechanic', 6, 500);
 
-DELETE FROM `npc_spellclick_spells` WHERE `npc_entry`=34183;
-INSERT INTO `npc_spellclick_spells` (`npc_entry`, `spell_id`, `cast_flags`, `user_type`) VALUES 
-(34183, 63313, 0, 1);
+DELETE FROM `npc_spellclick_spells` WHERE `npc_entry` = 34183;
+INSERT INTO `npc_spellclick_spells` (`npc_entry`, `spell_id`, `cast_flags`, `user_type`) VALUES
+(34183, 46598, 0, 0),
+(34183, 63313, 1, 1);
+DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 18) AND (`SourceGroup` IN (34183));
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+(18, 34183, 63313, 0, 0, 31, 0, 3, 0, 0, 0, 'Clicker is creature'),
+(18, 34183, 46598, 0, 0, 31, 0, 4, 0, 0, 0, 'Clicker is player');
+
+DELETE FROM `npc_spellclick_spells` WHERE `npc_entry` = 34214;
+INSERT INTO `npc_spellclick_spells` (`npc_entry`, `spell_id`, `cast_flags`, `user_type`) VALUES
+(34214, 46598, 0, 0),
+(34214, 63313, 1, 1);
+DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 18) AND (`SourceGroup` IN (34214));
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+(18, 34214, 63313, 0, 0, 31, 0, 3, 0, 0, 0, 'Clicker is creature'),
+(18, 34214, 46598, 0, 0, 31, 0, 4, 0, 0, 0, 'Clicker is player');
 
 --
 DELETE FROM `spelldifficulty_dbc` WHERE `id` IN (46763);
