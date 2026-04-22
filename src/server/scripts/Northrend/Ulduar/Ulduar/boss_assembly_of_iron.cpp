@@ -414,7 +414,7 @@ class boss_runemaster_molgeim : public CreatureScript
                                             target = Steelbreaker;
                                     break;
                                 case 2:
-                                    if (Creature* Brundir = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_STEELBREAKER)))
+                                    if (Creature* Brundir = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BRUNDIR)))
                                         if (Brundir->IsAlive())
                                             target = Brundir;
                                     break;
