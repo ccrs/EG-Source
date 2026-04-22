@@ -3468,8 +3468,6 @@ void Spell::EffectScriptEffect()
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
         return;
 
-    Unit* unitCaster = GetUnitCasterForEffectHandlers();
-
     /// @todo we must implement hunter pet summon at login there (spell 6962)
     /// @todo: move this to scripts
     switch (m_spellInfo->SpellFamilyName)
