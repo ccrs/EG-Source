@@ -446,7 +446,16 @@ class TC_GAME_API LFGMgr
         void _SaveToDB(ObjectGuid guid, uint32 db_guid);
         LFGDungeonData const* GetLFGDungeon(uint32 id);
         bool TryFinishDungeonFromCurrentInstance(Group* group);
-        bool TryClearOldLfgGroupBind(Group* group, uint32 lfgDungeonId);
+        enum class LfgBindCleanupResult
+        {
+            NoBind,
+            Cleared,
+            Protected,
+            Wait,
+            Failed
+        };
+
+        LfgBindCleanupResult TryClearOldLfgGroupBind(Group* group, uint32 lfgDungeonId);
         void ProcessPendingTeleportIns(time_t currTime);
 
         // Proposals
