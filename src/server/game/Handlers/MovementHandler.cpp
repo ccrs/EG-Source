@@ -309,7 +309,17 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
         plrMover->SetEmoteState(EMOTE_ONESHOT_NONE);
 
     /* handle special cases */
-    if (movementInfo.HasMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
+
+    // Vehicle passengers are not normal transport passengers.
+    // Their local transport x/y/z is owned by the server-side vehicle seat data,
+    // not by the client movement packet. Normalize before generic transport logic,
+    // before storing movementInfo, and before broadcasting.
+    if (Vehicle* vehicle = mover->GetVehicle())
+    {
+        if (!vehicle->NormalizePassengerMovementInfo(mover, movementInfo))
+            return;
+    }
+    else if (movementInfo.HasMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
     {
         if (movementInfo.pos.GetExactDist2d(mover) > SIZE_OF_GRIDS)
             return;
@@ -366,16 +376,13 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
             // This can still be a non-map GAMEOBJECT_TYPE_TRANSPORT, so preserve that behavior.
             bool validGameObjectTransport = false;
 
-            if (!mover->GetVehicle())
-            {
-                if (GameObject* go = mover->GetMap()->GetGameObject(movementInfo.transport.guid))
-                    validGameObjectTransport = go->GetGoType() == GAMEOBJECT_TYPE_TRANSPORT;
-            }
+            if (GameObject* go = mover->GetMap()->GetGameObject(movementInfo.transport.guid))
+                validGameObjectTransport = go->GetGoType() == GAMEOBJECT_TYPE_TRANSPORT;
 
             if (plrMover && currentTransport && currentTransport->GetGUID() != movementInfo.transport.guid)
                 currentTransport->RemovePassenger(plrMover);
 
-            if (!validGameObjectTransport && !mover->GetVehicle())
+            if (!validGameObjectTransport)
             {
                 movementInfo.RemoveMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
                 movementInfo.transport.Reset();
@@ -475,7 +482,7 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
     }
 }
 
-void WorldSession::HandleForceSpeedChangeAck(WorldPacket &recvData)
+void WorldSession::HandleForceSpeedChangeAck(WorldPacket& recvData)
 {
     /* extract packet */
     ObjectGuid guid;
@@ -490,7 +497,7 @@ void WorldSession::HandleForceSpeedChangeAck(WorldPacket &recvData)
     // But the vehicle will be the active mover unit at that time.
     if (!client->IsAllowedToMove(guid))
     {
-        recvData.rfinish();                     // prevent warnings spam
+        recvData.rfinish(); // prevent warnings spam
         TC_LOG_DEBUG("entities.unit", "Ignoring ACK. Bad or outdated movement data by Player {}", _player->GetName());
         return;
     }
@@ -515,7 +522,7 @@ void WorldSession::HandleForceSpeedChangeAck(WorldPacket &recvData)
     }
 
     uint32 movementCounter;
-    float  speedReceived;
+    float speedReceived;
     MovementInfo movementInfo;
     movementInfo.guid = guid;
 
@@ -582,7 +589,103 @@ void WorldSession::HandleForceSpeedChangeAck(WorldPacket &recvData)
         return;
     }
 
-    /* the client data has been verified. let's do the actual change now */
+    /*
+     * The client data has been verified. Before storing movementInfo, normalize
+     * transport/vehicle passenger coordinates so ACK packets cannot corrupt the
+     * stored local passenger offset.
+     */
+    if (!movementInfo.pos.IsPositionValid())
+        return;
+
+    bool vehiclePassenger = false;
+
+    if (Vehicle* vehicle = mover->GetVehicle())
+    {
+        vehiclePassenger = true;
+
+        // Vehicle passenger local x/y/z is server-owned seat data.
+        // Preserve only allowed seat orientation inside NormalizePassengerMovementInfo.
+        if (!vehicle->NormalizePassengerMovementInfo(mover, movementInfo))
+            return;
+    }
+    else if (movementInfo.HasMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
+    {
+        Player* plrMover = mover->ToPlayer();
+        Transport* transport = nullptr;
+        Transport* currentTransport = plrMover ? plrMover->GetTransport() : nullptr;
+
+        if (plrMover)
+        {
+            transport = plrMover->GetMap()->GetTransport(movementInfo.transport.guid);
+
+            if (!transport && currentTransport && currentTransport->GetGUID() == movementInfo.transport.guid)
+                transport = currentTransport;
+        }
+
+        float localX = movementInfo.transport.pos.GetPositionX();
+        float localY = movementInfo.transport.pos.GetPositionY();
+        float localZ = movementInfo.transport.pos.GetPositionZ();
+
+        if (std::fabs(localX) > 75.0f || std::fabs(localY) > 75.0f || std::fabs(localZ) > 75.0f)
+            return;
+
+        if (transport)
+        {
+            float worldX = movementInfo.transport.pos.GetPositionX();
+            float worldY = movementInfo.transport.pos.GetPositionY();
+            float worldZ = movementInfo.transport.pos.GetPositionZ();
+            float worldO = movementInfo.transport.pos.GetOrientation();
+
+            transport->CalculatePassengerPosition(worldX, worldY, worldZ, &worldO);
+
+            if (!Trinity::IsValidMapCoord(worldX, worldY, worldZ, worldO))
+                return;
+
+            // Do not mutate transport membership before validation.
+            if (plrMover)
+            {
+                if (!currentTransport)
+                    transport->AddPassenger(plrMover);
+                else if (currentTransport != transport)
+                {
+                    currentTransport->RemovePassenger(plrMover);
+                    transport->AddPassenger(plrMover);
+                }
+            }
+
+            movementInfo.transport.guid = transport->GetGUID();
+            movementInfo.pos.Relocate(worldX, worldY, worldZ, worldO);
+        }
+        else
+        {
+            bool validGameObjectTransport = false;
+
+            if (GameObject* go = mover->GetMap()->GetGameObject(movementInfo.transport.guid))
+                validGameObjectTransport = go->GetGoType() == GAMEOBJECT_TYPE_TRANSPORT;
+
+            if (plrMover && currentTransport && currentTransport->GetGUID() != movementInfo.transport.guid)
+                currentTransport->RemovePassenger(plrMover);
+
+            if (!validGameObjectTransport)
+            {
+                movementInfo.RemoveMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
+                movementInfo.transport.Reset();
+            }
+        }
+    }
+    else if (Player* plrMover = mover->ToPlayer())
+    {
+        if (plrMover->GetTransport())
+        {
+            plrMover->GetTransport()->RemovePassenger(plrMover);
+            movementInfo.transport.Reset();
+        }
+    }
+
+    /*
+     * The client data has been verified and movementInfo has been normalized.
+     * Apply the actual speed change now.
+     */
     movementInfo.time = AdjustClientMovementTime(movementInfo.time);
     mover->m_movementInfo = movementInfo;
 
@@ -590,8 +693,14 @@ void WorldSession::HandleForceSpeedChangeAck(WorldPacket &recvData)
     mover->SetSpeedRateReal(move_type, newSpeedRate);
     MovementPacketSender::SendSpeedChangeToObservers(mover, move_type, speedSent);
 
-    // Update position after updating known serverside speed
-    // this can interrupt aura granting us the speed boost so it needs see updated value in Unit::m_speed_rate
+    // Update position after updating known server-side speed.
+    // This can interrupt aura granting us the speed boost, so it needs to see updated value in Unit::m_speed_rate.
+    //
+    // Vehicle passengers are seat-positioned by the vehicle. Do not let ACK movement data drive
+    // normal Unit::UpdatePosition for them.
+    if (vehiclePassenger)
+        return;
+
     mover->UpdatePosition(movementInfo.pos);
 }
 

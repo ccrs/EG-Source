@@ -25,6 +25,7 @@
 #include "VehicleDefines.h"
 #include <list>
 
+struct MovementInfo;
 struct VehicleEntry;
 class Unit;
 class VehicleJoinEvent;
@@ -52,6 +53,7 @@ class TC_GAME_API Vehicle : public TransportBase
         VehicleSeatAddon const* GetSeatAddonForSeatOfPassenger(Unit const* passenger) const;
         uint8 GetAvailableSeatCount() const;
 
+        bool NormalizePassengerMovementInfo(Unit const* passenger, MovementInfo& movementInfo) const;
         bool AddPassenger(Unit* passenger, int8 seatId = -1);
         void EjectPassenger(Unit* passenger, Unit* controller);
         Vehicle* RemovePassenger(Unit* passenger);

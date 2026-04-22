@@ -192,6 +192,61 @@ void Unit::InterruptSpellsCastedOnMe(bool killDelayed, bool interruptFriendlySpe
     }
 }
 
+bool Vehicle::NormalizePassengerMovementInfo(Unit const* passenger, MovementInfo& movementInfo) const
+{
+    SeatMap::const_iterator seat = Seats.end();
+
+    for (SeatMap::const_iterator itr = Seats.begin(); itr != Seats.end(); ++itr)
+    {
+        if (itr->second.Passenger.Guid == passenger->GetGUID())
+        {
+            seat = itr;
+            break;
+        }
+    }
+
+    if (seat == Seats.end())
+        return false;
+
+    VehicleSeatEntry const* seatInfo = seat->second.SeatInfo;
+    VehicleSeatAddon const* seatAddon = seat->second.SeatAddon;
+
+    float localX = seatInfo->AttachmentOffset.X;
+    float localY = seatInfo->AttachmentOffset.Y;
+    float localZ = seatInfo->AttachmentOffset.Z;
+    float localO = seatAddon ? seatAddon->SeatOrientationOffset : 0.0f;
+
+    // For turning seats, preserve only the passenger's local orientation.
+    // Never preserve client-sent local x/y/z.
+    if (seatInfo->Flags & VEHICLE_SEAT_FLAG_ALLOW_TURNING)
+    {
+        if (movementInfo.HasMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
+            localO = movementInfo.transport.pos.GetOrientation();
+        else
+            localO = passenger->m_movementInfo.transport.pos.GetOrientation();
+    }
+
+    localO = Position::NormalizeOrientation(localO);
+
+    float worldX = localX;
+    float worldY = localY;
+    float worldZ = localZ;
+    float worldO = localO;
+
+    CalculatePassengerPosition(worldX, worldY, worldZ, &worldO);
+
+    if (!Trinity::IsValidMapCoord(worldX, worldY, worldZ, worldO))
+        return false;
+
+    movementInfo.AddMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
+    movementInfo.transport.guid = GetBase()->GetGUID();
+    movementInfo.transport.seat = seat->first;
+    movementInfo.transport.pos.Relocate(localX, localY, localZ, localO);
+    movementInfo.pos.Relocate(worldX, worldY, worldZ, worldO);
+
+    return true;
+}
+
 Unit* WorldObject::DoFindLowestHPFriendlyInRange(FriendlySearchOptions options) const
 {
     std::vector<Unit*> potentialFriendlies;
