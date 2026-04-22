@@ -179,25 +179,11 @@ void LFGQueue::RemoveFromQueue(ObjectGuid guid)
 {
     RemoveFromNewQueue(guid);
     RemoveFromCurrentQueue(guid);
-    RemoveFromCompatibles(guid);
 
-    LfgQueueDataContainer::iterator itDelete = QueueDataStore.end();
-    for (LfgQueueDataContainer::iterator itr = QueueDataStore.begin(); itr != QueueDataStore.end(); ++itr)
-    {
-        if (itr->first != guid)
-        {
-            if (CompatibleKeyContainsGuid(itr->second.bestCompatible, guid))
-            {
-                itr->second.bestCompatible.clear();
-                FindBestCompatibleInQueue(itr);
-            }
-        }
-        else
-            itDelete = itr;
-    }
-
-    if (itDelete != QueueDataStore.end())
-        QueueDataStore.erase(itDelete);
+    // Remove authoritative queue data before invalidating dependent cached/best-compatible
+    // information, so recomputation cannot select the removed guid again.
+    QueueDataStore.erase(guid);
+    InvalidateCompatibleData(guid);
 }
 
 void LFGQueue::AddToNewQueue(ObjectGuid guid)
@@ -228,10 +214,13 @@ void LFGQueue::RemoveFromCurrentQueue(ObjectGuid guid)
 void LFGQueue::AddQueueData(ObjectGuid guid, time_t joinTime, LfgDungeonSet const& dungeons, LfgRolesMap const& rolesMap)
 {
     // Replacing queue data for the same guid invalidates every cached compatibility
-    // result that involved the previous roles/dungeon set/group composition.
+    // result and best-compatible status that involved the previous roles/dungeon
+    // set/group composition. Erase old data before invalidation so recomputation
+    // cannot use stale data for this guid.
     RemoveFromNewQueue(guid);
     RemoveFromCurrentQueue(guid);
-    RemoveFromCompatibles(guid);
+    QueueDataStore.erase(guid);
+    InvalidateCompatibleData(guid);
 
     QueueDataStore[guid] = LfgQueueData(joinTime, dungeons, rolesMap);
     AddToQueue(guid);
@@ -242,9 +231,9 @@ void LFGQueue::RemoveQueueData(ObjectGuid guid)
     // Keep this safe even if callers bypass RemoveFromQueue().
     RemoveFromNewQueue(guid);
     RemoveFromCurrentQueue(guid);
-    RemoveFromCompatibles(guid);
 
     QueueDataStore.erase(guid);
+    InvalidateCompatibleData(guid);
 }
 
 void LFGQueue::UpdateWaitTimeAvg(int32 waitTime, uint32 dungeonId)
@@ -291,6 +280,24 @@ void LFGQueue::RemoveFromCompatibles(ObjectGuid guid)
     }
 }
 
+void LFGQueue::InvalidateCompatibleData(ObjectGuid guid)
+{
+    RemoveFromCompatibles(guid);
+
+    for (LfgQueueDataContainer::iterator itr = QueueDataStore.begin(); itr != QueueDataStore.end(); ++itr)
+    {
+        if (CompatibleKeyContainsGuid(itr->second.bestCompatible, guid))
+        {
+            itr->second.bestCompatible.clear();
+            itr->second.tanks = LFG_TANKS_NEEDED;
+            itr->second.healers = LFG_HEALERS_NEEDED;
+            itr->second.dps = LFG_DPS_NEEDED;
+
+            FindBestCompatibleInQueue(itr);
+        }
+    }
+}
+
 /**
    Stores the compatibility of a list of guids
 
@@ -304,7 +311,12 @@ void LFGQueue::SetCompatibles(std::string const& key, LfgCompatibility compatibl
         TC_LOG_WARN("lfg.queue.data.compatibles", "Compatible cache reached {} entries, clearing cache", CompatibleMapStore.size());
         CompatibleMapStore.clear();
         for (LfgQueueDataContainer::iterator itr = QueueDataStore.begin(); itr != QueueDataStore.end(); ++itr)
+        {
             itr->second.bestCompatible.clear();
+            itr->second.tanks = LFG_TANKS_NEEDED;
+            itr->second.healers = LFG_HEALERS_NEEDED;
+            itr->second.dps = LFG_DPS_NEEDED;
+        }
     }
 
     LfgCompatibilityData& data = CompatibleMapStore[key];
@@ -318,7 +330,12 @@ void LFGQueue::SetCompatibilityData(std::string const& key, LfgCompatibilityData
         TC_LOG_WARN("lfg.queue.data.compatibles", "Compatible cache reached {} entries, clearing cache", CompatibleMapStore.size());
         CompatibleMapStore.clear();
         for (LfgQueueDataContainer::iterator itr = QueueDataStore.begin(); itr != QueueDataStore.end(); ++itr)
+        {
             itr->second.bestCompatible.clear();
+            itr->second.tanks = LFG_TANKS_NEEDED;
+            itr->second.healers = LFG_HEALERS_NEEDED;
+            itr->second.dps = LFG_DPS_NEEDED;
+        }
     }
 
     CompatibleMapStore[key] = data;
