@@ -354,17 +354,20 @@ void LFGMgr::Update(uint32 diff)
 
     if (lastProposalId != m_lfgProposalId)
     {
-        // FIXME lastProposalId ? lastProposalId +1 ?
-        for (LfgProposalContainer::const_iterator itProposal = ProposalsStore.find(m_lfgProposalId); itProposal != ProposalsStore.end(); ++itProposal)
+        // Process every proposal created during this update tick. Starting at
+        // ProposalsStore.find(m_lfgProposalId) only processes the latest one and
+        // can leave earlier proposals in INITIATING forever.
+        for (LfgProposalContainer::iterator itProposal = ProposalsStore.upper_bound(lastProposalId); itProposal != ProposalsStore.end(); ++itProposal)
         {
             uint32 proposalId = itProposal->first;
-            LfgProposal& proposal = ProposalsStore[proposalId];
+            LfgProposal& proposal = itProposal->second;
 
             ObjectGuid guid;
             for (LfgProposalPlayerContainer::const_iterator itPlayers = proposal.players.begin(); itPlayers != proposal.players.end(); ++itPlayers)
             {
                 guid = itPlayers->first;
                 SetState(guid, LFG_STATE_PROPOSAL);
+
                 ObjectGuid gguid = GetGroup(guid);
                 if (!gguid.IsEmpty())
                 {
@@ -373,6 +376,7 @@ void LFGMgr::Update(uint32 diff)
                 }
                 else
                     SendLfgUpdatePlayer(guid, LfgUpdateData(LFG_UPDATETYPE_PROPOSAL_BEGIN, GetSelectedDungeons(guid), GetComment(guid)));
+
                 SendLfgUpdateProposal(guid, proposal);
             }
 
