@@ -391,7 +391,7 @@ class TC_GAME_API LFGMgr
         /// Returns all random and seasonal dungeons for given level and expansion
         LfgDungeonSet GetRandomAndSeasonalDungeons(uint8 level, uint8 expansion);
         /// Teleport a player to/from selected dungeon
-        void TeleportPlayer(Player* player, bool out, bool fromOpcode = false, bool forceNewInstance = false);
+        void TeleportPlayer(Player* player, bool out, bool fromOpcode = false, bool forceNewInstance = false, uint32 previousDungeonId = 0);
         /// Inits new proposal to boot a player
         void InitBoot(ObjectGuid gguid, ObjectGuid kguid, ObjectGuid vguid, std::string const& reason);
         /// Updates player boot proposal with new player answer
@@ -446,6 +446,7 @@ class TC_GAME_API LFGMgr
         void _SaveToDB(ObjectGuid guid, uint32 db_guid);
         LFGDungeonData const* GetLFGDungeon(uint32 id);
         bool TryFinishDungeonFromCurrentInstance(Group* group);
+        bool TryClearOldLfgGroupBind(Group* group, uint32 lfgDungeonId);
         void ProcessPendingTeleportIns(time_t currTime);
 
         // Proposals
@@ -477,7 +478,13 @@ class TC_GAME_API LFGMgr
         // Reward System
         LfgRewardContainer RewardMapStore;                 /// Stores rewards for random dungeons
         LFGDungeonContainer LfgDungeonStore;
-        std::map<ObjectGuid, time_t> PendingTeleportInStore;
+        struct PendingTeleportInData
+        {
+            time_t ExpireTime = 0;
+            uint32 PreviousDungeonId = 0;
+        };
+
+        std::map<ObjectGuid, PendingTeleportInData> PendingTeleportInStore;
         // Rolecheck - Proposal - Vote Kicks
         LfgRoleCheckContainer RoleChecksStore;             /// Current Role checks
         LfgProposalContainer ProposalsStore;               /// Current Proposals
