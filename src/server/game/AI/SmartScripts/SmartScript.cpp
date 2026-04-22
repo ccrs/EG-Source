@@ -22,7 +22,6 @@
 #include "Creature.h"
 #include "CreatureTextMgr.h"
 #include "CreatureTextMgrImpl.h"
-#include "CustomFunctions.h"
 #include "GameEventMgr.h"
 #include "GameObject.h"
 #include "GossipDef.h"
@@ -2766,7 +2765,7 @@ void SmartScript::GetTargets(ObjectVector& targets, SmartScriptHolder const& e, 
         case SMART_TARGET_LOWEST_HP_FRIENDLY:
         {
             if (me)
-                if (Unit* target = DoFindLowestHPFriendlyInRange(e.target.lowestHPFriendly.maxDist, e.target.lowestHPFriendly.playerOnly != 0, e.target.lowestHPFriendly.includeSelf != 0))
+                if (Unit* target = me->DoFindLowestHPFriendlyInRange(WorldObject::FriendlySearchOptions{ .Range = float(e.target.lowestHPFriendly.maxDist), .PlayerOnly = e.target.lowestHPFriendly.playerOnly != 0, .IncludeSelf = e.target.lowestHPFriendly.includeSelf != 0 }))
                     targets.push_back(target);
             break;
         }
@@ -3821,18 +3820,6 @@ Unit* SmartScript::DoFindClosestFriendlyInRange(float range, bool playerOnly) co
     Unit* unit = nullptr;
     Trinity::AnyFriendlyUnitInObjectRangeCheck u_check(me, me, range, playerOnly);
     Trinity::UnitLastSearcher<Trinity::AnyFriendlyUnitInObjectRangeCheck> searcher(me, unit, u_check);
-    Cell::VisitAllObjects(me, searcher, range);
-    return unit;
-}
-
-Unit* SmartScript::DoFindLowestHPFriendlyInRange(float range, bool playerOnly, bool includeSelf) const
-{
-    if (!me)
-        return nullptr;
-
-    Unit* unit = nullptr;
-    EG::MostHPMissingFriendlyUnitInRangeSearcher u_check(me, range, playerOnly, includeSelf);
-    Trinity::UnitLastSearcher<EG::MostHPMissingFriendlyUnitInRangeSearcher> searcher(me, unit, u_check);
     Cell::VisitAllObjects(me, searcher, range);
     return unit;
 }
