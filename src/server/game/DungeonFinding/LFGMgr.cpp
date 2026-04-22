@@ -357,10 +357,13 @@ void LFGMgr::Update(uint32 diff)
         // Process every proposal created during this update tick. Starting at
         // ProposalsStore.find(m_lfgProposalId) only processes the latest one and
         // can leave earlier proposals in INITIATING forever.
-        for (LfgProposalContainer::iterator itProposal = ProposalsStore.upper_bound(lastProposalId); itProposal != ProposalsStore.end(); ++itProposal)
+        for (LfgProposalContainer::iterator itProposal = ProposalsStore.upper_bound(lastProposalId); itProposal != ProposalsStore.end();)
         {
-            uint32 proposalId = itProposal->first;
-            LfgProposal& proposal = itProposal->second;
+            // UpdateProposal() can erase the proposal, so advance the outer iterator
+            // before any call that may mutate ProposalsStore.
+            LfgProposalContainer::iterator currentProposal = itProposal++;
+            uint32 proposalId = currentProposal->first;
+            LfgProposal& proposal = currentProposal->second;
 
             ObjectGuid guid;
             for (LfgProposalPlayerContainer::const_iterator itPlayers = proposal.players.begin(); itPlayers != proposal.players.end(); ++itPlayers)
