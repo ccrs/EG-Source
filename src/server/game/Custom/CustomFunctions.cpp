@@ -297,6 +297,7 @@ bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
         && ((_source->IsInCombat() && unit->IsInCombat()) || (!_source->IsInCombat()))
         && _source->IsValidAssistTarget(unit)
         && _source->IsWithinDistInMap(unit, _range)
+        && _source->IsWithinLOSInMap(unit)
         && unit->GetHealthPct() < _hp
     )
     {
@@ -320,6 +321,7 @@ bool EG::AnyFriendlyUnitInObjectRangeCheck::operator()(Unit* unit) const
         && ((_source->IsInCombat() && unit->IsInCombat()) || (!_source->IsInCombat()))
         && _source->IsValidAssistTarget(unit)
         && _source->IsWithinDistInMap(unit, _range)
+        && _source->IsWithinLOSInMap(unit)
     )
         return true;
 
