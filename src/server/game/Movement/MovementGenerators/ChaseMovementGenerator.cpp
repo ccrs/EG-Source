@@ -51,7 +51,47 @@ static void DoMovementInform(Unit* owner, Unit* target)
         AI->MovementInform(CHASE_MOTION_TYPE, target->GetGUID().GetCounter());
 }
 
-ChaseMovementGenerator::ChaseMovementGenerator(Unit *target, Optional<ChaseRange> range, Optional<ChaseAngle> angle) : AbstractFollower(ASSERT_NOTNULL(target)), _range(range), _angle(angle), _rangeCheckTimer(0)
+static bool ShouldRandomizeChaseStopDistance(Unit* owner, Unit* target, Optional<ChaseRange> const& range, float minTarget, float maxTarget)
+{
+    // Do not randomize default melee chase.
+    if (!range)
+        return false;
+
+    float const meleeRange = owner->GetMeleeRange(target);
+    if (maxTarget <= meleeRange + 5.0f)
+        return false;
+
+    float const availableRoom = maxTarget - minTarget;
+    if (availableRoom <= 6.0f)
+        return false;
+
+    return true;
+}
+
+static float SelectRandomizedChaseStopDistance(Unit* owner, Unit* target, Optional<ChaseRange> const& range, float minTarget, float maxTarget)
+{
+    if (!ShouldRandomizeChaseStopDistance(owner, target, range, minTarget, maxTarget))
+        return maxTarget;
+
+    float const availableRoom = maxTarget - minTarget;
+    float lowerDistance = minTarget + availableRoom * 0.35f;
+    float upperDistance = minTarget + availableRoom * 0.80f;
+    if (lowerDistance < minTarget + 2.0f)
+        lowerDistance = minTarget + 2.0f;
+    if (upperDistance > maxTarget - 2.0f)
+        upperDistance = maxTarget - 2.0f;
+    if (upperDistance <= lowerDistance)
+        return maxTarget;
+
+    return frand(lowerDistance, upperDistance);
+}
+
+static bool IsValidChaseStopDistance(float distance, float minTarget, float maxTarget)
+{
+    return distance > 0.0f && distance >= minTarget && distance <= maxTarget;
+}
+
+ChaseMovementGenerator::ChaseMovementGenerator(Unit *target, Optional<ChaseRange> range, Optional<ChaseAngle> angle) : AbstractFollower(ASSERT_NOTNULL(target)), _range(range), _angle(angle), _rangeCheckTimer(0), _relocationCooldown(0)
 {
     Mode = MOTION_MODE_DEFAULT;
     Priority = MOTION_PRIORITY_NORMAL;
@@ -68,6 +108,8 @@ bool ChaseMovementGenerator::Initialize(Unit* owner)
     _path = nullptr;
     _lastTargetPosition.reset();
     _rangeCheckTimer.Reset(0);
+    _relocationCooldown.Reset(0s);
+    _currentChaseStopDistance = 0.0f;
     owner->StopMoving();
     return false;
 }
@@ -95,6 +137,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
     {
         owner->StopMoving();
         _lastTargetPosition.reset();
+        _currentChaseStopDistance = 0.0f;
         if (Creature* cOwner = owner->ToCreature())
             cOwner->SetCannotReachTarget(false);
         return true;
@@ -110,14 +153,29 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
 
     // periodically check if we're already in the expected range...
     bool syncFacingOrientation = false;
+    if (!_relocationCooldown.Passed())
+        _relocationCooldown.Update(diff);
     _rangeCheckTimer.Update(diff);
     if (_rangeCheckTimer.Passed())
     {
         _rangeCheckTimer.Reset(RANGE_CHECK_INTERVAL);
-        if (HasFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED) && PositionOkay(owner, target, _movingTowards ? Optional<float>() : minTarget, _movingTowards ? maxTarget : Optional<float>(), angle))
+
+        // Avoid relying on stale/uninitialized _movingTowards when not actively chasing.
+        bool const rangeCheckMovingTowards = owner->HasUnitState(UNIT_STATE_CHASE_MOVE) ? _movingTowards : !owner->IsInDist(target, maxRange);
+        if (rangeCheckMovingTowards)
+        {
+            if (!IsValidChaseStopDistance(_currentChaseStopDistance, minTarget, maxTarget))
+                _currentChaseStopDistance = SelectRandomizedChaseStopDistance(owner, target, _range, minTarget, maxTarget);
+        }
+        else
+            _currentChaseStopDistance = 0.0f;
+
+        float const activeMovingTowardsStopDistance = rangeCheckMovingTowards ? _currentChaseStopDistance : maxTarget;
+        if (HasFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED) && PositionOkay(owner, target, rangeCheckMovingTowards ? Optional<float>() : minTarget, rangeCheckMovingTowards ? activeMovingTowardsStopDistance : Optional<float>(), angle))
         {
             RemoveFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED);
             _path = nullptr;
+            _currentChaseStopDistance = 0.0f;
             if (Creature* cOwner = owner->ToCreature())
                 cOwner->SetCannotReachTarget(false);
             owner->StopMoving();
@@ -126,12 +184,21 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
             return true;
         }
 
-        // if the target moved, we have to consider whether to adjust
-        if (!_lastTargetPosition || !target->GetPosition().IsInDist(_lastTargetPosition.value(), 0.01f) || useChaseAngle != _useChaseAngle)
+        Position const currentTargetPosition = target->GetPosition();
+        bool const targetPositionChanged = !_lastTargetPosition || !currentTargetPosition.IsInDist(_lastTargetPosition.value(), 0.01f);
+        bool const chaseAngleModeChanged = useChaseAngle != _useChaseAngle;
+        bool const relocationCooldownActive = _relocationCooldown.GetExpiry() != 0s;
+        bool const relocationCooldownExpired = relocationCooldownActive && _relocationCooldown.Passed();
+
+        // Reconsider movement if:
+        // - the target moved,
+        // - the chase angle mode changed,
+        // - or a previously-blocked relocation cooldown has expired.
+        if (targetPositionChanged || chaseAngleModeChanged || relocationCooldownExpired)
         {
-            _lastTargetPosition = target->GetPosition();
-            _useChaseAngle = useChaseAngle;
-            if (owner->HasUnitState(UNIT_STATE_CHASE_MOVE) || !PositionOkay(owner, target, minRange, maxRange, angle))
+            bool const alreadyMoving = owner->HasUnitState(UNIT_STATE_CHASE_MOVE);
+            bool const positionInvalid = !PositionOkay(owner, target, minRange, maxRange, angle);
+            if (alreadyMoving || positionInvalid)
             {
                 Creature* const cOwner = owner->ToCreature();
                 // can we get to the target?
@@ -140,11 +207,30 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
                     cOwner->SetCannotReachTarget(true);
                     cOwner->StopMoving();
                     _path = nullptr;
+                    _relocationCooldown.Reset(0s);
+                    _currentChaseStopDistance = 0.0f;
+                    _lastTargetPosition = currentTargetPosition;
+                    _useChaseAngle = useChaseAngle;
                     return true;
                 }
 
                 // figure out which way we want to move
-                bool const moveToward = !owner->IsInDist(target, maxRange);
+                _movingTowards = !owner->IsInDist(target, maxRange);
+
+                bool const angleMismatch = angle && !angle->IsAngleOkay(target->GetRelativeAngle(owner));
+                bool const closeRangeRelocation = !_movingTowards;
+
+                // Only optional close-range relocation should be throttled.
+                // Do not throttle:
+                // - normal chasing toward target,
+                // - angle correction,
+                // - repathing while already moving.
+                bool const shouldThrottleRelocation = closeRangeRelocation && !angleMismatch && !alreadyMoving;
+                if (shouldThrottleRelocation && relocationCooldownActive && !_relocationCooldown.Passed())
+                {
+                    owner->SetInFront(target);
+                    return true;
+                }
 
                 // make a new path if we have to...
                 if (!_path)
@@ -152,10 +238,24 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
 
                 Position destination;
                 bool shortenPath = false;
-                float calculationDistance = (moveToward ? maxTarget : minTarget) - hitboxSum;
+
+                // If we are moving toward a target with a large explicit chase range,
+                // pick a randomized stop distance inside the max chase distance.
+                float desiredTargetDistance = minTarget;
+                if (_movingTowards)
+                {
+                    if (!IsValidChaseStopDistance(_currentChaseStopDistance, minTarget, maxTarget))
+                        _currentChaseStopDistance = SelectRandomizedChaseStopDistance(owner, target, _range, minTarget, maxTarget);
+
+                    desiredTargetDistance = _currentChaseStopDistance;
+                }
+                else
+                    _currentChaseStopDistance = 0.0f;
+
+                float calculationDistance = desiredTargetDistance - hitboxSum;
                 float calculationAngle = angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner);
                 // if we want to move toward the target and there's no fixed angle...
-                if (moveToward && !angle)
+                if (_movingTowards && !angle)
                 {
                     // ...we'll pathfind to the center, then shorten the path
                     target->GetPosition(destination.m_positionX, destination.m_positionY, destination.m_positionZ);
@@ -194,11 +294,22 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
                     if (cOwner)
                         cOwner->SetCannotReachTarget(true);
                     owner->StopMoving();
+                    _currentChaseStopDistance = 0.0f;
+
+                    // Path failure should not consume the long 20-30s relocation cooldown.
+                    // Use a short retry delay only for close-range relocation to avoid path spam.
+                    if (closeRangeRelocation)
+                        _relocationCooldown.Reset(2s);
+                    else
+                        _relocationCooldown.Reset(0s);
+
+                    _lastTargetPosition = currentTargetPosition;
+                    _useChaseAngle = useChaseAngle;
                     return true;
                 }
 
                 if (shortenPath)
-                    _path->ShortenPathUntilDist(PositionToVector3(target), maxTarget);
+                    _path->ShortenPathUntilDist(PositionToVector3(target), desiredTargetDistance);
 
                 if (cOwner)
                     cOwner->SetCannotReachTarget(false);
@@ -227,8 +338,27 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
                 init.SetWalk(walk);
                 init.SetFacing(target);
                 init.Launch();
+
+                // Store the randomized stop distance only while moving toward the target.
+                // This prevents the range-check block from stopping the spline early at maxTarget.
+                _currentChaseStopDistance = _movingTowards ? desiredTargetDistance : 0.0f;
+
+                // Commit target state only after this movement decision was actually handled.
+                _lastTargetPosition = currentTargetPosition;
+                _useChaseAngle = useChaseAngle;
+
+                // Only successful optional close-range relocation starts the long cooldown.
+                if (shouldThrottleRelocation)
+                    _relocationCooldown.Reset(randtime(20s, 30s));
+                else if (_movingTowards)
+                    _relocationCooldown.Reset(0s);
+
                 return true;
             }
+
+            // Target/angle change was seen, but no movement correction was needed.
+            _lastTargetPosition = currentTargetPosition;
+            _useChaseAngle = useChaseAngle;
         }
         syncFacingOrientation = true;
     }
@@ -238,6 +368,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
     {
         RemoveFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED);
         _path = nullptr;
+        _currentChaseStopDistance = 0.0f;
         if (Creature* cOwner = owner->ToCreature())
             cOwner->SetCannotReachTarget(false);
         owner->ClearUnitState(UNIT_STATE_CHASE_MOVE);
