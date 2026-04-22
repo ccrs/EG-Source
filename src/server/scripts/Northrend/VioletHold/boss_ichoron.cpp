@@ -360,7 +360,10 @@ class spell_ichoron_protective_bubble : public AuraScript
 
     void HandleShatter(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
-        //if (GetTargetApplication()->GetRemoveMode() == AURA_REMOVE_BY_ENEMY_SPELL)
+        //if (GetTargetApplication()->GetRemoveMode() != AURA_REMOVE_BY_ENEMY_SPELL)
+            //return;
+        if (!GetTarget()->IsAlive() || !GetTarget()->IsInCombat())
+            return;
         if (GetAura()->GetCharges() <= 1)
             if (UnitAI* targetAI = GetTarget()->GetAI())
                 targetAI->DoAction(ACTION_PROTECTIVE_BUBBLE_SHATTERED);
