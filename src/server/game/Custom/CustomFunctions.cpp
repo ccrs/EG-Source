@@ -197,7 +197,7 @@ Unit* WorldObject::DoFindLowestHPFriendlyInRange(FriendlySearchOptions options) 
     std::vector<Unit*> potentialFriendlies;
     EG::AnyFriendlyUnitInObjectRangeCheck checker(this, options);
     Trinity::UnitListSearcher<EG::AnyFriendlyUnitInObjectRangeCheck> searcher(this, potentialFriendlies, checker);
-    Cell::VisitGridObjects(this, searcher, options.Range);
+    Cell::VisitAllObjects(this, searcher, options.Range);
     if (potentialFriendlies.empty())
         return nullptr;
 
