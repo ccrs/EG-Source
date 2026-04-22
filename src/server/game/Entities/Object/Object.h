@@ -539,6 +539,16 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         template <typename Container>
         void GetPlayerListInGrid(Container& playerContainer, float maxSearchRange, bool alive = true) const;
 
+        struct FriendlySearchOptions
+        {
+            float Range = 0.f;
+            bool PlayerOnly = false;
+            bool IncludeSelf = true;
+            bool Alive = true;
+            std::unordered_set<uint32> ExcludedEntries;
+        };
+        Unit* DoFindLowestHPFriendlyInRange(FriendlySearchOptions options) const;
+
         void DestroyForNearbyPlayers();
         virtual void UpdateObjectVisibility(bool forced = true);
         virtual void UpdateObjectVisibilityOnCreate() { UpdateObjectVisibility(true); }

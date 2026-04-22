@@ -192,6 +192,32 @@ void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicl
     }
 }
 
+Unit* WorldObject::DoFindLowestHPFriendlyInRange(FriendlySearchOptions options) const
+{
+    std::vector<Unit*> potentialFriendlies;
+    EG::AnyFriendlyUnitInObjectRangeCheck checker(this, options);
+    Trinity::UnitListSearcher<EG::AnyFriendlyUnitInObjectRangeCheck> searcher(this, potentialFriendlies, checker);
+    Cell::VisitGridObjects(this, searcher, options.Range);
+    if (potentialFriendlies.empty())
+        return nullptr;
+
+    Unit* unit = nullptr;
+    float hp = 100.f;
+    Trinity::Containers::RandomShuffle(potentialFriendlies);
+    for (Unit* potential : potentialFriendlies)
+    {
+        if (potential->GetHealthPct() < hp)
+        {
+            unit = potential;
+            hp = unit->GetHealthPct();
+        }
+    }
+    if (!unit)
+        unit = *potentialFriendlies.begin();
+
+    return unit;
+}
+
 void WorldObject::GetNearPoint2D(WorldObject const* searcher, Position const* reference, float& x, float& y, float distance, float absAngle) const
 {
     float effectiveReach = GetCombatReach();
@@ -308,50 +334,26 @@ bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
     return false;
 }
 
-bool EG::AnyFriendlyUnitInObjectRangeCheck::operator()(Unit* unit) const
+bool EG::AnyFriendlyUnitInObjectRangeCheck::operator()(Unit const* unit) const
 {
-    if (!unit->IsAlive())
+    if (_options.Alive && !unit->IsAlive())
         return false;
 
-    if (_includeSelf && _source == unit)
+    if (_options.IncludeSelf && _source == unit)
         return true;
 
-    if (((_playerOnly && unit->IsPlayer()) || !_playerOnly)
-        && unit->IsAlive()
-        && ((_source->IsInCombat() && unit->IsInCombat()) || (!_source->IsInCombat()))
+    if (!_options.ExcludedEntries.empty() && _options.ExcludedEntries.contains(unit->GetEntry()))
+        return false;
+
+    if (((_options.PlayerOnly && unit->IsPlayer()) || !_options.PlayerOnly)
+        && (!_source->IsUnit() || (_source->ToUnit()->IsInCombat() && unit->IsInCombat()) || (!_source->ToUnit()->IsInCombat()))
         && _source->IsValidAssistTarget(unit)
-        && _source->IsWithinDistInMap(unit, _range)
+        && _source->IsWithinDistInMap(unit, _options.Range)
         && _source->IsWithinLOSInMap(unit)
     )
         return true;
 
     return false;
-}
-
-Unit* ScriptedAI::DoFindLowestHPFriendlyInRange(float range, bool playerOnly, bool includeSelf) const
-{
-    std::vector<Unit*> potentialFriendlies;
-    EG::AnyFriendlyUnitInObjectRangeCheck checker(me, range, playerOnly, includeSelf);
-    Trinity::UnitListSearcher<EG::AnyFriendlyUnitInObjectRangeCheck> searcher(me, potentialFriendlies, checker);
-    Cell::VisitGridObjects(me, searcher, range);
-    if (potentialFriendlies.empty())
-        return nullptr;
-
-    Unit* unit = nullptr;
-    float hp = 100.f;
-    Trinity::Containers::RandomShuffle(potentialFriendlies);
-    for (Unit* potential : potentialFriendlies)
-    {
-        if (potential->GetHealthPct() < hp)
-        {
-            unit = potential;
-            hp = unit->GetHealthPct();
-        }
-    }
-    if (!unit)
-        unit = *potentialFriendlies.begin();
-
-    return unit;
 }
 
 void SmartAI::SetCombatMovement()

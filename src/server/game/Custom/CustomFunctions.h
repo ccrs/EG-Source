@@ -1,6 +1,7 @@
 #ifndef CUSTOM_FUNCTIONS
 #define CUSTOM_FUNCTIONS
 
+#include "Object.h"
 #include "SharedDefines.h"
 
 class Unit;
@@ -25,15 +26,13 @@ namespace EG
     class TC_GAME_API AnyFriendlyUnitInObjectRangeCheck
     {
     public:
-        AnyFriendlyUnitInObjectRangeCheck(Unit const* source, float range, bool playerOnly = false, bool includeSelf = false) : _source(source), _range(range), _playerOnly(playerOnly), _includeSelf(includeSelf) { }
+        AnyFriendlyUnitInObjectRangeCheck(WorldObject const* source, WorldObject::FriendlySearchOptions options) : _source(source), _options(options) { }
 
-        bool operator()(Unit* u) const;
+        bool operator()(Unit const* u) const;
 
     private:
-        Unit const* _source;
-        float _range;
-        bool _playerOnly;
-        bool _includeSelf;
+        WorldObject const* _source;
+        WorldObject::FriendlySearchOptions _options;
     };
 }
 
