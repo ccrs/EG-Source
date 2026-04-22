@@ -381,7 +381,7 @@ struct npc_solarium_priest : public ScriptedAI
             })
             .Schedule(10s, 15s, [this](TaskContext task)
             {
-                if (Unit* target = DoFindLowestHPFriendlyInRange(100.0f))
+                if (Unit* target = me->DoFindLowestHPFriendlyInRange(100.0f))
                     DoCast(target, SPELL_GREAT_HEAL);
                 task.Repeat(10s, 15s);
             })

@@ -406,7 +406,7 @@ struct boss_lady_catriona_von_indi : public GuestBaseAI
             })
             .Schedule(10s, 15s, [this](TaskContext task)
             {
-                if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                     DoCast(target, SPELL_GREATER_HEAL);
                 task.Repeat(15s, 25s);
             });
@@ -433,7 +433,7 @@ struct boss_lady_keira_berrybuck : public GuestBaseAI
             })
             .Schedule(10s, 15s, [this](TaskContext task)
             {
-                if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                     DoCast(target, SPELL_HOLY_LIGHT);
                 task.Repeat(15s, 20s);
             })

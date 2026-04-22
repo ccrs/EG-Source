@@ -189,7 +189,7 @@ struct boss_erekem : public BossAI
     {
         scheduler.Schedule(20s, [this](TaskContext task)
         {
-            if (Unit* ally = DoFindLowestHPFriendlyInRange(30.0f))
+            if (Unit* ally = me->DoFindLowestHPFriendlyInRange(30.0f))
                 DoCast(ally, SPELL_EARTH_SHIELD);
 
             task.Repeat(20s);
@@ -211,7 +211,7 @@ struct boss_erekem : public BossAI
 
         scheduler.Schedule(10s, [this](TaskContext task)
         {
-            if (Unit* ally = DoFindLowestHPFriendlyInRange(40.0f))
+            if (Unit* ally = me->DoFindLowestHPFriendlyInRange(40.0f))
                 DoCast(ally, SPELL_CHAIN_HEAL);
 
             if (!CheckGuardAlive())

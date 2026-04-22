@@ -774,22 +774,22 @@ struct npc_toc_druid : public boss_faction_championsAI
             switch (eventId)
             {
                 case EVENT_LIFEBLOOM:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_LIFEBLOOM);
                     events.ScheduleEvent(EVENT_LIFEBLOOM, 5s, 15s);
                     return;
                 case EVENT_NOURISH:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_NOURISH);
                     events.ScheduleEvent(EVENT_NOURISH, 5s, 15s);
                     return;
                 case EVENT_REGROWTH:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_REGROWTH);
                     events.ScheduleEvent(EVENT_REGROWTH, 5s, 15s);
                     return;
                 case EVENT_REJUVENATION:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_REJUVENATION);
                     events.ScheduleEvent(EVENT_REJUVENATION, 5s, 15s);
                     return;
@@ -855,17 +855,17 @@ struct npc_toc_shaman : public boss_faction_championsAI
             switch (eventId)
             {
                 case EVENT_HEALING_WAVE:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_HEALING_WAVE);
                     events.ScheduleEvent(EVENT_HEALING_WAVE, 3s, 5s);
                     return;
                 case EVENT_RIPTIDE:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_RIPTIDE);
                     events.ScheduleEvent(EVENT_RIPTIDE, 5s, 15s);
                     return;
                 case EVENT_SPIRIT_CLEANSE:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_SPIRIT_CLEANSE);
                     events.ScheduleEvent(EVENT_SPIRIT_CLEANSE, 15s, 35s);
                     return;
@@ -952,27 +952,27 @@ struct npc_toc_paladin : public boss_faction_championsAI
                         events.RescheduleEvent(EVENT_HEAL_DIVINE_SHIELD, 5s);
                     return;
                 case EVENT_CLEANSE:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_CLEANSE);
                     events.ScheduleEvent(EVENT_CLEANSE, 10s, 30s);
                     return;
                 case EVENT_FLASH_OF_LIGHT:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_FLASH_OF_LIGHT);
                     events.ScheduleEvent(EVENT_FLASH_OF_LIGHT, 3s, 5s);
                     return;
                 case EVENT_HOLY_LIGHT:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_HOLY_LIGHT);
                     events.ScheduleEvent(EVENT_HOLY_LIGHT, 5s, 10s);
                     return;
                 case EVENT_HOLY_SHOCK:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_HOLY_SHOCK);
                     events.ScheduleEvent(EVENT_HOLY_SHOCK, 10s, 15s);
                     return;
                 case EVENT_HEAL_HAND_OF_PROTECTION:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(30.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(30.0f))
                     {
                         if (!target->HasAura(SPELL_FORBEARANCE))
                         {
@@ -1030,22 +1030,22 @@ struct npc_toc_priest : public boss_faction_championsAI
             switch (eventId)
             {
                 case EVENT_RENEW:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_RENEW);
                     events.ScheduleEvent(EVENT_RENEW, 3s, 5s);
                     return;
                 case EVENT_SHIELD:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_SHIELD);
                     events.ScheduleEvent(EVENT_SHIELD, 15s, 35s);
                     return;
                 case EVENT_FLASH_HEAL:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_FLASH_HEAL);
                     events.ScheduleEvent(EVENT_FLASH_HEAL, 3s, 5s);
                     return;
                 case EVENT_HEAL_DISPEL:
-                    if (Unit* target = urand(0, 1) ? SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true) : DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = urand(0, 1) ? SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true) : me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_DISPEL);
                     events.ScheduleEvent(EVENT_HEAL_DISPEL, 10s, 20s);
                     return;
@@ -1060,7 +1060,7 @@ struct npc_toc_priest : public boss_faction_championsAI
                     events.ScheduleEvent(EVENT_MANA_BURN, 15s, 30s);
                     return;
                 case EVENT_PENANCE:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_PENANCE);
                     events.ScheduleEvent(EVENT_PENANCE, 10s, 20s);
                     return;
@@ -1141,7 +1141,7 @@ struct npc_toc_shadow_priest : public boss_faction_championsAI
                         events.RescheduleEvent(EVENT_DISPERSION, 5s);
                     return;
                 case EVENT_DPS_DISPEL:
-                    if (Unit* target = urand(0, 1) ? SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true) : DoFindLowestHPFriendlyInRange(40.0f))
+                    if (Unit* target = urand(0, 1) ? SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true) : me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_DISPEL);
                     events.ScheduleEvent(EVENT_DPS_DISPEL, 10s, 20s);
                     return;
@@ -1954,7 +1954,7 @@ struct npc_toc_retro_paladin : public boss_faction_championsAI
                     events.ScheduleEvent(EVENT_REPENTANCE, 1min);
                     return;
                 case EVENT_DPS_HAND_OF_PROTECTION:
-                    if (Unit* target = DoFindLowestHPFriendlyInRange(30.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(30.0f))
                     {
                         if (!target->HasAura(SPELL_FORBEARANCE))
                         {

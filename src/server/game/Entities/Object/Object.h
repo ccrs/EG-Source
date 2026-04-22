@@ -547,6 +547,10 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
             bool Alive = true;
             std::unordered_set<uint32> ExcludedEntries;
         };
+        Unit* DoFindLowestHPFriendlyInRange(float range) const
+        {
+            return DoFindLowestHPFriendlyInRange(FriendlySearchOptions{ .Range = range });
+        }
         Unit* DoFindLowestHPFriendlyInRange(FriendlySearchOptions options) const;
 
         void DestroyForNearbyPlayers();
