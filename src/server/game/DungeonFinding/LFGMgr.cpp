@@ -25,6 +25,7 @@
 #include "Group.h"
 #include "GroupMgr.h"
 #include "InstanceSaveMgr.h"
+#include "InstanceScript.h"
 #include "LFGGroupData.h"
 #include "LFGPlayerData.h"
 #include "LFGScripts.h"
@@ -297,6 +298,8 @@ void LFGMgr::Update(uint32 diff)
 
     time_t currTime = GameTime::GetGameTime();
 
+    ProcessPendingTeleportIns(currTime);
+
     // Remove obsolete role checks
     for (LfgRoleCheckContainer::iterator it = RoleChecksStore.begin(); it != RoleChecksStore.end();)
     {
@@ -399,6 +402,124 @@ void LFGMgr::Update(uint32 diff)
         m_QueueTimer += diff;
 }
 
+void LFGMgr::ProcessPendingTeleportIns(time_t currTime)
+{
+    for (std::map<ObjectGuid, time_t>::iterator itr = PendingTeleportInStore.begin(); itr != PendingTeleportInStore.end();)
+    {
+        ObjectGuid guid = itr->first;
+        time_t expireTime = itr->second;
+
+        Player* player = ObjectAccessor::FindConnectedPlayer(guid);
+        if (!player)
+        {
+            if (currTime >= expireTime)
+                itr = PendingTeleportInStore.erase(itr);
+            else
+                ++itr;
+
+            continue;
+        }
+
+        if (player->IsBeingTeleported())
+        {
+            if (currTime >= expireTime)
+                itr = PendingTeleportInStore.erase(itr);
+            else
+                ++itr;
+
+            continue;
+        }
+
+        Group* group = player->GetGroup();
+        if (!group || !group->isLFGGroup())
+        {
+            itr = PendingTeleportInStore.erase(itr);
+            continue;
+        }
+
+        LFGDungeonData const* dungeon = GetLFGDungeon(GetDungeon(group->GetGUID()));
+        if (!dungeon)
+        {
+            itr = PendingTeleportInStore.erase(itr);
+            continue;
+        }
+
+        if (player->GetMapId() == uint32(dungeon->map) && player->GetMap()->IsDungeon())
+        {
+            if (currTime >= expireTime)
+            {
+                TC_LOG_DEBUG("lfg.teleport", "Deferred LFG teleport for player {} expired while still inside map {}", player->GetName(), dungeon->map);
+                itr = PendingTeleportInStore.erase(itr);
+            }
+            else
+                ++itr;
+
+            continue;
+        }
+
+        itr = PendingTeleportInStore.erase(itr);
+        TeleportPlayer(player, false, false, true);
+    }
+}
+
+bool LFGMgr::TryFinishDungeonFromCurrentInstance(Group* group)
+{
+    if (!group || !group->isLFGGroup())
+        return false;
+
+    ObjectGuid gguid = group->GetGUID();
+    if (GetState(gguid) != LFG_STATE_DUNGEON)
+        return false;
+
+    uint32 storedDungeonId = GetDungeon(gguid);
+    if (!storedDungeonId)
+        return false;
+
+    for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+    {
+        Player* player = itr->GetSource();
+        if (!player || !player->IsInWorld())
+            continue;
+
+        Map* map = player->GetMap();
+        if (!map || !map->IsDungeon())
+            continue;
+
+        InstanceMap* instanceMap = map->ToInstanceMap();
+        if (!instanceMap)
+            continue;
+
+        InstanceScript* instance = instanceMap->GetInstanceScript();
+        if (!instance)
+            continue;
+
+        DungeonEncounterList const* encounters = sObjectMgr->GetDungeonEncounterList(map->GetId(), map->GetDifficulty());
+        if (!encounters)
+            continue;
+
+        uint32 completedMask = instance->GetCompletedEncounterMask();
+        for (DungeonEncounterData const* encounter : *encounters)
+        {
+            if (!encounter->lastEncounterDungeon)
+                continue;
+
+            if (encounter->lastEncounterDungeon != storedDungeonId)
+                continue;
+
+            if (!(completedMask & (uint32(1) << encounter->dbcEntry->Bit)))
+                continue;
+
+            TC_LOG_DEBUG("lfg.dungeon.finish", "Recovering missed finished-dungeon state for group {} dungeon {} from instance {} completed mask {}",
+                gguid.ToString(), storedDungeonId, instanceMap->GetInstanceId(), completedMask);
+
+            FinishDungeon(gguid, storedDungeonId, map);
+            return GetState(gguid) == LFG_STATE_FINISHED_DUNGEON;
+        }
+    }
+
+    return false;
+}
+
 /**
     Adds the player/group to lfg queue. If player is in a group then it is the leader
     of the group tying to join the group. Join conditions are checked before adding
@@ -428,9 +549,14 @@ void LFGMgr::JoinLfg(Player* player, uint8 roles, LfgDungeonSet& dungeons, const
     LfgJoinResultData joinData;
     GuidSet players;
     uint32 rDungeonId = 0;
-    bool isContinue = grp && grp->isLFGGroup() && GetState(gguid) != LFG_STATE_FINISHED_DUNGEON;
 
-    // Do not allow to change dungeon in the middle of a current dungeon
+    if (grp && grp->isLFGGroup() && GetState(gguid) == LFG_STATE_DUNGEON)
+        TryFinishDungeonFromCurrentInstance(grp);
+
+    bool isContinue = grp && grp->isLFGGroup() && GetState(gguid) == LFG_STATE_DUNGEON;
+
+    // Do not allow to change dungeon in the middle of a current dungeon.
+    // Finished LFG groups are allowed to queue for a fresh run without being disbanded.
     if (isContinue)
     {
         dungeons.clear();
@@ -940,6 +1066,13 @@ void LFGMgr::MakeNewGroup(LfgProposal const& proposal)
     GuidList players, tankPlayers, healPlayers, dpsPlayers;
     GuidList playersToTeleport;
 
+    Group* grp = !proposal.group.IsEmpty() ? sGroupMgr->GetGroupByGUID(proposal.group) : nullptr;
+    ObjectGuid existingGroupGuid = grp ? grp->GetGUID() : ObjectGuid::Empty;
+    uint32 previousDungeonId = !existingGroupGuid.IsEmpty() ? GetDungeon(existingGroupGuid) : 0;
+    LfgState previousState = !existingGroupGuid.IsEmpty() ? GetState(existingGroupGuid) : LFG_STATE_NONE;
+    bool existingLfgGroupNewRun = grp && grp->isLFGGroup() && !proposal.group.IsEmpty() && proposal.group == existingGroupGuid
+        && (proposal.isNew || previousState == LFG_STATE_FINISHED_DUNGEON || previousDungeonId != proposal.dungeonId);
+
     for (LfgProposalPlayerContainer::const_iterator it = proposal.players.begin(); it != proposal.players.end(); ++it)
     {
         ObjectGuid guid = it->first;
@@ -962,7 +1095,7 @@ void LFGMgr::MakeNewGroup(LfgProposal const& proposal)
                     break;
             }
 
-        if (proposal.isNew || GetGroup(guid) != proposal.group)
+        if (proposal.isNew || existingLfgGroupNewRun || GetGroup(guid) != proposal.group)
             playersToTeleport.push_back(guid);
     }
 
@@ -974,7 +1107,6 @@ void LFGMgr::MakeNewGroup(LfgProposal const& proposal)
     LFGDungeonData const* dungeon = GetLFGDungeon(proposal.dungeonId);
     ASSERT(dungeon);
 
-    Group* grp = !proposal.group.IsEmpty() ? sGroupMgr->GetGroupByGUID(proposal.group) : nullptr;
     for (GuidList::const_iterator it = players.begin(); it != players.end(); ++it)
     {
         ObjectGuid pguid = (*it);
@@ -1019,10 +1151,10 @@ void LFGMgr::MakeNewGroup(LfgProposal const& proposal)
 
     _SaveToDB(gguid, grp->GetDbStoreId());
 
-    // Teleport Player
+    // Teleport players. Reused finished LFG groups are a fresh run and must be moved even if the group object is the same.
     for (GuidList::const_iterator it = playersToTeleport.begin(); it != playersToTeleport.end(); ++it)
         if (Player* player = ObjectAccessor::FindPlayer(*it))
-            TeleportPlayer(player, false);
+            TeleportPlayer(player, false, false, existingLfgGroupNewRun);
 
     // Update group info
     grp->SendUpdate();
@@ -1347,7 +1479,7 @@ void LFGMgr::UpdateBoot(ObjectGuid guid, bool accept)
    @param[in]     out Teleport out (true) or in (false)
    @param[in]     fromOpcode Function called from opcode handlers? (Default false)
 */
-void LFGMgr::TeleportPlayer(Player* player, bool out, bool fromOpcode /*= false*/)
+void LFGMgr::TeleportPlayer(Player* player, bool out, bool fromOpcode /*= false*/, bool forceNewInstance /*= false*/)
 {
     LFGDungeonData const* dungeon = nullptr;
     Group* group = player->GetGroup();
@@ -1387,7 +1519,21 @@ void LFGMgr::TeleportPlayer(Player* player, bool out, bool fromOpcode /*= false*
         error = LFG_TELEPORTERROR_CHARMING;
     else if (player->HasAura(9454)) // check Freeze debuff
         error = LFG_TELEPORTERROR_INVALID_LOCATION;
-    else if (player->GetMapId() != uint32(dungeon->map))  // Do not teleport players in dungeon to the entrance
+    else if (forceNewInstance && player->GetMapId() == uint32(dungeon->map) && player->GetMap()->IsDungeon())
+    {
+        // A same-map TeleportTo() is a near teleport and will not switch the player to a fresh instance copy.
+        // Leave the old completed instance first, then ProcessPendingTeleportIns() will teleport back in after the worldport finishes.
+        if (player->TeleportToBGEntryPoint())
+        {
+            PendingTeleportInStore[player->GetGUID()] = GameTime::GetGameTime() + 30;
+            TC_LOG_DEBUG("lfg.teleport", "Player {} queued for deferred LFG teleport in to map {} after leaving old instance",
+                player->GetName(), uint32(dungeon->map));
+            return;
+        }
+
+        error = LFG_TELEPORTERROR_INVALID_LOCATION;
+    }
+    else if (forceNewInstance || player->GetMapId() != uint32(dungeon->map))  // Do not teleport players in the same active dungeon to the entrance unless this is a fresh run.
     {
         uint32 mapid = dungeon->map;
         float x = dungeon->x;
@@ -1397,18 +1543,21 @@ void LFGMgr::TeleportPlayer(Player* player, bool out, bool fromOpcode /*= false*
 
         if (!fromOpcode)
         {
-            // Select a player inside to be teleported to
-            for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+            // Select a player inside to be teleported to, but never for a forced fresh run.
+            if (!forceNewInstance)
             {
-                Player* plrg = itr->GetSource();
-                if (plrg && plrg != player && plrg->GetMapId() == uint32(dungeon->map))
+                for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
                 {
-                    mapid = plrg->GetMapId();
-                    x = plrg->GetPositionX();
-                    y = plrg->GetPositionY();
-                    z = plrg->GetPositionZ();
-                    orientation = plrg->GetOrientation();
-                    break;
+                    Player* plrg = itr->GetSource();
+                    if (plrg && plrg != player && plrg->GetMapId() == uint32(dungeon->map))
+                    {
+                        mapid = plrg->GetMapId();
+                        x = plrg->GetPositionX();
+                        y = plrg->GetPositionY();
+                        z = plrg->GetPositionZ();
+                        orientation = plrg->GetOrientation();
+                        break;
+                    }
                 }
             }
         }
@@ -1443,7 +1592,15 @@ void LFGMgr::FinishDungeon(ObjectGuid gguid, const uint32 dungeonId, Map const* 
     uint32 gDungeonId = GetDungeon(gguid);
     if (gDungeonId != dungeonId)
     {
-        TC_LOG_DEBUG("lfg.dungeon.finish", "Group {} finished dungeon {} but queued for {}", gguid.ToString(), dungeonId, gDungeonId);
+        LFGDungeonData const* expected = GetLFGDungeon(gDungeonId);
+        LFGDungeonData const* completed = GetLFGDungeon(dungeonId);
+
+        TC_LOG_ERROR("lfg.dungeon.finish",
+            "Group {} finished dungeon {} (map {}, difficulty {}) but queued for {} (map {}, difficulty {}). Current instance map {}",
+            gguid.ToString(),
+            dungeonId, completed ? completed->map : 0, completed ? uint32(completed->difficulty) : 0,
+            gDungeonId, expected ? expected->map : 0, expected ? uint32(expected->difficulty) : 0,
+            currMap ? currMap->GetId() : 0);
         return;
     }
 
