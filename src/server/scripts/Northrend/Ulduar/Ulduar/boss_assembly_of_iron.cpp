@@ -91,8 +91,7 @@ enum AssemblyEvents
     EVENT_FLIGHT                                 = 14,
     EVENT_ENDFLIGHT                              = 15,
     EVENT_GROUND                                 = 16,
-    EVENT_LAND                                   = 17,
-    EVENT_MOVE_POSITION                          = 18
+    EVENT_LAND                                   = 17
 };
 
 enum AssemblyActions
@@ -508,7 +507,13 @@ class boss_stormcaller_brundir : public CreatureScript
 
             void AttackStart(Unit* victim) override
             {
-                AttackStartCaster(victim, 40.0f);
+                if (victim && me->Attack(victim, false))
+                {
+                    if (phase < 3)
+                        me->GetMotionMaster()->MoveChase(victim, ChaseRange(15.f, 40.0f));
+                    else
+                        me->GetMotionMaster()->MoveChase(victim);
+                }
             }
 
             void DoAction(int32 action) override
@@ -526,12 +531,14 @@ class boss_stormcaller_brundir : public CreatureScript
                             events.RescheduleEvent(EVENT_LIGHTNING_WHIRL, 15s, 250s);
                         if (phase >= 3)
                         {
+                            if (Unit* victim = me->GetVictim())
+                                me->GetMotionMaster()->MoveChase(victim);
                             DoCast(me, SPELL_STORMSHIELD);
                             events.RescheduleEvent(EVENT_LIGHTNING_TENDRILS, 50s, 60s);
                             me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_STUN, true); // Apply immumity to stuns
                         }
-                        if (me->GetVictim())
-                            me->GetMotionMaster()->MoveChase(me->GetVictim(), 40.0f);
+                        else if (me->GetVictim())
+                            me->GetMotionMaster()->MoveChase(me->GetVictim(), ChaseRange(15.f, 40.0f));
                         break;
                     }
                 }
@@ -614,6 +621,7 @@ class boss_stormcaller_brundir : public CreatureScript
                             DoCast(me, SPELL_LIGHTNING_TENDRILS);
                             DoCast(me, SPELL_LIGHTNING_TENDRILS_VISUAL);
                             me->AttackStop();
+                            me->SetDisableGravity(true);
                             me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
                             me->GetMotionMaster()->MovePoint(0, me->GetPositionX(), me->GetPositionY(), FINAL_FLIGHT_Z);
                             events.DelayEvents(35s);
@@ -643,24 +651,12 @@ class boss_stormcaller_brundir : public CreatureScript
                             events.ScheduleEvent(EVENT_GROUND, 2500ms);
                             break;
                         case EVENT_GROUND:
+                            me->SetDisableGravity(false);
                             me->RemoveAurasDueToSpell(sSpellMgr->GetSpellIdForDifficulty(SPELL_LIGHTNING_TENDRILS, me));
                             me->RemoveAurasDueToSpell(SPELL_LIGHTNING_TENDRILS_VISUAL);
                             DoStartMovement(me->GetVictim());
                             events.CancelEvent(EVENT_GROUND);
                             ResetThreatList();
-                            break;
-                        case EVENT_MOVE_POSITION:
-                            if (me->IsWithinMeleeRange(me->GetVictim()))
-                            {
-                                float x = float(irand(-25, 25));
-                                float y = float(irand(-25, 25));
-                                me->GetMotionMaster()->MovePoint(0, me->GetPositionX() + x, me->GetPositionY() + y, FLOOR_Z);
-                                // Prevention to go outside the room or into the walls
-                                if (Creature* trigger = me->FindNearestCreature(NPC_WORLD_TRIGGER, 100.0f, true))
-                                    if (me->GetDistance(trigger) >= 50.0f)
-                                        me->GetMotionMaster()->MovePoint(0, trigger->GetPositionX(), trigger->GetPositionY(), FLOOR_Z);
-                            }
-                            events.ScheduleEvent(EVENT_MOVE_POSITION, 7500ms, 10s);
                             break;
                         default:
                             break;

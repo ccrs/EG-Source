@@ -202,21 +202,7 @@ class instance_ulduar : public InstanceMapScript
             void OnPlayerEnter(Player* player) override
             {
                 if (!TeamInInstance)
-                {
                     TeamInInstance = player->GetTeam();
-
-                    if (GetBossState(DATA_FLAME_LEVIATHAN) != DONE)
-                    {
-                        std::vector<RespawnInfo const*> data;
-                        instance->GetRespawnInfo(data, SPAWN_TYPEMASK_ALL);
-                        if (!data.empty())
-                        {
-                            for (RespawnInfo const* info : data)
-                                if (info->entry == NPC_SALVAGED_DEMOLISHER || info->entry == NPC_SALVAGED_SIEGE_ENGINE || info->entry == NPC_SALVAGED_CHOPPER)
-                                    instance->Respawn(info->type, info->spawnId);
-                        }
-                    }
-                }
 
                 if (_summonAlgalon)
                 {
@@ -595,22 +581,83 @@ class instance_ulduar : public InstanceMapScript
                     case DATA_FLAME_LEVIATHAN:
                         if (state == DONE)
                             _events.ScheduleEvent(EVENT_DESPAWN_LEVIATHAN_VEHICLES, 5s);
-                        else if (state == FAIL)
+                        else if (state == NOT_STARTED)
                         {
                             std::vector<RespawnInfo const*> data;
-                            instance->GetRespawnInfo(data, SPAWN_TYPEMASK_ALL);
+                            instance->GetRespawnInfo(data, SPAWN_TYPEMASK_CREATURE);
                             if (!data.empty())
-                            {
                                 for (RespawnInfo const* info : data)
+                                {
                                     if (info->entry == NPC_SALVAGED_DEMOLISHER || info->entry == NPC_SALVAGED_SIEGE_ENGINE || info->entry == NPC_SALVAGED_CHOPPER)
-                                        instance->Respawn(info->type, info->spawnId);
-                            }
+                                    {
+                                        bool aliveExists = false;
+                                        std::vector<Creature*> deadCopies;
+                                        auto bounds = instance->GetCreatureBySpawnIdStore().equal_range(info->spawnId);
+                                        for (auto itr = bounds.first; itr != bounds.second; ++itr)
+                                        {
+                                            Creature* creature = itr->second;
+                                            if (!creature)
+                                                continue;
+
+                                            if (creature->IsAlive())
+                                                aliveExists = true;
+                                            else
+                                                deadCopies.push_back(creature);
+                                        }
+
+                                        // Remove old corpse objects. Do NOT call creature->Respawn() here.
+                                        for (Creature* creature : deadCopies)
+                                            creature->RemoveCorpse(false, true);
+
+                                        // Only force the queued respawn if no alive copy already exists.
+                                        if (!aliveExists)
+                                            instance->Respawn(info->type, info->spawnId);
+                                    }
+                                }
                         }
                         break;
                     case DATA_IGNIS:
                     case DATA_RAZORSCALE:
                     case DATA_XT002:
+                        break;
                     case DATA_ASSEMBLY_OF_IRON:
+                    {
+                        if (state == NOT_STARTED)
+                        {
+                            std::vector<RespawnInfo const*> data;
+                            instance->GetRespawnInfo(data, SPAWN_TYPEMASK_CREATURE);
+                            if (!data.empty())
+                                for (RespawnInfo const* info : data)
+                                {
+                                    if (info->entry == NPC_STEELBREAKER || info->entry == NPC_MOLGEIM || info->entry == NPC_BRUNDIR)
+                                    {
+                                        bool aliveExists = false;
+                                        std::vector<Creature*> deadCopies;
+                                        auto bounds = instance->GetCreatureBySpawnIdStore().equal_range(info->spawnId);
+                                        for (auto itr = bounds.first; itr != bounds.second; ++itr)
+                                        {
+                                            Creature* creature = itr->second;
+                                            if (!creature)
+                                                continue;
+
+                                            if (creature->IsAlive())
+                                                aliveExists = true;
+                                            else
+                                                deadCopies.push_back(creature);
+                                        }
+
+                                        // Remove old corpse objects. Do NOT call creature->Respawn() here.
+                                        for (Creature* creature : deadCopies)
+                                            creature->RemoveCorpse(false, true);
+
+                                        // Only force the queued respawn if no alive copy already exists.
+                                        if (!aliveExists)
+                                            instance->Respawn(info->type, info->spawnId);
+                                    }
+                                }
+                        }
+                        break;
+                    }
                     case DATA_AURIAYA:
                     case DATA_VEZAX:
                     case DATA_YOGG_SARON:

@@ -179,3 +179,8 @@ INSERT INTO `achievement_criteria_data` (`criteria_id`, `type`, `value1`, `value
 (10424, 18, 0, 0, '');
 
 DELETE FROM `disables` WHERE `sourceType`=4 AND `entry` IN (10090, 10091, 10423, 10425, 10422, 10424);
+
+UPDATE `creature_template` SET `flags_extra` = 8384 WHERE `entry` = 33705;
+
+UPDATE `creature_template` SET `unit_flags` = 33554434, `flags_extra` = 8384 WHERE `entry` = 32866;
+UPDATE `creature_template` SET `unit_flags` = 33554434, `flags_extra` = 8384 WHERE `entry` = 33690;
