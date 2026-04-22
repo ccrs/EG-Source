@@ -88,53 +88,6 @@ Item* Player::GetWeaponForDamageMods(WeaponAttackType attackType) const
     return item;
 }
 
-void Unit::InterruptSpellsCastedOnMe(bool killDelayed, bool interruptFriendlySpells)
-{
-    UnitList targets;
-    Trinity::AnyUnitInObjectRangeCheck u_check(this, 100.0f);
-    Trinity::UnitListSearcher<Trinity::AnyUnitInObjectRangeCheck> searcher(this, targets, u_check);
-    Cell::VisitAllObjects(this, searcher, GetMap()->GetVisibilityRange());
-
-    for (const auto& target : targets)
-    {
-        if (target->GetVictim() == this)
-        {
-            if (Player* player = target->ToPlayer())
-            {
-                player->ClearUnitState(UNIT_STATE_MELEE_ATTACKING);
-                player->InterruptSpell(CURRENT_MELEE_SPELL);
-                player->SendMeleeAttackStop(this);
-                player->SendAttackSwingCancelAttack();
-            }
-            else
-            {
-                target->InterruptSpell(CURRENT_MELEE_SPELL);
-                target->SendMeleeAttackStop(this);
-            }
-        }
-
-        if (!interruptFriendlySpells && IsFriendlyTo(target))
-            continue;
-
-        for (uint32 itr = CURRENT_FIRST_NON_MELEE_SPELL; itr < CURRENT_MAX_SPELL; ++itr)
-            if (Spell* spell = target->GetCurrentSpell(CurrentSpellTypes(itr)))
-                if (spell->m_targets.GetUnitTargetGUID() == GetGUID())
-                    if (killDelayed || (spell->getState() == SPELL_STATE_PREPARING && spell->GetTimer()) || itr == CURRENT_CHANNELED_SPELL)
-                        target->InterruptSpell(CurrentSpellTypes(itr), true);
-
-        if (!killDelayed)
-            continue;
-
-        std::multimap<uint64, BasicEvent*> toIterate = target->m_Events.GetEvents();
-        for (auto itr = toIterate.begin(); itr != toIterate.end(); ++itr)
-            if (itr->second->Type == EventType::EVENT_TYPE_SPELL)
-                if (SpellEvent* event = dynamic_cast<SpellEvent*>(itr->second))
-                    if (event->GetSpell()->m_targets.GetUnitTargetGUID() == GetGUID())
-                        if (event->GetSpell()->getState() != SPELL_STATE_FINISHED)
-                            event->GetSpell()->cancel();
-    }
-}
-
 void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicleExitParameters params)
 {
     if (params.ExitSpline && IsInWorld() && !m_Events.HasEventType(EventType::EVENT_TYPE_VEHICLE_JOIN))
@@ -189,6 +142,53 @@ void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicl
         toCreature->LoadCreaturesAddon();
         if (toCreature->IsVehicle())
             toCreature->GetVehicleKit()->Reset(true);
+    }
+}
+
+void Unit::InterruptSpellsCastedOnMe(bool killDelayed, bool interruptFriendlySpells)
+{
+    UnitList targets;
+    Trinity::AnyUnitInObjectRangeCheck u_check(this, 100.0f);
+    Trinity::UnitListSearcher<Trinity::AnyUnitInObjectRangeCheck> searcher(this, targets, u_check);
+    Cell::VisitAllObjects(this, searcher, GetMap()->GetVisibilityRange());
+
+    for (const auto& target : targets)
+    {
+        if (target->GetVictim() == this)
+        {
+            if (Player* player = target->ToPlayer())
+            {
+                player->ClearUnitState(UNIT_STATE_MELEE_ATTACKING);
+                player->InterruptSpell(CURRENT_MELEE_SPELL);
+                player->SendMeleeAttackStop(this);
+                player->SendAttackSwingCancelAttack();
+            }
+            else
+            {
+                target->InterruptSpell(CURRENT_MELEE_SPELL);
+                target->SendMeleeAttackStop(this);
+            }
+        }
+
+        if (!interruptFriendlySpells && IsFriendlyTo(target))
+            continue;
+
+        for (uint32 itr = CURRENT_FIRST_NON_MELEE_SPELL; itr < CURRENT_MAX_SPELL; ++itr)
+            if (Spell* spell = target->GetCurrentSpell(CurrentSpellTypes(itr)))
+                if (spell->m_targets.GetUnitTargetGUID() == GetGUID())
+                    if (killDelayed || (spell->getState() == SPELL_STATE_PREPARING && spell->GetTimer()) || itr == CURRENT_CHANNELED_SPELL)
+                        target->InterruptSpell(CurrentSpellTypes(itr), true);
+
+        if (!killDelayed)
+            continue;
+
+        std::multimap<uint64, BasicEvent*> toIterate = target->m_Events.GetEvents();
+        for (auto itr = toIterate.begin(); itr != toIterate.end(); ++itr)
+            if (itr->second->Type == EventType::EVENT_TYPE_SPELL)
+                if (SpellEvent* event = dynamic_cast<SpellEvent*>(itr->second))
+                    if (event->GetSpell()->m_targets.GetUnitTargetGUID() == GetGUID())
+                        if (event->GetSpell()->getState() != SPELL_STATE_FINISHED)
+                            event->GetSpell()->cancel();
     }
 }
 
