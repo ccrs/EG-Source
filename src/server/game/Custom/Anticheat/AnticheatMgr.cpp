@@ -34,6 +34,9 @@
 #include "SpellAuras.h"
 #include "World.h"
 #include "WorldSession.h"
+#include <algorithm>
+#include <cmath>
+#include <sstream>
 
 constexpr uint32 LANG_ANTICHEAT_ALERT = 30087;
 constexpr uint32 LANG_ANTICHEAT_TELEPORT = 30088;
@@ -51,6 +54,34 @@ enum AnticheatSpells
     RESURRECTION_SICKNESS = 15007,
     SLOWDOWN = 61458
 };
+
+namespace
+{
+    constexpr float MIN_MOVEMENT_DELTA_2D = 0.1f;
+    constexpr float DEFAULT_TRANSPORT_MAX_DIST_2D = 70.0f;
+    constexpr float DEEPRUN_TRAM_TRANSPORT_MAX_DIST_2D = 3000.0f;
+    constexpr float ANTICHEAT_INVALID_HEIGHT = -100000.0f;
+
+    bool IsUsableHeight(float z)
+    {
+        return std::isfinite(z) && z > ANTICHEAT_INVALID_HEIGHT;
+    }
+
+    bool HasAnyLiquidStatus(Player const* player, uint32 flags)
+    {
+        return (player->GetLiquidStatus() & flags) != 0;
+    }
+
+    bool HasTransportMovementExemption(Player* player, MovementInfo const& movementInfo)
+    {
+        GameObject* transportGobj = player->GetMap()->GetGameObject(movementInfo.transport.guid);
+        if (!transportGobj)
+            return false;
+
+        float maxDist2d = player->GetMapId() == 369 ? DEEPRUN_TRAM_TRANSPORT_MAX_DIST_2D : DEFAULT_TRANSPORT_MAX_DIST_2D;
+        return transportGobj->IsTransport() || transportGobj->IsWithinDist(player, maxDist2d, false);
+    }
+}
 
 AnticheatMgr::AnticheatMgr()
 {
@@ -121,25 +152,33 @@ void AnticheatMgr::HandlePlayerLogin(Player* player)
 
 void AnticheatMgr::HandlePlayerLogout(Player* player)
 {
-    // TO-DO Make a table that stores the cheaters of the day, with more detailed information.
+    if (!player)
+        return;
 
-    // Delete not needed data from the memory.
     _players.erase(player->GetGUID().GetCounter());
 }
 
 void AnticheatMgr::SavePlayerData(Player* player)
 {
+    if (!player || !player->GetSession())
+        return;
+
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
         return;
 
     uint32 lowGUID = player->GetGUID().GetCounter();
-    AnticheatData const& playerData = _players[lowGUID];
-    if (playerData.GetDailyReportState()) {
-        time_t gameTime = GameTime::GetGameTime();
-        time_t today = (gameTime / DAY) * DAY;
-        LoginDatabase.PExecute("REPLACE INTO account_anticheat_reports (id, realmid, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, counter_measures_reports) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});",
-            player->GetSession()->GetAccountId(), realm.Id.Realm, lowGUID, today, _players[lowGUID].GetCreationTime(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT));
-    }
+    auto itr = _players.find(lowGUID);
+    if (itr == _players.end())
+        return;
+
+    AnticheatData const& playerData = itr->second;
+    if (!playerData.GetDailyReportState())
+        return;
+
+    time_t gameTime = GameTime::GetGameTime();
+    time_t today = (gameTime / DAY) * DAY;
+    LoginDatabase.PExecute("REPLACE INTO account_anticheat_reports (id, realmid, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, counter_measures_reports) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});",
+        player->GetSession()->GetAccountId(), realm.Id.Realm, lowGUID, today, playerData.GetCreationTime(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT));
 }
 
 void AnticheatMgr::OnPlayerMove(Player* player, MovementInfo const& movementInfo, uint32 opcode)
@@ -241,22 +280,15 @@ void AnticheatMgr::AnticheatGlobalCommand(ChatHandler* handler)
 // .anticheat delete gm cmd
 void AnticheatMgr::AnticheatDeleteCommand(uint32 guid)
 {
-    if (guid)
-    {
-        _players[guid].SetLastOpcode(0);
-        _players[guid].SetTotalReports(0);
-        _players[guid].SetAverage(0);
-        _players[guid].SetCreationTime(0);
-        for (uint8 i = 0; i < MAX_REPORT_TYPES; i++)
-        {
-            _players[guid].SetTempReports(0, i);
-            _players[guid].SetTempReportsTimer(0, i);
-            _players[guid].SetTypeReports(i, 0);
-        }
-    }
+    if (!guid)
+        return;
+
+    auto itr = _players.find(guid);
+    if (itr != _players.end())
+        itr->second.ResetReports();
+    LoginDatabase.PExecute("DELETE FROM account_anticheat_reports WHERE realmid={} AND guid={};", realm.Id.Realm, guid);
 }
 
-// .anticheat purge gm cmd
 void AnticheatMgr::AnticheatPurgeCommand(ChatHandler* /*handler*/)
 {
     // we purge the whole account_anticheat_reports table in the character database
@@ -268,9 +300,8 @@ void AnticheatMgr::ResetDailyReportStates()
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
         return;
 
-    // this resets the daily reports to zero
     for (AnticheatPlayersDataMap::value_type& pair : _players)
-        pair.second.SetDailyReportState(false);
+        pair.second.ResetReports();
 }
 
 bool AnticheatMgr::CheckIsLuaCheater(uint32 accountId)
@@ -286,45 +317,29 @@ bool AnticheatMgr::CheckIsLuaCheater(uint32 accountId)
 
 bool AnticheatMgr::CheckBlockedLuaFunctions(AccountData const* accountData, Player* player)
 {
-    for (auto& kv : _luaBlockedFunctions)
+    if (!accountData || !player || !player->GetSession())
+        return false;
+
+    for (auto const& kv : _luaBlockedFunctions)
     {
+        if (!kv.second)
+            continue;
+
         for (uint8 i = 0; i < NUM_ACCOUNT_DATA_TYPES; ++i)
         {
-            std::string currentData = accountData[i].Data;
+            std::string const& currentData = accountData[i].Data;
             std::size_t pos = currentData.find(kv.first);
-            if (pos != std::string::npos)
-            {
-                // Code inside this if statement block will only execute if the variable 'pos' is not equal to std::string::npos.
-                // std::string::npos is a special value indicating the absence of a valid position.
-                // The following below is all done to capture the macro used and stored it in the _SaveLuaCheater
+            if (pos == std::string::npos)
+                continue;
 
-                const static std::size_t defaultLength = 200;
-                // Declares a constant variable 'defaultLength' with a value of 200.
-                // This variable represents the default length of a substring to be extracted.
+            static constexpr std::size_t defaultLength = 200;
+            std::size_t minPos = pos < 50 ? 0 : pos - 50;
+            std::size_t length = std::min(defaultLength, currentData.length() - minPos);
+            std::string macro = currentData.substr(minPos, length);
 
-                std::size_t minPos = int64(int(pos) - 50) < 0 ? 0 : pos - 50;
-                // Calculates the minimum position from where the substring will be extracted.
-                // It subtracts 50 from the 'pos' value, casts it to int64, and checks if it's less than 0.
-                // If it is less than 0, sets 'minPos' to 0, otherwise sets 'minPos' to 'pos - 50'.
-                // With out the - 50 we will get a crash on certain substrings
-
-                std::size_t length = defaultLength + minPos > currentData.length() - 1 ? currentData.length() - minPos : defaultLength;
-                // Calculates the length of the substring to be extracted.
-                // It adds 'defaultLength' to 'minPos' and checks if it's greater than the length of 'currentData' minus 1.
-                // If it is greater, sets 'length' to 'currentData.length() - minPos', otherwise sets it to 'defaultLength'.
-
-                std::string macro = currentData.substr(minPos, length);
-                // Extracts a substring from 'currentData' starting at 'minPos' with a length of 'length' and assigns it to the variable 'macro'.
-
-                TC_LOG_INFO("anticheat", "ANTICHEAT COUNTER MEASURE::Player {} has inaccessible LUA MACRO, placing on watch list", player->GetName());
-                // Outputs a log message indicating that the player has an inaccessible Lua macro and is being placed on a watch list.
-
-                _SaveLuaCheater(player->GetSession()->GetAccountId(), realm.Id.Realm, player->GetGUID().GetCounter(), macro);
-                // Calls the '_SaveLuaCheater' function, passing in the player's GUID, session account ID, and the 'macro' string.
-                // This function saves information about the Lua cheater, such as the id of the player account, character, and macro used, for further analysis or enforcement actions.
-
-                return true;
-            }
+            TC_LOG_INFO("anticheat", "ANTICHEAT COUNTER MEASURE::Player {} has inaccessible LUA MACRO, placing on watch list", player->GetName());
+            _SaveLuaCheater(player->GetSession()->GetAccountId(), realm.Id.Realm, player->GetGUID().GetCounter(), macro);
+            return true;
         }
     }
 
@@ -397,18 +412,13 @@ void AnticheatMgr::_StartHackDetection(Player* player, MovementInfo const& movem
     _ClimbHackDetection(player, movementInfo, opcode);
     _IgnoreControlHackDetection(player, movementInfo, opcode);
     _GravityHackDetection(player, movementInfo);
-    if (player->GetLiquidStatus() == LIQUID_MAP_WATER_WALK)
-    {
+    if (HasAnyLiquidStatus(player, LIQUID_MAP_WATER_WALK))
         _WalkOnWaterHackDetection(player, movementInfo);
-    }
     else
-    {
         _ZAxisHackDetection(player, movementInfo);
-    }
-    if (player->GetLiquidStatus() == LIQUID_MAP_UNDER_WATER)
-    {
+
+    if (HasAnyLiquidStatus(player, LIQUID_MAP_UNDER_WATER))
         _AntiSwimHackDetection(player, movementInfo, opcode);
-    }
     _AntiKnockBackHackDetection(player, movementInfo);
     _NoFallDamageDetection(player, movementInfo);
     if (Battleground* bg = player->GetBattleground())
@@ -427,13 +437,7 @@ void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movem
 
     uint32 key = player->GetGUID().GetCounter();
 
-    // The anticheat is disabled on transports, so we need to be sure that the player is indeed on a transport.
-    GameObject* transportGobj = player->GetMap()->GetGameObject(movementInfo.transport.guid);
-    float maxDist2d = 70.0f; // Transports usually dont go far away.
-    if (player->GetMapId() == 369) // Deeprun tram
-        maxDist2d = 3000.0f;
-
-    if (transportGobj && (transportGobj->IsTransport() || transportGobj->IsWithinDist(player, maxDist2d, false)))
+    if (HasTransportMovementExemption(player, movementInfo))
         return;
 
     // sometimes I believe the compiler ignores all my comments
@@ -459,7 +463,7 @@ void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movem
 
     // how many yards the player can do in one sec.
     // We remove the added speed for jumping because otherwise permanently jumping doubles your allowed speed
-    uint32 speedRate = (uint32)(player->GetSpeed(UnitMoveType(moveType)));
+    float speedRate = player->GetSpeed(UnitMoveType(moveType));
 
     // how long the player took to move to here.
     uint32 timeDiff = getMSTimeDiff(_players[key].GetLastMovementInfo().time, movementInfo.time);
@@ -494,13 +498,13 @@ void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movem
     }
 
     // this is the distance doable by the player in 1 sec, using the time done to move to this point.
-    uint32 clientSpeedRate = (uint32)distance2D * uint32(1000) / timeDiff;
+    float clientSpeedRate = distance2D * 1000.0f / float(timeDiff);
 
     // we create a diff speed in uint32 for further precision checking to avoid legit fall and slide
 
     // We did the (uint32) cast to accept a margin of tolerance for seasonal spells and buffs such as sugar rush
     // We check the last MovementInfo for the falling flag since falling down a hill and sliding a bit triggered a false positive
-    if ((clientSpeedRate >= _assignedspeeddiff + speedRate) && !_players[key].GetLastMovementInfo().HasMovementFlag(MOVEMENTFLAG_FALLING))
+    if ((clientSpeedRate >= speedRate + float(_assignedspeeddiff)) && !_players[key].GetLastMovementInfo().HasMovementFlag(MOVEMENTFLAG_FALLING))
     {
         if (!player->CanTeleport())
         {
@@ -609,13 +613,7 @@ void AnticheatMgr::_TeleportHackDetection(Player* player, MovementInfo const& mo
     if (player->IsFalling() || (player->IsFalling() && player->IsMounted()))
         return;
 
-    // The anticheat is disabled on transports, so we need to be sure that the player is indeed on a transport.
-    GameObject* transportGobj = player->GetMap()->GetGameObject(movementInfo.transport.guid);
-    float maxDist2d = 70.0f; // Transports usually dont go far away.
-    if (player->GetMapId() == 369) // Deeprun tram
-        maxDist2d = 3000.0f;
-
-    if (transportGobj && (transportGobj->IsTransport() || transportGobj->IsWithinDist(player, maxDist2d, false)))
+    if (HasTransportMovementExemption(player, movementInfo))
         return;
 
     /* Please work */
@@ -658,8 +656,7 @@ void AnticheatMgr::_TeleportHackDetection(Player* player, MovementInfo const& mo
         }
         if (player->duel)
         {
-            Player* opponent = player->duel->Opponent;
-            _BuildReport(opponent, TELEPORT_HACK_REPORT);
+            // Keep the duel opponent only as context. Do not assign a cheat report to the opponent.
         }
         _BuildReport(player, TELEPORT_HACK_REPORT);
     }
@@ -823,7 +820,8 @@ void AnticheatMgr::_TeleportPlaneHackDetection(Player* player, MovementInfo cons
     float floorZ = player->GetMapHeight(player->GetPositionX(), player->GetPositionY(), player->GetPositionZ());
 
     // we are not really walking there
-    if (groundZ == floorZ && (fabs(ground_Z - pos_z) > 2.0f || fabs(ground_Z - pos_z) < -1.0f))
+    float zDiff = pos_z - ground_Z;
+    if (IsUsableHeight(ground_Z) && IsUsableHeight(groundZ) && IsUsableHeight(floorZ) && std::fabs(groundZ - floorZ) < 0.01f && (zDiff > 2.0f || zDiff < -1.0f))
     {
         _LogInfo(player, "Teleport To Plane - Hack detected");
         _BuildReport(player, TELEPORT_PLANE_HACK_REPORT);
@@ -848,19 +846,16 @@ void AnticheatMgr::_ClimbHackDetection(Player* player, MovementInfo const& movem
     if (player->HasUnitMovementFlag(MOVEMENTFLAG_FALLING))
         return;
 
-    Position playerPos;
+    Position const& lastPos = _players[player->GetGUID().GetCounter()].GetLastMovementInfo().pos;
+    float diffz = movementInfo.pos.GetPositionZ() - lastPos.GetPositionZ();
+    if (diffz <= 1.87f)
+        return;
 
-    float diffz = fabs(movementInfo.pos.GetPositionZ() - playerPos.GetPositionZ());
-    float tanangle = movementInfo.pos.GetExactDist2d(&playerPos) / diffz;
-
-    if (!player->HasUnitMovementFlag(MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_FLYING | MOVEMENTFLAG_SWIMMING))
+    float tanangle = movementInfo.pos.GetExactDist2d(&lastPos) / diffz;
+    if (!movementInfo.HasMovementFlag(MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_FLYING | MOVEMENTFLAG_SWIMMING | MOVEMENTFLAG_FALLING) && tanangle < 0.57735026919f)
     {
-        if (movementInfo.pos.GetPositionZ() > playerPos.GetPositionZ() &&
-            diffz > 1.87f && tanangle < 0.57735026919f) // 30 degrees
-        {
-            _LogInfo(player, "Climb-Hack detected");
-            _BuildReport(player, CLIMB_HACK_REPORT);
-        }
+        _LogInfo(player, "Climb-Hack detected");
+        _BuildReport(player, CLIMB_HACK_REPORT);
     }
 }
 
@@ -1057,7 +1052,7 @@ void AnticheatMgr::_AntiSwimHackDetection(Player* player, MovementInfo const& mo
         }
     }
 
-    if (player->GetLiquidStatus() == (LIQUID_MAP_ABOVE_WATER | LIQUID_MAP_WATER_WALK | LIQUID_MAP_IN_WATER))
+    if (HasAnyLiquidStatus(player, LIQUID_MAP_ABOVE_WATER | LIQUID_MAP_WATER_WALK))
         return;
 
     if (opcode == MSG_MOVE_JUMP)
@@ -1066,7 +1061,7 @@ void AnticheatMgr::_AntiSwimHackDetection(Player* player, MovementInfo const& mo
     if (movementInfo.HasMovementFlag(MOVEMENTFLAG_FALLING | MOVEMENTFLAG_SWIMMING))
         return;
 
-    if (player->GetLiquidStatus() == LIQUID_MAP_UNDER_WATER && !movementInfo.HasMovementFlag(MOVEMENTFLAG_SWIMMING))
+    if (HasAnyLiquidStatus(player, LIQUID_MAP_UNDER_WATER) && !movementInfo.HasMovementFlag(MOVEMENTFLAG_SWIMMING))
     {
         _LogInfo(player, "Anti-Swim-Hack detected");
         _BuildReport(player, ANTISWIM_HACK_REPORT);
@@ -1262,153 +1257,121 @@ void AnticheatMgr::_CheckBGOriginPositions(Player* player)
 //
 void AnticheatMgr::_BuildReport(Player* player, AnticheatReportTypes reportType)
 {
+    if (!player || !player->GetSession())
+        return;
+
+    if (uint32(reportType) >= MAX_REPORT_TYPES)
+        return;
+
     uint32 key = player->GetGUID().GetCounter();
+    AnticheatData& data = _players[key];
 
     if (_MustCheckTempReports(reportType))
     {
         uint32 actualTime = getMSTime();
 
-        if (!_players[key].GetTempReportsTimer(reportType))
-            _players[key].SetTempReportsTimer(actualTime, reportType);
+        if (!data.GetTempReportsTimer(reportType))
+            data.SetTempReportsTimer(actualTime, reportType);
 
-        if (getMSTimeDiff(_players[key].GetTempReportsTimer(reportType), actualTime) < 3000)
+        if (getMSTimeDiff(data.GetTempReportsTimer(reportType), actualTime) < 3000)
         {
-            _players[key].SetTempReports(_players[key].GetTempReports(reportType) + 1, reportType);
+            data.SetTempReports(data.GetTempReports(reportType) + 1, reportType);
 
-            if (_players[key].GetTempReports(reportType) < 3)
+            if (data.GetTempReports(reportType) < 3)
                 return;
+
+            // One committed report per 3-confirmation window. Without this reset, every packet after
+            // the third packet inside the same 3 second window becomes a committed report.
+            data.ResetTempReports(reportType);
         }
         else
         {
-            _players[key].SetTempReportsTimer(actualTime, reportType);
-            _players[key].SetTempReports(1, reportType);
+            data.SetTempReportsTimer(actualTime, reportType);
+            data.SetTempReports(1, reportType);
             return;
         }
     }
 
-    // generating creationTime for average calculation
-    if (!_players[key].GetTotalReports())
-        _players[key].SetCreationTime(getMSTime());
+    if (!data.GetTotalReports())
+        data.SetCreationTime(getMSTime());
 
-    // increasing total_reports
-    _players[key].SetTotalReports(_players[key].GetTotalReports() + 1);
-    // increasing specific cheat report
-    _players[key].SetTypeReports(reportType, _players[key].GetTypeReports(reportType) + 1);
+    data.SetTotalReports(data.GetTotalReports() + 1);
+    data.SetTypeReports(reportType, data.GetTypeReports(reportType) + 1);
 
-    // diff time for average calculation
-    uint32 diffTime = getMSTimeDiff(_players[key].GetCreationTime(), getMSTime()) / IN_MILLISECONDS;
-
+    uint32 diffTime = getMSTimeDiff(data.GetCreationTime(), getMSTime()) / IN_MILLISECONDS;
     if (diffTime > 0)
-    {
-        // Average == Reports per second
-        float average = float(_players[key].GetTotalReports()) / float(diffTime);
-        _players[key].SetAverage(average);
-    }
+        data.SetAverage(float(data.GetTotalReports()) / float(diffTime));
 
-    if (sWorld->getIntConfig(CONFIG_ANTICHEAT_MAX_REPORTS_FOR_DAILY_REPORT) < _players[key].GetTotalReports())
-    {
-        if (!_players[key].GetDailyReportState())
-            _players[key].SetDailyReportState(true);
-    }
+    if (sWorld->getIntConfig(CONFIG_ANTICHEAT_MAX_REPORTS_FOR_DAILY_REPORT) < data.GetTotalReports())
+        data.SetDailyReportState(true);
 
-    if (_players[key].GetTotalReports() > _ingameNotificationThreshold)
+    if (data.GetTotalReports() > _ingameNotificationThreshold)
         _NotifyGameMasters(player, "Possible cheater!", LANG_ANTICHEAT_ALERT);
 
-    // Automatic Moderation, not recommended but not hated
-    // Auto Kick
-    if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_AUTOKICK_ENABLE))
+    // Apply one automatic moderation action per report. Ban has highest severity, then kick, then jail.
+    if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_AUTOBAN_ENABLE) && data.GetTotalReports() > sWorld->getIntConfig(CONFIG_ANTICHEAT_MAX_REPORTS_FOR_BANS))
     {
-        if (_players[key].GetTotalReports() > sWorld->getIntConfig(CONFIG_ANTICHEAT_MAX_REPORTS_FOR_KICKS))
-        {
-            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-                TC_LOG_INFO("anticheat", "AnticheatMgr:: Reports reached assigned threshhold and counteracted by kicking player {} ({})", player->GetName(), player->GetGUID().ToString());
+        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
+            TC_LOG_INFO("anticheat", "AnticheatMgr:: Reports reached assigned threshold and counteracted by banning player {} ({})", player->GetName(), player->GetGUID().ToString());
 
-            _NotifyGameMasters("|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Auto Kicked for Reaching Cheat Threshhold!");
-            // kick offender when reports are reached for automatic moderation
-            player->GetSession()->KickPlayer("Anticheat Module");
-            // publically shame them with a server message
-            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_ANNOUNCEKICK_ENABLE))
-            {
-                std::string plr = player->GetName();
-                std::string tag_colour = "7bbef7";
-                std::string plr_colour = "ff0000";
-                std::ostringstream stream;
-                stream << "|CFF" << plr_colour << "[AntiCheat]|r|CFF" << tag_colour <<
-                    " Player |r|cff" << plr_colour << plr << "|r|cff" << tag_colour <<
-                    " has been kicked by the Anticheat Module.|r";
-                sWorld->SendServerMessage(SERVER_MSG_STRING, stream.str());
-            }
+        _NotifyGameMasters("|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Auto Banned Account for Reaching Cheat Threshold!");
+
+        std::string accountName;
+        AccountMgr::GetName(player->GetSession()->GetAccountId(), accountName);
+        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_ANNOUNCEBAN_ENABLE))
+        {
+            std::ostringstream stream;
+            stream << "|CFFff0000[AntiCheat]|r|CFF7bbef7 Player |r|cffff0000" << player->GetName() << "|r|cff7bbef7 has been Banned by the Anticheat Module.|r";
+            sWorld->SendServerMessage(SERVER_MSG_STRING, stream.str());
         }
+        sWorld->BanAccount(BAN_ACCOUNT, accountName, "0s", "Anticheat module Auto Banned Account for Reaching Cheat Threshold", "Server");
+        return;
     }
-    // Auto Ban
-    if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_AUTOBAN_ENABLE))
-    {
-        if (_players[key].GetTotalReports() > sWorld->getIntConfig(CONFIG_ANTICHEAT_MAX_REPORTS_FOR_BANS))
-        {
-            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-                TC_LOG_INFO("anticheat", "AnticheatMgr:: Reports reached assigned threshhold and counteracted by banning player {} ({})", player->GetName(), player->GetGUID().ToString());
 
-            _NotifyGameMasters("|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Auto Banned Account for Reaching Cheat Threshhold!");
-            //Auto Ban the Offender Indefinately their whole account.
-            std::string accountName;
-            AccountMgr::GetName(player->GetSession()->GetAccountId(), accountName);
-            sWorld->BanAccount(BAN_ACCOUNT, accountName, "0s", "Anticheat module Auto Banned Account for Reach Cheat Threshhold", "Server");
-            // publically shame them with a server message
-            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_ANNOUNCEBAN_ENABLE))
-            {
-                std::string plr = player->GetName();
-                std::string tag_colour = "7bbef7";
-                std::string plr_colour = "ff0000";
-                std::ostringstream stream;
-                stream << "|CFF" << plr_colour << "[AntiCheat]|r|CFF" << tag_colour <<
-                    " Player |r|cff" << plr_colour << plr << "|r|cff" << tag_colour <<
-                    " has been Banned by the Anticheat Module.|r";
-                sWorld->SendServerMessage(SERVER_MSG_STRING, stream.str());
-            }
+    if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_AUTOKICK_ENABLE) && data.GetTotalReports() > sWorld->getIntConfig(CONFIG_ANTICHEAT_MAX_REPORTS_FOR_KICKS))
+    {
+        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
+            TC_LOG_INFO("anticheat", "AnticheatMgr:: Reports reached assigned threshold and counteracted by kicking player {} ({})", player->GetName(), player->GetGUID().ToString());
+
+        _NotifyGameMasters("|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Auto Kicked for Reaching Cheat Threshold!");
+
+        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_ANNOUNCEKICK_ENABLE))
+        {
+            std::ostringstream stream;
+            stream << "|CFFff0000[AntiCheat]|r|CFF7bbef7 Player |r|cffff0000" << player->GetName() << "|r|cff7bbef7 has been kicked by the Anticheat Module.|r";
+            sWorld->SendServerMessage(SERVER_MSG_STRING, stream.str());
         }
+
+        player->GetSession()->KickPlayer("Anticheat Module");
+        return;
     }
-    //Auto Jail
-    if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_AUTOJAIL_ENABLE))
+
+    if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_AUTOJAIL_ENABLE) && data.GetTotalReports() > sWorld->getIntConfig(CONFIG_ANTICHEAT_MAX_REPORTS_FOR_JAILS))
     {
-        if (_players[key].GetTotalReports() > sWorld->getIntConfig(CONFIG_ANTICHEAT_MAX_REPORTS_FOR_JAILS))
+        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
+            TC_LOG_INFO("anticheat", "AnticheatMgr:: Reports reached assigned threshold and counteracted by jailing player {} ({})", player->GetName(), player->GetGUID().ToString());
+
+        _NotifyGameMasters("|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Auto Jailed Account for Reaching Cheat Threshold!");
+
+        WorldLocation loc = WorldLocation(1, 16226.5f, 16403.6f, -64.5f, 3.2f);
+        player->TeleportTo(loc);
+        player->SetHomebind(loc, 876);
+        player->CastSpell(player, SHACKLES);
+
+        if (Aura* dungdesert = player->AddAura(LFG_SPELL_DUNGEON_DESERTER, player))
+            dungdesert->SetDuration(-1);
+
+        if (Aura* bgdesert = player->AddAura(BG_SPELL_DESERTER, player))
+            bgdesert->SetDuration(-1);
+
+        if (Aura* silent = player->AddAura(SILENCED, player))
+            silent->SetDuration(-1);
+
+        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_ANNOUNCEJAIL_ENABLE))
         {
-            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_WRITELOG_ENABLE))
-                TC_LOG_INFO("anticheat", "AnticheatMgr:: Reports reached assigned threshhold and counteracted by jailing player {} ({})", player->GetName(), player->GetGUID().ToString());
-
-            _NotifyGameMasters("|cFFFFFC00[Playername:|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] Auto Jailed Account for Reaching Cheat Threshhold!");
-            // This is where they end up going shaw shank redemption style
-            // GM Jail Location is uncommit and used as default for the jailing. Feel free to commit it out with double forward slashes (//) and uncommit,
-            // removing the double forward slashes (//) if you wish to use the other locations.
-            WorldLocation loc = WorldLocation(1, 16226.5f, 16403.6f, -64.5f, 3.2f);// GM Jail Location
-            //WorldLocation loc = WorldLocation(35, -98.0155, 149.8360,-40.3827, 3.2f);// Alliance Jail Stormwind Stockade Location
-            //WorldLocation loc = WorldLocation(0, -11139.1845, -1742.4421, -29.7365, 3.2f);// Horde Jail The Pit of Criminals Location
-
-            player->TeleportTo(loc);// we defined loc as the jail location so we tele them there
-            player->SetHomebind(loc, 876);// GM Jail Homebind location
-            player->CastSpell(player, SHACKLES);// shackle him in place to ensure no exploit happens for jail break attempt
-
-            if (Aura* dungdesert = player->AddAura(LFG_SPELL_DUNGEON_DESERTER, player))// LFG_SPELL_DUNGEON_DESERTER
-                dungdesert->SetDuration(-1);
-
-            if (Aura* bgdesert = player->AddAura(BG_SPELL_DESERTER, player))// BG_SPELL_DESERTER
-                bgdesert->SetDuration(-1);
-
-            if (Aura* silent = player->AddAura(SILENCED, player))// SILENCED
-                silent->SetDuration(-1);
-
-
-            // publically shame them with a server message
-            if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_ANNOUNCEJAIL_ENABLE))
-            {
-                std::string plr = player->GetName();
-                std::string tag_colour = "7bbef7";
-                std::string plr_colour = "ff0000";
-                std::ostringstream stream;
-                stream << "|CFF" << plr_colour << "[AntiCheat]|r|CFF" << tag_colour <<
-                    " Player |r|cff" << plr_colour << plr << "|r|cff" << tag_colour <<
-                    " has been Jailed by the Anticheat Module.|r";
-                sWorld->SendServerMessage(SERVER_MSG_STRING, stream.str());
-            }
+            std::ostringstream stream;
+            stream << "|CFFff0000[AntiCheat]|r|CFF7bbef7 Player |r|cffff0000" << player->GetName() << "|r|cff7bbef7 has been Jailed by the Anticheat Module.|r";
+            sWorld->SendServerMessage(SERVER_MSG_STRING, stream.str());
         }
     }
 }

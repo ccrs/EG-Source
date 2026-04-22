@@ -15,15 +15,20 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef SC_ANTICHEAT_SCRIPTS_H
+#define SC_ANTICHEAT_SCRIPTS_H
+
 #include "ScriptMgr.h"
 
 class TC_GAME_API AnticheatScripts : public PlayerScript
 {
-    public:
-        AnticheatScripts();
+public:
+    AnticheatScripts();
 
-        void OnLogout(Player* player);
-        void OnLogin(Player* player,bool);
+    void OnLogout(Player* player) override;
+    void OnLogin(Player* player, bool firstLogin) override;
 };
 
 void AddSC_AnticheatScripts();
+
+#endif

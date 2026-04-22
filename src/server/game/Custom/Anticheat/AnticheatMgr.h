@@ -47,82 +47,82 @@ enum AnticheatReportTypes : uint8
    // MAX_REPORT_TYPES
 };
 
-// GUIDLow is the key.
-typedef std::unordered_map<uint32, AnticheatData> AnticheatPlayersDataMap;
-
 class TC_GAME_API AnticheatMgr
 {
+    // GUIDLow is the key.
+    typedef std::unordered_map<uint32, AnticheatData> AnticheatPlayersDataMap;
+
     AnticheatMgr();
     ~AnticheatMgr();
 
-    public:
-        static AnticheatMgr* instance();
-        void Initialize();
-        void SavePlayerData(Player* player);
-        void OnPlayerMove(Player* player, MovementInfo const& movementInfo, uint32 opcode);
+public:
+    static AnticheatMgr* instance();
+    void Initialize();
+    void SavePlayerData(Player* player);
+    void OnPlayerMove(Player* player, MovementInfo const& movementInfo, uint32 opcode);
 
-        void HandlePlayerLogin(Player* player);
-        void HandlePlayerLogout(Player* player);
+    void HandlePlayerLogin(Player* player);
+    void HandlePlayerLogout(Player* player);
 
-        uint32 GetTotalReports(uint32 lowGUID) const;
-        float GetAverage(uint32 lowGUID) const;
-        uint32 GetTypeReports(uint32 lowGUID, uint8 type) const;
+    uint32 GetTotalReports(uint32 lowGUID) const;
+    float GetAverage(uint32 lowGUID) const;
+    uint32 GetTypeReports(uint32 lowGUID, uint8 type) const;
 
-        void AnticheatGlobalCommand(ChatHandler* handler);
-        void AnticheatDeleteCommand(uint32 guid);
-        void AnticheatPurgeCommand(ChatHandler* handler);
-        void ResetDailyReportStates();
+    void AnticheatGlobalCommand(ChatHandler* handler);
+    void AnticheatDeleteCommand(uint32 guid);
+    void AnticheatPurgeCommand(ChatHandler* handler);
+    void ResetDailyReportStates();
 
-        bool CheckIsLuaCheater(uint32 accountId);
-        bool CheckBlockedLuaFunctions(AccountData const* accountData, Player* player = nullptr);
+    bool CheckIsLuaCheater(uint32 accountId);
+    bool CheckBlockedLuaFunctions(AccountData const* accountData, Player* player = nullptr);
 
-    private:
-        void _LoadBlockedLuaFunctions();
-        void _SaveLuaCheater(uint32 accountId, uint32 realmId, uint32 guid, std::string macro);
+private:
+    void _LoadBlockedLuaFunctions();
+    void _SaveLuaCheater(uint32 accountId, uint32 realmId, uint32 guid, std::string macro);
 
-        void _StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
-        void _SpeedHackDetection(Player* player, MovementInfo const& movementInfo);
-        void _FlyHackDetection(Player* player, MovementInfo const& movementInfo);
-        void _TeleportHackDetection(Player* player, MovementInfo const& movementInfo);
-        void _JumpHackDetection(Player* player, MovementInfo const& movementInfo,uint32 opcode);
-        void _TeleportPlaneHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
-        void _ClimbHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
-        void _IgnoreControlHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
-        void _GravityHackDetection(Player* player, MovementInfo const& movementInfo);
-        void _WalkOnWaterHackDetection(Player* player, MovementInfo const& movementInfo);
-        void _ZAxisHackDetection(Player* player, MovementInfo const& movementInfo);
-        void _AntiSwimHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
-        void _AntiKnockBackHackDetection(Player* player, MovementInfo const& movementInfo);
-        void _NoFallDamageDetection(Player* player, MovementInfo const& movementInfo);
-        void _BGStartExploitDetection(Player* player, MovementInfo const& movementInfo);
+    void _StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
+    void _SpeedHackDetection(Player* player, MovementInfo const& movementInfo);
+    void _FlyHackDetection(Player* player, MovementInfo const& movementInfo);
+    void _TeleportHackDetection(Player* player, MovementInfo const& movementInfo);
+    void _JumpHackDetection(Player* player, MovementInfo const& movementInfo,uint32 opcode);
+    void _TeleportPlaneHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
+    void _ClimbHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
+    void _IgnoreControlHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
+    void _GravityHackDetection(Player* player, MovementInfo const& movementInfo);
+    void _WalkOnWaterHackDetection(Player* player, MovementInfo const& movementInfo);
+    void _ZAxisHackDetection(Player* player, MovementInfo const& movementInfo);
+    void _AntiSwimHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
+    void _AntiKnockBackHackDetection(Player* player, MovementInfo const& movementInfo);
+    void _NoFallDamageDetection(Player* player, MovementInfo const& movementInfo);
+    void _BGStartExploitDetection(Player* player, MovementInfo const& movementInfo);
 
-        void _CheckBGOriginPositions(Player* player);
+    void _CheckBGOriginPositions(Player* player);
 
-        void _BuildReport(Player* player, AnticheatReportTypes reportType);
-        bool _MustCheckTempReports(AnticheatReportTypes type) const
+    void _BuildReport(Player* player, AnticheatReportTypes reportType);
+    bool _MustCheckTempReports(AnticheatReportTypes type) const
+    {
+        switch (type)
         {
-            switch (type)
-            {
-                case JUMP_HACK_REPORT:
-                case TELEPORT_HACK_REPORT:
-                case IGNORE_CONTROL_REPORT:
-                case GRAVITY_HACK_REPORT:
-                case ANTIKNOCK_BACK_HACK_REPORT:
-                case NO_FALL_DAMAGE_HACK_REPORT:
-                    return false;
-                default:
-                    return true;
-            }
+            case JUMP_HACK_REPORT:
+            case TELEPORT_HACK_REPORT:
+            case IGNORE_CONTROL_REPORT:
+            case GRAVITY_HACK_REPORT:
+            case ANTIKNOCK_BACK_HACK_REPORT:
+            case NO_FALL_DAMAGE_HACK_REPORT:
+                return false;
+            default:
+                return true;
         }
-        void _NotifyGameMasters(Player* player, std::string text, uint32 trinityString);
-        void _NotifyGameMasters(std::string text);
-        void _LogInfo(Player* player, std::string text);
+    }
+    void _NotifyGameMasters(Player* player, std::string text, uint32 trinityString);
+    void _NotifyGameMasters(std::string text);
+    void _LogInfo(Player* player, std::string text);
 
-        uint32 _alertFrequency = 0;
-        uint32 _assignedspeeddiff = 0;
-        uint32 _ingameNotificationThreshold = 0;
-        std::unordered_map<std::string, bool> _luaBlockedFunctions;
-        AnticheatPlayersDataMap _players;
+    uint32 _alertFrequency = 0;
+    uint32 _assignedspeeddiff = 0;
+    uint32 _ingameNotificationThreshold = 0;
+    std::unordered_map<std::string, bool> _luaBlockedFunctions;
+    AnticheatPlayersDataMap _players;
 };
 
 #define sAnticheatMgr AnticheatMgr::instance()
