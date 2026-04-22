@@ -217,7 +217,8 @@ struct boss_volazj : public BossAI
         if (spellInfo->Id == SPELL_INSANITY)
         {
             // Not good target or too many players
-            if (target->GetTypeId() != TYPEID_PLAYER || _insanityHandled > 4)
+            Player* insanityTarget = target->ToPlayer();
+            if (!insanityTarget || !insanityTarget->IsAlive() || insanityTarget->IsGameMaster() || _insanityHandled > 4)
                 return;
             // First target - start channel visual and set self as unnattackable
             if (!_insanityHandled)
@@ -231,13 +232,15 @@ struct boss_volazj : public BossAI
                 me->SetControlled(true, UNIT_STATE_STUNNED);
             }
             // phase mask
-            target->CastSpell(target, SPELL_INSANITY_TARGET + _insanityHandled, true);
+            insanityTarget->CastSpell(insanityTarget, SPELL_INSANITY_TARGET + _insanityHandled, true);
             // summon twisted party members for this target
             Map::PlayerList const& players = me->GetMap()->GetPlayers();
             for (auto i = players.begin(); i != players.end(); ++i)
             {
                 Player* player = i->GetSource();
                 if (!player || !player->IsAlive() || player->IsGameMaster())
+                    continue;
+                if (!me->GetCombatManager().IsInCombatWith(player))
                     continue;
                 // Summon clone
                 if (TempSummon* summon = me->SummonCreature(NPC_TWISTED_VISAGE, me->GetRandomNearPosition(10.f), TEMPSUMMON_CORPSE_DESPAWN, 2s))
@@ -251,7 +254,7 @@ struct boss_volazj : public BossAI
                     summon->GetAI()->SetData(DATA_TWISTED_VISAGE_PLAYER_SPEC, Trinity::Helpers::Entity::GetPlayerSpecialization(player));
                     // set phase
                     summon->SetPhaseMask((1 << (4 + _insanityHandled)), true);
-                    DoAddEvent(1s, new Trinity::Helpers::Events::GenericEvent(summon, [targetGUID = player->GetGUID()](WorldObject* owner)
+                    DoAddEvent(1s, new Trinity::Helpers::Events::GenericEvent(summon, [targetGUID = insanityTarget->GetGUID()](WorldObject* owner)
                     {
                         Creature* summon = owner->ToCreature();
                         summon->SetReactState(REACT_AGGRESSIVE);
@@ -268,11 +271,20 @@ struct boss_volazj : public BossAI
 
     void ResetPlayersPhaseMask()
     {
+        static constexpr uint32 insanityPhaseSpells[] =
+        {
+            SPELL_INSANITY_PHASING_1,
+            SPELL_INSANITY_PHASING_2,
+            SPELL_INSANITY_PHASING_3,
+            SPELL_INSANITY_PHASING_4,
+            SPELL_INSANITY_PHASING_5
+        };
         Map::PlayerList const& players = me->GetMap()->GetPlayers();
         for (auto i = players.begin(); i != players.end(); ++i)
         {
             Player* player = i->GetSource();
-            player->RemoveAurasDueToSpell(GetSpellForPhaseMask(player->GetPhaseMask()));
+            for (uint32 spell : insanityPhaseSpells)
+                player->RemoveAurasDueToSpell(spell);
         }
     }
 
@@ -321,6 +333,8 @@ struct boss_volazj : public BossAI
         {
             if (Creature* visage = ObjectAccessor::GetCreature(*me, *iter))
             {
+                if (!visage->IsAlive())
+                    continue;
                 // Not all are dead
                 if (phase == visage->GetPhaseMask())
                     return;
@@ -606,7 +620,7 @@ struct npc_twisted_visage : public ScriptedAI
                         default:
                             _scheduler.Schedule(2s, [this](TaskContext renew)
                             {
-                                if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.f))
+                                if (Unit* target = me->DoFindLowestHPFriendlyInRange(WorldObject::FriendlySearchOptions{ .Range = 40.f, .ExcludedEntries = { NPC_HERALD_VOLAZJ } }))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_RENEW);
                                     renew.Repeat(5s, 10s);
@@ -615,7 +629,7 @@ struct npc_twisted_visage : public ScriptedAI
                                     renew.Repeat(1s);
                             }).Schedule(4s, [this](TaskContext greaterHeal)
                             {
-                                if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.f))
+                                if (Unit* target = me->DoFindLowestHPFriendlyInRange(WorldObject::FriendlySearchOptions{ .Range = 40.f, .ExcludedEntries = { NPC_HERALD_VOLAZJ } }))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_GREATER_HEAL);
                                     greaterHeal.Repeat(10s, 20s);
@@ -667,7 +681,7 @@ struct npc_twisted_visage : public ScriptedAI
                         case SPEC_SHAMAN_RESTORATION:
                             _scheduler.Schedule(5s, [this](TaskContext earthShield)
                             {
-                                if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.f))
+                                if (Unit* target = me->DoFindLowestHPFriendlyInRange(WorldObject::FriendlySearchOptions{ .Range = 40.f, .ExcludedEntries = { NPC_HERALD_VOLAZJ } }))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_EARTH_SHIELD);
                                     earthShield.Repeat(10s, 20s);
@@ -676,7 +690,7 @@ struct npc_twisted_visage : public ScriptedAI
                                     earthShield.Repeat(1s);
                             }).Schedule(4s, [this](TaskContext healingWave)
                             {
-                                if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.f))
+                                if (Unit* target = me->DoFindLowestHPFriendlyInRange(WorldObject::FriendlySearchOptions{ .Range = 40.f, .ExcludedEntries = { NPC_HERALD_VOLAZJ } }))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_HEALING_WEAVE);
                                     healingWave.Repeat(10s, 20s);
@@ -742,7 +756,7 @@ struct npc_twisted_visage : public ScriptedAI
                         case SPEC_DRUID_RESTORATION:
                             _scheduler.Schedule(2s, [this](TaskContext lifebloom)
                             {
-                                if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.f))
+                                if (Unit* target = me->DoFindLowestHPFriendlyInRange(WorldObject::FriendlySearchOptions{ .Range = 40.f, .ExcludedEntries = { NPC_HERALD_VOLAZJ } }))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_LIFEBLOOM);
                                     lifebloom.Repeat(4s, 6s);
@@ -751,7 +765,7 @@ struct npc_twisted_visage : public ScriptedAI
                                     lifebloom.Repeat(1s);
                             }).Schedule(4s, [this](TaskContext nourish)
                             {
-                                if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.f))
+                                if (Unit* target = me->DoFindLowestHPFriendlyInRange(WorldObject::FriendlySearchOptions{ .Range = 40.f, .ExcludedEntries = { NPC_HERALD_VOLAZJ } }))
                                 {
                                     DoCast(target, SPELL_TWISTED_VISAGE_NOURISH);
                                     nourish.Repeat(4s, 6s);
