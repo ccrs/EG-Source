@@ -154,12 +154,16 @@ protected:
         if (o)
             *o = Position::NormalizeOrientation(*o - transO);
 
-        z -= transZ;
-        y -= transY;    // y = searchedY * std::cos(o) + searchedX * std::sin(o)
-        x -= transX;    // x = searchedX * std::cos(o) + searchedY * std::sin(o + pi)
-        float inx = x, iny = y;
-        y = (iny - inx * std::tan(transO)) / (std::cos(transO) + std::sin(transO) * std::tan(transO));
-        x = (inx + iny * std::tan(transO)) / (std::cos(transO) + std::sin(transO) * std::tan(transO));
+        float const dx = x - transX;
+        float const dy = y - transY;
+        float const dz = z - transZ;
+
+        float const c = std::cos(transO);
+        float const s = std::sin(transO);
+
+        x = dx * c + dy * s;
+        y = dy * c - dx * s;
+        z = dz;
     }
 };
 

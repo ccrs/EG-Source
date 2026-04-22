@@ -311,45 +311,78 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
     /* handle special cases */
     if (movementInfo.HasMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
     {
-        // We were teleported, skip packets that were broadcast before teleport
         if (movementInfo.pos.GetExactDist2d(mover) > SIZE_OF_GRIDS)
             return;
 
-        // transports size limited
-        // (also received at zeppelin leave by some reason with t_* as absolute in continent coordinates, can be safely skipped)
-        if (fabs(movementInfo.transport.pos.GetPositionX()) > 75.0f || fabs(movementInfo.transport.pos.GetPositionY()) > 75.0f || fabs(movementInfo.transport.pos.GetPositionZ()) > 75.0f)
-            return;
+        Transport* transport = nullptr;
+        Transport* currentTransport = plrMover ? plrMover->GetTransport() : nullptr;
 
-        if (!Trinity::IsValidMapCoord(movementInfo.pos.GetPositionX() + movementInfo.transport.pos.GetPositionX(), movementInfo.pos.GetPositionY() + movementInfo.transport.pos.GetPositionY(),
-            movementInfo.pos.GetPositionZ() + movementInfo.transport.pos.GetPositionZ(), movementInfo.pos.GetOrientation() + movementInfo.transport.pos.GetOrientation()))
-            return;
-
-        // if we boarded a transport, add us to it
         if (plrMover)
         {
-            if (!plrMover->GetTransport())
-            {
-                if (Transport* transport = plrMover->GetMap()->GetTransport(movementInfo.transport.guid))
-                    transport->AddPassenger(plrMover);
-            }
-            else if (plrMover->GetTransport()->GetGUID() != movementInfo.transport.guid)
-            {
-                plrMover->GetTransport()->RemovePassenger(plrMover);
-                if (Transport* transport = plrMover->GetMap()->GetTransport(movementInfo.transport.guid))
-                    transport->AddPassenger(plrMover);
-                else
-                    movementInfo.transport.Reset();
-            }
+            transport = plrMover->GetMap()->GetTransport(movementInfo.transport.guid);
+
+            if (!transport && currentTransport && currentTransport->GetGUID() == movementInfo.transport.guid)
+                transport = currentTransport;
         }
 
-        if (!mover->GetTransport() && !mover->GetVehicle())
+        float localX = movementInfo.transport.pos.GetPositionX();
+        float localY = movementInfo.transport.pos.GetPositionY();
+        float localZ = movementInfo.transport.pos.GetPositionZ();
+
+        // Reject bogus transport offsets before changing transport membership.
+        if (std::fabs(localX) > 75.0f || std::fabs(localY) > 75.0f || std::fabs(localZ) > 75.0f)
+            return;
+
+        if (transport)
         {
-            GameObject* go = mover->GetMap()->GetGameObject(movementInfo.transport.guid);
-            if (!go || go->GetGoType() != GAMEOBJECT_TYPE_TRANSPORT)
+            float worldX = movementInfo.transport.pos.GetPositionX();
+            float worldY = movementInfo.transport.pos.GetPositionY();
+            float worldZ = movementInfo.transport.pos.GetPositionZ();
+            float worldO = movementInfo.transport.pos.GetOrientation();
+
+            transport->CalculatePassengerPosition(worldX, worldY, worldZ, &worldO);
+
+            // Reject invalid derived world coordinates before changing transport membership.
+            if (!Trinity::IsValidMapCoord(worldX, worldY, worldZ, worldO))
+                return;
+
+            if (plrMover)
+            {
+                if (!currentTransport)
+                    transport->AddPassenger(plrMover);
+                else if (currentTransport != transport)
+                {
+                    currentTransport->RemovePassenger(plrMover);
+                    transport->AddPassenger(plrMover);
+                }
+            }
+
+            movementInfo.transport.guid = transport->GetGUID();
+            movementInfo.pos.Relocate(worldX, worldY, worldZ, worldO);
+        }
+        else
+        {
+            // No server-side Transport object for this GUID.
+            // This can still be a non-map GAMEOBJECT_TYPE_TRANSPORT, so preserve that behavior.
+            bool validGameObjectTransport = false;
+
+            if (!mover->GetVehicle())
+            {
+                if (GameObject* go = mover->GetMap()->GetGameObject(movementInfo.transport.guid))
+                    validGameObjectTransport = go->GetGoType() == GAMEOBJECT_TYPE_TRANSPORT;
+            }
+
+            if (plrMover && currentTransport && currentTransport->GetGUID() != movementInfo.transport.guid)
+                currentTransport->RemovePassenger(plrMover);
+
+            if (!validGameObjectTransport && !mover->GetVehicle())
+            {
                 movementInfo.RemoveMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
+                movementInfo.transport.Reset();
+            }
         }
     }
-    else if (plrMover && plrMover->GetTransport())                // if we were on a transport, leave
+    else if (plrMover && plrMover->GetTransport())
     {
         plrMover->GetTransport()->RemovePassenger(plrMover);
         movementInfo.transport.Reset();
