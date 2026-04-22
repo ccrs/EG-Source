@@ -48,7 +48,7 @@ void UnitAI::OnCharmed(bool isNew)
 void UnitAI::AttackStartCaster(Unit* victim, float dist)
 {
     if (victim && me->Attack(victim, false))
-        me->GetMotionMaster()->MoveChase(victim, dist);
+        me->GetMotionMaster()->MoveChase(victim, ChaseRange(std::min<float>(1.f, dist * 0.1f), std::max<float>(2.f, dist)));
 }
 
 void UnitAI::DoMeleeAttackIfReady()
