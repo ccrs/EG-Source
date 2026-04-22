@@ -56,6 +56,8 @@ class ChaseMovementGenerator : public MovementGenerator, public AbstractFollower
         std::unique_ptr<PathGenerator> _path;
         Optional<Position> _lastTargetPosition;
         TimeTracker _rangeCheckTimer;
+        TimeTracker _relocationCooldown;
+        float _currentChaseStopDistance = 0.0f;
         bool _movingTowards = true;
         bool _useChaseAngle = false;
 };

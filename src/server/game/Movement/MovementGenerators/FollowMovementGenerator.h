@@ -54,6 +54,7 @@ class FollowMovementGenerator : public MovementGenerator, public AbstractFollowe
         ChaseAngle const _angle;
 
         TimeTracker _checkTimer;
+        TimeTracker _relocationCooldown;
         std::unique_ptr<PathGenerator> _path;
         Optional<Position> _lastTargetPosition;
         Optional<bool> _run;
