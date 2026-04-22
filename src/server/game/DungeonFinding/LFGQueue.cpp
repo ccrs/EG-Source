@@ -227,15 +227,24 @@ void LFGQueue::RemoveFromCurrentQueue(ObjectGuid guid)
 
 void LFGQueue::AddQueueData(ObjectGuid guid, time_t joinTime, LfgDungeonSet const& dungeons, LfgRolesMap const& rolesMap)
 {
+    // Replacing queue data for the same guid invalidates every cached compatibility
+    // result that involved the previous roles/dungeon set/group composition.
+    RemoveFromNewQueue(guid);
+    RemoveFromCurrentQueue(guid);
+    RemoveFromCompatibles(guid);
+
     QueueDataStore[guid] = LfgQueueData(joinTime, dungeons, rolesMap);
     AddToQueue(guid);
 }
 
 void LFGQueue::RemoveQueueData(ObjectGuid guid)
 {
-    LfgQueueDataContainer::iterator it = QueueDataStore.find(guid);
-    if (it != QueueDataStore.end())
-        QueueDataStore.erase(it);
+    // Keep this safe even if callers bypass RemoveFromQueue().
+    RemoveFromNewQueue(guid);
+    RemoveFromCurrentQueue(guid);
+    RemoveFromCompatibles(guid);
+
+    QueueDataStore.erase(guid);
 }
 
 void LFGQueue::UpdateWaitTimeAvg(int32 waitTime, uint32 dungeonId)
@@ -359,35 +368,6 @@ uint8 LFGQueue::FindGroups()
             ++proposals;
         else
             AddToCurrentQueue(frontguid); // Lfg group not found, add this group to the queue.
-    }
-
-    // Queue invariant diagnostic: queued data must be reachable from either the
-    // new queue or the current queue. Proposal members are removed from those
-    // lists by CheckCompatibility(), so this only logs entries that are still in
-    // QueueDataStore without being processable by the matcher.
-    GuidSet listed;
-    for (ObjectGuid const& guid : newToQueueStore)
-        listed.insert(guid);
-    for (ObjectGuid const& guid : currentQueueStore)
-        listed.insert(guid);
-
-    for (LfgQueueDataContainer::const_iterator itr = QueueDataStore.begin(); itr != QueueDataStore.end(); ++itr)
-    {
-        if (!listed.count(itr->first))
-        {
-            bool inProposal = false;
-            for (LfgCompatibleContainer::const_iterator comp = CompatibleMapStore.begin(); comp != CompatibleMapStore.end(); ++comp)
-            {
-                if (comp->second.compatibility == LFG_COMPATIBLES_MATCH && CompatibleKeyContainsGuid(comp->first, itr->first))
-                {
-                    inProposal = true;
-                    break;
-                }
-            }
-
-            if (!inProposal)
-                TC_LOG_ERROR("lfg.queue", "LFG queue data for {} exists but is not present in new/current queue", itr->first.ToString());
-        }
     }
 
     return proposals;
