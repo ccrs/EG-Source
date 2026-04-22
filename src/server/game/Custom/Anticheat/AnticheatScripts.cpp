@@ -17,17 +17,16 @@
 
 #include "AnticheatScripts.h"
 #include "AnticheatMgr.h"
-#include "ScriptMgr.h"
 #include "World.h"
 
-AnticheatScripts::AnticheatScripts(): PlayerScript("AnticheatScripts") { }
+AnticheatScripts::AnticheatScripts() : PlayerScript("AnticheatScripts") { }
 
 void AnticheatScripts::OnLogout(Player* player)
 {
     sAnticheatMgr->HandlePlayerLogout(player);
 }
 
-void AnticheatScripts::OnLogin(Player* player, bool)
+void AnticheatScripts::OnLogin(Player* player, bool /*firstLogin*/)
 {
     sAnticheatMgr->HandlePlayerLogin(player);
 }

@@ -21,58 +21,63 @@
 #include "Define.h"
 #include "MovementInfo.h"
 
-#define MAX_REPORT_TYPES 15
+#define MAX_REPORT_TYPES 14
 
 class AnticheatData
 {
-    public:
-        AnticheatData();
-        ~AnticheatData();
+public:
+    AnticheatData();
+    ~AnticheatData();
 
-        bool IsDirty() const { return _dirty; }
+    bool IsDirty() const { return _dirty; }
 
-        void SetLastOpcode(uint32 opcode);
-        uint32 GetLastOpcode() const;
+    void SetLastOpcode(uint32 opcode);
+    uint32 GetLastOpcode() const;
 
-        MovementInfo const& GetLastMovementInfo() const;
-        void SetLastMovementInfo(MovementInfo const& moveInfo);
+    MovementInfo const& GetLastMovementInfo() const;
+    void SetLastMovementInfo(MovementInfo const& moveInfo);
 
-        void SetPosition(float x, float y, float z, float o);
+    void SetPosition(float x, float y, float z, float o);
 
-        uint32 GetTotalReports() const;
-        void SetTotalReports(uint32 totalReports);
+    uint32 GetTotalReports() const;
+    void SetTotalReports(uint32 totalReports);
 
-        uint32 GetTypeReports(uint32 type) const;
-        void SetTypeReports(uint32 type, uint32 amount);
+    uint32 GetTypeReports(uint32 type) const;
+    void SetTypeReports(uint32 type, uint32 amount);
 
-        float GetAverage() const;
-        void SetAverage(float average);
+    float GetAverage() const;
+    void SetAverage(float average);
 
-        uint32 GetCreationTime() const;
-        void SetCreationTime(uint32 creationTime);
+    uint32 GetCreationTime() const;
+    void SetCreationTime(uint32 creationTime);
 
-        void SetTempReports(uint32 amount, uint8 type);
-        uint32 GetTempReports(uint8 type) const;
+    void SetTempReports(uint32 amount, uint8 type);
+    uint32 GetTempReports(uint8 type) const;
 
-        void SetTempReportsTimer(uint32 time, uint8 type);
-        uint32 GetTempReportsTimer(uint8 type) const;
+    void SetTempReportsTimer(uint32 time, uint8 type);
+    uint32 GetTempReportsTimer(uint8 type) const;
 
-        void SetDailyReportState(bool b);
-        bool GetDailyReportState() const;
+    void SetDailyReportState(bool b);
+    bool GetDailyReportState() const;
 
-        uint32 AlertCounter;
+    void ResetReports();
+    void ResetTempReports(uint8 type);
 
-    private:
-        bool _dirty;
-        uint32 _lastOpcode;
-        MovementInfo _lastMovementInfo;
-        uint32 _totalReports;
-        uint32 _typeReports[MAX_REPORT_TYPES];
-        float _average;
-        uint32 _creationTime;
-        uint32 _tempReports[MAX_REPORT_TYPES];
-        uint32 _tempReportsTimer[MAX_REPORT_TYPES];
-        bool _hasDailyReport;
+    uint32 AlertCounter;
+
+private:
+    static bool IsValidReportType(uint32 type) { return type < MAX_REPORT_TYPES; }
+
+    bool _dirty;
+    uint32 _lastOpcode;
+    MovementInfo _lastMovementInfo;
+    uint32 _totalReports;
+    uint32 _typeReports[MAX_REPORT_TYPES];
+    float _average;
+    uint32 _creationTime;
+    uint32 _tempReports[MAX_REPORT_TYPES];
+    uint32 _tempReportsTimer[MAX_REPORT_TYPES];
+    bool _hasDailyReport;
 };
 
 #endif
