@@ -403,24 +403,24 @@ void LFGMgr::Update(uint32 diff)
         m_QueueTimer += diff;
 }
 
-bool LFGMgr::TryClearOldLfgGroupBind(Group* group, uint32 lfgDungeonId)
+LFGMgr::LfgBindCleanupResult LFGMgr::TryClearOldLfgGroupBind(Group* group, uint32 lfgDungeonId)
 {
     if (!group || !group->isLFGGroup() || !lfgDungeonId)
-        return false;
+        return LfgBindCleanupResult::NoBind;
 
     LFGDungeonData const* dungeon = GetLFGDungeon(lfgDungeonId);
     if (!dungeon)
-        return false;
+        return LfgBindCleanupResult::NoBind;
 
     MapEntry const* mapEntry = sMapStore.LookupEntry(dungeon->map);
     if (!mapEntry || !mapEntry->IsDungeon())
-        return false;
+        return LfgBindCleanupResult::NoBind;
 
     // LFG requeue must never become a way to bypass raid or protected instance locks.
     if (mapEntry->IsRaid())
     {
         TC_LOG_DEBUG("lfg.teleport", "LFG requeue: not clearing old group bind for raid map {}", dungeon->map);
-        return false;
+        return LfgBindCleanupResult::Protected;
     }
 
     Difficulty difficulty = Difficulty(dungeon->difficulty);
@@ -431,19 +431,19 @@ bool LFGMgr::TryClearOldLfgGroupBind(Group* group, uint32 lfgDungeonId)
     {
         TC_LOG_DEBUG("lfg.teleport", "LFG requeue: not clearing old group bind for heroic/protected dungeon map {} difficulty {}",
             dungeon->map, uint32(difficulty));
-        return false;
+        return LfgBindCleanupResult::Protected;
     }
 
     InstanceGroupBind* bind = group->GetBoundInstance(difficulty, dungeon->map);
     if (!bind || !bind->save)
-        return false;
+        return LfgBindCleanupResult::NoBind;
 
     // Permanent binds are authoritative locks and must not be bypassed by LFG requeue.
     if (bind->perm)
     {
         TC_LOG_DEBUG("lfg.teleport", "LFG requeue: not clearing permanent group bind group={} map={} difficulty={} instance={}",
             group->GetGUID().ToString(), dungeon->map, uint32(difficulty), bind->save->GetInstanceId());
-        return false;
+        return LfgBindCleanupResult::Protected;
     }
 
     // Non-resettable saves are protected by the instance system.
@@ -451,7 +451,7 @@ bool LFGMgr::TryClearOldLfgGroupBind(Group* group, uint32 lfgDungeonId)
     {
         TC_LOG_DEBUG("lfg.teleport", "LFG requeue: not clearing non-resettable group bind group={} map={} difficulty={} instance={}",
             group->GetGUID().ToString(), dungeon->map, uint32(difficulty), bind->save->GetInstanceId());
-        return false;
+        return LfgBindCleanupResult::Protected;
     }
 
     uint32 const instanceId = bind->save->GetInstanceId();
@@ -459,16 +459,16 @@ bool LFGMgr::TryClearOldLfgGroupBind(Group* group, uint32 lfgDungeonId)
     {
         if (boundMap->HavePlayers())
         {
-            TC_LOG_DEBUG("lfg.teleport", "LFG requeue: not clearing old group bind group={} map={} difficulty={} instance={} because players are still inside",
+            TC_LOG_DEBUG("lfg.teleport", "LFG requeue: waiting before clearing old group bind group={} map={} difficulty={} instance={} because players are still inside",
                 group->GetGUID().ToString(), dungeon->map, uint32(difficulty), instanceId);
-            return false;
+            return LfgBindCleanupResult::Wait;
         }
 
         if (boundMap->IsDungeon() && !static_cast<InstanceMap*>(boundMap)->Reset(INSTANCE_RESET_ALL))
         {
             TC_LOG_DEBUG("lfg.teleport", "LFG requeue: not clearing old group bind group={} map={} difficulty={} instance={} because reset failed",
                 group->GetGUID().ToString(), dungeon->map, uint32(difficulty), instanceId);
-            return false;
+            return LfgBindCleanupResult::Failed;
         }
     }
 
@@ -477,7 +477,7 @@ bool LFGMgr::TryClearOldLfgGroupBind(Group* group, uint32 lfgDungeonId)
     TC_LOG_DEBUG("lfg.teleport", "LFG requeue: cleared resettable non-permanent group bind group={} map={} difficulty={} instance={}",
         group->GetGUID().ToString(), dungeon->map, uint32(difficulty), instanceId);
 
-    return true;
+    return LfgBindCleanupResult::Cleared;
 }
 
 void LFGMgr::ProcessPendingTeleportIns(time_t currTime)
@@ -536,11 +536,34 @@ void LFGMgr::ProcessPendingTeleportIns(time_t currTime)
             continue;
         }
 
-        itr = PendingTeleportInStore.erase(itr);
-
         if (previousDungeonId)
-            TryClearOldLfgGroupBind(group, previousDungeonId);
+        {
+            LfgBindCleanupResult const cleanupResult = TryClearOldLfgGroupBind(group, previousDungeonId);
+            switch (cleanupResult)
+            {
+                case LfgBindCleanupResult::Wait:
+                    if (currTime >= expireTime)
+                    {
+                        TC_LOG_DEBUG("lfg.teleport", "Deferred LFG teleport for player {} expired while waiting for old instance bind cleanup", player->GetName());
+                        player->GetSession()->SendLfgTeleportError(uint8(LFG_TELEPORTERROR_INVALID_LOCATION));
+                        itr = PendingTeleportInStore.erase(itr);
+                    }
+                    else
+                        ++itr;
+                    continue;
+                case LfgBindCleanupResult::Failed:
+                    TC_LOG_DEBUG("lfg.teleport", "Deferred LFG teleport for player {} failed because old instance bind cleanup failed", player->GetName());
+                    player->GetSession()->SendLfgTeleportError(uint8(LFG_TELEPORTERROR_INVALID_LOCATION));
+                    itr = PendingTeleportInStore.erase(itr);
+                    continue;
+                case LfgBindCleanupResult::NoBind:
+                case LfgBindCleanupResult::Cleared:
+                case LfgBindCleanupResult::Protected:
+                    break;
+            }
+        }
 
+        itr = PendingTeleportInStore.erase(itr);
         TeleportPlayer(player, false, false, true, previousDungeonId);
     }
 }
