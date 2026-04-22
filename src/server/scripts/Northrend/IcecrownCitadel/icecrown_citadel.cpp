@@ -994,7 +994,7 @@ struct npc_darkfallen_advisor : public DarkFallenAI
         })
         .Schedule(50s, [this](TaskContext immunity)
         {
-            if (Unit* target = DoFindLowestHPFriendlyInRange(40.0f))
+            if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                 DoCast(target, SPELL_SHROUD_OF_SPELL_WARDING);
             immunity.Repeat(20s, 25s);
         });

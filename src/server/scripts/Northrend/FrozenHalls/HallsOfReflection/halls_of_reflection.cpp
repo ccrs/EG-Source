@@ -1546,7 +1546,7 @@ class npc_ghostly_priest : public CreatureScript
                         break;
                     case EVENT_DARK_MENDING:
                         // find an ally with missing HP
-                        if (Unit* target = DoFindLowestHPFriendlyInRange(40.f))
+                        if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.f))
                         {
                             DoCast(target, SPELL_DARK_MENDING);
                             _events.ScheduleEvent(EVENT_DARK_MENDING, 20s);
