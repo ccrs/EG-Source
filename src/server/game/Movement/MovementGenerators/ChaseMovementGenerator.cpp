@@ -91,7 +91,7 @@ static bool IsValidChaseStopDistance(float distance, float minTarget, float maxT
     return distance > 0.0f && distance >= minTarget && distance <= maxTarget;
 }
 
-ChaseMovementGenerator::ChaseMovementGenerator(Unit *target, Optional<ChaseRange> range, Optional<ChaseAngle> angle) : AbstractFollower(ASSERT_NOTNULL(target)), _range(range), _angle(angle), _rangeCheckTimer(0), _relocationCooldown(0)
+ChaseMovementGenerator::ChaseMovementGenerator(Unit* target, Optional<ChaseRange> range, Optional<ChaseAngle> angle) : AbstractFollower(ASSERT_NOTNULL(target)), _range(range), _angle(angle), _rangeCheckTimer(0), _relocationCooldown(0)
 {
     Mode = MOTION_MODE_DEFAULT;
     Priority = MOTION_PRIORITY_NORMAL;
@@ -151,7 +151,6 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
     float const maxTarget = _range ? _range->MaxTolerance + hitboxSum : CONTACT_DISTANCE + hitboxSum;
     Optional<ChaseAngle> angle = useChaseAngle ? _angle : Optional<ChaseAngle>();
 
-    // periodically check if we're already in the expected range...
     bool syncFacingOrientation = false;
     if (!_relocationCooldown.Passed())
         _relocationCooldown.Update(diff);
@@ -252,8 +251,8 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
                 else
                     _currentChaseStopDistance = 0.0f;
 
-                float calculationDistance = desiredTargetDistance - hitboxSum;
-                float calculationAngle = angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner);
+                float const calculationDistance = desiredTargetDistance - hitboxSum;
+                float const calculationAngle = angle ? target->ToAbsoluteAngle(angle->RelativeAngle) : target->GetAbsoluteAngle(owner);
                 // if we want to move toward the target and there's no fixed angle...
                 if (_movingTowards && !angle)
                 {
@@ -288,7 +287,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
                     }
                 }
 
-                bool success = _path->CalculatePath(destination.m_positionX, destination.m_positionY, destination.m_positionZ, owner->CanFly());
+                bool const success = _path->CalculatePath(destination.m_positionX, destination.m_positionY, destination.m_positionZ, owner->CanFly());
                 if (!success || (_path->GetPathType() & (PATHFIND_NOPATH /* | PATHFIND_INCOMPLETE*/)))
                 {
                     if (cOwner)
@@ -376,7 +375,6 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
         DoMovementInform(owner, target);
     }
 
-    // and then, finally, we're done for the tick
     if (syncFacingOrientation)
         owner->SetInFront(target);
     return true;
@@ -387,6 +385,7 @@ void ChaseMovementGenerator::Deactivate(Unit* owner)
     AddFlag(MOVEMENTGENERATOR_FLAG_DEACTIVATED);
     RemoveFlag(MOVEMENTGENERATOR_FLAG_TRANSITORY | MOVEMENTGENERATOR_FLAG_INFORM_ENABLED);
     owner->ClearUnitState(UNIT_STATE_CHASE_MOVE);
+    _path = nullptr;
     if (Creature* cOwner = owner->ToCreature())
         cOwner->SetCannotReachTarget(false);
 }
