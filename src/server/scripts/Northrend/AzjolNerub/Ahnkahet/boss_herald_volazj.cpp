@@ -202,6 +202,7 @@ struct boss_volazj : public BossAI
         if ((GetHealthPct(0) >= 66 && GetHealthPct(damage) < 66) || (GetHealthPct(0) >= 33 && GetHealthPct(damage) < 33))
         {
             me->InterruptNonMeleeSpells(false);
+            scheduler.CancelAll();
             DoCast(me, SPELL_INSANITY, false);
         }
     }
@@ -373,6 +374,7 @@ struct boss_volazj : public BossAI
             me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
             me->SetControlled(false, UNIT_STATE_STUNNED);
             me->RemoveAurasDueToSpell(SPELL_INSANITY_VISUAL);
+            ScheduleTasks();
         }
 
         scheduler.Update(diff, [this]
