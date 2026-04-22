@@ -23425,35 +23425,52 @@ void Player::UpdateVisibleGameobjectsOrSpellClicks()
 
     UpdateData udata;
     WorldPacket packet;
-    for (auto itr = m_clientGUIDs.begin(); itr != m_clientGUIDs.end(); ++itr)
+
+    for (ObjectGuid const& guid : m_clientGUIDs)
     {
-        if (itr->IsGameObject())
+        if (guid.IsGameObject())
         {
-            if (GameObject* obj = ObjectAccessor::GetGameObject(*this, *itr))
-                if (sObjectMgr->IsGameObjectForQuests(obj->GetEntry()))
-                    obj->BuildValuesUpdateBlockForPlayer(&udata, this);
+            GameObject* go = ObjectAccessor::GetGameObject(*this, guid);
+            if (!go)
+                continue;
+
+            if (!sObjectMgr->IsGameObjectForQuests(go->GetEntry()))
+                continue;
+
+            // GAMEOBJECT_DYNAMIC is target-dependent. The gameobject itself may not
+            // have any changed field when this player's quest status changes, so force
+            // a per-player values update.
+            go->SetFieldNotifyFlag(UF_FLAG_PUBLIC);
+            go->BuildValuesUpdateBlockForPlayer(&udata, this);
+            go->RemoveFieldNotifyFlag(UF_FLAG_PUBLIC);
         }
-        else if (itr->IsCreatureOrVehicle())
+        else if (guid.IsCreatureOrVehicle())
         {
-            Creature* obj = ObjectAccessor::GetCreatureOrPetOrVehicle(*this, *itr);
-            if (!obj)
+            Creature* creature = ObjectAccessor::GetCreatureOrPetOrVehicle(*this, guid);
+            if (!creature)
                 continue;
 
-            // check if this unit requires quest specific flags
-            if (!obj->HasNpcFlag(UNIT_NPC_FLAG_SPELLCLICK))
+            // Check if this unit requires quest-specific spellclick flags.
+            if (!creature->HasNpcFlag(UNIT_NPC_FLAG_SPELLCLICK))
                 continue;
 
-            auto clickBounds = sObjectMgr->GetSpellClickInfoMapBounds(obj->GetEntry());
+            auto clickBounds = sObjectMgr->GetSpellClickInfoMapBounds(creature->GetEntry());
             for (auto const& clickPair : clickBounds)
             {
-                if (sConditionMgr->GetConditionsForSpellClickEvent(obj->GetEntry(), clickPair.second.spellId))
+                if (sConditionMgr->GetConditionsForSpellClickEvent(creature->GetEntry(), clickPair.second.spellId))
                 {
-                    obj->BuildValuesUpdateBlockForPlayer(&udata, this);
+                    creature->SetFieldNotifyFlag(UF_FLAG_PUBLIC);
+                    creature->BuildValuesUpdateBlockForPlayer(&udata, this);
+                    creature->RemoveFieldNotifyFlag(UF_FLAG_PUBLIC);
                     break;
                 }
             }
         }
     }
+
+    if (!udata.HasData())
+        return;
+
     udata.BuildPacket(&packet);
     SendDirectMessage(&packet);
 }
