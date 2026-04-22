@@ -240,8 +240,6 @@ struct boss_volazj : public BossAI
                 Player* player = i->GetSource();
                 if (!player || !player->IsAlive() || player->IsGameMaster())
                     continue;
-                if (!me->GetCombatManager().IsInCombatWith(player))
-                    continue;
                 // Summon clone
                 if (TempSummon* summon = me->SummonCreature(NPC_TWISTED_VISAGE, me->GetRandomNearPosition(10.f), TEMPSUMMON_CORPSE_DESPAWN, 2s))
                 {
