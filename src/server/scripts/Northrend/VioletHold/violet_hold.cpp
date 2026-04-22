@@ -841,15 +841,11 @@ struct violet_hold_trashAI : public EscortAI
     void Reset() override
     {
         _scheduler.CancelAll();
+
+        // If the creature was reset while already at the door, keep trying to apply
+        // the door seal aura even when it has no combat victim.
         if (me->HasReactState(REACT_DEFENSIVE))
-        {
-            _scheduler.Schedule(2s, [this](TaskContext destroyDoorCheck)
-            {
-                if (!me->HasAura(SPELL_DESTROY_DOOR_SEAL))
-                    DoCastAOE(SPELL_DESTROY_DOOR_SEAL);
-                destroyDoorCheck.Repeat(3s);
-            });
-        }
+            ScheduleDestroyDoorSeal();
     }
 
     template <size_t N>
@@ -900,7 +896,7 @@ struct violet_hold_trashAI : public EscortAI
 
             if (path)
             {
-                for (uint32 i = 0; i <= _lastWaypointId; i++)
+                for (uint32 i = 0; i <= _lastWaypointId; ++i)
                     AddWaypoint(i, path[i].GetPositionX() + irand(-1, 1), path[i].GetPositionY() + irand(-1, 1), path[i].GetPositionZ(), 0, 0s, true);
                 me->SetHomePosition(path[_lastWaypointId].GetPositionX(), path[_lastWaypointId].GetPositionY(), path[_lastWaypointId].GetPositionZ(), float(M_PI));
             }
@@ -911,17 +907,15 @@ struct violet_hold_trashAI : public EscortAI
 
     void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
     {
-        if (waypointId == _lastWaypointId)
-        {
-            me->SetReactState(REACT_DEFENSIVE);
+        if (waypointId != _lastWaypointId)
+            return;
+
+        me->SetReactState(REACT_DEFENSIVE);
+
+        if (!me->HasAura(SPELL_DESTROY_DOOR_SEAL))
             DoCastAOE(SPELL_DESTROY_DOOR_SEAL);
-            _scheduler.Schedule(2s, [this](TaskContext destroyDoorCheck)
-            {
-                if (!me->HasAura(SPELL_DESTROY_DOOR_SEAL))
-                    DoCastAOE(SPELL_DESTROY_DOOR_SEAL);
-                destroyDoorCheck.Repeat(3s);
-            });
-        }
+
+        ScheduleDestroyDoorSeal();
     }
 
     void JustEngagedWith(Unit* who) override
@@ -936,19 +930,43 @@ struct violet_hold_trashAI : public EscortAI
 
     void UpdateEscortAI(uint32 diff) override
     {
-        if (_instance->GetData(DATA_MAIN_EVENT_STATE) != IN_PROGRESS)
-            me->CastStop();
+        // Door attackers need their scheduler even when they have no combat victim.
+        // Otherwise SPELL_DESTROY_DOOR_SEAL retry never runs after a failed cast.
+        if (me->HasReactState(REACT_DEFENSIVE))
+        {
+            if (UpdateVictim())
+                _scheduler.Update(diff, std::bind(&EscortAI::DoMeleeAttackIfReady, this));
+            else
+                _scheduler.Update(diff);
+            return;
+        }
 
         if (!UpdateVictim())
             return;
 
-        _scheduler.Update(diff,
-            std::bind(&EscortAI::DoMeleeAttackIfReady, this));
+        _scheduler.Update(diff, std::bind(&EscortAI::DoMeleeAttackIfReady, this));
     }
 
     virtual void ScheduledTasks() { }
 
 protected:
+    void ScheduleDestroyDoorSeal()
+    {
+        _scheduler.Schedule(2s, [this](TaskContext destroyDoorCheck)
+        {
+            if (!_instance || _instance->GetData(DATA_MAIN_EVENT_STATE) != IN_PROGRESS)
+            {
+                me->CastStop();
+                return;
+            }
+
+            if (!me->HasAura(SPELL_DESTROY_DOOR_SEAL))
+                DoCastAOE(SPELL_DESTROY_DOOR_SEAL);
+
+            destroyDoorCheck.Repeat(3s);
+        });
+    }
+
     InstanceScript* _instance;
     TaskScheduler _scheduler;
 
