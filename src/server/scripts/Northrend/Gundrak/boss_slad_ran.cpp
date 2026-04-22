@@ -141,7 +141,7 @@ struct boss_slad_ran : public BossAI
 
     void DamageTaken(Unit* /*attacker*/, uint32& /*damage*/, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
     {
-        if (_phase == Phase::PHASE_NONE && HealthBelowPct(30))
+        if (_phase == Phase::PHASE_NONE && HealthBelowPct(70))
         {
             Talk(SAY_SUMMON_SNAKES);
             _phase = Phase::PHASE_SNAKES;
@@ -155,7 +155,7 @@ struct boss_slad_ran : public BossAI
             });
         }
 
-        if (_phase == Phase::PHASE_SNAKES && HealthBelowPct(25))
+        if (_phase == Phase::PHASE_SNAKES && HealthBelowPct(45))
         {
             Talk(SAY_SUMMON_CONSTRICTORS);
             _phase = Phase::PHASE_CONSTRICTORS;
