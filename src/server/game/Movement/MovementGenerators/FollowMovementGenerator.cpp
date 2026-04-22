@@ -172,7 +172,6 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
 
         Position const currentTargetPosition = target->GetPosition();
         bool const angleOkayStrict = _angle.IsAngleOkay(curAngle);
-        bool const angleOkayRelaxed = AngleOkayRelaxed(_angle, curAngle, 0.15f);
         bool const angleNeedsCorrection = !angleOkayStrict;
         bool const distanceNeedsCorrection = !PositionOkay(owner, target, acceptableRange);
         bool const relocationCooldownActive = _relocationCooldown.GetExpiry() != 0s;
