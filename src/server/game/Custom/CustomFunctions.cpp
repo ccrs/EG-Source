@@ -9,6 +9,7 @@
 #include "ItemTemplate.h"
 #include "Map.h"
 #include "MotionMaster.h"
+#include "MovementInfo.h"
 #include "MoveSpline.h"
 #include "MoveSplineInit.h"
 #include "Object.h"
@@ -20,10 +21,13 @@
 #include "SmartAI.h"
 #include "Spell.h"
 #include "TemporarySummon.h"
+#include "Transport.h"
 #include "Unit.h"
 #include "Vehicle.h"
 #include "VehicleDefines.h"
 #include "World.h"
+#include "WorldSession.h"
+#include <unordered_set>
 
 
 void Creature::ProcessDelayedLOSEntries()
@@ -211,6 +215,13 @@ bool Vehicle::NormalizePassengerMovementInfo(Unit const* passenger, MovementInfo
     VehicleSeatEntry const* seatInfo = seat->second.SeatInfo;
     VehicleSeatAddon const* seatAddon = seat->second.SeatAddon;
 
+    if (!seatAddon && (seatInfo->Flags & VEHICLE_SEAT_FLAG_ALLOW_TURNING))
+    {
+        static std::unordered_set<uint32> warnedIds;
+        if (warnedIds.insert(seatInfo->ID).second)
+            TC_LOG_WARN("vehicles", "VehicleSeat ID {} has VEHICLE_SEAT_FLAG_ALLOW_TURNING but no VehicleSeatAddon DB row; orientation offset defaults to 0.0f", seatInfo->ID);
+    }
+
     float localX = seatInfo->AttachmentOffset.X;
     float localY = seatInfo->AttachmentOffset.Y;
     float localZ = seatInfo->AttachmentOffset.Z;
@@ -241,6 +252,7 @@ bool Vehicle::NormalizePassengerMovementInfo(Unit const* passenger, MovementInfo
     movementInfo.AddMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
     movementInfo.transport.guid = GetBase()->GetGUID();
     movementInfo.transport.seat = seat->first;
+    movementInfo.transport.time = 0;
     movementInfo.transport.pos.Relocate(localX, localY, localZ, localO);
     movementInfo.pos.Relocate(worldX, worldY, worldZ, worldO);
 
@@ -419,4 +431,84 @@ void SmartAI::SetCombatMovement()
     Optional<ChaseRange> chaseRange = _combatChaseParameters.CombatDistance ? ChaseRange(_combatChaseParameters.CombatDistance) : Optional<ChaseRange>{ };
     Optional<ChaseAngle> chaseAngle = _combatChaseParameters.CombatAngle ? ChaseAngle(_combatChaseParameters.CombatAngle) : Optional<ChaseAngle>{ };
     me->GetMotionMaster()->MoveChase(me->GetVictim(), chaseRange, chaseAngle);
+}
+
+bool WorldSession::NormalizeTransportMovementInfo(Unit* mover, MovementInfo& movementInfo)
+{
+    Player* plrMover = mover->ToPlayer();
+
+    if (movementInfo.HasMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
+    {
+        Transport* transport = nullptr;
+        Transport* currentTransport = plrMover ? plrMover->GetTransport() : nullptr;
+
+        if (plrMover)
+        {
+            transport = plrMover->GetMap()->GetTransport(movementInfo.transport.guid);
+
+            if (!transport && currentTransport && currentTransport->GetGUID() == movementInfo.transport.guid)
+                transport = currentTransport;
+        }
+
+        float localX = movementInfo.transport.pos.GetPositionX();
+        float localY = movementInfo.transport.pos.GetPositionY();
+        float localZ = movementInfo.transport.pos.GetPositionZ();
+
+        // Reject bogus transport offsets before changing transport membership.
+        if (std::fabs(localX) > 75.0f || std::fabs(localY) > 75.0f || std::fabs(localZ) > 75.0f)
+            return false;
+
+        if (transport)
+        {
+            float worldX = movementInfo.transport.pos.GetPositionX();
+            float worldY = movementInfo.transport.pos.GetPositionY();
+            float worldZ = movementInfo.transport.pos.GetPositionZ();
+            float worldO = movementInfo.transport.pos.GetOrientation();
+
+            transport->CalculatePassengerPosition(worldX, worldY, worldZ, &worldO);
+
+            // Reject invalid derived world coordinates before changing transport membership.
+            if (!Trinity::IsValidMapCoord(worldX, worldY, worldZ, worldO))
+                return false;
+
+            if (plrMover)
+            {
+                if (!currentTransport)
+                    transport->AddPassenger(plrMover);
+                else if (currentTransport != transport)
+                {
+                    currentTransport->RemovePassenger(plrMover);
+                    transport->AddPassenger(plrMover);
+                }
+            }
+
+            movementInfo.transport.guid = transport->GetGUID();
+            movementInfo.pos.Relocate(worldX, worldY, worldZ, worldO);
+        }
+        else
+        {
+            // No server-side Transport object for this GUID.
+            // This can still be a non-map GAMEOBJECT_TYPE_TRANSPORT, so preserve that behavior.
+            bool validGameObjectTransport = false;
+
+            if (GameObject* go = mover->GetMap()->GetGameObject(movementInfo.transport.guid))
+                validGameObjectTransport = go->GetGoType() == GAMEOBJECT_TYPE_TRANSPORT;
+
+            if (plrMover && currentTransport && currentTransport->GetGUID() != movementInfo.transport.guid)
+                currentTransport->RemovePassenger(plrMover);
+
+            if (!validGameObjectTransport)
+            {
+                movementInfo.RemoveMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
+                movementInfo.transport.Reset();
+            }
+        }
+    }
+    else if (plrMover && plrMover->GetTransport())
+    {
+        plrMover->GetTransport()->RemovePassenger(plrMover);
+        movementInfo.transport.Reset();
+    }
+
+    return true;
 }
