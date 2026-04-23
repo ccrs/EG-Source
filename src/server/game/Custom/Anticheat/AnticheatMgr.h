@@ -21,6 +21,7 @@
 #include "AnticheatData.h"
 #include "Common.h"
 #include "SharedDefines.h"
+#include <shared_mutex>
 #include <unordered_map>
 
 struct AccountData;
@@ -80,25 +81,25 @@ private:
     void _LoadBlockedLuaFunctions();
     void _SaveLuaCheater(uint32 accountId, uint32 realmId, uint32 guid, std::string macro);
 
-    void _StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
-    void _SpeedHackDetection(Player* player, MovementInfo const& movementInfo);
-    void _FlyHackDetection(Player* player, MovementInfo const& movementInfo);
-    void _TeleportHackDetection(Player* player, MovementInfo const& movementInfo);
-    void _JumpHackDetection(Player* player, MovementInfo const& movementInfo,uint32 opcode);
-    void _TeleportPlaneHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
-    void _ClimbHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
-    void _IgnoreControlHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
-    void _GravityHackDetection(Player* player, MovementInfo const& movementInfo);
-    void _WalkOnWaterHackDetection(Player* player, MovementInfo const& movementInfo);
-    void _ZAxisHackDetection(Player* player, MovementInfo const& movementInfo);
-    void _AntiSwimHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode);
-    void _AntiKnockBackHackDetection(Player* player, MovementInfo const& movementInfo);
-    void _NoFallDamageDetection(Player* player, MovementInfo const& movementInfo);
-    void _BGStartExploitDetection(Player* player, MovementInfo const& movementInfo);
+    void _StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, AnticheatData& data);
+    void _SpeedHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
+    void _FlyHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
+    void _TeleportHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
+    void _JumpHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, AnticheatData& data);
+    void _TeleportPlaneHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, AnticheatData& data);
+    void _ClimbHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, AnticheatData& data);
+    void _IgnoreControlHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, AnticheatData& data);
+    void _GravityHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
+    void _WalkOnWaterHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
+    void _ZAxisHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
+    void _AntiSwimHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, AnticheatData& data);
+    void _AntiKnockBackHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
+    void _NoFallDamageDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
+    void _BGStartExploitDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
 
     void _CheckBGOriginPositions(Player* player);
 
-    void _BuildReport(Player* player, AnticheatReportTypes reportType);
+    void _BuildReport(Player* player, AnticheatReportTypes reportType, AnticheatData& data);
     bool _MustCheckTempReports(AnticheatReportTypes type) const
     {
         switch (type)
@@ -114,7 +115,7 @@ private:
                 return true;
         }
     }
-    void _NotifyGameMasters(Player* player, std::string text, uint32 trinityString);
+    void _NotifyGameMasters(Player* player, std::string text, uint32 trinityString, AnticheatData& data);
     void _NotifyGameMasters(std::string text);
     void _LogInfo(Player* player, std::string text);
 
@@ -123,6 +124,7 @@ private:
     uint32 _ingameNotificationThreshold = 0;
     std::unordered_map<std::string, bool> _luaBlockedFunctions;
     AnticheatPlayersDataMap _players;
+    mutable std::shared_mutex _playersMutex;
 };
 
 #define sAnticheatMgr AnticheatMgr::instance()
