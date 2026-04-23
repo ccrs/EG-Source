@@ -1614,6 +1614,15 @@ void LFGMgr::TeleportPlayer(Player* player, bool out, bool fromOpcode /*= false*
         return;
     }
 
+    // Block opcode-driven "Teleport Back" while a deferred requeue teleport is pending.
+    // Allowing it would bypass TryClearOldLfgGroupBind and send the player into the old instance.
+    if (fromOpcode && PendingTeleportInStore.count(player->GetGUID()))
+    {
+        TC_LOG_DEBUG("lfg.teleport", "Player {} attempted Teleport Back but a deferred LFG teleport is pending; blocking.", player->GetName());
+        player->GetSession()->SendLfgTeleportError(uint8(LFG_TELEPORTERROR_INVALID_LOCATION));
+        return;
+    }
+
     LfgTeleportError error = LFG_TELEPORTERROR_OK;
 
     if (!player->IsAlive())
