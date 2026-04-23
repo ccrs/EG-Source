@@ -885,6 +885,13 @@ bool VehicleJoinEvent::Execute(uint64, uint32)
     Passenger->m_movementInfo.transport.seat = Seat->first;
     Passenger->m_movementInfo.transport.guid = Target->GetBase()->GetGUID();
 
+    // Immediately derive and store the world position so m_movementInfo.pos is never
+    // stale pre-boarding data. Without this, passengers that send no movement packets
+    // (non-moving seats, turrets) would have a permanently wrong m_movementInfo.pos.
+    float wx = x, wy = y, wz = z, wo = o;
+    Target->CalculatePassengerPosition(wx, wy, wz, &wo);
+    Passenger->m_movementInfo.pos.Relocate(wx, wy, wz, wo);
+
     if (Target->GetBase()->GetTypeId() == TYPEID_UNIT && Passenger->GetTypeId() == TYPEID_PLAYER &&
         veSeat->HasFlag(VEHICLE_SEAT_FLAG_CAN_CONTROL))
     {

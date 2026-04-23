@@ -331,80 +331,13 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
         if (!vehicle->NormalizePassengerMovementInfo(mover, movementInfo))
             return;
     }
-    else if (movementInfo.HasMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
+    else
     {
-        if (movementInfo.pos.GetExactDist2d(mover) > SIZE_OF_GRIDS)
+        if (movementInfo.HasMovementFlag(MOVEMENTFLAG_ONTRANSPORT) && movementInfo.pos.GetExactDist2d(mover) > SIZE_OF_GRIDS)
             return;
 
-        Transport* transport = nullptr;
-        Transport* currentTransport = plrMover ? plrMover->GetTransport() : nullptr;
-
-        if (plrMover)
-        {
-            transport = plrMover->GetMap()->GetTransport(movementInfo.transport.guid);
-
-            if (!transport && currentTransport && currentTransport->GetGUID() == movementInfo.transport.guid)
-                transport = currentTransport;
-        }
-
-        float localX = movementInfo.transport.pos.GetPositionX();
-        float localY = movementInfo.transport.pos.GetPositionY();
-        float localZ = movementInfo.transport.pos.GetPositionZ();
-
-        // Reject bogus transport offsets before changing transport membership.
-        if (std::fabs(localX) > 75.0f || std::fabs(localY) > 75.0f || std::fabs(localZ) > 75.0f)
+        if (!NormalizeTransportMovementInfo(mover, movementInfo))
             return;
-
-        if (transport)
-        {
-            float worldX = movementInfo.transport.pos.GetPositionX();
-            float worldY = movementInfo.transport.pos.GetPositionY();
-            float worldZ = movementInfo.transport.pos.GetPositionZ();
-            float worldO = movementInfo.transport.pos.GetOrientation();
-
-            transport->CalculatePassengerPosition(worldX, worldY, worldZ, &worldO);
-
-            // Reject invalid derived world coordinates before changing transport membership.
-            if (!Trinity::IsValidMapCoord(worldX, worldY, worldZ, worldO))
-                return;
-
-            if (plrMover)
-            {
-                if (!currentTransport)
-                    transport->AddPassenger(plrMover);
-                else if (currentTransport != transport)
-                {
-                    currentTransport->RemovePassenger(plrMover);
-                    transport->AddPassenger(plrMover);
-                }
-            }
-
-            movementInfo.transport.guid = transport->GetGUID();
-            movementInfo.pos.Relocate(worldX, worldY, worldZ, worldO);
-        }
-        else
-        {
-            // No server-side Transport object for this GUID.
-            // This can still be a non-map GAMEOBJECT_TYPE_TRANSPORT, so preserve that behavior.
-            bool validGameObjectTransport = false;
-
-            if (GameObject* go = mover->GetMap()->GetGameObject(movementInfo.transport.guid))
-                validGameObjectTransport = go->GetGoType() == GAMEOBJECT_TYPE_TRANSPORT;
-
-            if (plrMover && currentTransport && currentTransport->GetGUID() != movementInfo.transport.guid)
-                currentTransport->RemovePassenger(plrMover);
-
-            if (!validGameObjectTransport)
-            {
-                movementInfo.RemoveMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
-                movementInfo.transport.Reset();
-            }
-        }
-    }
-    else if (plrMover && plrMover->GetTransport())
-    {
-        plrMover->GetTransport()->RemovePassenger(plrMover);
-        movementInfo.transport.Reset();
     }
 
     // fall damage generation (ignore in flight case that can be triggered also at lags in moment teleportation to another map).
@@ -620,78 +553,10 @@ void WorldSession::HandleForceSpeedChangeAck(WorldPacket& recvData)
         if (!vehicle->NormalizePassengerMovementInfo(mover, movementInfo))
             return;
     }
-    else if (movementInfo.HasMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
+    else
     {
-        Player* plrMover = mover->ToPlayer();
-        Transport* transport = nullptr;
-        Transport* currentTransport = plrMover ? plrMover->GetTransport() : nullptr;
-
-        if (plrMover)
-        {
-            transport = plrMover->GetMap()->GetTransport(movementInfo.transport.guid);
-
-            if (!transport && currentTransport && currentTransport->GetGUID() == movementInfo.transport.guid)
-                transport = currentTransport;
-        }
-
-        float localX = movementInfo.transport.pos.GetPositionX();
-        float localY = movementInfo.transport.pos.GetPositionY();
-        float localZ = movementInfo.transport.pos.GetPositionZ();
-
-        if (std::fabs(localX) > 75.0f || std::fabs(localY) > 75.0f || std::fabs(localZ) > 75.0f)
+        if (!NormalizeTransportMovementInfo(mover, movementInfo))
             return;
-
-        if (transport)
-        {
-            float worldX = movementInfo.transport.pos.GetPositionX();
-            float worldY = movementInfo.transport.pos.GetPositionY();
-            float worldZ = movementInfo.transport.pos.GetPositionZ();
-            float worldO = movementInfo.transport.pos.GetOrientation();
-
-            transport->CalculatePassengerPosition(worldX, worldY, worldZ, &worldO);
-
-            if (!Trinity::IsValidMapCoord(worldX, worldY, worldZ, worldO))
-                return;
-
-            // Do not mutate transport membership before validation.
-            if (plrMover)
-            {
-                if (!currentTransport)
-                    transport->AddPassenger(plrMover);
-                else if (currentTransport != transport)
-                {
-                    currentTransport->RemovePassenger(plrMover);
-                    transport->AddPassenger(plrMover);
-                }
-            }
-
-            movementInfo.transport.guid = transport->GetGUID();
-            movementInfo.pos.Relocate(worldX, worldY, worldZ, worldO);
-        }
-        else
-        {
-            bool validGameObjectTransport = false;
-
-            if (GameObject* go = mover->GetMap()->GetGameObject(movementInfo.transport.guid))
-                validGameObjectTransport = go->GetGoType() == GAMEOBJECT_TYPE_TRANSPORT;
-
-            if (plrMover && currentTransport && currentTransport->GetGUID() != movementInfo.transport.guid)
-                currentTransport->RemovePassenger(plrMover);
-
-            if (!validGameObjectTransport)
-            {
-                movementInfo.RemoveMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
-                movementInfo.transport.Reset();
-            }
-        }
-    }
-    else if (Player* plrMover = mover->ToPlayer())
-    {
-        if (plrMover->GetTransport())
-        {
-            plrMover->GetTransport()->RemovePassenger(plrMover);
-            movementInfo.transport.Reset();
-        }
     }
 
     /*
@@ -799,8 +664,18 @@ void WorldSession::HandleMoveKnockBackAck(WorldPacket& recvData)
     ReadMovementInfo(recvData, &movementInfo);
     movementInfo.time = AdjustClientMovementTime(movementInfo.time);
 
+    if (Vehicle* vehicle = mover->GetVehicle())
+    {
+        if (!vehicle->NormalizePassengerMovementInfo(mover, movementInfo))
+            return;
+    }
+    else if (!NormalizeTransportMovementInfo(mover, movementInfo))
+        return;
+
     mover->m_movementInfo = movementInfo;
-    mover->UpdatePosition(movementInfo.pos);
+
+    if (!mover->GetVehicle())
+        mover->UpdatePosition(movementInfo.pos);
 
     WorldPacket data(MSG_MOVE_KNOCK_BACK, 66);
     WriteMovementInfo(&data, &movementInfo);

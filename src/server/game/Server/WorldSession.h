@@ -775,6 +775,7 @@ class TC_GAME_API WorldSession
         void HandleMoveWorldportAck();                // for server-side calls
 
         void HandleMovementOpcodes(WorldPacket& recvPacket);
+        bool NormalizeTransportMovementInfo(Unit* mover, MovementInfo& movementInfo);
         void HandleSetActiveMoverOpcode(WorldPacket& recvData);
         void HandleMoveNotActiveMover(WorldPacket& recvData);
         void HandleDismissControlledVehicle(WorldPacket& recvData);

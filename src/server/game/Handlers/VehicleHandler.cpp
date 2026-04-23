@@ -44,7 +44,14 @@ void WorldSession::HandleDismissControlledVehicle(WorldPacket &recvData)
     mi.guid = guid;
     ReadMovementInfo(recvData, &mi);
 
-    _player->m_movementInfo = mi;
+    bool validPos;
+    if (Vehicle* vehicle = _player->GetVehicle())
+        validPos = vehicle->NormalizePassengerMovementInfo(_player, mi);
+    else
+        validPos = NormalizeTransportMovementInfo(_player, mi);
+
+    if (validPos)
+        _player->m_movementInfo = mi;
 
     _player->ExitVehicle();
 }
