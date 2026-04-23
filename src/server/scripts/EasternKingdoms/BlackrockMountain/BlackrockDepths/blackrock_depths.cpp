@@ -15,83 +15,112 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
 #include "blackrock_depths.h"
 #include "GameObject.h"
 #include "GameObjectAI.h"
 #include "InstanceScript.h"
-#include "Log.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
+#include "Random.h"
+#include "ScriptedCreature.h"
 #include "ScriptedEscortAI.h"
 #include "ScriptedGossip.h"
+#include "ScriptMgr.h"
 #include "TemporarySummon.h"
 #include "WorldSession.h"
 
-//go_shadowforge_brazier
 class go_shadowforge_brazier : public GameObjectScript
 {
-    public:
-        go_shadowforge_brazier() : GameObjectScript("go_shadowforge_brazier") { }
+public:
+    go_shadowforge_brazier() : GameObjectScript("go_shadowforge_brazier") { }
 
-        struct go_shadowforge_brazierAI : public GameObjectAI
+    struct go_shadowforge_brazierAI : public GameObjectAI
+    {
+        go_shadowforge_brazierAI(GameObject* go) : GameObjectAI(go), _instance(go->GetInstanceScript()) { }
+
+        bool OnGossipHello(Player* /*player*/) override
         {
-            go_shadowforge_brazierAI(GameObject* go) : GameObjectAI(go), instance(go->GetInstanceScript()) { }
+            if (_instance->GetData(TYPE_LYCEUM) == IN_PROGRESS)
+                _instance->SetData(TYPE_LYCEUM, DONE);
+            else
+                _instance->SetData(TYPE_LYCEUM, IN_PROGRESS);
 
-            InstanceScript* instance;
-
-            bool OnGossipHello(Player* /*player*/) override
+            if (_instance->GetData(TYPE_LYCEUM) == DONE)
             {
-                if (instance->GetData(TYPE_LYCEUM) == IN_PROGRESS)
-                    instance->SetData(TYPE_LYCEUM, DONE);
-                else
-                    instance->SetData(TYPE_LYCEUM, IN_PROGRESS);
-                // If used both braziers, open linked doors (North and South)
-                if (instance->GetData(TYPE_LYCEUM) == DONE)
-                {
-                    instance->HandleGameObject(instance->GetGuidData(DATA_GOLEM_DOOR_N), true);
-                    instance->HandleGameObject(instance->GetGuidData(DATA_GOLEM_DOOR_S), true);
-                }
-
-                return false;
+                _instance->HandleGameObject(_instance->GetGuidData(DATA_GOLEM_DOOR_N), true);
+                _instance->HandleGameObject(_instance->GetGuidData(DATA_GOLEM_DOOR_S), true);
             }
-        };
 
-        GameObjectAI* GetAI(GameObject* go) const override
-        {
-            return GetBlackrockDepthsAI<go_shadowforge_brazierAI>(go);
+            return false;
         }
+
+    private:
+        InstanceScript* _instance;
+    };
+
+    GameObjectAI* GetAI(GameObject* go) const override
+    {
+        return GetBlackrockDepthsAI<go_shadowforge_brazierAI>(go);
+    }
 };
 
-// npc_grimstone
-enum Grimstone
+enum GrimstoneNPCs
 {
-    NPC_GRIMSTONE                                          = 10096,
-    NPC_THELDREN                                           = 16059,
+    NPC_GRIMSTONE = 10096,
+    NPC_THELDREN = 16059,
 
-    //4 or 6 in total? 1+2+1 / 2+2+2 / 3+3. Depending on this, code should be changed.
-    MAX_NPC_AMOUNT                                         = 4
+    MAX_RING_MOB_COUNT = 4
 };
 
-uint32 RingMob[]=
+enum GrimstoneTexts
 {
-    8925,                                                   // Dredge Worm
-    8926,                                                   // Deep Stinger
-    8927,                                                   // Dark Screecher
-    8928,                                                   // Burrowing Thundersnout
-    8933,                                                   // Cave Creeper
-    8932,                                                   // Borer Beetle
+    SAY_TEXT1 = 0,
+    SAY_TEXT2,
+    SAY_TEXT3,
+    SAY_TEXT4,
+    SAY_TEXT5,
+    SAY_TEXT6
 };
 
-uint32 RingBoss[]=
+enum GrimstoneEvents
 {
-    9027,                                                   // Gorosh
-    9028,                                                   // Grizzle
-    9029,                                                   // Eviscerator
-    9030,                                                   // Ok'thor
-    9031,                                                   // Anub'shiah
-    9032,                                                   // Hedrum
+    EVENT_START = 1,
+    EVENT_RESUME_WALK,
+    EVENT_OPEN_ARENA_1,
+    EVENT_SUMMON_WAVE_1,
+    EVENT_SUMMON_WAVE_2,
+    EVENT_SUMMON_WAVE_3,
+    EVENT_GRIMSTONE_RETURN,
+    EVENT_OPEN_ARENA_2,
+    EVENT_SUMMON_BOSS,
+    EVENT_COMPLETE
 };
+
+static constexpr uint32 PATH_ESCORT_GRIMSTONE = 80770;
+
+uint32 RingMob[] =
+{
+    8925,   // Dredge Worm
+    8926,   // Deep Stinger
+    8927,   // Dark Screecher
+    8928,   // Burrowing Thundersnout
+    8933,   // Cave Creeper
+    8932,   // Borer Beetle
+};
+
+uint32 RingBoss[] =
+{
+    9027,   // Gorosh
+    9028,   // Grizzle
+    9029,   // Eviscerator
+    9030,   // Ok'thor
+    9031,   // Anub'shiah
+    9032,   // Hedrum
+};
+
+Position const GrimstoneSpawnPos = { 625.559f, -205.618f, -52.735f, 2.609f };
+Position const RingMobSpawnPos   = { 608.960f, -235.322f, -53.907f, 1.857f };
+Position const RingBossSpawnPos  = { 644.300f, -175.989f, -53.739f, 3.418f };
 
 class at_ring_of_law : public AreaTriggerScript
 {
@@ -106,542 +135,402 @@ public:
                 return false;
 
             instance->SetData(TYPE_RING_OF_LAW, IN_PROGRESS);
-            player->SummonCreature(NPC_GRIMSTONE, 625.559f, -205.618f, -52.735f, 2.609f, TEMPSUMMON_DEAD_DESPAWN);
-
-            return false;
+            player->SummonCreature(NPC_GRIMSTONE, GrimstoneSpawnPos, TEMPSUMMON_DEAD_DESPAWN);
         }
         return false;
     }
 };
 
-// npc_grimstone
-enum GrimstoneTexts
+// @todo implement quest part of event (different end boss)
+struct npc_grimstone : public EscortAI
 {
-    SAY_TEXT1          = 0,
-    SAY_TEXT2          = 1,
-    SAY_TEXT3          = 2,
-    SAY_TEXT4          = 3,
-    SAY_TEXT5          = 4,
-    SAY_TEXT6          = 5
-};
+    npc_grimstone(Creature* creature) : EscortAI(creature), _instance(creature->GetInstanceScript()), _mobSpawnId(urand(0, 5)), _mobCount(0), _allMobsSummoned(false), _ringMobsDone(false) { }
 
-static constexpr uint32 PATH_ESCORT_GRIMSTONE = 80770;
-
-/// @todo implement quest part of event (different end boss)
-class npc_grimstone : public CreatureScript
-{
-public:
-    npc_grimstone() : CreatureScript("npc_grimstone") { }
-
-    CreatureAI* GetAI(Creature* creature) const override
+    void Reset() override
     {
-        return GetBlackrockDepthsAI<npc_grimstoneAI>(creature);
+        _events.Reset();
+        _mobCount = 0;
+        _bossGUID.Clear();
+        _allMobsSummoned = false;
+        _ringMobsDone = false;
+        _events.ScheduleEvent(EVENT_START, 1s);
     }
 
-    struct npc_grimstoneAI : public EscortAI
+    void SummonedCreatureDies(Creature* summon, Unit* /*killer*/) override
     {
-        npc_grimstoneAI(Creature* creature) : EscortAI(creature)
+        if (summon->GetGUID() == _bossGUID)
         {
-            Initialize();
-            instance = creature->GetInstanceScript();
-            MobSpawnId = rand32() % 6;
+            _bossGUID.Clear();
+            _events.ScheduleEvent(EVENT_COMPLETE, 5s);
+            return;
         }
 
-        void Initialize()
+        if (--_mobCount == 0 && _allMobsSummoned)
+            _events.ScheduleEvent(EVENT_GRIMSTONE_RETURN, 5s);
+    }
+
+    void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
+    {
+        switch (waypointId)
         {
-            EventPhase = 0;
-            Event_Timer = 1000;
-
-            MobCount = 0;
-            MobDeath_Timer = 0;
-
-            for (uint8 i = 0; i < MAX_NPC_AMOUNT; ++i)
-                RingMobGUID[i].Clear();
-
-            RingBossGUID.Clear();
-
-            CanWalk = false;
+            case 0:
+                Talk(SAY_TEXT1);
+                SetEscortPaused(true);
+                _events.ScheduleEvent(EVENT_RESUME_WALK, 5s);
+                break;
+            case 1:
+                Talk(SAY_TEXT2);
+                SetEscortPaused(true);
+                _events.ScheduleEvent(EVENT_OPEN_ARENA_1, 7s);
+                break;
+            case 2:
+                // hold position while ring mobs are alive; skip if they died before we arrived
+                if (!_ringMobsDone)
+                    SetEscortPaused(true);
+                break;
+            case 3:
+                Talk(SAY_TEXT3);
+                break;
+            case 4:
+                Talk(SAY_TEXT4);
+                SetEscortPaused(true);
+                _events.ScheduleEvent(EVENT_OPEN_ARENA_2, 5s);
+                break;
+            case 5:
+                _instance->UpdateEncounterStateForKilledCreature(NPC_GRIMSTONE, me);
+                _instance->SetData(TYPE_RING_OF_LAW, DONE);
+                break;
         }
+    }
 
-        InstanceScript* instance;
+    void UpdateAI(uint32 diff) override
+    {
+        _events.Update(diff);
 
-        uint8 EventPhase;
-        uint32 Event_Timer;
-
-        uint8 MobSpawnId;
-        uint8 MobCount;
-        uint32 MobDeath_Timer;
-
-        ObjectGuid RingMobGUID[4];
-        ObjectGuid RingBossGUID;
-
-        bool CanWalk;
-
-        void Reset() override
+        while (uint32 eventId = _events.ExecuteEvent())
         {
-            Initialize();
-        }
-
-        /// @todo move them to center
-        void SummonRingMob()
-        {
-            if (Creature* tmp = me->SummonCreature(RingMob[MobSpawnId], 608.960f, -235.322f, -53.907f, 1.857f, TEMPSUMMON_DEAD_DESPAWN))
-                RingMobGUID[MobCount] = tmp->GetGUID();
-
-            ++MobCount;
-
-            if (MobCount == MAX_NPC_AMOUNT)
-                MobDeath_Timer = 2500;
-        }
-
-        /// @todo move them to center
-        void SummonRingBoss()
-        {
-            if (Creature* tmp = me->SummonCreature(RingBoss[rand32() % 6], 644.300f, -175.989f, -53.739f, 3.418f, TEMPSUMMON_DEAD_DESPAWN))
-                RingBossGUID = tmp->GetGUID();
-
-            MobDeath_Timer = 2500;
-        }
-
-        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
-        {
-            switch (waypointId)
+            switch (eventId)
             {
-                case 0:
-                    Talk(SAY_TEXT1);
-                    CanWalk = false;
-                    Event_Timer = 5000;
+                case EVENT_START:
+                    Talk(SAY_TEXT5);
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_ARENA4), false);
+                    LoadPath(PATH_ESCORT_GRIMSTONE);
+                    Start(false);
                     break;
-                case 1:
-                    Talk(SAY_TEXT2);
-                    CanWalk = false;
-                    Event_Timer = 5000;
+                case EVENT_RESUME_WALK:
+                    SetEscortPaused(false);
                     break;
-                case 2:
-                    CanWalk = false;
+                case EVENT_OPEN_ARENA_1:
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_ARENA1), true);
+                    _events.ScheduleEvent(EVENT_SUMMON_WAVE_1, 3s);
                     break;
-                case 3:
-                    Talk(SAY_TEXT3);
+                case EVENT_SUMMON_WAVE_1:
+                    me->SetVisible(false);
+                    if (me->SummonCreature(RingMob[_mobSpawnId], RingMobSpawnPos, TEMPSUMMON_DEAD_DESPAWN))
+                        ++_mobCount;
+                    SetEscortPaused(false);
+                    _events.ScheduleEvent(EVENT_SUMMON_WAVE_2, 8s);
                     break;
-                case 4:
-                    Talk(SAY_TEXT4);
-                    CanWalk = false;
-                    Event_Timer = 5000;
+                case EVENT_SUMMON_WAVE_2:
+                    if (me->SummonCreature(RingMob[_mobSpawnId], RingMobSpawnPos, TEMPSUMMON_DEAD_DESPAWN))
+                        ++_mobCount;
+                    if (me->SummonCreature(RingMob[_mobSpawnId], RingMobSpawnPos, TEMPSUMMON_DEAD_DESPAWN))
+                        ++_mobCount;
+                    _events.ScheduleEvent(EVENT_SUMMON_WAVE_3, 8s);
                     break;
-                case 5:
-                    instance->UpdateEncounterStateForKilledCreature(NPC_GRIMSTONE, me);
-                    instance->SetData(TYPE_RING_OF_LAW, DONE);
-                    TC_LOG_DEBUG("scripts", "npc_grimstone: event reached end and set complete.");
+                case EVENT_SUMMON_WAVE_3:
+                    if (me->SummonCreature(RingMob[_mobSpawnId], RingMobSpawnPos, TEMPSUMMON_DEAD_DESPAWN))
+                        ++_mobCount;
+                    _allMobsSummoned = true;
+                    // if all previous mobs died before this wave landed, kick off return now
+                    if (_mobCount == 0)
+                        _events.ScheduleEvent(EVENT_GRIMSTONE_RETURN, 5s);
+                    break;
+                case EVENT_GRIMSTONE_RETURN:
+                    _ringMobsDone = true;
+                    me->SetVisible(true);
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_ARENA1), false);
+                    Talk(SAY_TEXT6);
+                    SetEscortPaused(false);
+                    break;
+                case EVENT_OPEN_ARENA_2:
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_ARENA2), true);
+                    _events.ScheduleEvent(EVENT_SUMMON_BOSS, 5s);
+                    break;
+                case EVENT_SUMMON_BOSS:
+                    me->SetVisible(false);
+                    if (Creature* boss = me->SummonCreature(RingBoss[urand(0, 5)], RingBossSpawnPos, TEMPSUMMON_DEAD_DESPAWN))
+                        _bossGUID = boss->GetGUID();
+                    else
+                        _events.ScheduleEvent(EVENT_COMPLETE, 1s);
+                    break;
+                case EVENT_COMPLETE:
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_ARENA2), false);
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_ARENA3), true);
+                    _instance->HandleGameObject(_instance->GetGuidData(DATA_ARENA4), true);
+                    SetEscortPaused(false);
+                    break;
+                default:
                     break;
             }
         }
 
-        void HandleGameObject(uint32 id, bool open)
-        {
-            instance->HandleGameObject(instance->GetGuidData(id), open);
-        }
+        EscortAI::UpdateAI(diff);
+    }
 
-        void UpdateAI(uint32 diff) override
-        {
-            if (MobDeath_Timer)
-            {
-                if (MobDeath_Timer <= diff)
-                {
-                    MobDeath_Timer = 2500;
-
-                    if (!RingBossGUID.IsEmpty())
-                    {
-                        Creature* boss = ObjectAccessor::GetCreature(*me, RingBossGUID);
-                        if (boss && !boss->IsAlive() && boss->isDead())
-                        {
-                            RingBossGUID.Clear();
-                            Event_Timer = 5000;
-                            MobDeath_Timer = 0;
-                            return;
-                        }
-                        return;
-                    }
-
-                    for (uint8 i = 0; i < MAX_NPC_AMOUNT; ++i)
-                    {
-                        Creature* mob = ObjectAccessor::GetCreature(*me, RingMobGUID[i]);
-                        if (mob && !mob->IsAlive() && mob->isDead())
-                        {
-                            RingMobGUID[i].Clear();
-                            --MobCount;
-
-                            //seems all are gone, so set timer to continue and discontinue this
-                            if (!MobCount)
-                            {
-                                Event_Timer = 5000;
-                                MobDeath_Timer = 0;
-                            }
-                        }
-                    }
-                } else MobDeath_Timer -= diff;
-            }
-
-            if (Event_Timer)
-            {
-                if (Event_Timer <= diff)
-                {
-                    switch (EventPhase)
-                    {
-                    case 0:
-                        Talk(SAY_TEXT5);
-                        HandleGameObject(DATA_ARENA4, false);
-                        LoadPath(PATH_ESCORT_GRIMSTONE);
-                        Start(false);
-                        CanWalk = true;
-                        Event_Timer = 0;
-                        break;
-                    case 1:
-                        CanWalk = true;
-                        Event_Timer = 0;
-                        break;
-                    case 2:
-                        Event_Timer = 2000;
-                        break;
-                    case 3:
-                        HandleGameObject(DATA_ARENA1, true);
-                        Event_Timer = 3000;
-                        break;
-                    case 4:
-                        CanWalk = true;
-                        me->SetVisible(false);
-                        SummonRingMob();
-                        Event_Timer = 8000;
-                        break;
-                    case 5:
-                        SummonRingMob();
-                        SummonRingMob();
-                        Event_Timer = 8000;
-                        break;
-                    case 6:
-                        SummonRingMob();
-                        Event_Timer = 5000;
-                        break;
-                    case 7:
-                        me->SetVisible(true);
-                        HandleGameObject(DATA_ARENA1, false);
-                        Talk(SAY_TEXT6);
-                        CanWalk = true;
-                        Event_Timer = 5000;
-                        break;
-                    case 8:
-                        HandleGameObject(DATA_ARENA2, true);
-                        Event_Timer = 5000;
-                        break;
-                    case 9:
-                        me->SetVisible(false);
-                        SummonRingBoss();
-                        Event_Timer = 0;
-                        break;
-                    case 10:
-                        //if quest, complete
-                        HandleGameObject(DATA_ARENA2, false);
-                        HandleGameObject(DATA_ARENA3, true);
-                        HandleGameObject(DATA_ARENA4, true);
-                        CanWalk = true;
-                        Event_Timer = 0;
-                        break;
-                    }
-                    ++EventPhase;
-                } else Event_Timer -= diff;
-            }
-
-            if (CanWalk)
-                EscortAI::UpdateAI(diff);
-           }
-    };
+private:
+    InstanceScript* _instance;
+    EventMap _events;
+    ObjectGuid _bossGUID;
+    uint8 _mobSpawnId;
+    uint8 _mobCount;
+    bool _allMobsSummoned;
+    bool _ringMobsDone;
 };
 
-// npc_phalanx
 enum PhalanxSpells
 {
-    SPELL_THUNDERCLAP                   = 8732,
-    SPELL_FIREBALLVOLLEY                = 22425,
-    SPELL_MIGHTYBLOW                    = 14099
+    SPELL_THUNDERCLAP = 8732,
+    SPELL_FIREBALLVOLLEY = 22425,
+    SPELL_MIGHTYBLOW = 14099
 };
 
-class npc_phalanx : public CreatureScript
+enum PhalanxEvents
 {
-public:
-    npc_phalanx() : CreatureScript("npc_phalanx") { }
+    EVENT_THUNDERCLAP = 1,
+    EVENT_FIREBALL_VOLLEY,
+    EVENT_MIGHTY_BLOW
+};
 
-    CreatureAI* GetAI(Creature* creature) const override
+struct npc_phalanx : public ScriptedAI
+{
+    npc_phalanx(Creature* creature) : ScriptedAI(creature), _fireballVolleyActive(false) { }
+
+    void Reset() override
     {
-        return GetBlackrockDepthsAI<npc_phalanxAI>(creature);
+        _events.Reset();
+        _fireballVolleyActive = false;
     }
 
-    struct npc_phalanxAI : public ScriptedAI
+    void JustEngagedWith(Unit* /*who*/) override
     {
-        npc_phalanxAI(Creature* creature) : ScriptedAI(creature)
+        _events.ScheduleEvent(EVENT_THUNDERCLAP, 12s);
+        _events.ScheduleEvent(EVENT_MIGHTY_BLOW, 15s);
+    }
+
+    void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
+    {
+        if (!_fireballVolleyActive && me->HealthBelowPctDamaged(51, damage))
         {
-            Initialize();
+            _fireballVolleyActive = true;
+            _events.ScheduleEvent(EVENT_FIREBALL_VOLLEY, 0s);
         }
+    }
 
-        void Initialize()
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        _events.Update(diff);
+
+        while (uint32 eventId = _events.ExecuteEvent())
         {
-            ThunderClap_Timer = 12000;
-            FireballVolley_Timer = 0;
-            MightyBlow_Timer = 15000;
-        }
-
-        uint32 ThunderClap_Timer;
-        uint32 FireballVolley_Timer;
-        uint32 MightyBlow_Timer;
-
-        void Reset() override
-        {
-            Initialize();
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            //Return since we have no target
-            if (!UpdateVictim())
-                return;
-
-            //ThunderClap_Timer
-            if (ThunderClap_Timer <= diff)
+            switch (eventId)
             {
-                DoCastVictim(SPELL_THUNDERCLAP);
-                ThunderClap_Timer = 10000;
-            } else ThunderClap_Timer -= diff;
-
-            //FireballVolley_Timer
-            if (HealthBelowPct(51))
-            {
-                if (FireballVolley_Timer <= diff)
-                {
+                case EVENT_THUNDERCLAP:
+                    DoCastVictim(SPELL_THUNDERCLAP);
+                    _events.ScheduleEvent(EVENT_THUNDERCLAP, 10s);
+                    break;
+                case EVENT_FIREBALL_VOLLEY:
                     DoCastVictim(SPELL_FIREBALLVOLLEY);
-                    FireballVolley_Timer = 15000;
-                } else FireballVolley_Timer -= diff;
+                    _events.ScheduleEvent(EVENT_FIREBALL_VOLLEY, 15s);
+                    break;
+                case EVENT_MIGHTY_BLOW:
+                    DoCastVictim(SPELL_MIGHTYBLOW);
+                    _events.ScheduleEvent(EVENT_MIGHTY_BLOW, 10s);
+                    break;
+                default:
+                    break;
             }
-
-            //MightyBlow_Timer
-            if (MightyBlow_Timer <= diff)
-            {
-                DoCastVictim(SPELL_MIGHTYBLOW);
-                MightyBlow_Timer = 10000;
-            } else MightyBlow_Timer -= diff;
-
-            DoMeleeAttackIfReady();
         }
-    };
+
+        DoMeleeAttackIfReady();
+    }
+
+private:
+    EventMap _events;
+    bool _fireballVolleyActive;
 };
 
-// npc_lokhtos_darkbargainer
-enum Lokhtos
+enum LokhtosMisc
 {
-    QUEST_A_BINDING_CONTRACT                               = 7604,
-    ITEM_SULFURON_INGOT                                    = 17203,
-    ITEM_THRORIUM_BROTHERHOOD_CONTRACT                     = 18628,
-    SPELL_CREATE_THORIUM_BROTHERHOOD_CONTRACT_DND          = 23059,
-    GOSSIP_ITEM_SHOW_ACCESS_MID                            = 4781,       // Show me what I have access to, Lokhtos.
-    GOSSIP_ITEM_SHOW_ACCESS_OID                            = 0,
+    QUEST_A_BINDING_CONTRACT = 7604,
+    ITEM_SULFURON_INGOT = 17203,
+    ITEM_THRORIUM_BROTHERHOOD_CONTRACT = 18628,
+    SPELL_CREATE_THORIUM_BROTHERHOOD_CONTRACT_DND = 23059,
+    GOSSIP_ITEM_SHOW_ACCESS_MID = 4781,
+    GOSSIP_ITEM_SHOW_ACCESS_OID = 0,
 };
 
-#define GOSSIP_ITEM_GET_CONTRACT    "Get Thorium Brotherhood Contract"  // miss in db,maybe wrong
+#define GOSSIP_ITEM_GET_CONTRACT "Get Thorium Brotherhood Contract"
 
-class npc_lokhtos_darkbargainer : public CreatureScript
+struct npc_lokhtos_darkbargainer : public ScriptedAI
 {
-    public:
-        npc_lokhtos_darkbargainer() : CreatureScript("npc_lokhtos_darkbargainer") { }
+    npc_lokhtos_darkbargainer(Creature* creature) : ScriptedAI(creature) { }
 
-        struct npc_lokhtos_darkbargainerAI : public ScriptedAI
+    bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
+    {
+        uint32 const action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
+        ClearGossipMenuFor(player);
+
+        if (action == GOSSIP_ACTION_INFO_DEF + 1)
         {
-            npc_lokhtos_darkbargainerAI(Creature* creature) : ScriptedAI(creature) { }
-
-            bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
-            {
-                uint32 const action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
-
-                ClearGossipMenuFor(player);
-                if (action == GOSSIP_ACTION_INFO_DEF + 1)
-                {
-                    CloseGossipMenuFor(player);
-                    player->CastSpell(player, SPELL_CREATE_THORIUM_BROTHERHOOD_CONTRACT_DND, false);
-                }
-                if (action == GOSSIP_ACTION_TRADE)
-                    player->GetSession()->SendListInventory(me->GetGUID());
-
-                return true;
-            }
-
-            bool OnGossipHello(Player* player) override
-            {
-                InitGossipMenuFor(player, GOSSIP_ITEM_SHOW_ACCESS_MID);
-                if (me->IsQuestGiver())
-                    player->PrepareQuestMenu(me->GetGUID());
-
-                if (me->IsVendor() && player->GetReputationRank(59) >= REP_FRIENDLY)
-                    AddGossipItemFor(player, GOSSIP_ITEM_SHOW_ACCESS_MID, GOSSIP_ITEM_SHOW_ACCESS_OID, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
-
-                if (!player->GetQuestRewardStatus(QUEST_A_BINDING_CONTRACT) &&
-                    !player->HasItemCount(ITEM_THRORIUM_BROTHERHOOD_CONTRACT, 1, true) &&
-                    player->HasItemCount(ITEM_SULFURON_INGOT))
-                {
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_ITEM_GET_CONTRACT, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-                }
-
-                if (player->GetReputationRank(59) < REP_FRIENDLY)
-                    SendGossipMenuFor(player, 3673, me->GetGUID());
-                else
-                    SendGossipMenuFor(player, 3677, me->GetGUID());
-
-                return true;
-            }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return GetBlackrockDepthsAI<npc_lokhtos_darkbargainerAI>(creature);
+            CloseGossipMenuFor(player);
+            player->CastSpell(player, SPELL_CREATE_THORIUM_BROTHERHOOD_CONTRACT_DND, false);
         }
+        else if (action == GOSSIP_ACTION_TRADE)
+            player->GetSession()->SendListInventory(me->GetGUID());
+
+        return true;
+    }
+
+    bool OnGossipHello(Player* player) override
+    {
+        InitGossipMenuFor(player, GOSSIP_ITEM_SHOW_ACCESS_MID);
+        if (me->IsQuestGiver())
+            player->PrepareQuestMenu(me->GetGUID());
+
+        if (me->IsVendor() && player->GetReputationRank(59) >= REP_FRIENDLY)
+            AddGossipItemFor(player, GOSSIP_ITEM_SHOW_ACCESS_MID, GOSSIP_ITEM_SHOW_ACCESS_OID, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
+
+        if (!player->GetQuestRewardStatus(QUEST_A_BINDING_CONTRACT) &&
+            !player->HasItemCount(ITEM_THRORIUM_BROTHERHOOD_CONTRACT, 1, true) &&
+            player->HasItemCount(ITEM_SULFURON_INGOT))
+        {
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_ITEM_GET_CONTRACT, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+        }
+
+        if (player->GetReputationRank(59) < REP_FRIENDLY)
+            SendGossipMenuFor(player, 3673, me->GetGUID());
+        else
+            SendGossipMenuFor(player, 3677, me->GetGUID());
+
+        return true;
+    }
 };
 
-// npc_rocknot
-enum Rocknot
+enum RocknotMisc
 {
-    SAY_GOT_BEER       = 0,
-    QUEST_ALE          = 4295,
+    SAY_GOT_BEER = 0,
+    QUEST_ALE = 4295,
     SPELL_DRUNKEN_RAGE = 14872,
     PATH_ESCORT_ROCKNOT = 76026
 };
 
-class npc_rocknot : public CreatureScript
+enum RocknotEvents
 {
-public:
-    npc_rocknot() : CreatureScript("npc_rocknot") { }
+    EVENT_BREAK_KEG = 1,
+    EVENT_BREAK_DOOR
+};
 
-    struct npc_rocknotAI : public EscortAI
+struct npc_rocknot : public EscortAI
+{
+    npc_rocknot(Creature* creature) : EscortAI(creature), _instance(creature->GetInstanceScript()) { }
+
+    void Reset() override
     {
-        npc_rocknotAI(Creature* creature) : EscortAI(creature)
-        {
-            Initialize();
-            instance = creature->GetInstanceScript();
-        }
-
-        void Initialize()
-        {
-            BreakKeg_Timer = 0;
-            BreakDoor_Timer = 0;
-        }
-
-        InstanceScript* instance;
-
-        uint32 BreakKeg_Timer;
-        uint32 BreakDoor_Timer;
-
-        void Reset() override
-        {
-            if (HasEscortState(STATE_ESCORT_ESCORTING))
-                return;
-
-            Initialize();
-        }
-
-        void DoGo(uint32 id, uint32 state)
-        {
-            if (GameObject* go = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(id)))
-                go->SetGoState((GOState)state);
-        }
-
-        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
-        {
-            switch (waypointId)
-            {
-                case 1:
-                    me->HandleEmoteCommand(EMOTE_ONESHOT_KICK);
-                    break;
-                case 2:
-                    me->HandleEmoteCommand(EMOTE_ONESHOT_ATTACK_UNARMED);
-                    break;
-                case 3:
-                    me->HandleEmoteCommand(EMOTE_ONESHOT_ATTACK_UNARMED);
-                    break;
-                case 4:
-                    me->HandleEmoteCommand(EMOTE_ONESHOT_KICK);
-                    break;
-                case 5:
-                    me->HandleEmoteCommand(EMOTE_ONESHOT_KICK);
-                    BreakKeg_Timer = 2000;
-                    break;
-            }
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            if (BreakKeg_Timer)
-            {
-                if (BreakKeg_Timer <= diff)
-                {
-                    DoGo(DATA_GO_BAR_KEG, 0);
-                    BreakKeg_Timer = 0;
-                    BreakDoor_Timer = 1000;
-                } else BreakKeg_Timer -= diff;
-            }
-
-            if (BreakDoor_Timer)
-            {
-                if (BreakDoor_Timer <= diff)
-                {
-                    DoGo(DATA_GO_BAR_DOOR, 2);
-                    DoGo(DATA_GO_BAR_KEG_TRAP, 0);               //doesn't work very well, leaving code here for future
-                    //spell by trap has effect61, this indicate the bar go hostile
-
-                    if (Unit* tmp = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_PHALANX)))
-                        tmp->SetFaction(FACTION_MONSTER);
-
-                    //for later, this event(s) has alot more to it.
-                    //optionally, DONE can trigger bar to go hostile.
-                    instance->SetData(TYPE_BAR, DONE);
-
-                    BreakDoor_Timer = 0;
-                } else BreakDoor_Timer -= diff;
-            }
-
-            EscortAI::UpdateAI(diff);
-        }
-
-        void OnQuestReward(Player* /*player*/, Quest const* quest, uint32 /*item*/) override
-        {
-            if (instance->GetData(TYPE_BAR) == DONE || instance->GetData(TYPE_BAR) == SPECIAL)
-                return;
-
-            if (quest->GetQuestId() == QUEST_ALE)
-            {
-                if (instance->GetData(TYPE_BAR) != IN_PROGRESS)
-                    instance->SetData(TYPE_BAR, IN_PROGRESS);
-
-                instance->SetData(TYPE_BAR, SPECIAL);
-
-                //keep track of amount in instance script, returns SPECIAL if amount ok and event in progress
-                if (instance->GetData(TYPE_BAR) == SPECIAL)
-                {
-                    Talk(SAY_GOT_BEER);
-                    DoCastSelf(SPELL_DRUNKEN_RAGE, false);
-
-                    LoadPath(PATH_ESCORT_ROCKNOT);
-                    Start(false);
-                }
-            }
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return GetBlackrockDepthsAI<npc_rocknotAI>(creature);
+        if (HasEscortState(STATE_ESCORT_ESCORTING))
+            return;
+        _events.Reset();
     }
+
+    void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
+    {
+        switch (waypointId)
+        {
+            case 1:
+                me->HandleEmoteCommand(EMOTE_ONESHOT_KICK);
+                break;
+            case 2:
+                me->HandleEmoteCommand(EMOTE_ONESHOT_ATTACK_UNARMED);
+                break;
+            case 3:
+                me->HandleEmoteCommand(EMOTE_ONESHOT_ATTACK_UNARMED);
+                break;
+            case 4:
+                me->HandleEmoteCommand(EMOTE_ONESHOT_KICK);
+                break;
+            case 5:
+                me->HandleEmoteCommand(EMOTE_ONESHOT_KICK);
+                _events.ScheduleEvent(EVENT_BREAK_KEG, 2s);
+                break;
+        }
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        _events.Update(diff);
+
+        while (uint32 eventId = _events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case EVENT_BREAK_KEG:
+                    if (GameObject* keg = ObjectAccessor::GetGameObject(*me, _instance->GetGuidData(DATA_GO_BAR_KEG)))
+                        keg->SetGoState(GO_STATE_ACTIVE);
+                    _events.ScheduleEvent(EVENT_BREAK_DOOR, 1s);
+                    break;
+                case EVENT_BREAK_DOOR:
+                    if (GameObject* door = ObjectAccessor::GetGameObject(*me, _instance->GetGuidData(DATA_GO_BAR_DOOR)))
+                        door->SetGoState(GO_STATE_DESTROYED);
+                    if (GameObject* trap = ObjectAccessor::GetGameObject(*me, _instance->GetGuidData(DATA_GO_BAR_KEG_TRAP)))
+                        trap->SetGoState(GO_STATE_ACTIVE);
+                    if (Unit* phalanx = ObjectAccessor::GetUnit(*me, _instance->GetGuidData(DATA_PHALANX)))
+                        phalanx->SetFaction(FACTION_MONSTER);
+                    _instance->SetData(TYPE_BAR, DONE);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        EscortAI::UpdateAI(diff);
+    }
+
+    void OnQuestReward(Player* /*player*/, Quest const* quest, uint32 /*item*/) override
+    {
+        if (_instance->GetData(TYPE_BAR) == DONE || _instance->GetData(TYPE_BAR) == SPECIAL)
+            return;
+
+        if (quest->GetQuestId() == QUEST_ALE)
+        {
+            if (_instance->GetData(TYPE_BAR) != IN_PROGRESS)
+                _instance->SetData(TYPE_BAR, IN_PROGRESS);
+
+            _instance->SetData(TYPE_BAR, SPECIAL);
+
+            if (_instance->GetData(TYPE_BAR) == SPECIAL)
+            {
+                Talk(SAY_GOT_BEER);
+                DoCastSelf(SPELL_DRUNKEN_RAGE, false);
+                LoadPath(PATH_ESCORT_ROCKNOT);
+                Start(false);
+            }
+        }
+    }
+
+private:
+    InstanceScript* _instance;
+    EventMap _events;
 };
 
 void AddSC_blackrock_depths()
 {
     new go_shadowforge_brazier();
     new at_ring_of_law();
-    new npc_grimstone();
-    new npc_phalanx();
-    new npc_lokhtos_darkbargainer();
-    new npc_rocknot();
+    RegisterBlackrockDepthsCreatureAI(npc_grimstone);
+    RegisterBlackrockDepthsCreatureAI(npc_phalanx);
+    RegisterBlackrockDepthsCreatureAI(npc_lokhtos_darkbargainer);
+    RegisterBlackrockDepthsCreatureAI(npc_rocknot);
 }
