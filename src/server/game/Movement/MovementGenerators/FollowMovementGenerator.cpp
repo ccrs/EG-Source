@@ -206,9 +206,7 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
                     tAngle = _angle.RelativeAngle;
 
                 float const desiredFollowDistance = GetStableFollowDistance(_range);
-                // For angle-only corrections, preserve the current distance to avoid pulling the follower toward the target just to correct its angle. Distance is already within the acceptance band, so only a lateral arc is needed.
-                float const effectiveFollowDistance = closeAngleOnlyCorrection ?
-                    std::max(0.0f, owner->GetExactDist(target) - target->GetCombatReach()) : desiredFollowDistance;
+                float const effectiveFollowDistance = closeAngleOnlyCorrection ? _range : desiredFollowDistance;
                 target->GetNearPoint(owner, x, y, z, effectiveFollowDistance, target->ToAbsoluteAngle(tAngle));
 
                 Position const destination(x, y, z, target->GetOrientation());
