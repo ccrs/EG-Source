@@ -184,8 +184,8 @@ void BattlefieldWintergrasp::OnGameObjectCreate(GameObject* object)
         case GO_WINTERGRASP_TOWER_1:
         case GO_WINTERGRASP_TOWER_2:
         case GO_WINTERGRASP_TOWER_3:
-            if (WintergraspBuildingPointer& building = _buildings[object->GetEntry()])
-                building->OnObjectCreate(object);
+            if (auto it = _buildings.find(object->GetEntry()); it != _buildings.end() && it->second)
+                it->second->OnObjectCreate(object);
             break;
         default:
             break;
@@ -228,8 +228,8 @@ void BattlefieldWintergrasp::OnGameObjectRemove(GameObject* object)
         case GO_WINTERGRASP_TOWER_1:
         case GO_WINTERGRASP_TOWER_2:
         case GO_WINTERGRASP_TOWER_3:
-            if (WintergraspBuildingPointer& building = _buildings[object->GetEntry()])
-                building->OnObjectRemove(object);
+            if (auto it = _buildings.find(object->GetEntry()); it != _buildings.end() && it->second)
+                it->second->OnObjectRemove(object);
             break;
         default:
             break;

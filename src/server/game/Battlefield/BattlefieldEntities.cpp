@@ -164,17 +164,17 @@ void BattlefieldGraveyard::ResurrectPlayers()
     if (ResurrectionQueue.empty())
         return;
 
+    auto spiritIt = ObjectGUIDsByPvPTeamId.find(GetPvPTeamId());
+    if (spiritIt != ObjectGUIDsByPvPTeamId.end() && !spiritIt->second.empty())
+        if (Creature* spirit = Battle->GetCreature(*spiritIt->second.begin()))
+            spirit->CastSpell(spirit, SPELL_BATTLEFIELD_SPIRIT_HEAL, true);
+
     for (ObjectGuid playerGuid : ResurrectionQueue)
     {
-        // Get player object from his guid
         Player* player = ObjectAccessor::FindPlayer(playerGuid);
         if (!player)
             continue;
 
-        if (Creature* spirit = Battle->GetCreature(*ObjectGUIDsByPvPTeamId[GetPvPTeamId()].begin()))
-            spirit->CastSpell(spirit, SPELL_BATTLEFIELD_SPIRIT_HEAL, true);
-
-        // Resurrect player
         player->CastSpell(player, SPELL_BATTLEFIELD_RESURRECTION_VISUAL, true);
         player->ResurrectPlayer(1.0f);
         player->CastSpell(player, SPELL_BATTLEFIELD_SPIRIT_HEAL_MANA, true);
