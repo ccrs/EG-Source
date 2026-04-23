@@ -49,6 +49,7 @@ enum LFGMgrEnum
     LFG_TIME_ROLECHECK                           = 45,
     LFG_TIME_BOOT                                = 120,
     LFG_TIME_PROPOSAL                            = 45,
+    LFG_TIME_PENDING_TELEPORT_IN                 = 30,
     LFG_QUEUEUPDATE_INTERVAL                     = 15 * IN_MILLISECONDS,
     LFG_SPELL_DUNGEON_COOLDOWN                   = 71328,
     LFG_SPELL_DUNGEON_DESERTER                   = 71041,

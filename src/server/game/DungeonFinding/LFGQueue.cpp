@@ -29,11 +29,6 @@ namespace lfg
 {
 namespace
 {
-    // This cache is useful but can grow very aggressively because matching stores
-    // intermediate compatible and incompatible combinations. Keep it bounded so a
-    // pathological queue state cannot slowly turn into a memory/CPU problem.
-    constexpr std::size_t MaxCompatibleCacheSize = 10000;
-
     bool CompatibleKeyContainsGuid(std::string const& key, ObjectGuid guid)
     {
         std::string const wanted = std::to_string(guid.GetRawValue());
@@ -306,38 +301,12 @@ void LFGQueue::InvalidateCompatibleData(ObjectGuid guid)
 */
 void LFGQueue::SetCompatibles(std::string const& key, LfgCompatibility compatibles)
 {
-    if (CompatibleMapStore.size() >= MaxCompatibleCacheSize && CompatibleMapStore.find(key) == CompatibleMapStore.end())
-    {
-        TC_LOG_WARN("lfg.queue.data.compatibles", "Compatible cache reached {} entries, clearing cache", CompatibleMapStore.size());
-        CompatibleMapStore.clear();
-        for (LfgQueueDataContainer::iterator itr = QueueDataStore.begin(); itr != QueueDataStore.end(); ++itr)
-        {
-            itr->second.bestCompatible.clear();
-            itr->second.tanks = LFG_TANKS_NEEDED;
-            itr->second.healers = LFG_HEALERS_NEEDED;
-            itr->second.dps = LFG_DPS_NEEDED;
-        }
-    }
-
     LfgCompatibilityData& data = CompatibleMapStore[key];
     data.compatibility = compatibles;
 }
 
 void LFGQueue::SetCompatibilityData(std::string const& key, LfgCompatibilityData const& data)
 {
-    if (CompatibleMapStore.size() >= MaxCompatibleCacheSize && CompatibleMapStore.find(key) == CompatibleMapStore.end())
-    {
-        TC_LOG_WARN("lfg.queue.data.compatibles", "Compatible cache reached {} entries, clearing cache", CompatibleMapStore.size());
-        CompatibleMapStore.clear();
-        for (LfgQueueDataContainer::iterator itr = QueueDataStore.begin(); itr != QueueDataStore.end(); ++itr)
-        {
-            itr->second.bestCompatible.clear();
-            itr->second.tanks = LFG_TANKS_NEEDED;
-            itr->second.healers = LFG_HEALERS_NEEDED;
-            itr->second.dps = LFG_DPS_NEEDED;
-        }
-    }
-
     CompatibleMapStore[key] = data;
 }
 
@@ -367,6 +336,11 @@ LfgCompatibilityData* LFGQueue::GetCompatibilityData(std::string const& key)
 
 uint8 LFGQueue::FindGroups()
 {
+    // Scope the cache to this call.
+    CompatibleMapStore.clear();
+    if (CompatibleMapStore.bucket_count() < 4096)
+        CompatibleMapStore.reserve(4096);
+
     uint8 proposals = 0;
     GuidList firstNew;
     while (!newToQueueStore.empty())
