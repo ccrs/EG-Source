@@ -18,7 +18,6 @@
 #include "AnticheatMgr.h"
 #include "AccountMgr.h"
 #include "Battleground.h"
-#include "Chat.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
 #include "GameObject.h"
@@ -252,72 +251,16 @@ uint32 AnticheatMgr::GetTypeReports(uint32 lowGUID, uint8 type) const
     return itr != _players.end() ? itr->second.GetTypeReports(type) : 0;
 }
 
-// these are the supporters for the gm commands in cs_anticheat.cpp
-void AnticheatMgr::AnticheatGlobalCommand(ChatHandler* handler)
-{   // .anticheat global gm command
-    // save All Anticheat Player Data before displaying global stats
-    for (SessionMap::const_iterator itr = sWorld->GetAllSessions().begin(); itr != sWorld->GetAllSessions().end(); ++itr)
-        if (Player* plr = itr->second->GetPlayer())
-            SavePlayerData(plr);
-
-    auto avgStmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ANTICHEAT_REPORTS_BY_AVERAGE);
-    avgStmt->setUInt32(0, realm.Id.Realm);
-    PreparedQueryResult resultDB = LoginDatabase.Query(avgStmt);
-    if (!resultDB)
-    {
-        handler->PSendSysMessage("No players found.");
-        return;
-    }
-    else
-    {
-        handler->SendSysMessage("=============================");
-        handler->PSendSysMessage("Players with the lowest averages:");
-        do
-        {
-            Field* fieldsDB = resultDB->Fetch();
-            uint32 id = fieldsDB[0].GetUInt32();
-            uint32 guid = fieldsDB[1].GetUInt32();
-            float average = fieldsDB[2].GetFloat();
-            uint32 total_reports = fieldsDB[3].GetUInt32();
-            std::string reportTime = TimeToTimestampStr(fieldsDB[4].GetUInt64());
-
-            if (Player* player = ObjectAccessor::FindPlayerByLowGUID(guid))
-                handler->PSendSysMessage("Account: %s, Player: %s, Average: %f, Total Reports: %u, Report Time: %s", player->GetSession()->GetAccountName().c_str(), player->GetName().c_str(), average, total_reports, reportTime.c_str());
-            else
-                handler->PSendSysMessage("Account: %u, Player: %u, Average: %f, Total Reports: %u, Report Time: %s", id, guid, average, total_reports, reportTime.c_str());
-
-        } while (resultDB->NextRow());
-    }
-
-    auto totStmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ANTICHEAT_REPORTS_BY_TOTAL);
-    totStmt->setUInt32(0, realm.Id.Realm);
-    resultDB = LoginDatabase.Query(totStmt);
-
-    if (!resultDB)
-    {
-        handler->PSendSysMessage("No players found.");
-        return;
-    }
-    else
-    {
-        handler->SendSysMessage("=============================");
-        handler->PSendSysMessage("Players with the more reports:");
-        do
-        {
-            Field* fieldsDB = resultDB->Fetch();
-            uint32 id = fieldsDB[0].GetUInt32();
-            uint32 guid = fieldsDB[1].GetUInt32();
-            float average = fieldsDB[2].GetFloat();
-            uint32 total_reports = fieldsDB[3].GetUInt32();
-            std::string reportTime = TimeToTimestampStr(fieldsDB[4].GetUInt64());
-
-            if (Player* player = ObjectAccessor::FindPlayerByLowGUID(guid))
-                handler->PSendSysMessage("Account: %s, Player: %s, Average: %f, Total Reports: %u, Report Time: %s", player->GetSession()->GetAccountName().c_str(), player->GetName().c_str(), average, total_reports, reportTime.c_str());
-            else
-                handler->PSendSysMessage("Account: %u, Player: %u, Average: %f, Total Reports: %u, Report Time: %s", id, guid, average, total_reports, reportTime.c_str());
-
-        } while (resultDB->NextRow());
-    }
+uint32 AnticheatMgr::GetElapsedSeconds(uint32 lowGUID) const
+{
+    std::shared_lock<std::shared_mutex> lock(_playersMutex);
+    auto itr = _players.find(lowGUID);
+    if (itr == _players.end())
+        return 0;
+    uint32 creationTime = itr->second.GetCreationTime();
+    if (!creationTime)
+        return 0;
+    return getMSTimeDiff(creationTime, getMSTime()) / IN_MILLISECONDS;
 }
 
 // .anticheat delete gm cmd
@@ -338,9 +281,13 @@ void AnticheatMgr::AnticheatDeleteCommand(uint32 guid)
     LoginDatabase.Execute(delStmt);
 }
 
-void AnticheatMgr::AnticheatPurgeCommand(ChatHandler* /*handler*/)
+void AnticheatMgr::AnticheatPurgeCommand()
 {
-    // we purge the whole account_anticheat_reports table in the character database
+    {
+        std::unique_lock<std::shared_mutex> lock(_playersMutex);
+        for (AnticheatPlayersDataMap::value_type& pair : _players)
+            pair.second.ResetReports();
+    }
     LoginDatabase.Execute("TRUNCATE TABLE account_anticheat_reports;");
 }
 
