@@ -607,6 +607,9 @@ void CharacterDatabaseConnection::DoPrepareStatements()
 
     // EG - Account wide search
     PrepareStatement(CHAR_SEL_EXISTING_SAME_ACCOUNT_CHARACTERS, "SELECT taximask, race, class FROM characters WHERE characters.account = ? AND characters.guid != ?", CONNECTION_ASYNC);
+
+    // EG - Anticheat
+    PrepareStatement(CHAR_SEL_ANTICHEAT_PLAYER_CHARACTER_BANS, "SELECT FROM_UNIXTIME(bandate), unbandate-bandate, active, unbandate, banreason, bannedby FROM character_banned WHERE guid = ? ORDER BY bandate ASC", CONNECTION_SYNCH);
 }
 
 CharacterDatabaseConnection::CharacterDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo)
