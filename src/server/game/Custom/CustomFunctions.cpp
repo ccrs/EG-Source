@@ -825,6 +825,22 @@ bool WorldSession::NormalizeTransportMovementInfo(Unit* mover, MovementInfo& mov
             if (!transport && currentTransport && currentTransport->GetGUID() == movementInfo.transport.guid)
                 transport = currentTransport;
         }
+        else if (Transport* moverTransport = mover->GetTransport())
+        {
+            if (moverTransport->GetGUID() == movementInfo.transport.guid)
+            {
+                movementInfo.transport.guid = moverTransport->GetGUID();
+                movementInfo.transport.pos  = mover->m_movementInfo.transport.pos;
+
+                float wx = movementInfo.transport.pos.GetPositionX();
+                float wy = movementInfo.transport.pos.GetPositionY();
+                float wz = movementInfo.transport.pos.GetPositionZ();
+                float wo = movementInfo.transport.pos.GetOrientation();
+                moverTransport->CalculatePassengerPosition(wx, wy, wz, &wo);
+                movementInfo.pos.Relocate(wx, wy, wz, wo);
+                return true;
+            }
+        }
 
         float localX = movementInfo.transport.pos.GetPositionX();
         float localY = movementInfo.transport.pos.GetPositionY();
