@@ -123,7 +123,12 @@ void AnticheatMgr::HandlePlayerLogin(Player* player)
 {
     time_t gameTime = GameTime::GetGameTime();
     time_t today = (gameTime / DAY) * DAY;
-    QueryResult resultDB = LoginDatabase.PQuery("SELECT id, realmid, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, counter_measures_reports FROM account_anticheat_reports WHERE id={} AND realmid={} AND guid={} AND time={};", player->GetSession()->GetAccountId(), realm.Id.Realm, player->GetGUID().GetCounter(), today);
+    auto loginStmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ANTICHEAT_REPORTS);
+    loginStmt->setUInt32(0, player->GetSession()->GetAccountId());
+    loginStmt->setUInt32(1, realm.Id.Realm);
+    loginStmt->setUInt32(2, player->GetGUID().GetCounter());
+    loginStmt->setUInt32(3, uint32(today));
+    PreparedQueryResult resultDB = LoginDatabase.Query(loginStmt);
 
     std::unique_lock<std::shared_mutex> lock(_playersMutex);
     AnticheatData& playerAntiCheatData = _players[player->GetGUID().GetCounter()];
@@ -180,8 +185,29 @@ void AnticheatMgr::SavePlayerData(Player* player)
 
     time_t gameTime = GameTime::GetGameTime();
     time_t today = (gameTime / DAY) * DAY;
-    LoginDatabase.PExecute("REPLACE INTO account_anticheat_reports (id, realmid, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, counter_measures_reports) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});",
-        player->GetSession()->GetAccountId(), realm.Id.Realm, lowGUID, today, playerData.GetCreationTime(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT));
+    auto saveStmt = LoginDatabase.GetPreparedStatement(LOGIN_REP_ANTICHEAT_REPORTS);
+    saveStmt->setUInt32(0,  player->GetSession()->GetAccountId());
+    saveStmt->setUInt32(1,  realm.Id.Realm);
+    saveStmt->setUInt32(2,  lowGUID);
+    saveStmt->setUInt32(3,  uint32(today));
+    saveStmt->setUInt32(4,  playerData.GetCreationTime());
+    saveStmt->setFloat (5,  playerData.GetAverage());
+    saveStmt->setUInt32(6,  playerData.GetTotalReports());
+    saveStmt->setUInt32(7,  playerData.GetTypeReports(SPEED_HACK_REPORT));
+    saveStmt->setUInt32(8,  playerData.GetTypeReports(FLY_HACK_REPORT));
+    saveStmt->setUInt32(9,  playerData.GetTypeReports(JUMP_HACK_REPORT));
+    saveStmt->setUInt32(10, playerData.GetTypeReports(WALK_WATER_HACK_REPORT));
+    saveStmt->setUInt32(11, playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT));
+    saveStmt->setUInt32(12, playerData.GetTypeReports(CLIMB_HACK_REPORT));
+    saveStmt->setUInt32(13, playerData.GetTypeReports(TELEPORT_HACK_REPORT));
+    saveStmt->setUInt32(14, playerData.GetTypeReports(IGNORE_CONTROL_REPORT));
+    saveStmt->setUInt32(15, playerData.GetTypeReports(ZAXIS_HACK_REPORT));
+    saveStmt->setUInt32(16, playerData.GetTypeReports(ANTISWIM_HACK_REPORT));
+    saveStmt->setUInt32(17, playerData.GetTypeReports(GRAVITY_HACK_REPORT));
+    saveStmt->setUInt32(18, playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT));
+    saveStmt->setUInt32(19, playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT));
+    saveStmt->setUInt32(20, playerData.GetTypeReports(COUNTER_MEASURES_REPORT));
+    LoginDatabase.Execute(saveStmt);
 }
 
 void AnticheatMgr::OnPlayerMove(Player* player, MovementInfo const& movementInfo, uint32 opcode)
@@ -234,7 +260,9 @@ void AnticheatMgr::AnticheatGlobalCommand(ChatHandler* handler)
         if (Player* plr = itr->second->GetPlayer())
             SavePlayerData(plr);
 
-    QueryResult resultDB = LoginDatabase.PQuery("SELECT id, guid, average, total_reports, time, realmid FROM account_anticheat_reports WHERE total_reports != 0 AND realmid={} ORDER BY average ASC LIMIT 10;", realm.Id.Realm);
+    auto avgStmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ANTICHEAT_REPORTS_BY_AVERAGE);
+    avgStmt->setUInt32(0, realm.Id.Realm);
+    PreparedQueryResult resultDB = LoginDatabase.Query(avgStmt);
     if (!resultDB)
     {
         handler->PSendSysMessage("No players found.");
@@ -261,7 +289,9 @@ void AnticheatMgr::AnticheatGlobalCommand(ChatHandler* handler)
         } while (resultDB->NextRow());
     }
 
-    resultDB = LoginDatabase.PQuery("SELECT id, guid, average, total_reports, time, realmid FROM account_anticheat_reports WHERE total_reports != 0 AND realmid={} ORDER BY total_reports DESC LIMIT 10;", realm.Id.Realm);
+    auto totStmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ANTICHEAT_REPORTS_BY_TOTAL);
+    totStmt->setUInt32(0, realm.Id.Realm);
+    resultDB = LoginDatabase.Query(totStmt);
 
     if (!resultDB)
     {
@@ -302,7 +332,10 @@ void AnticheatMgr::AnticheatDeleteCommand(uint32 guid)
         if (itr != _players.end())
             itr->second.ResetReports();
     }
-    LoginDatabase.PExecute("DELETE FROM account_anticheat_reports WHERE realmid={} AND guid={};", realm.Id.Realm, guid);
+    auto delStmt = LoginDatabase.GetPreparedStatement(LOGIN_DEL_ANTICHEAT_REPORTS);
+    delStmt->setUInt32(0, realm.Id.Realm);
+    delStmt->setUInt32(1, guid);
+    LoginDatabase.Execute(delStmt);
 }
 
 void AnticheatMgr::AnticheatPurgeCommand(ChatHandler* /*handler*/)

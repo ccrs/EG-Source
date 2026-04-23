@@ -124,6 +124,13 @@ void LoginDatabaseConnection::DoPrepareStatements()
     // Anticheat Lua Cheaters
     PrepareStatement(LOGIN_INS_ANTICHEAT_LUA_CHEATERS, "INSERT IGNORE INTO `account_anticheat_lua` (id, realmid, guid, macro) VALUES (?, ?, ?, ?)", CONNECTION_ASYNC);
     PrepareStatement(LOGIN_SEL_ANTICHEAT_LUA_CHEATERS, "SELECT id, realmid, guid, macro FROM account_anticheat_lua WHERE id = ?", CONNECTION_SYNCH);
+
+    // Anticheat Reports
+    PrepareStatement(LOGIN_SEL_ANTICHEAT_REPORTS, "SELECT id, realmid, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, counter_measures_reports FROM account_anticheat_reports WHERE id = ? AND realmid = ? AND guid = ? AND time = ?", CONNECTION_SYNCH);
+    PrepareStatement(LOGIN_REP_ANTICHEAT_REPORTS, "REPLACE INTO account_anticheat_reports (id, realmid, guid, time, creation_time, average, total_reports, speed_reports, fly_reports, jump_reports, waterwalk_reports, teleportplane_reports, climb_reports, teleport_reports, ignorecontrol_reports, zaxis_reports, antiswim_reports, gravity_reports, antiknockback_reports, no_fall_damage_reports, counter_measures_reports) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
+    PrepareStatement(LOGIN_SEL_ANTICHEAT_REPORTS_BY_AVERAGE, "SELECT id, guid, average, total_reports, time, realmid FROM account_anticheat_reports WHERE total_reports != 0 AND realmid = ? ORDER BY average ASC LIMIT 10", CONNECTION_SYNCH);
+    PrepareStatement(LOGIN_SEL_ANTICHEAT_REPORTS_BY_TOTAL, "SELECT id, guid, average, total_reports, time, realmid FROM account_anticheat_reports WHERE total_reports != 0 AND realmid = ? ORDER BY total_reports DESC LIMIT 10", CONNECTION_SYNCH);
+    PrepareStatement(LOGIN_DEL_ANTICHEAT_REPORTS, "DELETE FROM account_anticheat_reports WHERE realmid = ? AND guid = ?", CONNECTION_ASYNC);
 }
 
 LoginDatabaseConnection::LoginDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo)
