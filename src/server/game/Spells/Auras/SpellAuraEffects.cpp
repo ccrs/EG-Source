@@ -1318,14 +1318,26 @@ void AuraEffect::HandleShapeshiftBoosts(Unit* target, bool apply) const
             }
         }
 
+        // Mask covering all three warrior stances
+        constexpr uint64 warriorStanceMask = (UI64LIT(1) << (FORM_BATTLESTANCE - 1)) | (UI64LIT(1) << (FORM_DEFENSIVESTANCE - 1)) | (UI64LIT(1) << (FORM_BERSERKERSTANCE - 1));
+
+        auto IsWarriorStance = [](uint32 form)
+        {
+            return form == FORM_BATTLESTANCE || form == FORM_DEFENSIVESTANCE || form == FORM_BERSERKERSTANCE;
+        };
+        bool isWarriorStanceSwitch = newAura && IsWarriorStance(GetMiscValue()) && IsWarriorStance(newAura->GetMiscValue());
+
         Unit::AuraApplicationMap& tAuras = target->GetAppliedAuras();
         for (auto itr = tAuras.begin(); itr != tAuras.end();)
         {
             // Use the new aura to see on what stance the target will be
             uint64 newStance = newAura ? (UI64LIT(1) << (newAura->GetMiscValue() - 1)) : 0;
 
+            // When switching between warrior stances, preserve auras that are tied to at least one warrior stance (e.g. Sweeping Strikes).
+            bool preserveAura = isWarriorStanceSwitch && (itr->second->GetBase()->GetSpellInfo()->Stances & warriorStanceMask);
+
             // If the stances are not compatible with the spell, remove it
-            if (itr->second->GetBase()->IsRemovedOnShapeLost(target) && !(itr->second->GetBase()->GetSpellInfo()->Stances & newStance))
+            if (!preserveAura && itr->second->GetBase()->IsRemovedOnShapeLost(target) && !(itr->second->GetBase()->GetSpellInfo()->Stances & newStance))
                 target->RemoveAura(itr);
             else
                 ++itr;
