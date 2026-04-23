@@ -131,6 +131,7 @@ void LoginDatabaseConnection::DoPrepareStatements()
     PrepareStatement(LOGIN_SEL_ANTICHEAT_REPORTS_BY_AVERAGE, "SELECT id, guid, average, total_reports, time, realmid FROM account_anticheat_reports WHERE total_reports != 0 AND realmid = ? ORDER BY average ASC LIMIT 10", CONNECTION_SYNCH);
     PrepareStatement(LOGIN_SEL_ANTICHEAT_REPORTS_BY_TOTAL, "SELECT id, guid, average, total_reports, time, realmid FROM account_anticheat_reports WHERE total_reports != 0 AND realmid = ? ORDER BY total_reports DESC LIMIT 10", CONNECTION_SYNCH);
     PrepareStatement(LOGIN_DEL_ANTICHEAT_REPORTS, "DELETE FROM account_anticheat_reports WHERE realmid = ? AND guid = ?", CONNECTION_ASYNC);
+    PrepareStatement(LOGIN_SEL_ANTICHEAT_PLAYER_ACCOUNT_BANS, "SELECT FROM_UNIXTIME(bandate), unbandate-bandate, active, unbandate, banreason, bannedby FROM account_banned WHERE id = ? ORDER BY bandate ASC", CONNECTION_SYNCH);
 }
 
 LoginDatabaseConnection::LoginDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo)

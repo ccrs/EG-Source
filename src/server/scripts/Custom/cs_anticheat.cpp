@@ -234,8 +234,13 @@ public:
 
         bool luaCheater = sAnticheatMgr->CheckIsLuaCheater(accountId);
 
-        QueryResult resultADB = LoginDatabase.PQuery("SELECT FROM_UNIXTIME(bandate), unbandate-bandate, active, unbandate, banreason, bannedby FROM account_banned WHERE id = '%u' ORDER BY bandate ASC", accountId);
-        QueryResult resultCDB = CharacterDatabase.PQuery("SELECT FROM_UNIXTIME(bandate), unbandate-bandate, active, unbandate, banreason, bannedby FROM character_banned WHERE guid = '%u' ORDER BY bandate ASC", guid);
+        auto adbStmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ANTICHEAT_PLAYER_ACCOUNT_BANS);
+        adbStmt->setUInt32(0, accountId);
+        PreparedQueryResult resultADB = LoginDatabase.Query(adbStmt);
+
+        auto cdbStmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_ANTICHEAT_PLAYER_CHARACTER_BANS);
+        cdbStmt->setUInt32(0, guid);
+        PreparedQueryResult resultCDB = CharacterDatabase.Query(cdbStmt);
 
         if (!handler->IsConsole())
         {

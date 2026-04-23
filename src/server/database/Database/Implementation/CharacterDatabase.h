@@ -506,6 +506,9 @@ enum CharacterDatabaseStatements : uint32
 
     CHAR_INS_DESERTER_TRACK,
 
+    // EG - Anticheat
+    CHAR_SEL_ANTICHEAT_PLAYER_CHARACTER_BANS,
+
     MAX_CHARACTERDATABASE_STATEMENTS
 };
 
