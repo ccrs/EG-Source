@@ -789,6 +789,9 @@ void LFGMgr::JoinLfg(Player* player, uint8 roles, LfgDungeonSet& dungeons, const
         return;
     }
 
+    for (ObjectGuid const& pguid : players)
+        PendingTeleportInStore.erase(pguid);
+
     std::string debugNames = "";
     if (grp)                                               // Begin rolecheck
     {
@@ -864,6 +867,9 @@ void LFGMgr::JoinLfg(Player* player, uint8 roles, LfgDungeonSet& dungeons, const
 void LFGMgr::LeaveLfg(ObjectGuid guid, bool disconnected)
 {
     ObjectGuid gguid = guid.IsGroup() ? guid : GetGroup(guid);
+
+    if (!guid.IsGroup())
+        PendingTeleportInStore.erase(guid);
 
     TC_LOG_DEBUG("lfg.leave", "{} left ({})", guid.ToString(), guid == gguid ? "group" : "player");
 
@@ -1628,9 +1634,8 @@ void LFGMgr::TeleportPlayer(Player* player, bool out, bool fromOpcode /*= false*
         // Leave the old completed instance first, then ProcessPendingTeleportIns() will teleport back in after the worldport finishes.
         if (player->TeleportToBGEntryPoint())
         {
-            PendingTeleportInStore[player->GetGUID()] = PendingTeleportInData{ GameTime::GetGameTime() + 30, previousDungeonId };
-            TC_LOG_DEBUG("lfg.teleport", "Player {} queued for deferred LFG teleport in to map {} after leaving old instance",
-                player->GetName(), uint32(dungeon->map));
+            PendingTeleportInStore[player->GetGUID()] = PendingTeleportInData{ GameTime::GetGameTime() + LFG_TIME_PENDING_TELEPORT_IN, previousDungeonId };
+            TC_LOG_DEBUG("lfg.teleport", "Player {} queued for deferred LFG teleport in to map {} after leaving old instance", player->GetName(), uint32(dungeon->map));
             return;
         }
 

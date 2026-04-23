@@ -19,6 +19,7 @@
 #define _LFGQUEUE_H
 
 #include "LFG.h"
+#include <unordered_map>
 
 namespace lfg
 {
@@ -72,7 +73,7 @@ struct LfgWaitTime
 };
 
 typedef std::map<uint32, LfgWaitTime> LfgWaitTimesContainer;
-typedef std::map<std::string, LfgCompatibilityData> LfgCompatibleContainer;
+typedef std::unordered_map<std::string, LfgCompatibilityData> LfgCompatibleContainer;
 typedef std::map<ObjectGuid, LfgQueueData> LfgQueueDataContainer;
 
 /**
@@ -106,7 +107,6 @@ public:
     std::string DumpCompatibleInfo(bool full = false) const;
 
 private:
-    void SetQueueUpdateData(std::string const& strGuids, LfgRolesMap const& proposalRoles);
     void AddToNewQueue(ObjectGuid guid);
     void AddToCurrentQueue(ObjectGuid guid);
     void AddToFrontCurrentQueue(ObjectGuid guid);
