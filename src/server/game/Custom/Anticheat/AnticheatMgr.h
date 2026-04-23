@@ -25,7 +25,6 @@
 #include <unordered_map>
 
 struct AccountData;
-class ChatHandler;
 class Player;
 
 enum AnticheatReportTypes : uint8
@@ -68,10 +67,10 @@ public:
     uint32 GetTotalReports(uint32 lowGUID) const;
     float GetAverage(uint32 lowGUID) const;
     uint32 GetTypeReports(uint32 lowGUID, uint8 type) const;
+    uint32 GetElapsedSeconds(uint32 lowGUID) const;
 
-    void AnticheatGlobalCommand(ChatHandler* handler);
     void AnticheatDeleteCommand(uint32 guid);
-    void AnticheatPurgeCommand(ChatHandler* handler);
+    void AnticheatPurgeCommand();
     void ResetDailyReportStates();
 
     bool CheckIsLuaCheater(uint32 accountId);
