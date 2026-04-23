@@ -178,6 +178,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
             if (Creature* cOwner = owner->ToCreature())
                 cOwner->SetCannotReachTarget(false);
             owner->StopMoving();
+            owner->ClearUnitState(UNIT_STATE_CHASE_MOVE);
             owner->SetInFront(target);
             DoMovementInform(owner, target);
             return true;
@@ -228,6 +229,8 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
                 if (shouldThrottleRelocation && relocationCooldownActive && !_relocationCooldown.Passed())
                 {
                     owner->SetInFront(target);
+                    _lastTargetPosition = currentTargetPosition;
+                    _useChaseAngle = useChaseAngle;
                     return true;
                 }
 
@@ -349,7 +352,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
                 // Only successful optional close-range relocation starts the long cooldown.
                 if (shouldThrottleRelocation)
                     _relocationCooldown.Reset(randtime(20s, 30s));
-                else if (_movingTowards)
+                else if (_movingTowards || angleMismatch)
                     _relocationCooldown.Reset(0s);
 
                 return true;
