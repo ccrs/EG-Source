@@ -12793,9 +12793,9 @@ void Unit::_ExitVehicle(Position const* exitPosition)
         pos = *exitPosition;
     else
     {
-        // Set exit position to vehicle position and use the current orientation
+        // Start from vehicle world position. Keep vehicle orientation so that
+        // RelocateOffset rotates the exit offset correctly (offset is vehicle-local).
         pos = vehicle->GetBase()->GetPosition();
-        pos.SetOrientation(GetOrientation());
 
         // Change exit position based on seat entry addon data
         if (seatAddon)
@@ -12803,8 +12803,17 @@ void Unit::_ExitVehicle(Position const* exitPosition)
             if (seatAddon->ExitParameter == VehicleExitParameters::VehicleExitParamOffset)
                 pos.RelocateOffset({ seatAddon->ExitParameterX, seatAddon->ExitParameterY, seatAddon->ExitParameterZ, seatAddon->ExitParameterO });
             else if (seatAddon->ExitParameter == VehicleExitParameters::VehicleExitParamDest)
-                pos.Relocate({ seatAddon->ExitParameterX, seatAddon->ExitParameterY, seatAddon->ExitParameterZ, seatAddon->ExitParameterO });
+            {
+                // ExitParamDest stores vehicle-local coordinates, not absolute world coords.
+                float dx = seatAddon->ExitParameterX, dy = seatAddon->ExitParameterY, dz = seatAddon->ExitParameterZ, dO = seatAddon->ExitParameterO;
+                static_cast<TransportBase*>(vehicle)->CalculatePassengerPosition(dx, dy, dz, &dO);
+                pos.Relocate(dx, dy, dz, dO);
+            }
         }
+
+        // Final facing: use the passenger's orientation, applied after offset so it
+        // does not corrupt the rotation used by RelocateOffset above.
+        pos.SetOrientation(GetOrientation());
     }
 
     ExitVehicleHandling(vehicle, pos, parameters);
