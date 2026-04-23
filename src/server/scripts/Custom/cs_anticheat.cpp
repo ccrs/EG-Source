@@ -17,6 +17,7 @@
 
 #include "AnticheatMgr.h"
 #include "AccountMgr.h"
+#include "GameTime.h"
 #include "CharacterCache.h"
 #include "Chat.h"
 #include "DatabaseEnv.h"
@@ -337,7 +338,7 @@ public:
         return true;
     }
 
-    static bool HandleAntiCheatGlobalCommand(ChatHandler* handler)
+    static bool HandleAntiCheatGlobalCommand(ChatHandler* handler, Optional<uint32> days)
     {
         if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
         {
@@ -349,31 +350,36 @@ public:
             if (Player* player = session->GetPlayer())
                 sAnticheatMgr->SavePlayerData(player);
 
+        uint32 daysBack = days.value_or(30);
+        uint32 cutoffTime = uint32((GameTime::GetGameTime() / DAY - time_t(daysBack)) * DAY);
+
         auto printRow = [handler](Field* fields)
         {
             uint32 accountId = fields[0].GetUInt32();
             uint32 lowGuid = fields[1].GetUInt32();
             float average = fields[2].GetFloat();
-            uint32 total_reports = fields[3].GetUInt32();
-            std::string reportTime = TimeToTimestampStr(fields[4].GetUInt64());
+            uint32 totalReports = fields[3].GetUInt32();
+            std::string lastSeen = TimeToTimestampStr(fields[4].GetUInt64());
+            uint32 daysFlagged = fields[6].GetUInt32();
 
             if (Player* player = ObjectAccessor::FindPlayerByLowGUID(lowGuid))
-                handler->PSendSysMessage("Account: %s | Player: %s | Average: %.2f | Total: %u | Time: %s", player->GetSession()->GetAccountName().c_str(), player->GetName().c_str(), average, total_reports, reportTime.c_str());
+                handler->PSendSysMessage("Account: %s | Player: %s [ONLINE] | Avg: %.2f | Total: %u | Last: %s (%u day(s) flagged)", player->GetSession()->GetAccountName().c_str(), player->GetName().c_str(), average, totalReports, lastSeen.c_str(), daysFlagged);
             else
             {
                 std::string accountName, charName;
                 AccountMgr::GetName(accountId, accountName);
                 if (!sCharacterCache->GetCharacterNameByGuid(ObjectGuid::Create<HighGuid::Player>(lowGuid), charName))
                     charName = Trinity::StringFormat("(GUID: {})", lowGuid);
-                handler->PSendSysMessage("Account: %s | Player: %s | Average: %.2f | Total: %u | Time: %s", accountName.c_str(), charName.c_str(), average, total_reports, reportTime.c_str());
+                handler->PSendSysMessage("Account: %s | Player: %s | Avg: %.2f | Total: %u | Last: %s (%u day(s) flagged)", accountName.c_str(), charName.c_str(), average, totalReports, lastSeen.c_str(), daysFlagged);
             }
         };
 
         auto avgStmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ANTICHEAT_REPORTS_BY_AVERAGE);
         avgStmt->setUInt32(0, realm.Id.Realm);
+        avgStmt->setUInt32(1, cutoffTime);
         if (PreparedQueryResult result = LoginDatabase.Query(avgStmt))
         {
-            handler->PSendSysMessage("=============================");
+            handler->PSendSysMessage("============================= (last %u days)", daysBack);
             handler->PSendSysMessage("Players with the highest report rate:");
             do
                 printRow(result->Fetch());
@@ -382,9 +388,10 @@ public:
 
         auto totStmt = LoginDatabase.GetPreparedStatement(LOGIN_SEL_ANTICHEAT_REPORTS_BY_TOTAL);
         totStmt->setUInt32(0, realm.Id.Realm);
+        totStmt->setUInt32(1, cutoffTime);
         if (PreparedQueryResult result = LoginDatabase.Query(totStmt))
         {
-            handler->PSendSysMessage("=============================");
+            handler->PSendSysMessage("============================= (last %u days)", daysBack);
             handler->PSendSysMessage("Players with the most total reports:");
             do
                 printRow(result->Fetch());
