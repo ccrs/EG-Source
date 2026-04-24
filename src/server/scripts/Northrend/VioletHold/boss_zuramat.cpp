@@ -111,7 +111,10 @@ struct boss_zuramat : public BossAI
     void JustDied(Unit* /*killer*/) override
     {
         Talk(SAY_DEATH);
+        summons.DoAction(ACTION_DESPAWN_VOID_SENTRY_BALL, EntryCheckPredicate(NPC_VOID_SENTRY));
         _JustDied();
+        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_VOID_SHIFT);
+        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_VOID_SHIFTED);
     }
 
     void KilledUnit(Unit* victim) override
