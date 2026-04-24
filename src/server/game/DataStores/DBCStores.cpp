@@ -491,9 +491,6 @@ void LoadDBCStores(const std::string& dataPath)
             {
                 if (skillLine->SkillLine != cFamily->SkillLine[0] && skillLine->SkillLine != cFamily->SkillLine[1])
                     continue;
-                if (spellInfo->SpellLevel)
-                    continue;
-
                 if (skillLine->AcquireMethod != SKILL_LINE_ABILITY_LEARNED_ON_SKILL_LEARN)
                     continue;
 
