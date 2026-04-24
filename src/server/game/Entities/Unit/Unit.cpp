@@ -12831,12 +12831,7 @@ void Unit::_ExitVehicle(Position const* exitPosition)
             if (seatAddon->ExitParameter == VehicleExitParameters::VehicleExitParamOffset)
                 pos.RelocateOffset({ seatAddon->ExitParameterX, seatAddon->ExitParameterY, seatAddon->ExitParameterZ, seatAddon->ExitParameterO });
             else if (seatAddon->ExitParameter == VehicleExitParameters::VehicleExitParamDest)
-            {
-                // ExitParamDest stores vehicle-local coordinates, not absolute world coords.
-                float dx = seatAddon->ExitParameterX, dy = seatAddon->ExitParameterY, dz = seatAddon->ExitParameterZ, dO = seatAddon->ExitParameterO;
-                static_cast<TransportBase*>(vehicle)->CalculatePassengerPosition(dx, dy, dz, &dO);
-                pos.Relocate(dx, dy, dz, dO);
-            }
+                pos.Relocate(seatAddon->ExitParameterX, seatAddon->ExitParameterY, seatAddon->ExitParameterZ, seatAddon->ExitParameterO);
         }
 
         // Final facing: use the passenger's orientation, applied after offset so it
