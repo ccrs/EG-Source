@@ -47,7 +47,8 @@ ObjectData const gameObjectData[] =
 
 BossBoundaryData const boundaries =
 {
-    { DATA_JEDOGA_SHADOWSEEKER, new ParallelogramBoundary(Position(460.365f, -661.997f, -20.985f), Position(364.958f,-790.211f, -14.207f), Position(347.436f,-657.978f,14.478f)) }
+    { DATA_JEDOGA_SHADOWSEEKER, new ParallelogramBoundary(Position(460.365f, -661.997f, -20.985f), Position(364.958f,-790.211f, -14.207f), Position(347.436f,-657.978f,14.478f)) },
+    { DATA_HERALD_VOLAZJ,       new RectangleBoundary(440.17f, 603.23f, -577.64f, -415.30f) }
 };
 
 class instance_ahnkahet : public InstanceMapScript
