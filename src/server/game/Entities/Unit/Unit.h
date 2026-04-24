@@ -1635,6 +1635,7 @@ class TC_GAME_API Unit : public WorldObject
         static uint32 SpellCriticalHealingBonus(Unit const* caster, SpellInfo const* spellProto, uint32 damage, Unit* victim);
 
         void SetLastManaUse(uint32 spellCastTime) { m_lastManaUse = spellCastTime; }
+        bool HasLastManaUse() const { return m_lastManaUse != 0; }
         bool IsUnderLastManaUseEffect() const;
 
         uint32 GetCastingTimeForBonus(SpellInfo const* spellProto, DamageEffectType damagetype, uint32 CastingTime) const;

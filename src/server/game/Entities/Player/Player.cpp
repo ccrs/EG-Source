@@ -1997,6 +1997,12 @@ void Player::Regenerate(Powers power)
     if (!maxValue)
         return;
 
+    if (power == POWER_MANA && HasLastManaUse() && !IsUnderLastManaUseEffect())
+    {
+        SetFloatValue(UNIT_FIELD_POWER_REGEN_INTERRUPTED_FLAT_MODIFIER + AsUnderlyingType(POWER_MANA), 0.f);
+        SetLastManaUse(0);
+    }
+
     uint32 curValue = GetPower(power);
     float addvalue  = GetPowerRegen(power) * 0.001f * m_regenTimer;
 

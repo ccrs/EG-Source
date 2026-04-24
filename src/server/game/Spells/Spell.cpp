@@ -4865,7 +4865,11 @@ void Spell::TakePower()
 
     // Set the five second timer
     if (powerType == POWER_MANA && m_powerCost > 0)
+    {
         unitCaster->SetLastManaUse(GameTime::GetGameTimeMS());
+        if (Player* playerCaster = unitCaster->ToPlayer())
+            playerCaster->UpdatePowerRegen(POWER_MANA);
+    }
 }
 
 void Spell::TakeAmmo()
