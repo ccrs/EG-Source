@@ -12801,14 +12801,17 @@ void Unit::_ExitVehicle(Position const* exitPosition)
         if (seatAddon)
         {
             if (seatAddon->ExitParameter == VehicleExitParameters::VehicleExitParamOffset)
+            {
                 pos.RelocateOffset({ seatAddon->ExitParameterX, seatAddon->ExitParameterY, seatAddon->ExitParameterZ, seatAddon->ExitParameterO });
+                pos.SetOrientation(GetOrientation());
+            }
             else if (seatAddon->ExitParameter == VehicleExitParameters::VehicleExitParamDest)
                 pos.Relocate(seatAddon->ExitParameterX, seatAddon->ExitParameterY, seatAddon->ExitParameterZ, seatAddon->ExitParameterO);
+            else
+                pos.SetOrientation(GetOrientation());
         }
-
-        // Final facing: use the passenger's orientation, applied after offset so it
-        // does not corrupt the rotation used by RelocateOffset above.
-        pos.SetOrientation(GetOrientation());
+        else
+            pos.SetOrientation(GetOrientation());
     }
 
     ExitVehicleHandling(vehicle, pos, parameters);
