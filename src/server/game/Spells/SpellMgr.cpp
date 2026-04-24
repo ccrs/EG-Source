@@ -5010,6 +5010,12 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->_GetEffect(EFFECT_2).Effect = SPELL_EFFECT_NONE;
     });
 
+    ApplySpellFix({ 58026 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->DurationEntry = sSpellDurationStore.LookupEntry(21); // permanent
+        spellInfo->AttributesEx |= SPELL_ATTR1_NO_THREAT;
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];

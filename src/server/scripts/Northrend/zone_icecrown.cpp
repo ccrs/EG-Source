@@ -329,6 +329,7 @@ enum BlessedBanner
     EVENT_WAVE_SPAWN                    = 7,
     EVENT_HALOF                         = 8,
     EVENT_ENDED                         = 9,
+    EVENT_CHECK_WIPE                    = 10,
 };
 
 Position const DalforsPos[3] =
@@ -403,7 +404,7 @@ struct npc_blessed_banner : public ScriptedAI
     void Reset() override
     {
         me->SetRegenerateHealth(false);
-        DoCast(SPELL_THREAT_PULSE);
+        DoCast(me, SPELL_BLESSING_OF_THE_CRUSADE);
         Talk(BANNER_SAY);
         events.ScheduleEvent(EVENT_SPAWN, 3s);
     }
@@ -412,6 +413,47 @@ struct npc_blessed_banner : public ScriptedAI
 
     void MoveInLineOfSight(Unit* /*who*/) override { }
 
+    bool AnyDefenderAlive()
+    {
+        if (Creature* dalfors = ObjectAccessor::GetCreature(*me, guidDalfors))
+            if (dalfors->IsAlive())
+                return true;
+        for (uint8 i = 0; i < 3; ++i)
+        {
+            if (Creature* priest = ObjectAccessor::GetCreature(*me, guidPriest[i]))
+                if (priest->IsAlive())
+                    return true;
+            if (Creature* mason = ObjectAccessor::GetCreature(*me, guidMason[i]))
+                if (mason->IsAlive())
+                    return true;
+        }
+        return false;
+    }
+
+    Unit* SelectRandomAllyTarget()
+    {
+        std::vector<Unit*> allies;
+
+        if (Creature* dalfors = ObjectAccessor::GetCreature(*me, guidDalfors))
+            if (dalfors->IsAlive())
+                allies.push_back(dalfors);
+
+        for (uint8 i = 0; i < 3; ++i)
+        {
+            if (Creature* priest = ObjectAccessor::GetCreature(*me, guidPriest[i]))
+                if (priest->IsAlive())
+                    allies.push_back(priest);
+            if (Creature* mason = ObjectAccessor::GetCreature(*me, guidMason[i]))
+                if (mason->IsAlive())
+                    allies.push_back(mason);
+        }
+
+        if (allies.empty())
+            return me;
+
+        return Trinity::Containers::SelectRandomContainerElement(allies);
+    }
+
     void JustSummoned(Creature* summon) override
     {
         Summons.Summon(summon);
@@ -419,7 +461,13 @@ struct npc_blessed_banner : public ScriptedAI
         {
             summon->SetHomePosition(DalforsPos[2]);
             summon->SetReactState(REACT_PASSIVE);
-            summon->EngageWithTarget(me);
+            Unit* primaryTarget = SelectRandomAllyTarget();
+            summon->EngageWithTarget(primaryTarget);
+            if (primaryTarget != me)
+            {
+                summon->GetThreatManager().AddThreat(primaryTarget, 0.001f, nullptr, true, true); // ally strictly above banner
+                summon->EngageWithTarget(me); // banner at 0.0f — guaranteed last
+            }
             SetAggressiveStateAfter(2s, summon, true);
         }
     }
@@ -560,6 +608,7 @@ struct npc_blessed_banner : public ScriptedAI
                     if (Creature* Dalfors = ObjectAccessor::GetCreature(*me, guidDalfors))
                         Dalfors->AI()->Talk(DALFORS_SAY_START);
                     events.ScheduleEvent(EVENT_WAVE_SPAWN, 1s);
+                    events.ScheduleEvent(EVENT_CHECK_WIPE, 5s);
                 }
                 break;
             case EVENT_WAVE_SPAWN:
@@ -613,6 +662,17 @@ struct npc_blessed_banner : public ScriptedAI
                 {
                     Summons.DespawnAll();
                     me->DespawnOrUnsummon();
+                }
+                break;
+            case EVENT_CHECK_WIPE:
+                {
+                    if (!AnyDefenderAlive())
+                    {
+                        Summons.DespawnAll();
+                        me->DespawnOrUnsummon();
+                    }
+                    else
+                        events.ScheduleEvent(EVENT_CHECK_WIPE, 5s);
                 }
                 break;
         }
