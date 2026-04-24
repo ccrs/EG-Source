@@ -354,7 +354,13 @@ struct boss_volazj : public BossAI
                 {
                     player->RemoveAurasDueToSpell(spell);
                     if (spell2) // if there is still some different mask cast spell for it
+                    {
                         player->CastSpell(player, spell2, true);
+                        for (ObjectGuid const& guid : summons)
+                            if (Creature* visage = ObjectAccessor::GetCreature(*me, guid))
+                                if (visage->IsAlive() && visage->GetPhaseMask() == nextPhase)
+                                    visage->EngageWithTarget(player);
+                    }
                 }
             }
         }
