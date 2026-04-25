@@ -12,6 +12,7 @@
 #include "MovementInfo.h"
 #include "MoveSpline.h"
 #include "MoveSplineInit.h"
+#include "Log.h"
 #include "Object.h"
 #include "ObjectAccessor.h"
 #include "ObjectGuid.h"
