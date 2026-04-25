@@ -1,8 +1,8 @@
 --
 UPDATE `creature_template_addon` SET `auras` = '19483' WHERE `entry` = 89;
 
-UPDATE `creature_template` SET `BaseAttackTime` = 2400, `DamageModifier` = 3 WHERE `entry` = 31480;
-UPDATE `creature_template` SET `DamageModifier` = 2 WHERE `entry` = 30625;
+UPDATE `creature_template` SET `BaseAttackTime` = 2400, `DamageModifier` = 1 WHERE `entry` = 31480;
+UPDATE `creature_template` SET `DamageModifier` = 1 WHERE `entry` = 30625;
 
  -- Scourge Package smart ai
 SET @ENTRY := 30887;
