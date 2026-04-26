@@ -304,6 +304,13 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
 
     /* extract packet */
 
+    // Peek at raw movement flags before ReadMovementInfo strips violations, so the handler
+    // can detect and correct the client when illegal flags are silently removed below.
+    size_t rawFlagsPos = recvPacket.rpos();
+    uint32 rawMovementFlags;
+    recvPacket >> rawMovementFlags;
+    recvPacket.rpos(rawFlagsPos);
+
     MovementInfo movementInfo;
     movementInfo.guid = guid;
     ReadMovementInfo(recvPacket, &movementInfo);
@@ -405,6 +412,19 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
         }
         else
             plrMover->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_IS_OUT_OF_BOUNDS);
+
+        // If the client sent fly flags that ReadMovementInfo had to strip (no valid aura),
+        // the server state is already corrected but the client still believes it can fly.
+        // Re-send SetCanFly(false) so the client drops its local flying state and stops
+        // issuing further illegal fly-flagged packets (water-ground transition exploit).
+        if (GetSecurity() == SEC_PLAYER &&
+            (rawMovementFlags & (MOVEMENTFLAG_FLYING | MOVEMENTFLAG_CAN_FLY)) &&
+            !movementInfo.HasMovementFlag(MOVEMENTFLAG_FLYING | MOVEMENTFLAG_CAN_FLY) &&
+            !mover->HasAuraType(SPELL_AURA_FLY) &&
+            !mover->HasAuraType(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED))
+        {
+            mover->SetCanFly(false, true);
+        }
 
         // Whenever a player stops a movement action, an indoor/outdoor check is being performed
         switch (opcode)
