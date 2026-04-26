@@ -4117,6 +4117,15 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->Mechanic = MECHANIC_NONE;
     });
 
+    // Death Grip Initial (49576): remove the spell-level GRIP mechanic so this trigger spell is not
+    // blanket-immune on grip-immune targets. The actual grip pull (Effect[0] of spell 49560) carries
+    // EffMechanic=GRIP explicitly and is still blocked per-effect on grip-immune targets; the taunt
+    // effects on 49560 (EffMechanic=0) are correctly left unblocked.
+    ApplySpellFix({ 49576 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Mechanic = MECHANIC_NONE;
+    });
+
     // Empowering Shadows (Yogg-Saron)
     ApplySpellFix({ 64468, 64486 }, [](SpellInfo* spellInfo)
     {

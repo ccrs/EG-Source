@@ -2657,7 +2657,9 @@ void Spell::TargetInfo::DoDamageAndTriggers(Spell* spell)
         }
 
         // Check for SPELL_ATTR7_INTERRUPT_ONLY_NONPLAYER
-        if (MissCondition == SPELL_MISS_NONE && spell->m_spellInfo->HasAttribute(SPELL_ATTR7_INTERRUPT_ONLY_NONPLAYER) && unit->GetTypeId() != TYPEID_PLAYER)
+        // Fire the interrupt even when the main spell was immune: a target immune to stun
+        // is not necessarily immune to interrupt, which carries its own mechanic check (SILENCE).
+        if ((MissCondition == SPELL_MISS_NONE || MissCondition == SPELL_MISS_IMMUNE) && spell->m_spellInfo->HasAttribute(SPELL_ATTR7_INTERRUPT_ONLY_NONPLAYER) && unit->GetTypeId() != TYPEID_PLAYER)
             caster->CastSpell(unit, SPELL_INTERRUPT_NONPLAYER, true);
     }
 

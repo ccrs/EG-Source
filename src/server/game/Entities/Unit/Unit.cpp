@@ -7756,7 +7756,23 @@ bool Unit::IsImmunedToSpell(SpellInfo const* spellInfo, WorldObject const* caste
     {
         SpellImmuneContainer const& mechanicList = m_spellImmune[IMMUNITY_MECHANIC];
         if (hasImmunity(mechanicList, mechanic))
-            return true;
+        {
+            // If any effect explicitly declares the same mechanic, that effect "owns" the mechanic.
+            // The other effects (EffMechanic=0) should not inherit immunity from the spell level;
+            // instead the immuneToAllEffects loop below evaluates each effect independently.
+            // This allows spells like Death Grip to apply their taunt even on grip-immune targets.
+            bool mechanicExplicitOnEffect = false;
+            for (SpellEffectInfo const& effInfo : spellInfo->GetEffects())
+            {
+                if (effInfo.IsEffect() && effInfo.Mechanic == mechanic)
+                {
+                    mechanicExplicitOnEffect = true;
+                    break;
+                }
+            }
+            if (!mechanicExplicitOnEffect)
+                return true;
+        }
     }
 
     bool immuneToAllEffects = true;
