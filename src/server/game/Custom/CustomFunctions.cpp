@@ -388,6 +388,7 @@ bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
 
     if (((_playerOnly && unit->IsPlayer()) || !_playerOnly)
         && unit->IsAlive()
+        && !unit->IsCritter()
         && ((_source->IsInCombat() && unit->IsInCombat()) || (!_source->IsInCombat()))
         && _source->IsValidAssistTarget(unit)
         && _source->IsWithinDistInMap(unit, _range)
@@ -409,6 +410,9 @@ bool EG::AnyFriendlyUnitInObjectRangeCheck::operator()(Unit const* unit) const
 
     if (_options.IncludeSelf && _source == unit)
         return true;
+
+    if (unit->IsCritter())
+        return false;
 
     if (!_options.ExcludedEntries.empty() && _options.ExcludedEntries.contains(unit->GetEntry()))
         return false;
