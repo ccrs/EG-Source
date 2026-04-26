@@ -818,7 +818,7 @@ namespace Trinity
 
             bool operator()(Unit* u)
             {
-                if (u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && i_obj->IsWithinDistInMap(u, i_range) && u->GetMaxHealth() - u->GetHealth() > i_hp)
+                if (u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && !u->IsCritter() && i_obj->IsWithinDistInMap(u, i_range) && u->GetMaxHealth() - u->GetHealth() > i_hp)
                 {
                     i_hp = u->GetMaxHealth() - u->GetHealth();
                     return true;
@@ -839,7 +839,7 @@ namespace Trinity
 
         bool operator()(Unit* u)
         {
-            if (u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && i_obj->IsWithinDistInMap(u, i_range) && i_minHpPct <= u->GetHealthPct() && u->GetHealthPct() <= i_maxHpPct && u->GetHealthPct() < i_hpPct)
+            if (u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && !u->IsCritter() && i_obj->IsWithinDistInMap(u, i_range) && i_minHpPct <= u->GetHealthPct() && u->GetHealthPct() <= i_maxHpPct && u->GetHealthPct() < i_hpPct)
             {
                 i_hpPct = u->GetHealthPct();
                 return true;
@@ -920,7 +920,7 @@ namespace Trinity
 
             bool operator()(Unit* u) const
             {
-                if (u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && i_obj->IsWithinDistInMap(u, i_range) &&
+                if (u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && !u->IsCritter() && i_obj->IsWithinDistInMap(u, i_range) &&
                     (u->IsFeared() || u->IsCharmed() || u->IsRooted() || u->HasUnitState(UNIT_STATE_STUNNED) || u->HasUnitState(UNIT_STATE_CONFUSED)))
                 {
                     return true;
@@ -940,7 +940,7 @@ namespace Trinity
 
             bool operator()(Unit* u) const
             {
-                if (u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && i_obj->IsWithinDistInMap(u, i_range) && !u->HasAura(i_spell))
+                if (u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && !u->IsCritter() && i_obj->IsWithinDistInMap(u, i_range) && !u->HasAura(i_spell))
                     return true;
 
                 return false;
@@ -1011,6 +1011,9 @@ namespace Trinity
             bool operator()(Unit* u) const
             {
                 if (!u->IsAlive())
+                    return false;
+
+                if (u->IsCritter())
                     return false;
 
                 float searchRadius = i_range;
