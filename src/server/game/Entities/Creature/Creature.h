@@ -474,6 +474,10 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool _regenerateHealth; // Set on creation
         bool _regenerateHealthLock; // Dynamically set
 
+        // set in UpdateLevelDependantStats, read in UpdateAttackPowerAndDamage
+        uint32 _baseAttackPower;
+        uint32 _baseRangedAttackPower;
+
         // EG - Custom declarations
         uint32 _storedMovementFlags;
 
