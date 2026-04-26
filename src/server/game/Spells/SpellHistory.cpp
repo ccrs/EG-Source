@@ -267,7 +267,7 @@ void SpellHistory::WritePacket<Player>(WorldPacket& packet) const
         }
 
         std::chrono::milliseconds categoryDuration = std::chrono::duration_cast<std::chrono::milliseconds>(spellCooldown.second.CategoryEnd - now);
-        if (categoryDuration.count() > 0)
+        if (categoryDuration.count() >= 0)
         {
             packet << uint32(0);                              // cooldown
             packet << uint32(categoryDuration.count());       // category cooldown
@@ -363,10 +363,8 @@ void SpellHistory::StartCooldown(SpellInfo const* spellInfo, uint32 itemId, Spel
 
 void SpellHistory::SendCooldownEvent(SpellInfo const* spellInfo, uint32 itemId /*= 0*/, Spell* spell /*= nullptr*/, bool startCooldown /*= true*/)
 {
-    Player* player = GetPlayerOwner();
-
     // Send activate cooldown timer (possible 0) at client side
-    if (player)
+    if (Player* player = GetPlayerOwner())
     {
         uint32 category = spellInfo->GetCategory();
         GetCooldownDurations(spellInfo, itemId, nullptr, &category, nullptr);
@@ -391,28 +389,7 @@ void SpellHistory::SendCooldownEvent(SpellInfo const* spellInfo, uint32 itemId /
 
     // start cooldowns at server side, if any
     if (startCooldown)
-    {
         StartCooldown(spellInfo, itemId, spell);
-
-        // After the real cooldown is stored, send its precise duration to the client so it
-        // can override any infinity-cooldown state that was sent in SMSG_INITIAL_SPELLS on login
-        // (OnHold entries appear there as cooldown=1 / categoryCD=0x80000000 and the bare
-        // SMSG_COOLDOWN_EVENT above is not enough to clear that cached state reliably).
-        if (player)
-        {
-            auto itr = _spellCooldowns.find(spellInfo->Id);
-            if (itr != _spellCooldowns.end() && !itr->second.OnHold)
-            {
-                auto cooldownMs = std::chrono::duration_cast<std::chrono::milliseconds>(itr->second.CooldownEnd - GameTime::GetSystemTime());
-                if (cooldownMs.count() > 0)
-                {
-                    WorldPacket spellCooldown;
-                    BuildCooldownPacket(spellCooldown, SPELL_COOLDOWN_FLAG_NONE, spellInfo->Id, uint32(cooldownMs.count()));
-                    player->SendDirectMessage(&spellCooldown);
-                }
-            }
-        }
-    }
 }
 
 void SpellHistory::AddCooldown(uint32 spellId, uint32 itemId, Clock::time_point cooldownEnd, uint32 categoryId, Clock::time_point categoryEnd, bool onHold /*= false*/)
