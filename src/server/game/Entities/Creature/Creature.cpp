@@ -258,8 +258,8 @@ Creature::Creature(bool isWorldObject): Unit(isWorldObject), MapObject(), m_grou
     m_meleeDamageSchoolMask(SPELL_SCHOOL_MASK_NORMAL), m_originalEntry(0), m_homePosition(), m_transportHomePosition(),
     m_creatureInfo(nullptr), m_creatureData(nullptr), m_stringIds(), _waypointPathId(0), _currentWaypointNodeInfo(0, 0),
     m_formation(nullptr), m_triggerJustAppeared(true), m_respawnCompatibilityMode(false), _lastDamagedTime(0),
-    _regenerateHealth(true), _regenerateHealthLock(false), _storedMovementFlags(0), _moveInLOSLockStatus(LOS_LOCK_SPAWN), _LOSLockDelay(2s),
-    _baseAttackPower(0), _baseRangedAttackPower(0)
+    _regenerateHealth(true), _regenerateHealthLock(false), _baseAttackPower(0), _baseRangedAttackPower(0),
+    _storedMovementFlags(0), _moveInLOSLockStatus(LOS_LOCK_SPAWN), _LOSLockDelay(2s)
 {
     m_regenTimer = CREATURE_REGEN_INTERVAL;
     m_valuesCount = UNIT_END;

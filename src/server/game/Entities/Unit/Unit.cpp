@@ -9099,6 +9099,8 @@ void Unit::HandleAttackPowerModifier(AttackPowerModIndex index, AttackPowerModTy
         case AP_MOD_PCT:
             ApplyPercentModFloatVar(m_attackPowerMods[index].Multiplier, amount, apply);
             break;
+        default:
+            break;
     }
 
     if (!CanModifyStats())
@@ -9120,9 +9122,8 @@ float Unit::GetAttackPowerModifierValue(AttackPowerModIndex index, AttackPowerMo
         case AP_MOD_POSITIVE_FLAT: return m_attackPowerMods[index].PositiveMods;
         case AP_MOD_NEGATIVE_FLAT: return m_attackPowerMods[index].NegativeMods;
         case AP_MOD_PCT:           return std::max(0.0f, m_attackPowerMods[index].Multiplier);
+        default:                   return 0.0f;
     }
-
-    return 0.0f;
 }
 
 void Unit::HandleStatFlatModifier(UnitMods unitMod, UnitModifierFlatType modifierType, float amount, bool apply)
