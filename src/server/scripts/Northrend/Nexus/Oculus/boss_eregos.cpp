@@ -221,8 +221,7 @@ struct boss_eregos : public BossAI
                 return true;
             });
             _playerCount = 0;
-            for (uint8 i = 0; i < instance->instance->GetPlayersCountExceptGMs(); i++)
-                DoCast(SPELL_PLANAR_ANOMALIES);
+            DoCast(SPELL_PLANAR_ANOMALIES);
         }
     }
 
