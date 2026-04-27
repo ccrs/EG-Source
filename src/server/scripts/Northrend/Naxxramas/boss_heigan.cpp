@@ -65,6 +65,7 @@ enum Misc
 };
 
 static const uint32 firstEruptionDBGUID = 84980;
+static const uint32 doorEruptionDBGUIDs[] = { 2134507, 2134508 }; // extra tiles covering the gap and slope near the entry door
 static const uint8 numSections = 4;
 static const uint8 numEruptions[numSections] = { // count of sequential GO DBGUIDs in the respective section of the room
     15,
@@ -128,6 +129,13 @@ struct boss_heigan : public BossAI
                 for (auto it = tileIt.first; it != tileIt.second; ++it)
                     _eruptTiles[section].push_back(it->second->GetGUID());
             }
+        }
+
+        for (uint32 spawnGuid : doorEruptionDBGUIDs)
+        {
+            auto doorIt = mapGOs.equal_range(spawnGuid);
+            for (auto it = doorIt.first; it != doorIt.second; ++it)
+                _eruptTiles[0].push_back(it->second->GetGUID());
         }
     }
 
