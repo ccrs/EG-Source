@@ -862,41 +862,34 @@ void AnticheatMgr::_ClimbHackDetection(Player* player, MovementInfo const& movem
 
 void AnticheatMgr::_IgnoreControlHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, AnticheatData& data)
 {
-    float lastX = data.GetLastMovementInfo().pos.GetPositionX();
-    float newX = movementInfo.pos.GetPositionX();
-
-    float lastY = data.GetLastMovementInfo().pos.GetPositionY();
-    float newY = movementInfo.pos.GetPositionY();
-
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_IGNORECONTROLHACK_ENABLE))
         return;
 
     if (data.GetLastOpcode() == MSG_MOVE_JUMP)
         return;
 
-    if (opcode == (MSG_MOVE_FALL_LAND))
+    if (opcode == MSG_MOVE_FALL_LAND)
         return;
 
-    if (movementInfo.HasMovementFlag(MOVEMENTFLAG_FALLING | MOVEMENTFLAG_SWIMMING))
+    if (movementInfo.HasMovementFlag(MOVEMENTFLAG_FALLING | MOVEMENTFLAG_SWIMMING | MOVEMENTFLAG_SPLINE_ENABLED))
         return;
 
-    bool latency = player->GetSession()->GetLatency() >= 400;
-    //So here we check if hte player has a root state and not in a vehicle
-    // except for lag, we can legitimately blame lag for false hits, so we see if they are above 400 then we exempt the check
-    if (player->HasAuraType(SPELL_AURA_MOD_ROOT) && !player->GetVehicle() && !latency)
-    {
-        // Here we check if the x and y position changes while rooted, Nothing moves when rooted, no exception
-        bool unrestricted = newX != lastX || newY != lastY;
-        if (unrestricted)
-        {
-            // we do this because we can not get the collumn count being propper when we add more collumns for the report, so we make a indvidual warning for Ignore Control
-            if (data.GetTotalReports() > _ingameNotificationThreshold)
-                _NotifyGameMasters(player, "Possible Ignore Control Hack Detected!", LANG_ANTICHEAT_IGNORECONTROL, data);
+    // High latency causes root desync: the movement packet was in-flight before the root landed server-side
+    if (player->GetSession()->GetLatency() >= 200)
+        return;
 
-            _LogInfo(player, "Ignore Control - Hack detected");
-            _BuildReport(player, IGNORE_CONTROL_REPORT, data);
-        }
-    }
+    if (!player->HasAuraType(SPELL_AURA_MOD_ROOT) || player->GetVehicle())
+        return;
+
+    float deltaXY = movementInfo.pos.GetExactDist2d(&data.GetLastMovementInfo().pos);
+    if (deltaXY < 0.5f)
+        return;
+
+    if (data.GetTotalReports() > _ingameNotificationThreshold)
+        _NotifyGameMasters(player, "Possible Ignore Control Hack Detected!", LANG_ANTICHEAT_IGNORECONTROL, data);
+
+    _LogInfo(player, Trinity::StringFormat("Ignore Control Hack detected (DeltaXY: {:.2f})", deltaXY));
+    _BuildReport(player, IGNORE_CONTROL_REPORT, data);
 }
 
 void AnticheatMgr::_GravityHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data)
