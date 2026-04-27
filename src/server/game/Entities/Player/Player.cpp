@@ -18545,8 +18545,8 @@ void Player::_LoadBoundInstances(PreparedQueryResult result)
 
     Group* group = GetGroup();
 
-    //         0          1    2           3            4          5
-    // SELECT id, permanent, map, difficulty, extendState, resettime FROM character_instance LEFT JOIN instance ON instance = id WHERE guid = ?
+    //                           0          1    2           3            4          5
+    // SELECT character_instance.instance, permanent, map, difficulty, extendState, resettime FROM character_instance LEFT JOIN instance ON character_instance.instance = id WHERE guid = ?
     if (result)
     {
         do
