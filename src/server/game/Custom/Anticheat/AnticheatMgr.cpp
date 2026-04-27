@@ -1003,12 +1003,14 @@ void AnticheatMgr::_ZAxisHackDetection(Player* player, MovementInfo const& movem
    }
 
    // This is Black Magic. Check only for x and y difference but no z difference that is greater then or equal to z +2.5 of the ground
-   if (data.GetLastMovementInfo().pos.GetPositionZ() == movementInfo.pos.GetPositionZ() && player->GetPositionZ() >= player->GetFloorZ() + 2.5f)
+   if (data.GetLastMovementInfo().pos.GetPositionZ() == movementInfo.pos.GetPositionZ() && player->GetPositionZ() >= player->GetFloorZ() + 7.0f)
    {
        if (data.GetTotalReports() > _ingameNotificationThreshold)
            _NotifyGameMasters(player, "Possible Ignore Zaxis Hack Detected!", LANG_ANTICHEAT_ALERT, data);
 
-       _LogInfo(player, "Ignore Zaxis Hack detected");
+       float posZ = player->GetPositionZ();
+       float floorZ = player->GetFloorZ();
+       _LogInfo(player, Trinity::StringFormat("Ignore Zaxis Hack detected (Z: {:.2f}, FloorZ: {:.2f}, Delta: {:.2f})", posZ, floorZ, posZ - floorZ));
        if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_CM_IGNOREZ))
        {
             player->GetMotionMaster()->MoveFall();
