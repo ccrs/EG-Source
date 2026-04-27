@@ -255,7 +255,10 @@ bool InstanceSave::UnloadIfEmpty()
                 return true;
 
         if (!sInstanceSaveMgr->lock_instLists)
-            sInstanceSaveMgr->RemoveInstanceSave(GetInstanceId());
+        {
+            if (sInstanceSaveMgr->GetInstanceSave(GetInstanceId()) == this)
+                sInstanceSaveMgr->RemoveInstanceSave(GetInstanceId());
+        }
 
         return false;
     }
