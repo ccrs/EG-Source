@@ -1,5 +1,9 @@
 #include "Chat.h"
 #include "CustomFunctions.h"
+#include "DatabaseEnv.h"
+#include "Item.h"
+#include "Mail.h"
+#include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Pet.h"
 #include "Player.h"
@@ -45,7 +49,8 @@ public:
 
         static ChatCommandTable commandTable =
         {
-            { "settings", customCharacterSettings },
+            { "settings",    customCharacterSettings },
+            { "massreward",  HandleMassRewardCommand, rbac::RBAC_ROLE_ADMINISTRATOR, Console::Yes },
         };
 
         return commandTable;
@@ -326,6 +331,75 @@ public:
                 handler->SendSysMessage("Alternative visuals deactivated.");
             }
         }
+        return true;
+    }
+
+    static bool HandleMassRewardCommand(ChatHandler* handler, uint32 itemEntry, uint32 sinceTimestamp, Optional<uint32> count)
+    {
+        ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemEntry);
+        if (!proto)
+        {
+            handler->PSendSysMessage("Unknown item entry %u.", itemEntry);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        uint32 itemCount = count.value_or(1);
+        if (itemCount < 1 || (proto->MaxCount > 0 && itemCount > uint32(proto->MaxCount)))
+        {
+            handler->PSendSysMessage("Invalid count %u for item %u.", itemCount, itemEntry);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        // One character per account: highest level, lowest guid on tie.
+        // Account eligibility: any character on the account logged out after sinceTimestamp, or is currently online.
+        QueryResult result = CharacterDatabase.PQuery(
+            "SELECT c.guid, c.name "
+            "FROM characters c "
+            "WHERE c.account IN (SELECT DISTINCT account FROM characters WHERE logout_time >= {} OR online = 1) "
+            "AND c.guid = (SELECT c2.guid FROM characters c2 WHERE c2.account = c.account ORDER BY c2.level DESC, c2.guid ASC LIMIT 1)",
+            sinceTimestamp);
+
+        if (!result)
+        {
+            handler->SendSysMessage("No eligible characters found for the given timestamp.");
+            return true;
+        }
+
+        MailSender sender(MAIL_NORMAL, 0, MAIL_STATIONERY_GM);
+        uint32 sent = 0;
+        uint32 failed = 0;
+
+        do
+        {
+            Field* fields = result->Fetch();
+            ObjectGuid::LowType charGuid = fields[0].GetUInt32();
+            std::string charName = fields[1].GetString();
+
+            Item* item = Item::CreateItem(itemEntry, itemCount, handler->GetSession() ? handler->GetSession()->GetPlayer() : nullptr);
+            if (!item)
+            {
+                ++failed;
+                continue;
+            }
+
+            Player* receiver = ObjectAccessor::FindPlayerByName(charName);
+            CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+            item->SaveToDB(trans);                              // Save to prevent being lost at next mail load. If send fails, the item will be deleted.
+
+            MailDraft draft("Server Reward", "Please accept this item as a reward for your dedication and continuous support.");
+            draft.AddItem(item);
+            draft.SendMailTo(trans, MailReceiver(receiver, charGuid), sender);
+            CharacterDatabase.CommitTransaction(trans);
+            ++sent;
+
+        }
+        while (result->NextRow());
+
+        handler->PSendSysMessage("Mass reward complete: item %u (x%u) sent to %u character(s).", itemEntry, itemCount, sent);
+        if (failed > 0)
+            handler->PSendSysMessage("Warning: item creation failed for %u character(s).", failed);
         return true;
     }
 };
