@@ -130,6 +130,9 @@ void LFGGroupScript::OnAddMember(Group* group, ObjectGuid guid)
     {
         TC_LOG_DEBUG("lfg", "LFGScripts::OnAddMember [{}]: added [{}] leader [{}]", gguid.ToString(), guid.ToString(), leader.ToString());
         sLFGMgr->SetLeader(gguid, guid);
+        LfgState state = sLFGMgr->GetState(guid);
+        if (state == LFG_STATE_QUEUED)
+            sLFGMgr->LeaveLfg(guid);
     }
     else
     {
@@ -137,7 +140,7 @@ void LFGGroupScript::OnAddMember(Group* group, ObjectGuid guid)
         LfgState state = sLFGMgr->GetState(guid);
         TC_LOG_DEBUG("lfg", "LFGScripts::OnAddMember [{}]: added [{}] leader [{}] gstate: {}, state: {}", gguid.ToString(), guid.ToString(), leader.ToString(), gstate, state);
 
-        if (state == LFG_STATE_QUEUED)
+        if (state == LFG_STATE_QUEUED || state == LFG_STATE_PROPOSAL)
             sLFGMgr->LeaveLfg(guid);
 
         if (gstate == LFG_STATE_QUEUED)
