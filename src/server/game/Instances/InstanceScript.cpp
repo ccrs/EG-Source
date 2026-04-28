@@ -67,6 +67,7 @@ void InstanceScript::SaveToDB()
     stmt->setUInt32(0, GetCompletedEncounterMask());
     stmt->setString(1, data);
     stmt->setUInt32(2, instance->GetInstanceId());
+    stmt->setUInt16(3, uint16(instance->GetId()));
     CharacterDatabase.Execute(stmt);
 }
 
