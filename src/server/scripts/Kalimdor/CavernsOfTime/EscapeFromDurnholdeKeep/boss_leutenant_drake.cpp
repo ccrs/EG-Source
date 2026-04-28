@@ -17,6 +17,7 @@
 
 #include "old_hillsbrad.h"
 #include "InstanceScript.h"
+#include "Position.h"
 #include "MotionMaster.h"
 #include "ScriptMgr.h"
 

@@ -17,6 +17,7 @@
 
 #include "old_hillsbrad.h"
 #include "Group.h"
+#include "TemporarySummon.h"
 #include "InstanceScript.h"
 #include "LFGMgr.h"
 #include "Map.h"
@@ -289,11 +290,11 @@ struct npc_thrall_old_hillsbrad : public EscortAI
                 SetEscortPaused(true);
                 if (instance->GetBossState(DATA_CAPTAIN_SKARLOC) != DONE)
                 {
-                    if (Creature* skarloc = me->SummonCreature(ENTRY_SKARLOC, 2036.48f, 271.22f, 63.43f, 5.27f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min))
+                    if (TempSummon* skarloc = me->SummonCreature(ENTRY_SKARLOC, 2036.48f, 271.22f, 63.43f, 5.27f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min))
                     {
-                        if (Creature* veteran = me->SummonCreature(NPC_VETERAN, 2032.58f, 275.10f, 63.43f, 5.50f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s))
+                        if (TempSummon* veteran = me->SummonCreature(NPC_VETERAN, 2032.58f, 275.10f, 63.43f, 5.50f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s))
                             veteran->GetMotionMaster()->MoveFollow(skarloc, veteran->GetDistance(skarloc), skarloc->GetRelativeAngle(veteran));
-                        if (Creature* warden = me->SummonCreature(NPC_WARDEN, 2040.20f, 274.90f, 63.43f, 5.10f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s))
+                        if (TempSummon* warden = me->SummonCreature(NPC_WARDEN, 2040.20f, 274.90f, 63.43f, 5.10f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s))
                             warden->GetMotionMaster()->MoveFollow(skarloc, warden->GetDistance(skarloc), skarloc->GetRelativeAngle(warden));
                     }
                 }

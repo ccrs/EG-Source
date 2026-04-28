@@ -16,6 +16,7 @@
  */
 
 #include "old_hillsbrad.h"
+#include "Creature.h"
 #include "GameObject.h"
 #include "InstanceScript.h"
 #include "Log.h"
