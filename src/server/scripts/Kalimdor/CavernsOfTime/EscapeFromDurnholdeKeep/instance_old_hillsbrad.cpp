@@ -16,10 +16,10 @@
  */
 
 #include "old_hillsbrad.h"
+#include "GameObject.h"
 #include "InstanceScript.h"
 #include "Log.h"
 #include "Map.h"
-
 #include "Player.h"
 #include "ScriptMgr.h"
 
@@ -29,7 +29,24 @@ enum OHInstanceMisc
     NPC_TARETHA = 18887,
     NPC_EPOCH_HUNTER = 18096,
     NPC_DRAKE = 17848,
-    LODGE_QUEST_TRIGGER = 20155
+    LODGE_QUEST_TRIGGER = 20155,
+
+    GO_ROARING_FLAME = 182592,
+
+    EVENT_BARREL_FIRE = 11111
+};
+
+// Maps each barrel's DB spawn GUID to its paired Roaring Flame DB spawn GUID.
+static std::unordered_map<uint32, uint32> const BarrelFlameGuids =
+{
+    { 30242, 30289 },
+    { 30243, 30297 },
+    { 30244, 30299 },
+    { 30263, 30290 },
+    { 30286, 30292 },
+    { 33565, 30305 },
+    { 33567, 30300 },
+    { 34868, 30296 }
 };
 
 class instance_old_hillsbrad : public InstanceMapScript
@@ -74,6 +91,21 @@ public:
                     EpochGUID = creature->GetGUID();
                     break;
             }
+        }
+
+        void ProcessEvent(WorldObject* obj, uint32 eventId, WorldObject* /*invoker*/) override
+        {
+            if (eventId != EVENT_BARREL_FIRE || !obj || !obj->IsGameObject())
+                return;
+
+            auto it = BarrelFlameGuids.find(obj->ToGameObject()->GetSpawnId());
+            if (it == BarrelFlameGuids.end())
+                return;
+
+            if (GameObject* flame = instance->GetGameObjectBySpawnId(it->second))
+                flame->SetGoState(GO_STATE_ACTIVE);
+
+            SetData(TYPE_BARREL_DIVERSION, IN_PROGRESS);
         }
 
         void SetData(uint32 type, uint32 data) override

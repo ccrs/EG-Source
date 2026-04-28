@@ -16,8 +16,6 @@
  */
 
 #include "old_hillsbrad.h"
-#include "GameObject.h"
-#include "GameObjectAI.h"
 #include "InstanceScript.h"
 #include "MotionMaster.h"
 #include "ScriptMgr.h"
@@ -177,31 +175,7 @@ private:
     bool _justAppeared;
 };
 
-// Barrel gameobjects used for the diversion quest. Each GO can only contribute once.
-struct go_barrel_old_hillsbrad : public GameObjectAI
-{
-    go_barrel_old_hillsbrad(GameObject* go) : GameObjectAI(go), instance(go->GetInstanceScript()), _used(false) { }
-
-    InstanceScript* instance;
-
-    bool OnGossipHello(Player* /*player*/) override
-    {
-        if (_used || instance->GetData(TYPE_BARREL_DIVERSION) == DONE)
-            return true;
-
-        _used = true;
-        me->SetGoState(GO_STATE_ACTIVE);
-        me->SendCustomAnim(0);
-        instance->SetData(TYPE_BARREL_DIVERSION, IN_PROGRESS);
-        return true;
-    }
-
-private:
-    bool _used;
-};
-
 void AddSC_boss_lieutenant_drake()
 {
     RegisterOldHillsbradCreatureAI(boss_lieutenant_drake);
-    RegisterOldHillsbradGameObjectAI(go_barrel_old_hillsbrad);
 }
