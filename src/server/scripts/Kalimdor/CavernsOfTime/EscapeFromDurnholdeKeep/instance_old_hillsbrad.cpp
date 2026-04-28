@@ -93,7 +93,7 @@ public:
             }
         }
 
-        void ProcessEvent(WorldObject* obj, uint32 eventId, WorldObject* /*invoker*/) override
+        void ProcessEvent(WorldObject* obj, uint32 eventId) override
         {
             if (eventId != EVENT_BARREL_FIRE || !obj || !obj->IsGameObject())
                 return;
