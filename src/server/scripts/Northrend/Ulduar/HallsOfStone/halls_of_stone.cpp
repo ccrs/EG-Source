@@ -204,6 +204,10 @@ struct npc_tribuna_controller : public ScriptedAI
                 ForceCombatStop(_instance->GetCreature(DATA_ABEDNEUM));
                 ForceCombatStop(_instance->GetCreature(DATA_DARK_MATTER));
                 ForceCombatStop(me);
+                _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_KADDRAK), false);
+                _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_MARNAK), false);
+                _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_ABEDNEUM), false);
+                _instance->HandleGameObject(_instance->GetGuidData(DATA_GO_SKY_FLOOR), false);
                 break;
             default:
                 break;
@@ -285,7 +289,8 @@ struct npc_brann_hos : public EscortAI
 
             _DespawnDwarf();
 
-            _instance->SetBossState(DATA_TRIBUNAL_OF_AGES, NOT_STARTED);
+            if (_instance->GetBossState(DATA_TRIBUNAL_OF_AGES) != DONE)
+                _instance->SetBossState(DATA_TRIBUNAL_OF_AGES, NOT_STARTED);
         }
     }
 
@@ -293,6 +298,7 @@ struct npc_brann_hos : public EscortAI
     {
         _step = 0;
         _phaseTimer = 0;
+        _DespawnDwarf();
 
         if (Creature* temp = _instance->GetCreature(DATA_TRIBUNAL_OF_THE_AGES))
             temp->AI()->DoAction(ACTION_RESET);
@@ -620,7 +626,7 @@ struct npc_brann_hos : public EscortAI
     {
         uint32 const action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
         ClearGossipMenuFor(player);
-        if (action == GOSSIP_ACTION_INFO_DEF + 1 || action == GOSSIP_ACTION_INFO_DEF + 2)
+        if (action == GOSSIP_ACTION_INFO_DEF + 1)
         {
             CloseGossipMenuFor(player);
             me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
@@ -635,12 +641,21 @@ struct npc_brann_hos : public EscortAI
 
     bool OnGossipHello(Player* player) override
     {
-        InitGossipMenuFor(player, GOSSIP_ITEM_START_MID);
         if (me->IsQuestGiver())
             player->PrepareQuestMenu(me->GetGUID());
 
-        AddGossipItemFor(player, GOSSIP_ITEM_START_MID, GOSSIP_ITEM_START_OID, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-        SendGossipMenuFor(player, TEXT_ID_START, me->GetGUID());
+        uint32 const bossState = _instance->GetBossState(DATA_TRIBUNAL_OF_AGES);
+        if (bossState == NOT_STARTED)
+        {
+            InitGossipMenuFor(player, GOSSIP_ITEM_START_MID);
+            AddGossipItemFor(player, GOSSIP_ITEM_START_MID, GOSSIP_ITEM_START_OID, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+            SendGossipMenuFor(player, TEXT_ID_START, me->GetGUID());
+        }
+        else
+        {
+            InitGossipMenuFor(player, GOSSIP_ITEM_PROGRESS_MID);
+            SendGossipMenuFor(player, TEXT_ID_PROGRESS, me->GetGUID());
+        }
 
         return true;
     }
