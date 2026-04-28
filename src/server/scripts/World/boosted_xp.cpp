@@ -44,7 +44,7 @@ public:
             amount *= sWorld->getRate(RATE_XP_BOOST);
     }
 
-    void OnReputationChange(Player* player, uint32 factionId, int32& standing, bool incremental) override
+    void OnReputationChange(Player* /*player*/, uint32 /*factionId*/, int32& standing, bool incremental) override
     {
         if (incremental && IsXPBoostActive())
             standing = int32(float(standing) * 1.25f);
