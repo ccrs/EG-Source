@@ -15,43 +15,41 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* Missing proper code for patrolling area after being spawned */
-
-#include "ScriptMgr.h"
+#include "old_hillsbrad.h"
 #include "GameObject.h"
 #include "GameObjectAI.h"
 #include "InstanceScript.h"
 #include "MotionMaster.h"
-#include "old_hillsbrad.h"
-#include "ScriptedEscortAI.h"
+#include "ScriptMgr.h"
 
 enum DrakeTexts
 {
-    SAY_ENTER               = 0,
-    SAY_AGGRO               = 1,
-    SAY_SLAY                = 2,
-    SAY_MORTAL              = 3,
-    SAY_SHOUT               = 4,
-    SAY_DEATH               = 5,
+    SAY_ENTER = 0,
+    SAY_AGGRO,
+    SAY_SLAY,
+    SAY_MORTAL,
+    SAY_SHOUT,
+    SAY_DEATH
 };
 
 enum DrakeSpells
 {
-    SPELL_WHIRLWIND         = 31909,
-    SPELL_HAMSTRING         = 9080,
-    SPELL_MORTAL_STRIKE     = 31911,
+    SPELL_WHIRLWIND = 31909,
+    SPELL_HAMSTRING = 9080,
+    SPELL_MORTAL_STRIKE = 31911,
     SPELL_FRIGHTENING_SHOUT = 33789
 };
 
 enum DrakeEvents
 {
-    EVENT_WHIRLWIND           = 1,
+    EVENT_WHIRLWIND = 1,
     EVENT_HAMSTRING,
     EVENT_MORTAL_STRIKE,
     EVENT_FRIGHTENING_SHOUT
 };
 
-Position const DrakeWP[]=
+// Patrol loop around the keep exterior, ending back at spawn. Last entry equals spawn position.
+static Position const DrakeWaypoints[] =
 {
     { 2125.84f, 88.2535f, 54.8830f },
     { 2111.01f, 93.8022f, 52.6356f },
@@ -77,34 +75,47 @@ Position const DrakeWP[]=
 // 17848 - Lieutenant Drake
 struct boss_lieutenant_drake : public BossAI
 {
-    boss_lieutenant_drake(Creature* creature) : BossAI(creature, DATA_LIEUTENANT_DRAKE)
+    boss_lieutenant_drake(Creature* creature) : BossAI(creature, DATA_LIEUTENANT_DRAKE), _wpId(0), _justAppeared(false) { }
+
+    void JustAppeared() override
     {
-        Initialize();
+        _justAppeared = true;
+        Talk(SAY_ENTER);
+        StartPatrol();
     }
 
-    void Initialize()
+    void StartPatrol()
     {
-        CanPatrol = true;
-        wpId = 0;
+        _wpId = 0;
+        me->GetMotionMaster()->MovePoint(_wpId, DrakeWaypoints[_wpId]);
     }
-
-    bool CanPatrol;
-    uint32 wpId;
 
     void Reset() override
     {
         BossAI::Reset();
-        Initialize();
+        _justAppeared = false;
+        StartPatrol();
+    }
+
+    void MovementInform(uint32 type, uint32 id) override
+    {
+        if (type != POINT_MOTION_TYPE || me->IsInCombat())
+            return;
+
+        _justAppeared = false;
+        _wpId = (id + 1) % std::size(DrakeWaypoints);
+        me->GetMotionMaster()->MovePoint(_wpId, DrakeWaypoints[_wpId]);
     }
 
     void JustEngagedWith(Unit* who) override
     {
         BossAI::JustEngagedWith(who);
-        Talk(SAY_AGGRO);
+        if (!_justAppeared)
+            Talk(SAY_AGGRO);
         events.ScheduleEvent(EVENT_WHIRLWIND, 20s);
-        events.ScheduleEvent(EVENT_HAMSTRING, 30s);
-        events.ScheduleEvent(EVENT_MORTAL_STRIKE, 45s);
-        events.ScheduleEvent(EVENT_FRIGHTENING_SHOUT, 25s);
+        events.ScheduleEvent(EVENT_HAMSTRING, 10s, 15s);
+        events.ScheduleEvent(EVENT_MORTAL_STRIKE, 25s, 35s);
+        events.ScheduleEvent(EVENT_FRIGHTENING_SHOUT, 15s, 20s);
     }
 
     void KilledUnit(Unit* /*victim*/) override
@@ -120,13 +131,6 @@ struct boss_lieutenant_drake : public BossAI
 
     void UpdateAI(uint32 diff) override
     {
-        /// @todo make this work
-        if (CanPatrol && wpId == 0)
-        {
-            me->GetMotionMaster()->MovePoint(wpId, DrakeWP[wpId]);
-            ++wpId;
-        }
-
         if (!UpdateVictim())
             return;
 
@@ -154,7 +158,7 @@ struct boss_lieutenant_drake : public BossAI
                     break;
                 case EVENT_FRIGHTENING_SHOUT:
                     Talk(SAY_SHOUT);
-                    DoCastVictim(SPELL_FRIGHTENING_SHOUT);
+                    DoCastSelf(SPELL_FRIGHTENING_SHOUT);
                     events.Repeat(25s, 35s);
                     break;
                 default:
@@ -167,22 +171,33 @@ struct boss_lieutenant_drake : public BossAI
 
         DoMeleeAttackIfReady();
     }
+
+private:
+    uint32 _wpId;
+    bool _justAppeared;
 };
 
+// Barrel gameobjects used for the diversion quest. Each GO can only contribute once.
 struct go_barrel_old_hillsbrad : public GameObjectAI
 {
-    go_barrel_old_hillsbrad(GameObject* go) : GameObjectAI(go), instance(go->GetInstanceScript()) { }
+    go_barrel_old_hillsbrad(GameObject* go) : GameObjectAI(go), instance(go->GetInstanceScript()), _used(false) { }
 
     InstanceScript* instance;
 
     bool OnGossipHello(Player* /*player*/) override
     {
-        if (instance->GetData(TYPE_BARREL_DIVERSION) == DONE)
-            return false;
+        if (_used || instance->GetData(TYPE_BARREL_DIVERSION) == DONE)
+            return true;
 
+        _used = true;
+        me->SetGoState(GO_STATE_ACTIVE);
+        me->SendCustomAnim(0);
         instance->SetData(TYPE_BARREL_DIVERSION, IN_PROGRESS);
-        return false;
+        return true;
     }
+
+private:
+    bool _used;
 };
 
 void AddSC_boss_lieutenant_drake()

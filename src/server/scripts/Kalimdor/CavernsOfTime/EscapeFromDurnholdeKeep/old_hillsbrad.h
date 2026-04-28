@@ -27,31 +27,39 @@ constexpr uint32 OldHillsbradFoothillsBossCount = 3;
 
 enum OHDataTypes
 {
-    DATA_LIEUTENANT_DRAKE   = 0,
-    DATA_CAPTAIN_SKARLOC    = 1,
-    DATA_EPOCH_HUNTER       = 2,
+    DATA_LIEUTENANT_DRAKE = 0,
+    DATA_CAPTAIN_SKARLOC,
+    DATA_EPOCH_HUNTER,
 
-    TYPE_BARREL_DIVERSION   = 3,
-    TYPE_THRALL_EVENT       = 4,
+    TYPE_BARREL_DIVERSION,
+    TYPE_THRALL_EVENT,
 
-    DATA_THRALL             = 5,
-    DATA_TARETHA            = 6
+    DATA_THRALL,
+    DATA_TARETHA
 };
 
 enum OHWorldStateIds
 {
-    WORLD_STATE_OH              = 2436
+    WORLD_STATE_OH = 2436
 };
 
 enum OHThrallEscortStates
 {
-    OH_ESCORT_PRISON_TO_SKARLOC,
+    OH_ESCORT_PRISON_TO_SKARLOC = 0,
     OH_ESCORT_HORSE_RIDE,
     OH_ESCORT_BARN_TO_TARETHA,
     OH_ESCORT_EPOCH_HUNTER,
     OH_ESCORT_FINISHED,
 
-    OH_ESCORT_DEATH_EVENT           // increment wipe counter
+    OH_ESCORT_DEATH_EVENT       // signals a wipe to the instance
+};
+
+enum OHThrallActions
+{
+    ACTION_RESUME_ESCORT = 1,
+    ACTION_SKARLOC_TAUNT,
+    ACTION_TARETHA_WALK,
+    ACTION_EPOCH_ENGAGE
 };
 
 template <class AI, class T>

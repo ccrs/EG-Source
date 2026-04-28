@@ -15,33 +15,32 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* Missing spawns pre-event, missing speech to be coordinated with rest of escort event  */
-
-#include "ScriptMgr.h"
-#include "InstanceScript.h"
 #include "old_hillsbrad.h"
+#include "InstanceScript.h"
+#include "ObjectAccessor.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 
 enum EpochHunterTexts
 {
-    SAY_ENTER                   = 0,
-    SAY_AGGRO                   = 1,
-    SAY_SLAY                    = 2,
-    SAY_BREATH                  = 3,
-    SAY_DEATH                   = 4
+    SAY_ENTER = 0,
+    SAY_AGGRO,
+    SAY_SLAY,
+    SAY_BREATH,
+    SAY_DEATH
 };
 
 enum EpochHunterSpells
 {
-    SPELL_SAND_BREATH           = 31914,
-    SPELL_IMPENDING_DEATH       = 31916,
+    SPELL_SAND_BREATH = 31914,
+    SPELL_IMPENDING_DEATH = 31916,
     SPELL_MAGIC_DISRUPTION_AURA = 33834,
-    SPELL_WING_BUFFET           = 31475
+    SPELL_WING_BUFFET = 31475
 };
 
 enum EpochHunterEvents
 {
-    EVENT_SAND_BREATH           = 1,
+    EVENT_SAND_BREATH = 1,
     EVENT_IMPENDING_DEATH,
     EVENT_MAGIC_DISRUPTION_AURA,
     EVENT_WING_BUFFET
@@ -52,9 +51,37 @@ struct boss_epoch_hunter : public BossAI
 {
     boss_epoch_hunter(Creature* creature) : BossAI(creature, DATA_EPOCH_HUNTER) { }
 
+    void JustAppeared() override
+    {
+        me->SetReactState(REACT_PASSIVE);
+        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+        me->SetImmuneToPC(true);
+        me->SetImmuneToNPC(true);
+        Talk(SAY_ENTER);
+        // Remains immune until ACTION_EPOCH_ENGAGE is called after waves are cleared
+    }
+
     void Reset() override
     {
         BossAI::Reset();
+        me->SetReactState(REACT_AGGRESSIVE);
+        me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+        me->SetImmuneToPC(false);
+        me->SetImmuneToNPC(false);
+        me->SetCanFly(false);
+        me->SetDisableGravity(false);
+    }
+
+    void DoAction(int32 action) override
+    {
+        if (action == ACTION_EPOCH_ENGAGE)
+        {
+            me->SetReactState(REACT_AGGRESSIVE);
+            me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+            me->SetImmuneToPC(false);
+            me->SetImmuneToNPC(false);
+            DoZoneInCombat();
+        }
     }
 
     void JustEngagedWith(Unit* who) override
@@ -78,6 +105,9 @@ struct boss_epoch_hunter : public BossAI
         Talk(SAY_DEATH);
 
         instance->SetData(TYPE_THRALL_EVENT, OH_ESCORT_FINISHED);
+
+        if (Creature* thrall = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_THRALL)))
+            thrall->AI()->DoAction(ACTION_RESUME_ESCORT);
     }
 
     void UpdateAI(uint32 diff) override
@@ -95,8 +125,8 @@ struct boss_epoch_hunter : public BossAI
             switch (eventId)
             {
                 case EVENT_SAND_BREATH:
-                    DoCastVictim(SPELL_SAND_BREATH);
                     Talk(SAY_BREATH);
+                    DoCastVictim(SPELL_SAND_BREATH);
                     events.Repeat(10s, 20s);
                     break;
                 case EVENT_IMPENDING_DEATH:

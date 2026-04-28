@@ -15,29 +15,22 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* ScriptData
-SDName: Instance_Old_Hillsbrad
-SD%Complete: 75
-SDComment: If thrall escort fail, all parts will reset. In future, save sub-parts and continue from last known.
-SDCategory: Caverns of Time, Old Hillsbrad Foothills
-EndScriptData */
-
-#include "ScriptMgr.h"
+#include "old_hillsbrad.h"
 #include "InstanceScript.h"
 #include "Log.h"
 #include "Map.h"
-#include "old_hillsbrad.h"
+
 #include "Player.h"
-#include "TemporarySummon.h"
+#include "ScriptMgr.h"
 
-#define THRALL_ENTRY    17876
-#define TARETHA_ENTRY   18887
-#define EPOCH_ENTRY    18096
-
-#define DRAKE_ENTRY             17848
-
-#define QUEST_ENTRY_DIVERSION   10283
-#define LODGE_QUEST_TRIGGER     20155
+enum OHInstanceMisc
+{
+    NPC_THRALL = 17876,
+    NPC_TARETHA = 18887,
+    NPC_EPOCH_HUNTER = 18096,
+    NPC_DRAKE = 17848,
+    LODGE_QUEST_TRIGGER = 20155
+};
 
 class instance_old_hillsbrad : public InstanceMapScript
 {
@@ -57,43 +50,27 @@ public:
             SetBossNumber(OldHillsbradFoothillsBossCount);
 
             ThrallEscortState = OH_ESCORT_PRISON_TO_SKARLOC;
-            mBarrelCount = 0;
-            mThrallEventCount = 0;
+            BarrelCount = 0;
         }
 
         OHThrallEscortStates ThrallEscortState;
-        uint32 mBarrelCount;
-        uint32 mThrallEventCount;
+        uint32 BarrelCount;
 
         ObjectGuid ThrallGUID;
         ObjectGuid TarethaGUID;
         ObjectGuid EpochGUID;
 
-        void UpdateQuestCredit()
-        {
-            Map::PlayerList const& players = instance->GetPlayers();
-
-            if (!players.isEmpty())
-            {
-                for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
-                {
-                    if (Player* player = itr->GetSource())
-                        player->KilledMonsterCredit(LODGE_QUEST_TRIGGER);
-                }
-            }
-        }
-
         void OnCreatureCreate(Creature* creature) override
         {
             switch (creature->GetEntry())
             {
-                case THRALL_ENTRY:
+                case NPC_THRALL:
                     ThrallGUID = creature->GetGUID();
                     break;
-                case TARETHA_ENTRY:
+                case NPC_TARETHA:
                     TarethaGUID = creature->GetGUID();
                     break;
-                case EPOCH_ENTRY:
+                case NPC_EPOCH_HUNTER:
                     EpochGUID = creature->GetGUID();
                     break;
             }
@@ -105,42 +82,46 @@ public:
             {
                 case TYPE_BARREL_DIVERSION:
                 {
-                    if (data == IN_PROGRESS)
+                    if (data != IN_PROGRESS || BarrelCount >= 5)
+                        return;
+
+                    ++BarrelCount;
+                    DoUpdateWorldState(WORLD_STATE_OH, BarrelCount);
+
+                    TC_LOG_DEBUG("scripts", "Instance Old Hillsbrad: barrel count {}", BarrelCount);
+
+                    if (BarrelCount == 5)
                     {
-                        if (mBarrelCount >= 5)
-                            return;
+                        // Give all players quest credit for the diversion
+                        Map::PlayerList const& players = instance->GetPlayers();
+                        for (auto const& ref : players)
+                            if (Player* player = ref.GetSource())
+                                player->KilledMonsterCredit(LODGE_QUEST_TRIGGER);
 
-                        ++mBarrelCount;
-                        DoUpdateWorldState(WORLD_STATE_OH, mBarrelCount);
-
-                        TC_LOG_DEBUG("scripts", "Instance Old Hillsbrad: go_barrel_old_hillsbrad count {}", mBarrelCount);
-
-                        if (mBarrelCount == 5)
-                        {
-                            UpdateQuestCredit();
-                            if (TempSummon* drake = instance->SummonCreature(DRAKE_ENTRY, { 2128.43f, 71.01f, 64.42f, 1.74f }, nullptr, Milliseconds(30min).count()))
-                                drake->SetTempSummonType(TEMPSUMMON_DEAD_DESPAWN);
-                        }
+                        instance->SummonCreature(NPC_DRAKE, { 2128.43f, 71.01f, 64.42f, 1.74f }, nullptr, 0);
                     }
                     break;
                 }
                 case TYPE_THRALL_EVENT:
                 {
-                    if (data != OH_ESCORT_DEATH_EVENT)
+                    if (data == OH_ESCORT_DEATH_EVENT)
                     {
-                        ThrallEscortState = OHThrallEscortStates(data);
+                        // Always reset to beginning; the escort recovers naturally via boss state checks
+                        ThrallEscortState = OH_ESCORT_PRISON_TO_SKARLOC;
+                        TC_LOG_DEBUG("scripts", "Instance Old Hillsbrad: Thrall escort reset after wipe.");
+                        return;
+                    }
+
+                    ThrallEscortState = OHThrallEscortStates(data);
+
+                    // Only set Thrall's gossip flag for states where the player must interact with him
+                    if (data == OH_ESCORT_HORSE_RIDE || data == OH_ESCORT_BARN_TO_TARETHA)
+                    {
                         if (Creature* thrall = instance->GetCreature(ThrallGUID))
                             thrall->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                     }
-                    else
-                    {
-                        ++mThrallEventCount;
-                        if (mThrallEventCount >= 20)
-                            ThrallEscortState = OH_ESCORT_FINISHED; // wipe limit reached
-                        else
-                            ThrallEscortState = OH_ESCORT_PRISON_TO_SKARLOC; // not correct, see npc_thrall_old_hillsbrad::InitializeAI for details
-                    }
-                    TC_LOG_DEBUG("scripts", "Instance Old Hillsbrad: Thrall escort event adjusted to data {}.", data);
+
+                    TC_LOG_DEBUG("scripts", "Instance Old Hillsbrad: Thrall escort state set to {}.", data);
                     break;
                 }
             }
@@ -151,7 +132,9 @@ public:
             switch (data)
             {
                 case TYPE_BARREL_DIVERSION:
-                    return mBarrelCount >= 5 ? DONE : IN_PROGRESS;
+                    if (BarrelCount == 0)
+                        return NOT_STARTED;
+                    return BarrelCount >= 5 ? DONE : IN_PROGRESS;
                 case TYPE_THRALL_EVENT:
                     return ThrallEscortState;
             }
@@ -172,16 +155,25 @@ public:
             return ObjectGuid::Empty;
         }
 
-        void ReadSaveDataMore(std::istringstream&) override
+        void WriteSaveDataMore(std::ostringstream& data) override
         {
-            if (GetBossState(DATA_LIEUTENANT_DRAKE) == DONE)
-                mBarrelCount = 5;
-            /* TODO not correct, see npc_thrall_old_hillsbrad::InitializeAI for details
-            if (GetBossState(DATA_CAPTAIN_SKARLOC) == DONE)
-                ThrallEscortState = OH_ESCORT_HORSE_RIDE;
-            if (GetBossState(DATA_EPOCH_HUNTER) == DONE)
-                ThrallEscortState = OH_ESCORT_FINISHED;
-            */
+            data << ThrallEscortState << ' ' << BarrelCount;
+        }
+
+        void ReadSaveDataMore(std::istringstream& data) override
+        {
+            uint32 escortState = 0;
+            uint32 barrelCount = 0;
+            data >> escortState >> barrelCount;
+
+            ThrallEscortState = OHThrallEscortStates(std::min(escortState, uint32(OH_ESCORT_FINISHED)));
+            BarrelCount = std::min(barrelCount, 5u);
+
+            // Temp summons don't persist across reloads. Re-summon Drake if barrels
+            // were completed but he was never killed, otherwise players are softlocked
+            // (all barrels locked via GetData == DONE, Drake gone, Thrall unreachable).
+            if (BarrelCount >= 5 && GetBossState(DATA_LIEUTENANT_DRAKE) != DONE)
+                instance->SummonCreature(NPC_DRAKE, { 2128.43f, 71.01f, 64.42f, 1.74f }, nullptr, 0);
         }
     };
 };

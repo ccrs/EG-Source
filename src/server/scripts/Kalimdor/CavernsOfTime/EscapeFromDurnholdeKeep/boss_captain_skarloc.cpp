@@ -15,35 +15,35 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* Missing adds, missing waypoints to move up to Thrall once spawned + speech before enter combat */
-
-#include "ScriptMgr.h"
-#include "InstanceScript.h"
-#include "ScriptedCreature.h"
 #include "old_hillsbrad.h"
+#include "InstanceScript.h"
+#include "ObjectAccessor.h"
+#include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 
 enum SkarlocTexts
 {
-    SAY_ENTER                   = 0,
-    SAY_TAUNT1                  = 1,
-    SAY_TAUNT2                  = 2,
-    SAY_SLAY                    = 3,
-    SAY_DEATH                   = 4,
+    SAY_ENTER = 0,
+    SAY_TAUNT1,
+    SAY_TAUNT2,
+    SAY_SLAY,
+    SAY_DEATH
 };
 
 enum SkarlocSpells
 {
-    SPELL_HOLY_LIGHT            = 29427,
-    SPELL_CLEANSE               = 29380,
-    SPELL_HAMMER_OF_JUSTICE     = 13005,
-    SPELL_HOLY_SHIELD           = 31904,
-    SPELL_DEVOTION_AURA         = 8258,
-    SPELL_CONSECRATION          = 38385
+    SPELL_HOLY_LIGHT = 29427,
+    SPELL_CLEANSE = 29380,
+    SPELL_HAMMER_OF_JUSTICE = 13005,
+    SPELL_HOLY_SHIELD = 31904,
+    SPELL_DEVOTION_AURA = 8258,
+    SPELL_CONSECRATION = 38385
 };
 
 enum SkarlocEvents
 {
-    EVENT_HOLY_LIGHT            = 1,
+    EVENT_TAUNT2 = 1,
+    EVENT_HOLY_LIGHT,
     EVENT_CLEANSE,
     EVENT_HAMMER_OF_JUSTICE,
     EVENT_HOLY_SHIELD,
@@ -56,6 +56,13 @@ struct boss_captain_skarloc : public BossAI
 {
     boss_captain_skarloc(Creature* creature) : BossAI(creature, DATA_CAPTAIN_SKARLOC) { }
 
+    void JustAppeared() override
+    {
+        Talk(SAY_ENTER);
+        if (Creature* thrall = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_THRALL)))
+            thrall->AI()->DoAction(ACTION_SKARLOC_TAUNT);
+    }
+
     void Reset() override
     {
         BossAI::Reset();
@@ -64,13 +71,12 @@ struct boss_captain_skarloc : public BossAI
     void JustEngagedWith(Unit* who) override
     {
         BossAI::JustEngagedWith(who);
-        //This is not correct. Should taunt Thrall before engage in combat
         Talk(SAY_TAUNT1);
-        Talk(SAY_TAUNT2);
+        events.ScheduleEvent(EVENT_TAUNT2, 4s);
         events.ScheduleEvent(EVENT_HOLY_LIGHT, 20s, 30s);
         events.ScheduleEvent(EVENT_CLEANSE, 10s);
         events.ScheduleEvent(EVENT_HAMMER_OF_JUSTICE, 20s, 35s);
-        events.ScheduleEvent(EVENT_HOLY_SHIELD, 240s);
+        events.ScheduleEvent(EVENT_HOLY_SHIELD, 30s);
         events.ScheduleEvent(EVENT_DEVOTION_AURA, 3s);
         events.ScheduleEvent(EVENT_CONSECRATION, 8s);
     }
@@ -84,7 +90,6 @@ struct boss_captain_skarloc : public BossAI
     {
         BossAI::JustDied(killer);
         Talk(SAY_DEATH);
-
         instance->SetData(TYPE_THRALL_EVENT, OH_ESCORT_HORSE_RIDE);
     }
 
@@ -102,6 +107,9 @@ struct boss_captain_skarloc : public BossAI
         {
             switch (eventId)
             {
+                case EVENT_TAUNT2:
+                    Talk(SAY_TAUNT2);
+                    break;
                 case EVENT_HOLY_LIGHT:
                     DoCastSelf(SPELL_HOLY_LIGHT);
                     events.Repeat(30s);
@@ -116,15 +124,15 @@ struct boss_captain_skarloc : public BossAI
                     break;
                 case EVENT_HOLY_SHIELD:
                     DoCastSelf(SPELL_HOLY_SHIELD);
-                    events.Repeat(240s);
+                    events.Repeat(30s);
                     break;
                 case EVENT_DEVOTION_AURA:
                     DoCastSelf(SPELL_DEVOTION_AURA);
-                    events.Repeat(45s, 55s);
+                    events.Repeat(50s);
                     break;
                 case EVENT_CONSECRATION:
                     DoCastSelf(SPELL_CONSECRATION);
-                    events.Repeat(5s, 10s);
+                    events.Repeat(8s, 12s);
                     break;
                 default:
                     break;
