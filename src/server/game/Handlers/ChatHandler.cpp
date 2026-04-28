@@ -511,7 +511,19 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
                 }
             }
 
-            if (Channel* chn = ChannelMgr::GetChannelForPlayerByNamePart(channel, sender))
+            Channel* chn = nullptr;
+            // Direct lookup for world chat: GetChannelForPlayerByNamePart prefix-matches "WorldDefense" before "world".
+            std::string channelLower = channel;
+            if (Channel::IsWorldChat(channelLower))
+            {
+                if (ChannelMgr* cMgr = ChannelMgr::forTeam(Team::ALLIANCE))
+                    chn = cMgr->GetCustomChannel(channelLower);
+            }
+
+            if (!chn)
+                chn = ChannelMgr::GetChannelForPlayerByNamePart(channel, sender);
+
+            if (chn)
             {
                 sScriptMgr->OnPlayerChat(sender, type, lang, msg, chn);
                 chn->Say(sender->GetGUID(), msg, lang);
