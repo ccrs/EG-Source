@@ -103,7 +103,7 @@ public:
                 return;
 
             if (GameObject* flame = instance->GetGameObjectBySpawnId(it->second))
-                flame->SetGoState(GO_STATE_ACTIVE);
+                flame->SetRespawnTime(6 * DAY);
 
             SetData(TYPE_BARREL_DIVERSION, IN_PROGRESS);
         }
