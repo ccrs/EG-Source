@@ -1,4 +1,8 @@
 --
+DELETE FROM `rbac_permissions` WHERE `id` = 1003;
+INSERT INTO `rbac_permissions` (`id`, `name`) VALUES
+(1003, 'Allow crossfaction arena team interaction');
+
 DELETE FROM `rbac_linked_permissions` WHERE `id` IN (195, 199);
 INSERT INTO `rbac_linked_permissions` VALUES
 (195,   3), -- Join Normal Battleground
@@ -15,6 +19,7 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (195,  49), -- Forces to enter the email for confirmation on password change
 (195,  51), -- Allow trading between factions
 (195, 199), -- Role: Player Commands
+(195, 1003); -- Allow crossfaction arena team interaction
 --
 (199, 496), -- Command: commands
 (199, 507); -- Command: help

@@ -156,8 +156,8 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
                     case CHAT_MSG_RAID:
                     case CHAT_MSG_RAID_LEADER:
                     case CHAT_MSG_RAID_WARNING:
-                        // allow two side chat at group channel if two side group allowed
-                        if (sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP))
+                        // allow two side chat at group channel if two side group is allowed, or crossfaction arena permission is held
+                        if (sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP) || HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_ARENA))
                             lang = LANG_UNIVERSAL;
                         break;
                     case CHAT_MSG_GUILD:

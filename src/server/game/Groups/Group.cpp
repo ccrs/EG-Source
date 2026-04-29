@@ -34,6 +34,7 @@
 #include "Log.h"
 #include "LFGMgr.h"
 #include "Random.h"
+#include "RBAC.h"
 #include "SpellAuras.h"
 #include "UpdateData.h"
 #include "UpdateFieldFlags.h"
@@ -2048,8 +2049,8 @@ GroupJoinBattlegroundResult Group::CanJoinBattlegroundQueue(Battleground const* 
         // rbac permissions
         if (!member->CanJoinToBattleground(bgOrTemplate))
             return ERR_BATTLEGROUND_JOIN_TIMED_OUT;
-        // don't allow cross-faction join as group
-        if (member->GetTeam() != team)
+        // don't allow cross-faction join as group unless crossfaction arena permission is held and this is an arena queue
+        if (member->GetTeam() != team && !(member->GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_ARENA) && bgOrTemplate->isArena()))
             return ERR_BATTLEGROUND_JOIN_TIMED_OUT;
         // not in the same battleground level braket, don't let join
         PvPDifficultyEntry const* memberBracketEntry = GetBattlegroundBracketByLevel(bracketEntry->MapID, member->GetLevel());

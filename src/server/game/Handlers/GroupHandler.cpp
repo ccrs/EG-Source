@@ -28,6 +28,7 @@
 #include "PartyPackets.h"
 #include "Pet.h"
 #include "Player.h"
+#include "RBAC.h"
 #include "SocialMgr.h"
 #include "SpellAuras.h"
 #include "Util.h"
@@ -97,7 +98,10 @@ void WorldSession::HandleGroupInviteOpcode(WorldPackets::Party::PartyInviteClien
     }
 
     // can't group with
-    if (!invitingPlayer->IsGameMaster() && !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP) && invitingPlayer->GetTeam() != invitedPlayer->GetTeam())
+    if (!invitingPlayer->IsGameMaster()
+        && !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP)
+        && !invitingPlayer->GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_ARENA)
+        && invitingPlayer->GetTeam() != invitedPlayer->GetTeam())
     {
         SendPartyResult(PARTY_OP_INVITE, packet.TargetName, ERR_PLAYER_WRONG_FACTION);
         return;
