@@ -103,19 +103,19 @@ struct boss_krystallus : public BossAI
 
         events.Update(diff);
 
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
         if (!_shatterTimer.Passed())
         {
             _shatterTimer.Update(diff);
             if (_shatterTimer.Passed())
             {
-                me->InterruptNonMeleeSpells(false);
+                me->InterruptNonMeleeSpells(true);
                 DoCastSelf(SPELL_SHATTER);
                 return;
             }
         }
-
-        if (me->HasUnitState(UNIT_STATE_CASTING))
-            return;
 
         while (uint32 eventId = events.ExecuteEvent())
         {
