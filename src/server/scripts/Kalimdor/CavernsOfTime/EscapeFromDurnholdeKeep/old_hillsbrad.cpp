@@ -392,7 +392,7 @@ struct npc_thrall_old_hillsbrad : public EscortAI
                     taretha->AI()->DoAction(ACTION_TARETHA_WALK);
 
                 Talk(SAY_TH_EVENT_COMPLETE);
-                me->SummonCreature(EROZION_ENTRY, 2646.47f, 680.416f, 55.38f, 4.16f, TEMPSUMMON_TIMED_DESPAWN, 2min);
+                me->SummonCreature(EROZION_ENTRY, 2646.47f, 680.416f, 55.38f, 4.16f, TEMPSUMMON_MANUAL_DESPAWN);
                 break;
             }
             case 108:
@@ -503,7 +503,7 @@ struct npc_thrall_old_hillsbrad : public EscortAI
                 else if (_epochWave == 2)
                 {
                     _epochWave = 0;
-                    _events.ScheduleEvent(EVENT_EPOCH_ENGAGE, 5s);
+                    _events.ScheduleEvent(EVENT_EPOCH_ENGAGE, 15s);
                 }
                 break;
             default:

@@ -54,7 +54,7 @@ struct boss_epoch_hunter : public BossAI
     void JustAppeared() override
     {
         me->SetReactState(REACT_PASSIVE);
-        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
         me->SetImmuneToPC(true);
         me->SetImmuneToNPC(true);
         Talk(SAY_ENTER);
@@ -64,12 +64,12 @@ struct boss_epoch_hunter : public BossAI
     void Reset() override
     {
         BossAI::Reset();
-        me->SetReactState(REACT_AGGRESSIVE);
-        me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-        me->SetImmuneToPC(false);
-        me->SetImmuneToNPC(false);
-        me->SetCanFly(false);
-        me->SetDisableGravity(false);
+        if (me->GetReactState() == REACT_AGGRESSIVE)
+        {
+            me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
+            me->SetImmuneToPC(false);
+            me->SetImmuneToNPC(false);
+        }
     }
 
     void DoAction(int32 action) override
@@ -77,7 +77,7 @@ struct boss_epoch_hunter : public BossAI
         if (action == ACTION_EPOCH_ENGAGE)
         {
             me->SetReactState(REACT_AGGRESSIVE);
-            me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+            me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
             me->SetImmuneToPC(false);
             me->SetImmuneToNPC(false);
             DoZoneInCombat();
