@@ -39,7 +39,9 @@ EndScriptData */
 #include "TOTP.h"
 #include "World.h"
 #include "WorldSession.h"
+#include <algorithm>
 #include <unordered_map>
+#include <vector>
 
 using namespace Trinity::ChatCommands;
 
@@ -62,11 +64,12 @@ public:
         };
         static ChatCommandTable accountOnlinelistCommandTable =
         {
-            { "",         HandleAccountOnlineListCommand,               LANG_COMMAND_ACC_ONLINELIST_HELP,       rbac::RBAC_PERM_COMMAND_ACCOUNT_ONLINE_LIST,        Console::Yes },
-            { "ip",       HandleAccountOnlineListWithIpFilterCommand,   LANG_COMMAND_ACC_ONLINELIST_HELP,       rbac::RBAC_PERM_COMMAND_ACCOUNT_ONLINE_LIST,        Console::Yes },
-            { "limit",    HandleAccountOnlineListWithLimitCommand,      LANG_COMMAND_ACC_ONLINELIST_HELP,       rbac::RBAC_PERM_COMMAND_ACCOUNT_ONLINE_LIST,        Console::Yes },
-            { "map",      HandleAccountOnlineListWithMapFilterCommand,  LANG_COMMAND_ACC_ONLINELIST_HELP,       rbac::RBAC_PERM_COMMAND_ACCOUNT_ONLINE_LIST,        Console::Yes },
-            { "zone",     HandleAccountOnlineListWithZoneFilterCommand, LANG_COMMAND_ACC_ONLINELIST_HELP,       rbac::RBAC_PERM_COMMAND_ACCOUNT_ONLINE_LIST,        Console::Yes },
+            { "",           HandleAccountOnlineListCommand,               LANG_COMMAND_ACC_ONLINELIST_HELP,       rbac::RBAC_PERM_COMMAND_ACCOUNT_ONLINE_LIST,        Console::Yes },
+            { "ip",         HandleAccountOnlineListWithIpFilterCommand,   LANG_COMMAND_ACC_ONLINELIST_HELP,       rbac::RBAC_PERM_COMMAND_ACCOUNT_ONLINE_LIST,        Console::Yes },
+            { "limit",      HandleAccountOnlineListWithLimitCommand,      LANG_COMMAND_ACC_ONLINELIST_HELP,       rbac::RBAC_PERM_COMMAND_ACCOUNT_ONLINE_LIST,        Console::Yes },
+            { "map",        HandleAccountOnlineListWithMapFilterCommand,  LANG_COMMAND_ACC_ONLINELIST_HELP,       rbac::RBAC_PERM_COMMAND_ACCOUNT_ONLINE_LIST,        Console::Yes },
+            { "zone",       HandleAccountOnlineListWithZoneFilterCommand, LANG_COMMAND_ACC_ONLINELIST_HELP,       rbac::RBAC_PERM_COMMAND_ACCOUNT_ONLINE_LIST,        Console::Yes },
+            { "countries",  HandleAccountOnlineListByCountryCommand,                                              rbac::RBAC_ROLE_ADMINISTRATOR,                      Console::Yes },
         };
         static ChatCommandTable accountCommandTable =
         {
@@ -424,6 +427,89 @@ public:
         }
 
         handler->SendSysMessage(LANG_ACCOUNT_LIST_BAR);
+        return true;
+    }
+
+    static bool HandleAccountOnlineListByCountryCommand(ChatHandler* handler)
+    {
+        struct CountryStats
+        {
+            std::string Code;
+            std::string Name;
+            uint32 Total = 0;
+            uint32 Staff = 0;
+        };
+
+        std::unordered_map<std::string, CountryStats> byCountry;
+
+        SessionMap const& sessionsMap = sWorld->GetAllSessions();
+        for (SessionMap::value_type const& sessionPair : sessionsMap)
+        {
+            WorldSession* session = sessionPair.second;
+            if (!session->GetPlayer())
+                continue;
+
+            std::string code = "??";
+            std::string name = "Unknown";
+
+            if (IpLocationRecord const* loc = sIPLocation->GetLocationRecord(session->GetRemoteAddress()))
+            {
+                code = loc->CountryCode;
+                strToUpper(code);
+                name = loc->CountryName.empty() ? code : loc->CountryName;
+            }
+
+            CountryStats& stats = byCountry[name];
+            if (stats.Name.empty())
+            {
+                stats.Code = code;
+                stats.Name = name;
+            }
+            ++stats.Total;
+            if (session->GetSecurity() > SEC_PLAYER)
+                ++stats.Staff;
+        }
+
+        if (byCountry.empty())
+        {
+            handler->SendSysMessage("No players currently online.");
+            return true;
+        }
+
+        std::vector<CountryStats const*> sorted;
+        sorted.reserve(byCountry.size());
+        for (auto const& kv : byCountry)
+            sorted.push_back(&kv.second);
+
+        std::sort(sorted.begin(), sorted.end(), [](CountryStats const* a, CountryStats const* b)
+        {
+            return a->Total > b->Total;
+        });
+
+        constexpr std::string_view SEP = "|--------------------------|----|------|-----|-------|";
+        handler->SendSysMessage(SEP);
+        handler->PSendSysMessage("| %-25s| %-3s|%6s|%5s|%7s|", "Country", "CC", "Online", "Staff", "Players");
+        handler->SendSysMessage(SEP);
+
+        uint32 grandTotal = 0;
+        uint32 grandStaff = 0;
+        for (CountryStats const* s : sorted)
+        {
+            std::string truncated;
+            std::string_view displayName = s->Name;
+            if (s->Name.size() > 25)
+            {
+                truncated = s->Name.substr(0, 23) + "..";
+                displayName = truncated;
+            }
+            handler->PSendSysMessage("| %-25s| %-3s|%6u|%5u|%7u|", displayName.data(), s->Code.c_str(), s->Total, s->Staff, s->Total - s->Staff);
+            grandTotal += s->Total;
+            grandStaff += s->Staff;
+        }
+
+        handler->SendSysMessage(SEP);
+        handler->PSendSysMessage("| %-25s| %-3s|%6u|%5u|%7u|", "Total", "", grandTotal, grandStaff, grandTotal - grandStaff);
+        handler->SendSysMessage(SEP);
         return true;
     }
 

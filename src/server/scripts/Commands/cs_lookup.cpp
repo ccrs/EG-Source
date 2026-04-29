@@ -28,6 +28,7 @@ EndScriptData */
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
 #include "GameEventMgr.h"
+#include "IPLocation.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Player.h"
@@ -55,6 +56,7 @@ public:
             { "ip",      rbac::RBAC_PERM_COMMAND_LOOKUP_PLAYER_IP,      true, &HandleLookupPlayerIpCommand,        "" },
             { "account", rbac::RBAC_PERM_COMMAND_LOOKUP_PLAYER_ACCOUNT, true, &HandleLookupPlayerAccountCommand,   "" },
             { "email",   rbac::RBAC_PERM_COMMAND_LOOKUP_PLAYER_EMAIL,   true, &HandleLookupPlayerEmailCommand,     "" },
+            { "country", rbac::RBAC_ROLE_ADMINISTRATOR,                 true, &HandleLookupPlayerCountryCommand,   "" },
         };
 
         static std::vector<ChatCommand> lookupCommandTable =
@@ -1489,6 +1491,61 @@ public:
         PreparedQueryResult result = LoginDatabase.Query(stmt);
 
         return LookupPlayerSearchCommand(result, limit, handler);
+    }
+
+    static bool HandleLookupPlayerCountryCommand(ChatHandler* handler, char const* args)
+    {
+        if (!*args)
+            return false;
+
+        std::string input = args;
+        strToLower(input);
+
+        constexpr std::string_view SEP = "|-----------------------|-----------------------|----------------|-----|-----|-----|";
+
+        uint32 count = 0;
+        SessionMap const& sessionsMap = sWorld->GetAllSessions();
+        for (SessionMap::value_type const& sessionPair : sessionsMap)
+        {
+            WorldSession* session = sessionPair.second;
+            Player* player = session->GetPlayer();
+            if (!player)
+                continue;
+
+            IpLocationRecord const* loc = sIPLocation->GetLocationRecord(session->GetRemoteAddress());
+            if (!loc)
+                continue;
+
+            std::string nameLower = loc->CountryName;
+            strToLower(nameLower);
+
+            if (loc->CountryCode != input && nameLower != input)
+                continue;
+
+            if (!count)
+            {
+                std::string code = loc->CountryCode;
+                strToUpper(code);
+                handler->PSendSysMessage("Online players from %s (%s):", loc->CountryName.c_str(), code.c_str());
+                handler->SendSysMessage(SEP);
+                handler->PSendSysMessage("| %-22s| %-22s| %-15s| %4s| %4s| %3s |", "Account", "Character", "IP", "Map", "Zone", "Sec");
+                handler->SendSysMessage(SEP);
+            }
+
+            handler->PSendSysMessage("| %-22s| %-22s| %-15s| %4u| %4u| %3d |", session->GetAccountName().c_str(), session->GetPlayerName().c_str(), session->GetRemoteAddress().c_str(), player->GetMapId(), player->GetZoneId(), int32(session->GetSecurity()));
+            ++count;
+        }
+
+        if (!count)
+        {
+            handler->PSendSysMessage("No online players found for country '%s'.", args);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        handler->SendSysMessage(SEP);
+        handler->PSendSysMessage("%u player(s) online.", count);
+        return true;
     }
 
     static bool LookupPlayerSearchCommand(PreparedQueryResult result, int32 limit, ChatHandler* handler)
