@@ -165,6 +165,13 @@ class TC_GAME_API Channel
             return name == WORLD_CHAT || name == WORLD_CHAT_ES;
         }
 
+        Channel(Channel const&) = delete;
+        Channel(Channel&&) = delete;
+        Channel& operator=(Channel const&) = delete;
+        Channel& operator=(Channel&&) = delete;
+
+        ~Channel();
+
         static void GetChannelName(std::string& channelName, uint32 channelId, LocaleConstant locale, AreaTableEntry const* zoneEntry);
         std::string GetName(LocaleConstant locale = DEFAULT_LOCALE) const;
 

@@ -645,6 +645,14 @@ void InstanceSaveManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficulty, b
             return;
 
         // delete/promote instance binds from the DB, even if not loaded
+        // Order matters: expire character binds BEFORE deleting instance rows.
+        // CHAR_DEL_EXPIRED_INSTANCE_BY_MAP_DIFF uses a LEFT JOIN on instance to
+        // filter by map/difficulty, so it must run after the decrement so that
+        // post-decrement extendState values determine which instance rows to keep.
+        // Running it before would delete instance rows whose character entries
+        // still had extendState != 0 at that moment, then the expire-update
+        // would silently miss those entries (LEFT JOIN returns NULL → WHERE map=?
+        // fails), leaving character_instance rows stuck with a stale extendState.
         CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
 
         CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_EXPIRED_CHAR_INSTANCE_BY_MAP_DIFF);
@@ -657,12 +665,12 @@ void InstanceSaveManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficulty, b
         stmt->setUInt8(1, uint8(difficulty));
         trans->Append(stmt);
 
-        stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_EXPIRED_INSTANCE_BY_MAP_DIFF);
+        stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_EXPIRE_CHAR_INSTANCE_BY_MAP_DIFF);
         stmt->setUInt16(0, uint16(mapid));
         stmt->setUInt8(1, uint8(difficulty));
         trans->Append(stmt);
 
-        stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_EXPIRE_CHAR_INSTANCE_BY_MAP_DIFF);
+        stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_EXPIRED_INSTANCE_BY_MAP_DIFF);
         stmt->setUInt16(0, uint16(mapid));
         stmt->setUInt8(1, uint8(difficulty));
         trans->Append(stmt);
