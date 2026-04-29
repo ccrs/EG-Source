@@ -291,6 +291,8 @@ struct npc_brann_hos : public EscortAI
 
             if (_instance->GetBossState(DATA_TRIBUNAL_OF_AGES) != DONE)
                 _instance->SetBossState(DATA_TRIBUNAL_OF_AGES, NOT_STARTED);
+
+            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
         }
     }
 
@@ -629,6 +631,7 @@ struct npc_brann_hos : public EscortAI
         if (action == GOSSIP_ACTION_INFO_DEF + 1)
         {
             CloseGossipMenuFor(player);
+            me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
             me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
             SetEscortPaused(false);
             _step = 1;
