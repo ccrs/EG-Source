@@ -1,4 +1,5 @@
 #include "CustomFunctions.h"
+#include "InstanceScript.h"
 #include "CellImpl.h"
 #include "Containers.h"
 #include "Creature.h"
@@ -907,6 +908,40 @@ bool WorldSession::NormalizeTransportMovementInfo(Unit* mover, MovementInfo& mov
     }
 
     return true;
+}
+
+void InstanceScript::ForceRespawnQueuedCreaturesByEntry(std::initializer_list<uint32> entries)
+{
+    std::vector<RespawnInfo const*> respawnData;
+    instance->GetRespawnInfo(respawnData, SPAWN_TYPEMASK_CREATURE);
+    for (RespawnInfo const* info : respawnData)
+    {
+        bool matched = false;
+        for (uint32 entry : entries)
+            if (info->entry == entry) { matched = true; break; }
+        if (!matched)
+            continue;
+
+        bool aliveExists = false;
+        std::vector<Creature*> deadCopies;
+        auto bounds = instance->GetCreatureBySpawnIdStore().equal_range(info->spawnId);
+        for (auto itr = bounds.first; itr != bounds.second; ++itr)
+        {
+            Creature* creature = itr->second;
+            if (!creature)
+                continue;
+            if (creature->IsAlive())
+                aliveExists = true;
+            else
+                deadCopies.push_back(creature);
+        }
+
+        for (Creature* creature : deadCopies)
+            creature->RemoveCorpse(false, true);
+
+        if (!aliveExists)
+            instance->Respawn(info->type, info->spawnId);
+    }
 }
 
 EG::SetRaceMasqueradeSetting::SetRaceMasqueradeSetting(Player* owner, Races selectedRace) : _owner(owner), _selectedRace(selectedRace)

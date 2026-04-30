@@ -182,5 +182,5 @@ DELETE FROM `disables` WHERE `sourceType`=4 AND `entry` IN (10090, 10091, 10423,
 
 UPDATE `creature_template` SET `flags_extra` = 8384 WHERE `entry` = 33705;
 
-UPDATE `creature_template` SET `unit_flags` = 33554434, `flags_extra` = 8384 WHERE `entry` = 32866;
-UPDATE `creature_template` SET `unit_flags` = 33554434, `flags_extra` = 8384 WHERE `entry` = 33690;
+UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 8384 WHERE `entry` = 32866;
+UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 8384 WHERE `entry` = 33690;
