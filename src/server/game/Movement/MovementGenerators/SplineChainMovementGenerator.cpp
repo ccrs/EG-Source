@@ -96,7 +96,7 @@ bool SplineChainMovementGenerator::Initialize(Unit* owner)
 
     if (_nextIndex >= _chainSize)
     {
-        TC_LOG_WARN("movement", "SplineChainMovementGenerator::Initialize: couldn't initialize generator, _nextIndex is >= _chainSize ({})", owner->GetGUID().ToString());
+        TC_LOG_DEBUG("movement.splinechain", "SplineChainMovementGenerator::Initialize: _nextIndex ({}) >= _chainSize ({}), chain already completed or bad resume ({})", _nextIndex, _chainSize, owner->GetGUID().ToString());
         _msToNext = 0;
         return false;
     }
