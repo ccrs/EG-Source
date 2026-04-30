@@ -456,10 +456,15 @@ public:
             {
                 code = loc->CountryCode;
                 strToUpper(code);
-                name = loc->CountryName.empty() ? code : loc->CountryName;
+                std::string_view fullName = loc->CountryName;
+                size_t comma = fullName.find(',');
+                name = !fullName.empty()
+                    ? std::string(comma != std::string_view::npos ? fullName.substr(0, comma) : fullName)
+                    : code;
             }
 
-            CountryStats& stats = byCountry[name];
+            // Key by country code so all regions of a country merge into one row
+            CountryStats& stats = byCountry[code];
             if (stats.Name.empty())
             {
                 stats.Code = code;

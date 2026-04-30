@@ -1516,17 +1516,21 @@ public:
             if (!loc)
                 continue;
 
-            std::string nameLower = loc->CountryName;
-            strToLower(nameLower);
+            std::string_view fullName = loc->CountryName;
+            size_t comma = fullName.find(',');
+            std::string_view countrySegment = comma != std::string_view::npos ? fullName.substr(0, comma) : fullName;
 
-            if (loc->CountryCode != input && nameLower != input)
+            std::string countryLower(countrySegment);
+            strToLower(countryLower);
+
+            if (loc->CountryCode != input && countryLower != input)
                 continue;
 
             if (!count)
             {
                 std::string code = loc->CountryCode;
                 strToUpper(code);
-                handler->PSendSysMessage("Online players from %s (%s):", loc->CountryName.c_str(), code.c_str());
+                handler->PSendSysMessage("Online players from %s (%s):", std::string(countrySegment).c_str(), code.c_str());
                 handler->SendSysMessage(SEP);
                 handler->PSendSysMessage("| %-22s| %-22s| %-15s| %4s| %4s| %3s |", "Account", "Character", "IP", "Map", "Zone", "Sec");
                 handler->SendSysMessage(SEP);
