@@ -3821,7 +3821,7 @@ template TC_GAME_API void Map::RemoveFromMap(DynamicObject*, bool);
 
 InstanceMap::InstanceMap(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode, Map* _parent, TeamId InstanceTeam)
   : Map(id, expiry, InstanceId, SpawnMode, _parent),
-    m_resetAfterUnload(false), m_unloadWhenEmpty(false),
+    m_resetAfterUnload(false), m_unloadWhenEmpty(false), m_freeInstanceIdOnUnload(false),
     i_data(nullptr), i_script_id(0), i_script_team(InstanceTeam)
 {
     //lets initialize visibility distance for dungeons
@@ -4061,6 +4061,11 @@ void InstanceMap::CreateInstanceData(bool load)
                 TC_LOG_DEBUG("maps", "Loading instance data for `{}` with id {}", sObjectMgr->GetScriptName(i_script_id), i_InstanceId);
                 i_data->Load(data.c_str());
             }
+        }
+        else
+        {
+            TC_LOG_WARN("maps", "CreateInstanceData: no instance record found for map {} instance {} - initializing fresh state", GetId(), i_InstanceId);
+            i_data->Create();
         }
     }
     else

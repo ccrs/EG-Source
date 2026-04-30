@@ -298,9 +298,12 @@ bool MapInstanced::DestroyInstance(InstancedMaps::iterator &itr)
 
     sScriptMgr->OnDestroyMap(itr->second.get());
 
-    // Free up the instance id and allow it to be reused for bgs and arenas (other instances are handled in the InstanceSaveMgr)
+    // Free up the instance id and allow it to be reused
     if (itr->second->IsBattlegroundOrArena())
         sMapMgr->FreeInstanceId(itr->second->GetInstanceId());
+    else if (InstanceMap* instMap = itr->second->ToInstanceMap())
+        if (instMap->GetFreeInstanceIdOnUnload())
+            sMapMgr->FreeInstanceId(instMap->GetInstanceId());
 
     // erase map
     m_InstancedMaps.erase(itr++);

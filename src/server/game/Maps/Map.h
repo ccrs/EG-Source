@@ -892,9 +892,11 @@ class TC_GAME_API InstanceMap : public Map
         void SendResetWarnings(uint32 timeLeft) const;
         void SetResetSchedule(bool on);
 
-        /* this checks if any players have a permanent bind (included reactivatable expired binds) to the instance ID
+        /* this checks if any players have an active permanent bind (extendState > 0) to the instance ID
         it needs a DB query, so use sparingly */
         bool HasPermBoundPlayers() const;
+        void SetFreeInstanceIdOnUnload(bool val) { m_freeInstanceIdOnUnload = val; }
+        bool GetFreeInstanceIdOnUnload() const { return m_freeInstanceIdOnUnload; }
         uint32 GetMaxPlayers() const;
         uint32 GetMaxResetDelay() const;
         TeamId GetTeamIdInInstance() const { return i_script_team; }
@@ -906,6 +908,7 @@ class TC_GAME_API InstanceMap : public Map
     private:
         bool m_resetAfterUnload;
         bool m_unloadWhenEmpty;
+        bool m_freeInstanceIdOnUnload;
         InstanceScript* i_data;
         uint32 i_script_id;
         TeamId i_script_team;

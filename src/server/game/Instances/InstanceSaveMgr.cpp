@@ -619,12 +619,17 @@ void InstanceSaveManager::_ResetInstance(uint32 mapid, uint32 instanceId)
     {
         iMap->DeleteRespawnTimes();
         iMap->DeleteCorpseData();
+        // Defer FreeInstanceId until the map is removed from m_InstancedMaps so the
+        // old map cannot be handed to a new group via FindInstanceMap() with a recycled ID.
+        if (InstanceMap* instMap = iMap->ToInstanceMap())
+            instMap->SetFreeInstanceIdOnUnload(true);
     }
     else
+    {
         Map::DeleteRespawnTimesInDB(mapid, instanceId);
-
-    // Free up the instance id and allow it to be reused
-    sMapMgr->FreeInstanceId(instanceId);
+        // Map is not loaded: safe to free the ID immediately.
+        sMapMgr->FreeInstanceId(instanceId);
+    }
 }
 
 void InstanceSaveManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficulty, bool warn, time_t resetTime)
