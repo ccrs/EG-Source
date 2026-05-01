@@ -188,11 +188,14 @@ struct boss_prince_taldaram : public BossAI
                     if (me->GetThreatManager().GetThreatListPlayerCount() > 1)
                     {
                         if (Unit* embraceTarget = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
+                        {
                             _embraceTargetGUID = embraceTarget->GetGUID();
-                        Talk(SAY_VANISH);
-                        DoCast(me, SPELL_VANISH);
-                        events.DelayEvents(500ms);
-                        events.ScheduleEvent(EVENT_START_FEEDING, 2s);
+                            _embraceTakenDamage = 0;
+                            Talk(SAY_VANISH);
+                            DoCast(me, SPELL_VANISH);
+                            events.DelayEvents(500ms);
+                            events.ScheduleEvent(EVENT_START_FEEDING, 2s);
+                        }
                     }
                     events.ScheduleEvent(EVENT_VANISH, 25s, 35s);
                     break;
@@ -253,6 +256,15 @@ struct boss_prince_taldaram : public BossAI
         Talk(SAY_SLAY);
     }
 
+    void MovementInform(uint32 type, uint32 id) override
+    {
+        if (type != EFFECT_MOTION_TYPE || id != 10)
+            return;
+
+        me->SetDisableGravity(false);
+        me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+    }
+
     bool CheckSpheres()
     {
         for (uint8 i = 0; i < 2; ++i)
@@ -273,14 +285,12 @@ struct boss_prince_taldaram : public BossAI
 
     void RemovePrison()
     {
-        me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
         summons.DespawnEntry(NPC_JEDOGA_CONTROLLER);
         me->RemoveAurasDueToSpell(SPELL_BEAM_VISUAL);
         me->SetHomePosition(me->GetPositionX(), me->GetPositionY(), PrinceTaldaramGroundPositionZ, me->GetOrientation());
         DoCast(SPELL_HOVER_FALL);
-        me->SetDisableGravity(false);
-        me->GetMotionMaster()->MoveLand(0, me->GetHomePosition());
         Talk(SAY_WARNING);
+        me->GetMotionMaster()->MoveLand(10, me->GetHomePosition());
         if (GameObject* platform = instance->GetGameObject(DATA_PRINCE_TALDARAM_PLATFORM))
             instance->HandleGameObject(platform->GetGUID(), true);
     }
