@@ -151,7 +151,8 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
     float const maxTarget = _range ? _range->MaxTolerance + hitboxSum : CONTACT_DISTANCE + hitboxSum;
     Optional<ChaseAngle> angle = useChaseAngle ? _angle : Optional<ChaseAngle>();
 
-    bool syncFacingOrientation = false;
+    // Decoupled from range-check timer: sync facing every tick when settled so slight owner displacement still updates server orientation.
+    bool syncFacingOrientation = !owner->HasUnitState(UNIT_STATE_CHASE_MOVE);
     if (!_relocationCooldown.Passed())
         _relocationCooldown.Update(diff);
     _rangeCheckTimer.Update(diff);
