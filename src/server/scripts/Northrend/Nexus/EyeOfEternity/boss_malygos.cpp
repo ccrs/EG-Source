@@ -19,11 +19,10 @@
 SDName: Boss Malygos
 Script Data End */
 
-#include "ScriptMgr.h"
+#include "eye_of_eternity.h"
 #include "CombatAI.h"
 #include "Containers.h"
 #include "CreatureTextMgr.h"
-#include "eye_of_eternity.h"
 #include "GameObject.h"
 #include "GameObjectAI.h"
 #include "GridNotifiers.h"
@@ -33,12 +32,13 @@ Script Data End */
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "SpellInfo.h"
 #include "SpellScript.h"
 #include "TemporarySummon.h"
 #include "Vehicle.h"
 
-enum Events
+enum MalygosEvents
 {
     // =========== INTRO BEFORE WE START ENCOUNTER ===============
     EVENT_STOP_PORTAL_BEAM           = 1,
@@ -88,7 +88,7 @@ enum Events
     EVENT_CAST_RIDE_SPELL            = 1
 };
 
-enum Phases
+enum MalygosPhases
 {
     PHASE_NOT_STARTED      = 1,
     PHASE_ONE              = 2,
@@ -96,7 +96,7 @@ enum Phases
     PHASE_THREE            = 4
 };
 
-enum Spells
+enum MalygosSpells
 {
     // Intro
     SPELL_RANDOM_PORTAL                      = 56047,
@@ -158,7 +158,7 @@ enum Spells
     SPELL_ALEXSTRASZAS_GIFT_BEAM_VISUAL      = 61023
 };
 
-enum Movements
+enum MalygosMovements
 {
     POINT_NEAR_RANDOM_PORTAL_P_NONE         = 1,
     POINT_LAND_P_ONE,
@@ -172,12 +172,12 @@ enum Movements
     POINT_IDLE_P_THREE,
 };
 
-enum Seats
+enum MalygosSeats
 {
     SEAT_0       = 0
 };
 
-enum Actions
+enum MalygosActions
 {
     // Malygos
     ACTION_LAND_ENCOUNTER_START                = 0,
@@ -194,7 +194,7 @@ enum Actions
     ACTION_SET_DISK_VICTIM_CHASE               = 0
 };
 
-enum Texts
+enum MalygosTexts
 {
     // Malygos
     SAY_INTRO_EVENT                     = 0,
@@ -245,7 +245,7 @@ Position const RangeHoverDisksSpawnPositions[MAX_RANGE_HOVER_DISK_SPAWNPOINTS] =
 };
 
 #define MAX_MELEE_HOVER_DISK_SPAWNPOINTS       4
-Position const MeleeHoverDisksSpawnPositions[MAX_RANGE_HOVER_DISK_SPAWNPOINTS] =
+Position const MeleeHoverDisksSpawnPositions[MAX_MELEE_HOVER_DISK_SPAWNPOINTS] =
 {
     { 754.4617f, 1283.859f, 285.0522f, 0.0f },
     { 771.7864f, 1301.853f, 285.0522f, 0.0f },
@@ -288,22 +288,20 @@ Position const MalygosPositions[MAX_MALYGOS_POS] =
     { 755.681f, 1298.41f, 220.06f, 0.0f }  // Point idle phase III
 };
 
-Position const AlexstraszaSpawnPos  = { 854.551f, 1225.31f, 300.901f, 0.0f }; // Alexstrasza's spawn position
-Position const HeartOfMagicSpawnPos = { 755.351f, 1298.31f, 223.909f, 0.0f }; // Heart of Magic spawn position
+Position const MalygosAlexstraszaSpawnPos  = { 854.551f, 1225.31f, 300.901f, 0.0f }; // Alexstrasza's spawn position
+Position const MalygosHeartOfMagicSpawnPos = { 755.351f, 1298.31f, 223.909f, 0.0f }; // Heart of Magic spawn position
 
-#define TEN_MINUTES         (10*MINUTE*IN_MILLISECONDS)
-
-enum Achievements
+enum MalygosAchievements
 {
     ACHIEV_TIMED_START_EVENT       = 20387
 };
 
-enum AreaIds
+enum MalygosAreaIds
 {
     AREA_EYE_OF_ETERNITY         = 4500
 };
 
-enum MiscData
+enum MalygosMiscData
 {
     // Lights
     LIGHT_DEFAULT                    = 1773,
@@ -327,7 +325,7 @@ enum MiscData
 };
 
 // Used to check if summons guids come from vehicles
-class VehicleCheckPredicate
+class MalygosVehicleCheckPredicate
 {
     public:
         bool operator()(ObjectGuid guid) { return guid.IsVehicle(); }
@@ -370,6 +368,7 @@ struct boss_malygos : public BossAI
         Initialize();
 
         me->SetDisableGravity(true);
+        me->SetCanFly(true);
         me->SetImmuneToAll(true);
         me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
         // TO DO: find what in core is making boss slower than in retail (when correct speed data) or find missing movement flag update or forced spline change
@@ -460,10 +459,8 @@ struct boss_malygos : public BossAI
                     Position pos;
                     pos.m_positionZ = alexstraszaBunny->GetPositionZ();
                     alexstraszaBunny->GetNearPoint2D(nullptr, pos.m_positionX, pos.m_positionY, 30.0f, alexstraszaBunny->GetAbsoluteAngle(me));
+                    me->GetMotionMaster()->MoveIdle();
                     me->GetMotionMaster()->MoveLand(POINT_LAND_P_ONE, pos);
-                    me->SetImmuneToAll(false);
-                    DoZoneInCombat();
-                    events.ScheduleEvent(EVENT_LAND_START_ENCOUNTER, 7s, 1, PHASE_NOT_STARTED);
                 }
                 break;
             case ACTION_EXECUTE_VORTEX:
@@ -474,6 +471,7 @@ struct boss_malygos : public BossAI
                 break;
             case ACTION_LIFT_IN_AIR:
             {
+                me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
                 Position _zToLift = me->GetPosition();
                 if (_phase == PHASE_ONE)
                 {
@@ -584,7 +582,7 @@ struct boss_malygos : public BossAI
         {
             if (_phase == PHASE_TWO)
             {
-                VehicleCheckPredicate pred;
+                MalygosVehicleCheckPredicate pred;
                 summons.DoAction(ACTION_DELAYED_DESPAWN, pred);
                 summons.DespawnIf(pred);
                 summons.DespawnAll();
@@ -638,7 +636,6 @@ struct boss_malygos : public BossAI
     }
 
     void MoveInLineOfSight(Unit* who) override
-
     {
         if (!me->IsInCombat() || _phase != PHASE_ONE)
             return;
@@ -665,18 +662,22 @@ struct boss_malygos : public BossAI
                 break;
             case POINT_LAND_P_ONE:
                 me->SetDisableGravity(false);
+                me->SetCanFly(false);
+                me->GetMotionMaster()->MoveIdle();
+                events.ScheduleEvent(EVENT_LAND_START_ENCOUNTER, 7s, 1, PHASE_NOT_STARTED);
                 break;
             case POINT_VORTEX_P_ONE:
-                me->GetMotionMaster()->MoveIdle();
                 DoAction(ACTION_EXECUTE_VORTEX);
                 break;
             case POINT_LAND_AFTER_VORTEX_P_ONE:
                 me->SetDisableGravity(false);
+                me->SetCanFly(false);
                 _executingVortex = false;
                 me->SetReactState(REACT_AGGRESSIVE);
                 break;
             case POINT_LIFT_IN_AIR_P_ONE:
                 me->SetDisableGravity(true);
+                me->SetCanFly(true);
                 events.ScheduleEvent(EVENT_MOVE_TO_VORTEX_POINT, 1ms, 0, PHASE_ONE);
                 break;
             case POINT_FLY_OUT_OF_PLATFORM_P_TWO:
@@ -694,6 +695,7 @@ struct boss_malygos : public BossAI
                 break;
             case POINT_PHASE_ONE_TO_TWO_TRANSITION:
                 me->SetDisableGravity(true);
+                me->SetCanFly(true);
                 if (Creature* alexstraszaBunny = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ALEXSTRASZA_BUNNY_GUID)))
                     me->SetFacingToObject(alexstraszaBunny);
                 me->GetMap()->SetZoneOverrideLight(AREA_EYE_OF_ETERNITY, LIGHT_DEFAULT, LIGHT_ARCANE_RUNES, 5s);
@@ -762,7 +764,9 @@ struct boss_malygos : public BossAI
                         me->SetFacingToObject(iris);
                         iris->Delete(); // this is not the best way.
                     }
+                    me->SetImmuneToAll(false);
                     me->SetReactState(REACT_AGGRESSIVE);
+                    DoZoneInCombat();
                     SetPhase(PHASE_ONE, true);
                     break;
                 case EVENT_SAY_INTRO:
@@ -976,9 +980,9 @@ struct boss_malygos : public BossAI
         _JustDied();
         Talk(SAY_DEATH);
         if (Creature* alexstraszaGiftBoxBunny = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_GIFT_BOX_BUNNY_GUID)))
-            alexstraszaGiftBoxBunny->SummonGameObject(RAID_MODE(GO_HEART_OF_MAGIC_10, GO_HEART_OF_MAGIC_25), HeartOfMagicSpawnPos, QuaternionData(), 0s);
+            alexstraszaGiftBoxBunny->SummonGameObject(RAID_MODE(GO_HEART_OF_MAGIC_10, GO_HEART_OF_MAGIC_25), MalygosHeartOfMagicSpawnPos, QuaternionData(), 0s);
 
-        me->SummonCreature(NPC_ALEXSTRASZA, AlexstraszaSpawnPos, TEMPSUMMON_MANUAL_DESPAWN);
+        me->SummonCreature(NPC_ALEXSTRASZA, MalygosAlexstraszaSpawnPos, TEMPSUMMON_MANUAL_DESPAWN);
         me->DespawnOrUnsummon(5s);
     }
 
@@ -1046,17 +1050,18 @@ struct npc_power_spark : public ScriptedAI
     npc_power_spark(Creature* creature) : ScriptedAI(creature)
     {
         _instance = creature->GetInstanceScript();
-        Talk(EMOTE_POWER_SPARK_SUMMONED);
-        MoveToMalygos();
+        creature->SetReactState(REACT_PASSIVE);
     }
 
-    void MoveToMalygos()
+    void Reset() override
     {
-        me->GetMotionMaster()->MoveIdle();
-
+        Talk(EMOTE_POWER_SPARK_SUMMONED);
         if (Creature* malygos = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_MALYGOS)))
-            me->GetMotionMaster()->MoveFollow(malygos, 0.0f, 0.0f);
+            me->GetMotionMaster()->MoveChase(malygos, 0.f, false);
     }
+
+    void MoveInLineOfSight(Unit*) override { }
+    void AttackStart(Unit*) override { }
 
     void UpdateAI(uint32 /*diff*/) override
     {
@@ -1073,12 +1078,12 @@ struct npc_power_spark : public ScriptedAI
 
             if (malygos->HasAura(SPELL_VORTEX_1))
             {
-                me->GetMotionMaster()->MoveIdle();
+                me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
                 return;
             }
 
             if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() != CHASE_MOTION_TYPE)
-                me->GetMotionMaster()->MoveFollow(malygos, 0.0f, 0.0f);
+                me->GetMotionMaster()->MoveChase(malygos, 0.f, false);
         }
     }
 
@@ -1388,8 +1393,7 @@ struct npc_arcane_overload : public ScriptedAI
         {
             if (malygos->AI()->GetData(DATA_PHASE) == PHASE_TWO)
                 me->DespawnOrUnsummon(6s);
-            // If evade is hit during phase II shields should disappear with no delay
-            else if (malygos->AI()->GetData(DATA_PHASE) == 0)
+            else
                 me->DespawnOrUnsummon();
         }
     }
@@ -1665,11 +1669,8 @@ class spell_malygos_vortex_visual : public AuraScript
                 }
             }
 
-            if (Creature* malygos = caster->ToCreature())
-            {
-                malygos->GetMotionMaster()->MoveLand(POINT_LAND_AFTER_VORTEX_P_ONE, MalygosPositions[2]);
-                malygos->RemoveAura(SPELL_VORTEX_1);
-            }
+            caster->GetMotionMaster()->MoveLand(POINT_LAND_AFTER_VORTEX_P_ONE, MalygosPositions[2]);
+            caster->RemoveAura(SPELL_VORTEX_1);
         }
     }
 
@@ -2008,7 +2009,7 @@ class spell_malygos_surge_of_power_warning_selector_25 : public SpellScript
     void Register() override
     {
         OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_malygos_surge_of_power_warning_selector_25::SendThreeTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-        AfterHit += SpellHitFn(spell_malygos_surge_of_power_warning_selector_25::ExecuteMainSpell);
+        AfterCast += SpellCastFn(spell_malygos_surge_of_power_warning_selector_25::ExecuteMainSpell);
     }
 };
 
@@ -2120,7 +2121,8 @@ private:
         if (Creature* target = GetTarget()->ToCreature())
             if (InstanceScript* instance = GetCaster()->GetInstanceScript())
             {
-                _alexstraszaGift->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
+                if (_alexstraszaGift)
+                    _alexstraszaGift->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                 if (GameObject* heartMagic = target->GetMap()->GetGameObject(instance->GetGuidData(DATA_HEART_OF_MAGIC_GUID)))
                 {
                     heartMagic->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
