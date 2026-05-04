@@ -232,7 +232,7 @@ struct boss_sartharion : public BossAI
             {
                 tenebron->SetHomePosition(3239.07f, 657.235f, 86.8775f, 4.74729f);
                 if (tenebron->IsAlive())
-                    tenebron->GetMotionMaster()->MoveTargetedHome();
+                    tenebron->AI()->EnterEvadeMode();
                 else
                     toRespawn.push_back(NPC_TENEBRON);
             }
@@ -245,7 +245,7 @@ struct boss_sartharion : public BossAI
             {
                 shadron->SetHomePosition(3363.06f, 525.28f, 98.362f, 4.76475f);
                 if (shadron->IsAlive())
-                    shadron->GetMotionMaster()->MoveTargetedHome();
+                    shadron->AI()->EnterEvadeMode();
                 else
                     toRespawn.push_back(NPC_SHADRON);
             }
@@ -258,7 +258,7 @@ struct boss_sartharion : public BossAI
             {
                 vesperon->SetHomePosition(3145.68f, 520.71f, 89.7f, 4.64258f);
                 if (vesperon->IsAlive())
-                    vesperon->GetMotionMaster()->MoveTargetedHome();
+                    vesperon->AI()->EnterEvadeMode();
                 else
                     toRespawn.push_back(NPC_VESPERON);
             }

@@ -171,12 +171,9 @@ struct dummy_dragonAI : public ScriptedAI
 
     void Reset() override
     {
-        if (me->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2))
-        {
-            me->SetImmuneToAll(false);
-            me->SetReactState(REACT_AGGRESSIVE);
-            me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
-        }
+        me->SetImmuneToAll(false);
+        me->SetReactState(REACT_AGGRESSIVE);
+        me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
 
         switch (me->GetEntry())
         {
@@ -207,8 +204,12 @@ struct dummy_dragonAI : public ScriptedAI
 
     void DoAction(int32 action) override
     {
-        if (action == ACTION_CANCEL_FREE_MOVEMENT)
-            events.CancelEvent(EVENT_FREE_MOVEMENT);
+        switch (action)
+        {
+            case ACTION_CANCEL_FREE_MOVEMENT:
+                events.CancelEvent(EVENT_FREE_MOVEMENT);
+                break;
+        }
     }
 
     void MovementInform(uint32 type, uint32 pointId) override
@@ -216,9 +217,6 @@ struct dummy_dragonAI : public ScriptedAI
         if (!me->IsAlive() || !instance || type != POINT_MOTION_TYPE)
             return;
 
-        // debug_log("dummy_dragonAI: %s reached point %u", me->GetName(), uiPointId);
-
-        // if healers messed up the raid and we was already initialized
         if (instance->GetBossState(DATA_SARTHARION) != IN_PROGRESS)
         {
             EnterEvadeMode();
