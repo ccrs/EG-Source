@@ -56,11 +56,11 @@ enum Enums
     SPELL_SUMMON_TWILIGHT_WHELP                 = 58035,    // doesn't work, will spawn NPC_TWILIGHT_WHELP
     SPELL_SUMMON_SARTHARION_TWILIGHT_WHELP      = 58826,    // doesn't work, will spawn NPC_SHARTHARION_TWILIGHT_WHELP
     SPELL_TWILIGHT_REVENGE                      = 60639,
+    SPELL_WILL_OF_SARTHARION                    = 61254,    // Sartharion's presence bolsters the resolve of the Twilight Drakes
     SPELL_HATCH_EGGS_H                          = 59189,
     SPELL_HATCH_EGGS                            = 58542,
     SPELL_HATCH_EGGS_EFFECT_H                   = 59190,
     SPELL_HATCH_EGGS_EFFECT                     = 58685,
-    NPC_TWILIHT_WHELP                           = 31214,
     NPC_TWILIGHT_EGG                            = 30882,
     NPC_SARTHARION_TWILIGHT_EGG                 = 31204,
 
@@ -213,7 +213,7 @@ struct dummy_dragonAI : public ScriptedAI
 
     void MovementInform(uint32 type, uint32 pointId) override
     {
-        if (!instance || type != POINT_MOTION_TYPE)
+        if (!me->IsAlive() || !instance || type != POINT_MOTION_TYPE)
             return;
 
         // debug_log("dummy_dragonAI: %s reached point %u", me->GetName(), uiPointId);
@@ -380,6 +380,17 @@ struct dummy_dragonAI : public ScriptedAI
                 sartharion->RemoveAurasDueToSpell(spellId);
                 DoCast(sartharion, SPELL_TWILIGHT_REVENGE, true);
             }
+
+        // Remove Will of Sartharion once no drakes remain alive
+        if (Unit* sartharion = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_SARTHARION)))
+            if (sartharion->IsAlive() && sartharion->HasAura(SPELL_WILL_OF_SARTHARION))
+            {
+                Creature* tenebron = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_TENEBRON));
+                Creature* shadron = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_SHADRON));
+                Creature* vesperon = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VESPERON));
+                if (!(tenebron && tenebron->IsAlive()) && !(shadron && shadron->IsAlive()) && !(vesperon && vesperon->IsAlive()))
+                    sartharion->RemoveAurasDueToSpell(SPELL_WILL_OF_SARTHARION);
+            }
     }
 
     void UpdateAI(uint32 diff) override
@@ -515,12 +526,12 @@ struct npc_shadron : public dummy_dragonAI
             switch (eventId)
             {
                 case EVENT_ACOLYTE_SHADRON:
-                    if (instance->GetBossState(DATA_PORTAL_OPEN) == NOT_STARTED)
+                    if (instance->GetBossState(DATA_PORTAL_OPEN) == IN_PROGRESS)
                         events.ScheduleEvent(EVENT_ACOLYTE_SHADRON, 10s);
                     else
                     {
                         if (me->HasAura(SPELL_GIFT_OF_TWILIGTH_SHA))
-                            return;
+                            break;
 
                         OpenPortal();
 
@@ -550,6 +561,8 @@ struct npc_vesperon : public dummy_dragonAI
     void Reset() override
     {
         dummy_dragonAI::Reset();
+
+        instance->SetBossState(DATA_PORTAL_OPEN, NOT_STARTED);
     }
 
     void JustEngagedWith(Unit* who) override
@@ -580,6 +593,7 @@ struct npc_vesperon : public dummy_dragonAI
                     else
                     {
                         OpenPortal();
+                        instance->SetBossState(DATA_PORTAL_OPEN, IN_PROGRESS);
                         DoCastVictim(SPELL_TWILIGHT_TORMENT_VESP);
                         events.ScheduleEvent(EVENT_ACOLYTE_VESPERON, 60s, 70s);
                     }
@@ -627,8 +641,7 @@ struct npc_acolyte_of_shadron : public ScriptedAI
 
     void JustDied(Unit* /*killer*/) override
     {
-        if (ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_SHADRON)))
-            instance->SetBossState(DATA_PORTAL_OPEN, NOT_STARTED);
+        instance->SetBossState(DATA_PORTAL_OPEN, NOT_STARTED);
 
         Map::PlayerList const& PlayerList = me->GetMap()->GetPlayers();
 
@@ -694,14 +707,12 @@ struct npc_acolyte_of_vesperon : public ScriptedAI
     {
         me->RemoveAurasDueToSpell(SPELL_TWILIGHT_TORMENT_VESP_ACO);
 
+        instance->SetBossState(DATA_PORTAL_OPEN, NOT_STARTED);
+
         // remove twilight torment on Vesperon
         if (Creature* vesperon = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VESPERON)))
-        {
-            instance->SetBossState(DATA_PORTAL_OPEN, NOT_STARTED);
-
             if (vesperon->IsAlive() && vesperon->HasAura(SPELL_TWILIGHT_TORMENT_VESP))
                 vesperon->RemoveAurasDueToSpell(SPELL_TWILIGHT_TORMENT_VESP);
-        }
 
         Map::PlayerList const& PlayerList = me->GetMap()->GetPlayers();
 
@@ -753,13 +764,19 @@ struct npc_twilight_eggs : public ScriptedAI
     {
         SetCombatMovement(false);
         instance = creature->GetInstanceScript();
+        creature->SetReactState(REACT_PASSIVE);
     }
 
     void Reset() override
     {
+        events.Reset();
         me->AddAura(SPELL_TWILIGHT_SHIFT_ENTER, me);
-
         events.ScheduleEvent(EVENT_TWILIGHT_EGGS, 20s);
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        events.CancelEvent(EVENT_TWILIGHT_EGGS);
     }
 
     void SpawnWhelps()
@@ -778,17 +795,15 @@ struct npc_twilight_eggs : public ScriptedAI
         DoZoneInCombat(who);
     }
 
+    void MoveInLineOfSight(Unit*) override { }
+    void AttackStart(Unit*) override { }
+
     void UpdateAI(uint32 diff) override
     {
         events.Update(diff);
 
         if (events.ExecuteEvent() == EVENT_TWILIGHT_EGGS)
-        {
-            if (ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_TENEBRON)))
-                instance->SetBossState(DATA_PORTAL_OPEN, NOT_STARTED);
-
             SpawnWhelps();
-        }
     }
 
 private:
@@ -907,6 +922,7 @@ struct npc_twilight_whelp : public ScriptedAI
 
     void Reset() override
     {
+        events.Reset();
         me->RemoveAllAuras();
         DoZoneInCombat();
         events.ScheduleEvent(EVENT_FADE_ARMOR, 1s);

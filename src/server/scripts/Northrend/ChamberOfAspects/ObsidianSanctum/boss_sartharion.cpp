@@ -158,13 +158,13 @@ struct boss_sartharion : public BossAI
     void JustReachedHome() override
     {
         _Reset();
+        _JustReachedHome();
     }
 
     void JustEngagedWith(Unit* who) override
     {
         Talk(SAY_SARTHARION_AGGRO);
         BossAI::JustEngagedWith(who);
-        DoZoneInCombat();
 
         FetchDragons();
 
@@ -176,6 +176,7 @@ struct boss_sartharion : public BossAI
         events.ScheduleEvent(EVENT_CALL_TENEBRON, 30s);
         events.ScheduleEvent(EVENT_CALL_SHADRON, 75s);
         events.ScheduleEvent(EVENT_CALL_VESPERON, 120s);
+        events.ScheduleEvent(EVENT_HARD_ENRAGE, 15min);
     }
 
     void JustDied(Unit* /*killer*/) override
@@ -416,6 +417,9 @@ struct boss_sartharion : public BossAI
 
         events.Update(diff);
 
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
         while (uint32 eventId = events.ExecuteEvent())
         {
             switch (eventId)
@@ -489,12 +493,20 @@ struct boss_sartharion : public BossAI
                 default:
                     break;
             }
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
         }
 
-        //  At 35% spell will target dragons, if they are still alive.
+        // At 35% berserk to pressure DPS while any called drake is still alive.
+        // Drakes killed during this fight do not set their boss state to DONE, so alive checks are required.
         if (!_isBerserk && !HealthAbovePct(35))
         {
-            if (instance->GetBossState(DATA_TENEBRON) != DONE || instance->GetBossState(DATA_SHADRON) != DONE || instance->GetBossState(DATA_VESPERON) != DONE)
+            Creature* tenebron = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_TENEBRON));
+            Creature* shadron = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_SHADRON));
+            Creature* vesperon = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VESPERON));
+
+            if ((tenebron && tenebron->IsAlive()) || (shadron && shadron->IsAlive()) || (vesperon && vesperon->IsAlive()))
             {
                 Talk(SAY_SARTHARION_BERSERK);
                 DoCast(me, SPELL_BERSERK);
