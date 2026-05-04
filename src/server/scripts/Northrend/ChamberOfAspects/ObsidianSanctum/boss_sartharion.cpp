@@ -222,11 +222,7 @@ struct boss_sartharion : public BossAI
         {
             tenebron->SetHomePosition(3239.07f, 657.235f, 86.8775f, 4.74729f);
             if (tenebron->IsAlive())
-            {
-                if (tenebron->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE))
-                    tenebron->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
                 tenebron->GetMotionMaster()->MoveTargetedHome();
-            }
             else
             {
                 if (instance->GetBossState(DATA_TENEBRON) != DONE)
@@ -242,11 +238,7 @@ struct boss_sartharion : public BossAI
         {
             shadron->SetHomePosition(3363.06f, 525.28f, 98.362f, 4.76475f);
             if (shadron->IsAlive())
-            {
-                if (shadron->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE))
-                    shadron->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
                 shadron->GetMotionMaster()->MoveTargetedHome();
-            }
             else
             {
                 if (instance->GetBossState(DATA_SHADRON) != DONE)
@@ -262,11 +254,7 @@ struct boss_sartharion : public BossAI
         {
             vesperon->SetHomePosition(3145.68f, 520.71f, 89.7f, 4.64258f);
             if (vesperon->IsAlive())
-            {
-                if (vesperon->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE))
-                    vesperon->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
                 vesperon->GetMotionMaster()->MoveTargetedHome();
-            }
             else
             {
                 if (instance->GetBossState(DATA_VESPERON) != DONE)
@@ -295,13 +283,13 @@ struct boss_sartharion : public BossAI
                 if (!fetchTene->IsInCombat())
                 {
                     DoCast(me, SPELL_POWER_OF_TENEBRON);
+                    fetchTene->GetMotionMaster()->MovePoint(POINT_ID_INIT, TenebronPositions[0]);
+                    fetchTene->SetImmuneToAll(true);
+                    fetchTene->SetReactState(REACT_PASSIVE);
+                    fetchTene->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
                     AddDrakeLootMode();
                     ++drakeCount;
                 }
-                fetchTene->GetMotionMaster()->MovePoint(POINT_ID_INIT, TenebronPositions[0]);
-
-                if (!fetchTene->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE))
-                    fetchTene->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
             }
         }
 
@@ -313,13 +301,13 @@ struct boss_sartharion : public BossAI
                 if (!fetchShad->IsInCombat())
                 {
                     DoCast(me, SPELL_POWER_OF_SHADRON);
+                    fetchShad->GetMotionMaster()->MovePoint(POINT_ID_INIT, ShadronPositions[0]);
+                    fetchShad->SetImmuneToAll(true);
+                    fetchShad->SetReactState(REACT_PASSIVE);
+                    fetchShad->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
                     AddDrakeLootMode();
                     ++drakeCount;
                 }
-                fetchShad->GetMotionMaster()->MovePoint(POINT_ID_INIT, ShadronPositions[0]);
-
-                if (!fetchShad->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE))
-                    fetchShad->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
             }
         }
 
@@ -331,13 +319,13 @@ struct boss_sartharion : public BossAI
                 if (!fetchVesp->IsInCombat())
                 {
                     DoCast(me, SPELL_POWER_OF_VESPERON);
+                    fetchVesp->GetMotionMaster()->MovePoint(POINT_ID_INIT, VesperonPositions[0]);
+                    fetchVesp->SetImmuneToAll(true);
+                    fetchVesp->SetReactState(REACT_PASSIVE);
+                    fetchVesp->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
                     AddDrakeLootMode();
                     ++drakeCount;
                 }
-                fetchVesp->GetMotionMaster()->MovePoint(POINT_ID_INIT, VesperonPositions[0]);
-
-                if (!fetchVesp->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE))
-                    fetchVesp->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
             }
         }
 
@@ -352,9 +340,6 @@ struct boss_sartharion : public BossAI
             if (temp->IsAlive() && !temp->GetVictim())
             {
                 temp->SetWalk(false);
-
-                if (temp->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE))
-                    temp->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
 
                 uint8 textId = 0;
 

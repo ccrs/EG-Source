@@ -176,8 +176,12 @@ struct dummy_dragonAI : public ScriptedAI
 
     void Reset() override
     {
-        if (me->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE))
-            me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+        if (me->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2))
+        {
+            me->SetImmuneToAll(false);
+            me->SetReactState(REACT_AGGRESSIVE);
+            me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
+        }
 
         switch (me->GetEntry())
         {
@@ -228,6 +232,9 @@ struct dummy_dragonAI : public ScriptedAI
         // this is end, if we reach this, don't do much
         if (pointId == POINT_ID_LAND)
         {
+            me->SetImmuneToAll(false);
+            me->SetReactState(REACT_AGGRESSIVE);
+            me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
             DoZoneInCombat();
 
             _canMoveFree = false;
@@ -834,7 +841,7 @@ struct npc_flame_tsunami : public ScriptedAI
         me->SetReactState(REACT_PASSIVE);
         events.ScheduleEvent(EVENT_TSUNAMI_TIMER, 100ms);
         events.ScheduleEvent(EVENT_TSUNAMI_BUFF, 1s);
-        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
+        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_NON_ATTACKABLE_2);
     }
 
     void UpdateAI(uint32 diff) override
@@ -880,7 +887,7 @@ struct npc_twilight_fissure : public ScriptedAI
 
     void Reset() override
     {
-        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
+        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_NON_ATTACKABLE_2);
         me->AddAura(46265, me); // Wrong, can't find proper visual
         me->AddAura(69422, me);
         events.ScheduleEvent(EVENT_VOID_BLAST, 5s);
