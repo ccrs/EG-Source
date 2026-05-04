@@ -57,6 +57,11 @@ enum OSCriteriaIds
     CRITERIA_VOLCANO_BLOWS_25   = 7327
 };
 
+enum OSActions
+{
+    ACTION_CANCEL_FREE_MOVEMENT = 1
+};
+
 template <class AI, class T>
 inline AI* GetObsidianSanctumAI(T* obj)
 {

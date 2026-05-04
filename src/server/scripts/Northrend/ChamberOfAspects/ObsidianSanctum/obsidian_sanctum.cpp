@@ -86,11 +86,6 @@ enum Enums
     POINT_ID_LAND                               = 200
 };
 
-enum ObsidianSanctumMisc
-{
-    DATA_CAN_LOOT           = 0
-};
-
 #define MAX_WAYPOINT 6
 //points around raid "isle", counter clockwise. should probably be adjusted to be more alike
 Position const dragonCommon[MAX_WAYPOINT]=
@@ -195,6 +190,7 @@ struct dummy_dragonAI : public ScriptedAI
                 break;
         }
 
+        me->ResetLootMode();
         _summons.DespawnAll();
         events.Reset();
         Initialize();
@@ -209,10 +205,10 @@ struct dummy_dragonAI : public ScriptedAI
         events.ScheduleEvent(EVENT_SHADOW_BREATH, 20s);
     }
 
-    void SetData(uint32 type, uint32 value) override
+    void DoAction(int32 action) override
     {
-        if (type == DATA_CAN_LOOT)
-            _canLoot = value != 0;
+        if (action == ACTION_CANCEL_FREE_MOVEMENT)
+            events.CancelEvent(EVENT_FREE_MOVEMENT);
     }
 
     void MovementInform(uint32 type, uint32 pointId) override
@@ -232,9 +228,12 @@ struct dummy_dragonAI : public ScriptedAI
         // this is end, if we reach this, don't do much
         if (pointId == POINT_ID_LAND)
         {
+            events.CancelEvent(EVENT_FREE_MOVEMENT);
             me->SetImmuneToAll(false);
             me->SetReactState(REACT_AGGRESSIVE);
             me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
+            me->SetLootMode(0);
+            _canLoot = false;
             DoZoneInCombat();
 
             _canMoveFree = false;
@@ -343,7 +342,10 @@ struct dummy_dragonAI : public ScriptedAI
     void JustDied(Unit* /*killer*/) override
     {
         if (!_canLoot)
+        {
             me->SetLootRecipient(nullptr);
+            me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+        }
 
         uint32 spellId = 0;
 
@@ -406,7 +408,7 @@ struct dummy_dragonAI : public ScriptedAI
 
         if (events.ExecuteEvent() == EVENT_FREE_MOVEMENT)
         {
-            if (_canMoveFree && waypointId < MAX_WAYPOINT)
+            if (_canMoveFree && waypointId < MAX_WAYPOINT && me->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2))
                 me->GetMotionMaster()->MovePoint(waypointId, dragonCommon[waypointId]);
         }
     }

@@ -74,11 +74,6 @@ enum SartharionEnums
     POINT_ID_LAND                               = 200
 };
 
-enum SartharionMisc
-{
-    DATA_CAN_LOOT           = 0
-};
-
 Position const FlameRight1Spawn     = { 3200.00f, 573.211f, 57.1551f, 0.0f };
 Position const FlameRight1Direction = { 3289.28f, 573.211f, 57.1551f, 0.0f };
 Position const FlameRight2Spawn     = { 3200.00f, 532.211f, 57.1551f, 0.0f };
@@ -138,11 +133,15 @@ struct boss_sartharion : public BossAI
         _isBerserk = false;
         _isSoftEnraged = false;
         _isHardEnraged = false;
+        _tenebronInEncounter = false;
+        _shadronInEncounter = false;
+        _vesperonInEncounter = false;
         drakeCount = 0;
     }
 
     void Reset() override
     {
+        DrakeRespawn();
         Initialize();
 
         if (me->HasAura(SPELL_TWILIGHT_REVENGE))
@@ -150,7 +149,6 @@ struct boss_sartharion : public BossAI
 
         me->SetHomePosition(3246.57f, 551.263f, 58.6164f, 4.66003f);
 
-        DrakeRespawn();
         _EncounterCleanup();
         instance->SetBossState(DATA_PORTAL_OPEN, NOT_STARTED);
     }
@@ -187,15 +185,24 @@ struct boss_sartharion : public BossAI
 
         if (Creature* tenebron = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_TENEBRON)))
             if (tenebron->IsAlive())
-                tenebron->DisappearAndDie();
+            {
+                instance->SetBossState(DATA_TENEBRON, DONE);
+                tenebron->DespawnOrUnsummon(0s, 7_days);
+            }
 
         if (Creature* shadron = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_SHADRON)))
             if (shadron->IsAlive())
-                shadron->DisappearAndDie();
+            {
+                instance->SetBossState(DATA_SHADRON, DONE);
+                shadron->DespawnOrUnsummon(0s, 7_days);
+            }
 
         if (Creature* vesperon = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VESPERON)))
             if (vesperon->IsAlive())
-                vesperon->DisappearAndDie();
+            {
+                instance->SetBossState(DATA_VESPERON, DONE);
+                vesperon->DespawnOrUnsummon(0s, 7_days);
+            }
     }
 
     void KilledUnit(Unit* who) override
@@ -218,53 +225,48 @@ struct boss_sartharion : public BossAI
 
     void DrakeRespawn() // Drakes respawning system
     {
-        if (Creature* tenebron = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_TENEBRON)))
+        std::vector<uint32> toRespawn;
+        if (_tenebronInEncounter)
         {
-            tenebron->SetHomePosition(3239.07f, 657.235f, 86.8775f, 4.74729f);
-            if (tenebron->IsAlive())
-                tenebron->GetMotionMaster()->MoveTargetedHome();
-            else
+            if (Creature* tenebron = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_TENEBRON)))
             {
-                if (instance->GetBossState(DATA_TENEBRON) != DONE)
-                {
-                    tenebron->Respawn();
+                tenebron->SetHomePosition(3239.07f, 657.235f, 86.8775f, 4.74729f);
+                if (tenebron->IsAlive())
                     tenebron->GetMotionMaster()->MoveTargetedHome();
-                    tenebron->AI()->SetData(DATA_CAN_LOOT, 0);
-                }
+                else
+                    toRespawn.push_back(NPC_TENEBRON);
             }
-        }
-
-        if (Creature* shadron = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_SHADRON)))
-        {
-            shadron->SetHomePosition(3363.06f, 525.28f, 98.362f, 4.76475f);
-            if (shadron->IsAlive())
-                shadron->GetMotionMaster()->MoveTargetedHome();
             else
+                toRespawn.push_back(NPC_TENEBRON);
+        }
+        if (_shadronInEncounter)
+        {
+            if (Creature* shadron = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_SHADRON)))
             {
-                if (instance->GetBossState(DATA_SHADRON) != DONE)
-                {
-                    shadron->Respawn();
+                shadron->SetHomePosition(3363.06f, 525.28f, 98.362f, 4.76475f);
+                if (shadron->IsAlive())
                     shadron->GetMotionMaster()->MoveTargetedHome();
-                    shadron->AI()->SetData(DATA_CAN_LOOT, 0);
-                }
+                else
+                    toRespawn.push_back(NPC_SHADRON);
             }
-        }
-
-        if (Creature* vesperon = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VESPERON)))
-        {
-            vesperon->SetHomePosition(3145.68f, 520.71f, 89.7f, 4.64258f);
-            if (vesperon->IsAlive())
-                vesperon->GetMotionMaster()->MoveTargetedHome();
             else
-            {
-                if (instance->GetBossState(DATA_VESPERON) != DONE)
-                {
-                    vesperon->Respawn();
-                    vesperon->GetMotionMaster()->MoveTargetedHome();
-                    vesperon->AI()->SetData(DATA_CAN_LOOT, 0);
-                }
-            }
+                toRespawn.push_back(NPC_SHADRON);
         }
+        if (_vesperonInEncounter)
+        {
+            if (Creature* vesperon = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VESPERON)))
+            {
+                vesperon->SetHomePosition(3145.68f, 520.71f, 89.7f, 4.64258f);
+                if (vesperon->IsAlive())
+                    vesperon->GetMotionMaster()->MoveTargetedHome();
+                else
+                    toRespawn.push_back(NPC_VESPERON);
+            }
+            else
+                toRespawn.push_back(NPC_VESPERON);
+        }
+        if (!toRespawn.empty())
+            instance->ForceRespawnQueuedCreaturesByEntry(toRespawn);
     }
 
     void FetchDragons()
@@ -279,6 +281,7 @@ struct boss_sartharion : public BossAI
         {
             if (fetchTene->IsAlive() && !fetchTene->GetVictim())
             {
+                _tenebronInEncounter = true;
                 _canUseWill = true;
                 if (!fetchTene->IsInCombat())
                 {
@@ -297,6 +300,7 @@ struct boss_sartharion : public BossAI
         {
             if (fetchShad->IsAlive() && !fetchShad->GetVictim())
             {
+                _shadronInEncounter = true;
                 _canUseWill = true;
                 if (!fetchShad->IsInCombat())
                 {
@@ -315,6 +319,7 @@ struct boss_sartharion : public BossAI
         {
             if (fetchVesp->IsAlive() && !fetchVesp->GetVictim())
             {
+                _vesperonInEncounter = true;
                 _canUseWill = true;
                 if (!fetchVesp->IsInCombat())
                 {
@@ -340,6 +345,7 @@ struct boss_sartharion : public BossAI
             if (temp->IsAlive() && !temp->GetVictim())
             {
                 temp->SetWalk(false);
+                temp->AI()->DoAction(ACTION_CANCEL_FREE_MOVEMENT);
 
                 uint8 textId = 0;
 
@@ -524,6 +530,9 @@ private:
     bool _isBerserk;
     bool _isSoftEnraged;
     bool _isHardEnraged;
+    bool _tenebronInEncounter;
+    bool _shadronInEncounter;
+    bool _vesperonInEncounter;
     uint8 drakeCount;
     GuidVector _encounterGUIDs;
 };
