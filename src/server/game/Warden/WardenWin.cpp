@@ -144,6 +144,54 @@ void WardenWin::InitializeModule()
     _session->SendPacket(&pkt);
 }
 
+void WardenWin::RunClientFunction(uint32 function) {
+    ByteBuffer moduleInit;
+    moduleInit << uint8(4);
+    moduleInit << uint8(0);
+    moduleInit << uint8(0);
+    moduleInit << function;
+    moduleInit << uint8(1);
+
+    ByteBuffer moduleInitFrameExecute;
+    moduleInitFrameExecute << uint8(4);
+    moduleInitFrameExecute << uint8(0);
+    moduleInitFrameExecute << uint8(0);
+    moduleInitFrameExecute << uint32(0x00419210);
+    moduleInitFrameExecute << uint8(1);
+
+    // Build check request
+    ByteBuffer buff;
+    buff << uint8(WARDEN_SMSG_MODULE_INITIALIZE);
+    buff << uint16(moduleInit.size());
+    buff << uint32(BuildChecksum(moduleInit.contents(), 8));
+    buff.append(moduleInit);
+
+    uint8 xorByte = _inputKey[0];
+    buff << uint8(WARDEN_SMSG_CHEAT_CHECKS_REQUEST);
+    buff << uint8(0);
+    buff << uint8(TIMING_CHECK ^ xorByte);
+    buff << uint8(LUA_EVAL_CHECK ^ xorByte);
+    buff << uint8(1);
+    buff << uint8(xorByte);
+
+    buff << uint8(WARDEN_SMSG_CHEAT_CHECKS_REQUEST);
+    buff << uint8(0);
+    buff << uint8(TIMING_CHECK ^ xorByte);
+    buff << uint8(xorByte);
+
+    buff << uint8(WARDEN_SMSG_MODULE_INITIALIZE);
+    buff << uint16(moduleInitFrameExecute.size());
+    buff << uint32(BuildChecksum(moduleInitFrameExecute.contents(), 8));
+    buff.append(moduleInitFrameExecute);
+
+    // Encrypt with warden RC4 key
+    EncryptData(buff.contents(), buff.size());
+
+    WorldPacket pkt(SMSG_WARDEN_DATA, buff.size());
+    pkt.append(buff);
+    _session->SendPacket(&pkt);
+}
+
 void WardenWin::RequestHash()
 {
     TC_LOG_DEBUG("warden", "Request hash");
