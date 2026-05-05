@@ -3937,8 +3937,9 @@ private:
 
         if (Creature* target = GetHitCreature())
             if (TempSummon* targetSummon = target->ToTempSummon())
-                if (Player* player = targetSummon->GetSummonerUnit()->ToPlayer())
-                    targetSummon->AI()->Talk(_text, player);
+                if (Unit* summonerUnit = targetSummon->GetSummonerUnit())
+                    if (Player* player = summonerUnit->ToPlayer())
+                        targetSummon->AI()->Talk(_text, player);
     }
 
     void Register() override
