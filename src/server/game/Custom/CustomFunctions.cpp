@@ -227,7 +227,7 @@ bool Vehicle::NormalizePassengerMovementInfo(Unit const* passenger, MovementInfo
     float localX = seatInfo->AttachmentOffset.X;
     float localY = seatInfo->AttachmentOffset.Y;
     float localZ = seatInfo->AttachmentOffset.Z;
-    float localO = seatAddon ? seatAddon->SeatOrientationOffset : 0.0f;
+    float localO = seatAddon ? seatAddon->SeatOrientationOffset : (std::isfinite(seatInfo->PassengerYaw) ? seatInfo->PassengerYaw : 0.0f);
 
     // For turning seats, preserve only the passenger's local orientation.
     // Never preserve client-sent local x/y/z.
