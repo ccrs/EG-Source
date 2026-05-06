@@ -2072,6 +2072,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         bool IsInvitedForBattlegroundInstance(uint32 instanceId) const;
         WorldLocation const& GetBattlegroundEntryPoint() const { return m_bgData.joinPos; }
         void SetBattlegroundEntryPoint();
+        void SaveLFGMountSpell();
 
         void SetBGTeam(uint32 team);
         uint32 GetBGTeam() const;
@@ -2379,6 +2380,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
 
         BgBattlegroundQueueID_Rec m_bgBattlegroundQueueID[PLAYER_MAX_BATTLEGROUND_QUEUES];
         BGData                    m_bgData;
+        uint32                    m_lfgMountSpell;
 
         bool m_IsBGRandomWinner;
 

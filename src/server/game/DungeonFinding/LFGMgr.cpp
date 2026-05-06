@@ -1680,7 +1680,10 @@ void LFGMgr::TeleportPlayer(Player* player, bool out, bool fromOpcode /*= false*
         }
 
         if (!player->GetMap()->IsDungeon())
+        {
             player->SetBattlegroundEntryPoint();
+            player->SaveLFGMountSpell();
+        }
 
         player->FinishTaxiFlight();
 
