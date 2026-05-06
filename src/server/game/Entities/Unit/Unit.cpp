@@ -8858,6 +8858,8 @@ void Unit::AtTargetAttacked(Unit* target, bool canInitialAggro)
     target->EngageWithTarget(this);
     if (Unit* targetOwner = target->GetCharmerOrOwner())
         targetOwner->EngageWithTarget(this);
+    if (canInitialAggro)
+        EngageWithTarget(target);
 
     //Patch 3.0.8: All player spells which cause a creature to become aggressive to you will now also immediately cause the creature to be tapped.
     if (Creature* creature = target->ToCreature())
