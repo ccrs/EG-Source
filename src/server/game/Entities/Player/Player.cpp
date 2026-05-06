@@ -1597,7 +1597,14 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
     if (Transport* transport = GetTransport())
     {
         if (options & TELE_TO_NOT_LEAVE_TRANSPORT)
-            AddUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
+        {
+            // Cross-map or transport-driven hop: always keep
+            // Same-map spell/interaction: only keep if the destination falls within the transport's model geometry
+            if (mapid != GetMapId() || (options & TELE_TO_TRANSPORT_TELEPORT) || transport->IsInRange(x, y, z, 0.0f))
+                AddUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
+            else
+                transport->RemovePassenger(this);
+        }
         else
             transport->RemovePassenger(this);
     }
