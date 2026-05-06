@@ -566,6 +566,10 @@ bool Creature::UpdateEntry(uint32 entry, CreatureData const* data /*= nullptr*/,
     if (IsInCombat())
         unitFlags |= UNIT_FLAG_IN_COMBAT;
 
+    // UNIT_FLAG_POSSESSED is set dynamically by SetCharmedBy (both CHARM_TYPE_VEHICLE and CHARM_TYPE_POSSESS), never from the template
+    if (HasUnitFlag(UNIT_FLAG_POSSESSED))
+        unitFlags |= UNIT_FLAG_POSSESSED;
+
     ReplaceAllUnitFlags(UnitFlags(unitFlags));
     ReplaceAllUnitFlags2(UnitFlags2(cInfo->unit_flags2));
 
