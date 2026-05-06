@@ -281,6 +281,7 @@ Player::Player(WorldSession* session): Unit(true)
     m_lastHonorUpdateTime = GameTime::GetGameTime();
 
     m_IsBGRandomWinner = false;
+    m_lfgMountSpell = 0;
 
     // Player summoning
     m_summon_expire = 0;
@@ -1801,6 +1802,11 @@ bool Player::TeleportToBGEntryPoint()
     if (m_bgData.joinPos.m_mapId == MAPID_INVALID)
         return false;
 
+    // LFG-specific mount takes priority: it is written at the exact moment of
+    // dungeon entry and is not shared with (or overwritten by) BG operations.
+    if (m_lfgMountSpell)
+        m_bgData.mountSpell = m_lfgMountSpell;
+
     ScheduleDelayedOperation(DELAYED_BG_MOUNT_RESTORE);
     ScheduleDelayedOperation(DELAYED_BG_TAXI_RESTORE);
     return TeleportTo(m_bgData.joinPos);
@@ -1827,6 +1833,7 @@ void Player::ProcessDelayedOperations()
             CastSpell(this, m_bgData.mountSpell, true);
             m_bgData.mountSpell = 0;
         }
+        m_lfgMountSpell = 0;
     }
 
     if (m_DelayedOperations & DELAYED_BG_TAXI_RESTORE)
@@ -22005,6 +22012,17 @@ void Player::SetBattlegroundEntryPoint()
 
     if (m_bgData.joinPos.m_mapId == MAPID_INVALID) // In error cases use homebind position
         m_bgData.joinPos = WorldLocation(m_homebindMapId, m_homebindX, m_homebindY, m_homebindZ, 0.0f);
+}
+
+void Player::SaveLFGMountSpell()
+{
+    if (IsMounted())
+    {
+        AuraEffectList const& auras = GetAuraEffectsByType(SPELL_AURA_MOUNTED);
+        m_lfgMountSpell = !auras.empty() ? (*auras.begin())->GetId() : 0;
+    }
+    else
+        m_lfgMountSpell = 0;
 }
 
 void Player::SetBGTeam(uint32 team)
