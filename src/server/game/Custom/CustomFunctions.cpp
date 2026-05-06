@@ -185,6 +185,21 @@ void Player::_LoadAccountSharedSpells(PreparedQueryResult result)
         bool searchForMounts = HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT, CustomFlags::CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE);
         bool searchForRiding = HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE);
         bool searchForPets = HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_PET, CustomFlags::CUSTOM_FLAG_ACCOUNT_PET_ACTIVE);
+
+        // Scripted mounts (spell_gen_mount): use script effects instead of SPELL_AURA_MOUNTED directly
+        static constexpr uint32 scriptedMountIds[] =
+        {
+            58983, // spell_big_blizzard_bear
+            71342, // spell_big_love_rocket
+            74856, // spell_blazing_hippogryph
+            75614, // spell_celestial_steed
+            48025, // spell_headless_horseman_mount
+            72286, // spell_invincible
+            47977, // spell_magic_broom
+            54729, // spell_winged_steed_of_the_ebon_blade
+            75973, // spell_x53_touring_rocket
+        };
+
         for (std::unordered_multimap<uint32/*team*/, uint32/*spellId*/>::value_type const& currentValue : spellIdsByTeam)
         {
             uint32 team = currentValue.first;
@@ -196,6 +211,13 @@ void Player::_LoadAccountSharedSpells(PreparedQueryResult result)
                 && team == playerTeam
                 && relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).Effect == SPELL_EFFECT_APPLY_AURA
                 && relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).ApplyAuraName == SPELL_AURA_MOUNTED
+            )
+            {
+                LearnSpell(relatedInfo->Id, false);
+                continue;
+            }
+            if (searchForMounts
+                && std::find(std::begin(scriptedMountIds), std::end(scriptedMountIds), relatedInfo->Id) != std::end(scriptedMountIds)
             )
             {
                 LearnSpell(relatedInfo->Id, false);
@@ -602,7 +624,7 @@ bool Vehicle::NormalizePassengerMovementInfo(Unit const* passenger, MovementInfo
     float localX = seatInfo->AttachmentOffset.X;
     float localY = seatInfo->AttachmentOffset.Y;
     float localZ = seatInfo->AttachmentOffset.Z;
-    float localO = seatAddon ? seatAddon->SeatOrientationOffset : 0.0f;
+    float localO = seatAddon ? seatAddon->SeatOrientationOffset : (std::isfinite(seatInfo->PassengerYaw) ? seatInfo->PassengerYaw : 0.0f);
 
     // For turning seats, preserve only the passenger's local orientation.
     // Never preserve client-sent local x/y/z.

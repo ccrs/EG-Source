@@ -21,7 +21,7 @@ INSERT INTO `creature_loot_template` (`Entry`, `Item`, `Reference`, `Chance`, `Q
 (31610, 43726, 0, 100, 1, 1, 0, 1, 1, ''),
 (31610, 43852, 0, 8.5, 0, 1, 0, 1, 1, ''),
 (31610, 43876, 0, 8.5, 0, 1, 0, 1, 1, ''),
-(31610, 45912, 0, 1, 0, 1, 0, 1, 1, '');
+(31610, 45912, 0, 0.1, 0, 1, 0, 1, 1, '');
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
 (1, 31610, 43228, 0, 0, 1, 0, 57940, 0, 0, 0, NULL),
 (1, 31610, 43411, 0, 0, 9, 0, 13167, 0, 0, 0, NULL),

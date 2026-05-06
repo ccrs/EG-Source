@@ -1501,7 +1501,7 @@ public:
         std::string input = args;
         strToLower(input);
 
-        constexpr std::string_view SEP = "|-----------------------|-----------------------|----------------|-----|-----|-----|";
+        constexpr std::string_view SEP = "|-----------------|------|------|-----|";
 
         uint32 count = 0;
         SessionMap const& sessionsMap = sWorld->GetAllSessions();
@@ -1532,11 +1532,11 @@ public:
                 strToUpper(code);
                 handler->PSendSysMessage("Online players from %s (%s):", std::string(countrySegment).c_str(), code.c_str());
                 handler->SendSysMessage(SEP);
-                handler->PSendSysMessage("| %-22s| %-22s| %-15s| %4s| %4s| %3s |", "Account", "Character", "IP", "Map", "Zone", "Sec");
+                handler->PSendSysMessage("| %-15s | %-4s | %-4s | %-3s | %s | %s", "IP", "Map", "Zone", "Sec", "Character", "Account");
                 handler->SendSysMessage(SEP);
             }
 
-            handler->PSendSysMessage("| %-22s| %-22s| %-15s| %4u| %4u| %3d |", session->GetAccountName().c_str(), session->GetPlayerName().c_str(), session->GetRemoteAddress().c_str(), player->GetMapId(), player->GetZoneId(), int32(session->GetSecurity()));
+            handler->PSendSysMessage("| %-15s | %4u | %4u | %3d | %s | %s", session->GetRemoteAddress().c_str(), player->GetMapId(), player->GetZoneId(), int32(session->GetSecurity()), session->GetPlayerName().c_str(), session->GetAccountName().c_str());
             ++count;
         }
 
