@@ -4044,6 +4044,12 @@ void Spell::EffectSummonObject()
         unitCaster->GetClosePoint(x, y, z, DEFAULT_PLAYER_BOUNDING_RADIUS);
 
     Map* map = unitCaster->GetMap();
+    if (m_targets.HasDst())
+    {
+        float floorZ = map->GetHeight(unitCaster->GetPhaseMask(), x, y, z + Z_OFFSET_FIND_HEIGHT * 2.0f);
+        if (floorZ > INVALID_HEIGHT)
+            z = floorZ;
+    }
     QuaternionData rot = QuaternionData::fromEulerAnglesZYX(unitCaster->GetOrientation(), 0.f, 0.f);
     if (!go->Create(map->GenerateLowGuid<HighGuid::GameObject>(), go_id, map, unitCaster->GetPhaseMask(), Position(x, y, z, unitCaster->GetOrientation()), rot, 255, GO_STATE_READY))
     {
