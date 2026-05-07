@@ -2392,7 +2392,11 @@ void Spell::TargetInfo::PreprocessTarget(Spell* spell)
     if (spell->m_originalCaster && MissCondition != SPELL_MISS_EVADE && !spell->m_originalCaster->IsFriendlyTo(unit) && (!spell->m_spellInfo->IsPositive() || spell->m_spellInfo->HasEffect(SPELL_EFFECT_DISPEL)) && (spell->m_spellInfo->HasInitialAggro() || unit->IsEngaged())
         && !(spell->GetSpellInfo()->SpellFamilyName == SPELLFAMILY_HUNTER && spell->m_caster->IsGameObject() && unit->IsControlledByPlayer())
     )
+    {
         unit->SetInCombatWith(spell->m_originalCaster);
+        if (spell->m_spellInfo->HasInitialAggro())
+            spell->m_originalCaster->EngageWithTarget(unit);
+    }
 
     spell->CallScriptBeforeHitHandlers(MissCondition);
 
