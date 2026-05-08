@@ -283,13 +283,11 @@ void WorldSession::HandleMovementOpcode(OpcodeClient opcode, MovementInfo& movem
     // ignore, waiting processing in WorldSession::HandleMoveWorldportAckOpcode and WorldSession::HandleMoveTeleportAck
     if (plrMover && plrMover->IsBeingTeleported())
         return;
-    // Peek at raw movement flags before ReadMovementInfo strips violations, so the handler
-    // can detect and correct the client when illegal flags are silently removed below.
-    size_t rawFlagsPos = recvPacket.rpos();
-    uint32 rawMovementFlags;
-    recvPacket >> rawMovementFlags;
-    recvPacket.rpos(rawFlagsPos);
 
+    // Save raw flags before validation strips violations, so we can detect
+    // and correct the client when illegal flags are removed below.
+    uint32 rawMovementFlags = movementInfo.flags;
+    ValidateMovementInfo(&movementInfo, opcode);
 
     if (!movementInfo.pos.IsPositionValid())
         return;
@@ -387,7 +385,7 @@ void WorldSession::HandleMovementOpcode(OpcodeClient opcode, MovementInfo& movem
         else
             plrMover->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_IS_OUT_OF_BOUNDS);
 
-        // If the client sent fly flags that ReadMovementInfo had to strip (no valid aura),
+        // If the client sent fly flags that ValidateMovementInfo had to strip (no valid aura),
         // the server state is already corrected but the client still believes it can fly.
         // Re-send SetCanFly(false) so the client drops its local flying state and stops
         // issuing further illegal fly-flagged packets (water-ground transition exploit).

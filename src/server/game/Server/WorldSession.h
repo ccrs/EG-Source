@@ -451,6 +451,7 @@ class TC_GAME_API WorldSession
         void SendAddonsInfo();
 
         void ReadMovementInfo(WorldPacket& data, MovementInfo* mi);
+        void ValidateMovementInfo(MovementInfo* mi, OpcodeClient opcode = OpcodeClient(0));
         void static WriteMovementInfo(WorldPacket* data, MovementInfo* mi);
 
         void SendPacket(WorldPacket const* packet);
