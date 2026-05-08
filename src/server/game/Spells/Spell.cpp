@@ -2646,8 +2646,9 @@ void Spell::TargetInfo::DoDamageAndTriggers(Spell* spell)
         // set hitmask for finish procs
         spell->m_hitMask |= hitMask;
 
-        // Do not take combo points on dodge and miss
-        if (MissCondition != SPELL_MISS_NONE && spell->m_needComboPoints && spell->m_targets.GetUnitTargetGUID() == TargetGUID)
+        // Do not take combo points if the spell did not effectively hit the target
+        // _spellHitTarget is the authoritative signal: it is set only when effects actually land (SPELL_MISS_NONE, or partial block without SPELL_ATTR3_COMPLETELY_BLOCKED)
+        if (!_spellHitTarget && spell->m_needComboPoints && spell->m_targets.GetUnitTargetGUID() == TargetGUID)
             spell->m_needComboPoints = false;
 
         // _spellHitTarget can be null if spell is missed in DoSpellHitOnUnit
