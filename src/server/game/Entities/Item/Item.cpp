@@ -644,6 +644,7 @@ void Item::SetState(ItemUpdateState state, Player* forplayer)
         {
             RemoveItemFromUpdateQueueOf(this, forplayer);
             forplayer->DeleteRefundReference(GetGUID());
+            forplayer->RemoveItemFromSlot(this);
         }
         delete this;
         return;

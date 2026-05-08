@@ -1226,6 +1226,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
 
         void AddRefundReference(ObjectGuid it);
         void DeleteRefundReference(ObjectGuid it);
+        void RemoveItemFromSlot(Item const* item);
 
         void ApplyEquipCooldown(Item* pItem);
         void SetAmmo(uint32 item);
