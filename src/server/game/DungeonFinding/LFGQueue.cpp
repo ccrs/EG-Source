@@ -580,6 +580,13 @@ LfgCompatibility LFGQueue::CheckCompatibility(GuidList check)
         proposalDungeons = queue.dungeons;
         proposalRoles = queue.roles;
         LFGMgr::CheckGroupRoles(proposalRoles); // assign new roles
+
+        if (proposalDungeons.empty())
+        {
+            TC_LOG_DEBUG("lfg.queue.match.compatibility.check", "Guids: ({}) No dungeons available", GetDetailedMatchRoles(check));
+            SetCompatibles(strGuids, LFG_INCOMPATIBLES_NO_DUNGEONS);
+            return LFG_INCOMPATIBLES_NO_DUNGEONS;
+        }
     }
 
     // Enough players?
@@ -605,6 +612,54 @@ LfgCompatibility LFGQueue::CheckCompatibility(GuidList check)
         TC_LOG_DEBUG("lfg.queue.match.compatibility.check", "Guids: ({}) Group MATCH but can't create proposal!", GetDetailedMatchRoles(check));
         SetCompatibles(strGuids, LFG_COMPATIBLES_BAD_STATES);
         return LFG_COMPATIBLES_BAD_STATES;
+    }
+
+    // Re-validate instance saves. QueueDataStore dungeons are set at join time and never refreshed,
+    // so a player who acquired a heroic save after joining can still appear eligible for that dungeon.
+    {
+        GuidSet playerGuids;
+        for (LfgRolesMap::const_iterator it = proposalRoles.begin(); it != proposalRoles.end(); ++it)
+            playerGuids.insert(it->first);
+
+        LfgDungeonSet filteredDungeons = proposalDungeons;
+        LfgLockPartyMap lockUpdates;
+        sLFGMgr->GetCompatibleDungeons(filteredDungeons, playerGuids, lockUpdates, !proposal.isNew);
+
+        if (filteredDungeons.size() < proposalDungeons.size())
+        {
+            proposalDungeons = filteredDungeons;
+
+            if (proposalDungeons.empty())
+            {
+                // GetCompatibleDungeons only populates lockUpdates when all dungeons are eliminated,
+                // which is exactly this case. Use it to prune the affected queue entries so the next
+                // tick produces a correct intersection instead of hitting BAD_STATES repeatedly.
+                for (LfgLockPartyMap::const_iterator itLock = lockUpdates.begin(); itLock != lockUpdates.end(); ++itLock)
+                {
+                    LfgGroupsMap::const_iterator itGroup = proposalGroups.find(itLock->first);
+                    ObjectGuid queueGuid = (itGroup != proposalGroups.end() && !itGroup->second.IsEmpty())
+                        ? itGroup->second : itLock->first;
+
+                    LfgQueueDataContainer::iterator itData = QueueDataStore.find(queueGuid);
+                    if (itData == QueueDataStore.end())
+                        continue;
+
+                    bool changed = false;
+                    for (LfgLockMap::const_iterator itDungeon = itLock->second.begin(); itDungeon != itLock->second.end(); ++itDungeon)
+                    {
+                        uint32 dungeonId = itDungeon->first & 0x00FFFFFF;
+                        changed |= (itData->second.dungeons.erase(dungeonId) > 0);
+                    }
+
+                    if (changed)
+                        InvalidateCompatibleData(queueGuid);
+                }
+
+                TC_LOG_DEBUG("lfg.queue.match.compatibility.check", "Guids: ({}) MATCH cancelled: all dungeons locked by saves acquired after queue join", GetDetailedMatchRoles(check));
+                SetCompatibles(strGuids, LFG_COMPATIBLES_BAD_STATES);
+                return LFG_COMPATIBLES_BAD_STATES;
+            }
+        }
     }
 
     // Create a new proposal
