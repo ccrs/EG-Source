@@ -465,7 +465,7 @@ bool Transmogrification::SuitableForTransmogrification(Player* player, ItemTempl
                 }
             }
             
-            if (proto->Spells[0].SpellId != 0)
+            if (proto->Effects[0].SpellID != 0)
                 found = true;
             
             switch (proto->ItemId)
