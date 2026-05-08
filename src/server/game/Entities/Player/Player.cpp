@@ -11754,6 +11754,15 @@ Item* Player::StoreNewItem(ItemPosCountVec const& dest, uint32 item, bool update
         if (!pItem)
             return nullptr;
 
+        // _StoreItem calls ApplyItemObtainSpells before returning - a spell effect can remove an ITEM_NEW item from the slot (RemoveItem -> SetState(ITEM_REMOVED) -> delete this) and return the freed pointer
+        if (!dest.empty())
+        {
+            uint16 pos = dest.back().pos;
+            pItem = GetItemByPos(pos >> 8, pos & 255);
+            if (!pItem)
+                return nullptr;
+        }
+
         ObjectGuid pItemGuid = pItem->GetGUID();
         ItemAddedQuestCheck(item, count);
         UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_RECEIVE_EPIC_ITEM, item, count);
