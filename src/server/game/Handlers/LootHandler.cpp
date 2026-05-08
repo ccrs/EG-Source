@@ -206,7 +206,8 @@ void WorldSession::HandleLootMoneyOpcode(WorldPacket& /*recvData*/)
     if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->GetLootFromAOELoot(guid))
     {
         uint32 totalGold = 0;
-        for (LootReference reference : player->StoredLoot) {
+        for (LootReference const& reference : player->StoredLoot)
+        {
             Loot* relatedLoot = reference.RelatedLoot;
             totalGold += relatedLoot->gold;
             relatedLoot->NotifyMoneyRemoved();
@@ -236,6 +237,9 @@ void WorldSession::HandleLootMoneyOpcode(WorldPacket& /*recvData*/)
                 if (player->IsAtGroupRewardDistance(member))
                     playersNear.push_back(member);
             }
+
+            if (playersNear.empty())
+                playersNear.push_back(player);
 
             uint32 goldPerPlayer = uint32((loot->gold) / (playersNear.size()));
 
@@ -413,17 +417,12 @@ void WorldSession::DoLootRelease(ObjectGuid lguid)
     }
     else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->GetLootFromAOELoot(lguid))
     {
-        for (LootReference currentLoot : player->StoredLoot)
+        for (LootReference const& currentLoot : player->StoredLoot)
         {
             Creature* creature = GetPlayer()->GetMap()->GetCreature(currentLoot.ContainerEntityGUID);
-
             bool lootAllowed = creature && creature->IsAlive() == (player->GetClass() == CLASS_ROGUE && creature->loot.loot_type == LOOT_PICKPOCKETING);
             if (!lootAllowed || !creature->IsWithinDistInMap(_player, 10.f))
-            {
-                player->StoredLootView.clear();
-                player->StoredLoot.clear();
-                return;
-            }
+                continue;
 
             loot = &creature->loot;
             if (loot->isLooted())
@@ -439,11 +438,11 @@ void WorldSession::DoLootRelease(ObjectGuid lguid)
             else
                 creature->ForceValuesUpdateAtIndex(UNIT_DYNAMIC_FLAGS); // force dynflag update to update looter and lootable info
 
-            //Player is not looking at loot list, he doesn't need to see updates on the loot list
             loot->RemoveLooter(player->GetGUID());
         }
         player->StoredLootView.clear();
         player->StoredLoot.clear();
+        return;
     }
     else
     {
@@ -541,14 +540,49 @@ void WorldSession::HandleLootMasterGiveOpcode(WorldPacket& recvData)
     if (!loot)
         return;
 
-    if (slotid >= loot->items.size() + loot->quest_items.size())
+    // slotid is the sequential view counter the client received; map it to the actual array index
+    auto slotViewItr = _player->StoredLootView.find(slotid);
+    if (slotViewItr == _player->StoredLootView.end())
     {
-        TC_LOG_DEBUG("loot", "MasterLootItem: Player {} might be using a hack! (slot {}, size {})",
-            GetPlayer()->GetName(), slotid, (unsigned long)loot->items.size());
+        _player->SendLootError(lootguid, LOOT_ERROR_MASTER_OTHER);
         return;
     }
+    uint8 actualSlot = slotViewItr->second.ItemIndex;
 
-    LootItem& item = slotid >= loot->items.size() ? loot->quest_items[slotid - loot->items.size()] : loot->items[slotid];
+    NotNormalLootItem* qitem = nullptr;
+    LootItem* itemPtr = nullptr;
+
+    if (actualSlot < loot->items.size())
+    {
+        itemPtr = &loot->items[actualSlot];
+    }
+    else
+    {
+        uint32 questSlot = actualSlot - loot->items.size();
+        NotNormalLootItemMap::const_iterator itr = loot->GetPlayerQuestItems().find(_player->GetGUID());
+        if (itr == loot->GetPlayerQuestItems().end() || questSlot >= itr->second->size())
+        {
+            TC_LOG_DEBUG("loot", "MasterLootItem: Player {} might be using a hack! (slot {}, size {})",
+                GetPlayer()->GetName(), slotid, (unsigned long)loot->items.size());
+            _player->SendLootError(lootguid, LOOT_ERROR_MASTER_OTHER);
+            return;
+        }
+        qitem = &itr->second->at(questSlot);
+        if (qitem->is_looted)
+        {
+            _player->SendLootError(lootguid, LOOT_ERROR_MASTER_OTHER);
+            return;
+        }
+        itemPtr = &loot->quest_items[qitem->index];
+    }
+
+    LootItem& item = *itemPtr;
+
+    if (item.is_looted)
+    {
+        _player->SendLootError(lootguid, LOOT_ERROR_MASTER_OTHER);
+        return;
+    }
 
     ItemPosCountVec dest;
     InventoryResult msg = target->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, item.itemid, item.count);
@@ -575,7 +609,12 @@ void WorldSession::HandleLootMasterGiveOpcode(WorldPacket& recvData)
     // mark as looted
     item.count = 0;
     item.is_looted = true;
-
-    loot->NotifyItemRemoved(slotid);
+    if (qitem)
+    {
+        qitem->is_looted = true;
+        loot->NotifyQuestItemRemoved(qitem->index);
+    }
+    else
+        loot->NotifyItemRemoved(slotid);
     --loot->unlootedCount;
 }

@@ -8574,6 +8574,8 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
             {
                 return l.RelatedLoot == currentResult.RelatedLoot;
             });
+            if (found == StoredLoot.end())
+                continue;
             StoredLootView.insert({ itemResultCounter++, LootReference(currentResult.ItemIndex, currentResult.RelatedLoot, found->ContainerEntityGUID) });
         }
 
