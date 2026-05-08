@@ -1900,7 +1900,7 @@ class spell_alexstrasza_bunny_destroy_platform_event : public SpellScript
         Creature* caster = GetCaster()->ToCreature();
         if (InstanceScript* instance = caster->GetInstanceScript())
             if (GameObject* platform = caster->GetMap()->GetGameObject(instance->GetGuidData(DATA_PLATFORM)))
-                platform->SetFlag(GO_FLAG_DESTROYED);
+                platform->SetDestructibleState(GO_DESTRUCTIBLE_DESTROYED);
     }
 
     void HandleScript(SpellEffIndex /*effIndex*/)

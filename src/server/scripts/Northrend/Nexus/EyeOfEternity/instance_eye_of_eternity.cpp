@@ -83,7 +83,7 @@ public:
                     SpawnGameObject(GO_EXIT_PORTAL, exitPortalPosition);
 
                     if (GameObject* platform = instance->GetGameObject(platformGUID))
-                        platform->RemoveFlag(GO_FLAG_DESTROYED);
+                        platform->SetDestructibleState(GO_DESTRUCTIBLE_INTACT, nullptr, true);
                 }
                 else if (state == DONE)
                     SpawnGameObject(GO_EXIT_PORTAL, exitPortalPosition);
