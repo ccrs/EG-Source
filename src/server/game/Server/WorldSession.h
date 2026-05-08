@@ -231,6 +231,11 @@ namespace WorldPackets
         class ResurrectResponse;
     }
 
+    namespace Movement
+    {
+        class ClientPlayerMovement;
+    }
+
     namespace NPC
     {
         class Hello;
@@ -446,6 +451,7 @@ class TC_GAME_API WorldSession
         void SendAddonsInfo();
 
         void ReadMovementInfo(WorldPacket& data, MovementInfo* mi);
+        void ValidateMovementInfo(MovementInfo* mi, OpcodeClient opcode = OpcodeClient(0));
         void static WriteMovementInfo(WorldPacket* data, MovementInfo* mi);
 
         void SendPacket(WorldPacket const* packet);
@@ -774,7 +780,8 @@ class TC_GAME_API WorldSession
         void HandleMoveWorldportAckOpcode(WorldPacket& recvPacket);
         void HandleMoveWorldportAck();                // for server-side calls
 
-        void HandleMovementOpcodes(WorldPacket& recvPacket);
+        void HandleMovementOpcodes(WorldPackets::Movement::ClientPlayerMovement& packet);
+        void HandleMovementOpcode(OpcodeClient opcode, MovementInfo& movementInfo);
         bool NormalizeTransportMovementInfo(Unit* mover, MovementInfo& movementInfo);
         void HandleSetActiveMoverOpcode(WorldPacket& recvData);
         void HandleMoveNotActiveMover(WorldPacket& recvData);

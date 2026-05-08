@@ -40,6 +40,7 @@
 #include "Log.h"
 #include "Map.h"
 #include "Metric.h"
+#include "MovementPackets.h"
 #include "MoveSpline.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
@@ -955,38 +956,12 @@ void WorldSession::UpdateInstanceEnterTimes()
 
 void WorldSession::ReadMovementInfo(WorldPacket &data, MovementInfo* mi)
 {
-    data >> mi->flags;
-    data >> mi->flags2;
-    data >> mi->time;
-    data >> mi->pos.PositionXYZOStream();
+    data >> *mi;
+    ValidateMovementInfo(mi, static_cast<OpcodeClient>(data.GetOpcode()));
+}
 
-    if (mi->HasMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
-    {
-        data >> mi->transport.guid.ReadAsPacked();
-        data >> mi->transport.pos.PositionXYZOStream();
-        data >> mi->transport.time;
-        data >> mi->transport.seat;
-
-        if (mi->HasExtraMovementFlag(MOVEMENTFLAG2_INTERPOLATED_MOVEMENT))
-            data >> mi->transport.time2;
-    }
-
-    if (mi->HasMovementFlag(MovementFlags(MOVEMENTFLAG_SWIMMING | MOVEMENTFLAG_FLYING)) || (mi->HasExtraMovementFlag(MOVEMENTFLAG2_ALWAYS_ALLOW_PITCHING)))
-        data >> mi->pitch;
-
-    data >> mi->fallTime;
-
-    if (mi->HasMovementFlag(MOVEMENTFLAG_FALLING))
-    {
-        data >> mi->jump.zspeed;
-        data >> mi->jump.sinAngle;
-        data >> mi->jump.cosAngle;
-        data >> mi->jump.xyspeed;
-    }
-
-    if (mi->HasMovementFlag(MOVEMENTFLAG_SPLINE_ELEVATION))
-        data >> mi->splineElevation;
-
+void WorldSession::ValidateMovementInfo(MovementInfo* mi, OpcodeClient opcode)
+{
     //! Anti-cheat checks. Please keep them in seperate if () blocks to maintain a clear overview.
     //! Might be subject to latency, so just remove improper flags.
     #ifdef TRINITY_DEBUG
@@ -994,7 +969,7 @@ void WorldSession::ReadMovementInfo(WorldPacket &data, MovementInfo* mi)
     { \
         if (check) \
         { \
-            TC_LOG_DEBUG("entities.unit", "WorldSession::ReadMovementInfo: Violation of MovementFlags found ({}). " \
+            TC_LOG_DEBUG("entities.unit", "WorldSession::ValidateMovementInfo: Violation of MovementFlags found ({}). " \
                 "MovementFlags: {}, MovementFlags2: {} for player {}. Mask {} will be removed.", \
                 STRINGIZE(check), mi->GetMovementFlags(), mi->GetExtraMovementFlags(), GetPlayer()->GetGUID().ToString(), maskToRemove); \
             mi->RemoveMovementFlag((maskToRemove)); \
@@ -1008,17 +983,17 @@ void WorldSession::ReadMovementInfo(WorldPacket &data, MovementInfo* mi)
 
     if (mi->guid.IsEmpty())
     {
-        TC_LOG_ERROR("entities.unit", "WorldSession::ReadMovementInfo: mi->guid is empty, opcode {}", static_cast<uint32>(data.GetOpcode()));
+        TC_LOG_ERROR("entities.unit", "WorldSession::ValidateMovementInfo: mi->guid is empty, opcode {}", static_cast<uint32>(opcode));
         return;
     }
 
     Unit* mover = GetPlayer()->GetGUID() == mi->guid ? GetPlayer() : ObjectAccessor::GetUnit(*GetPlayer(), mi->guid);
     if (!mover)
     {
-        TC_LOG_ERROR("entities.unit", "WorldSession::ReadMovementInfo: If the server allows the unit (GUID {}) to be moved by the client of player {}, the unit should still exist! Opcode {}",
+        TC_LOG_ERROR("entities.unit", "WorldSession::ValidateMovementInfo: If the server allows the unit (GUID {}) to be moved by the client of player {}, the unit should still exist! Opcode {}",
             mi->guid.ToString(),
             GetPlayer()->GetGUID().ToString(),
-            static_cast<uint32>(data.GetOpcode()));
+            static_cast<uint32>(opcode));
         return;
     }
 
@@ -1090,37 +1065,7 @@ void WorldSession::ReadMovementInfo(WorldPacket &data, MovementInfo* mi)
 void WorldSession::WriteMovementInfo(WorldPacket* data, MovementInfo* mi)
 {
     *data << mi->guid.WriteAsPacked();
-    *data << mi->flags;
-    *data << mi->flags2;
-    *data << mi->time;
-    *data << mi->pos.PositionXYZOStream();
-
-    if (mi->HasMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
-    {
-       *data << mi->transport.guid.WriteAsPacked();
-       *data << mi->transport.pos.PositionXYZOStream();
-       *data << mi->transport.time;
-       *data << mi->transport.seat;
-
-       if (mi->HasExtraMovementFlag(MOVEMENTFLAG2_INTERPOLATED_MOVEMENT))
-           *data << mi->transport.time2;
-    }
-
-    if (mi->HasMovementFlag(MovementFlags(MOVEMENTFLAG_SWIMMING | MOVEMENTFLAG_FLYING)) || mi->HasExtraMovementFlag(MOVEMENTFLAG2_ALWAYS_ALLOW_PITCHING))
-        *data << mi->pitch;
-
-    *data << mi->fallTime;
-
-    if (mi->HasMovementFlag(MOVEMENTFLAG_FALLING))
-    {
-        *data << mi->jump.zspeed;
-        *data << mi->jump.sinAngle;
-        *data << mi->jump.cosAngle;
-        *data << mi->jump.xyspeed;
-    }
-
-    if (mi->HasMovementFlag(MOVEMENTFLAG_SPLINE_ELEVATION))
-        *data << mi->splineElevation;
+    *data << *mi;
 }
 
 void WorldSession::ReadAddonsInfo(ByteBuffer &data)

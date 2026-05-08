@@ -28,6 +28,7 @@
 #include "MapManager.h"
 #include "MotionMaster.h"
 #include "MovementGenerator.h"
+#include "MovementPackets.h"
 #include "MovementPacketSender.h"
 #include "MoveSpline.h"
 #include "ObjectAccessor.h"
@@ -277,18 +278,15 @@ void WorldSession::HandleMoveTeleportAck(WorldPacket& recvPacket)
     GetPlayer()->ProcessDelayedOperations();
 }
 
-void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
+void WorldSession::HandleMovementOpcodes(WorldPackets::Movement::ClientPlayerMovement& packet)
 {
-    uint16 opcode = recvPacket.GetOpcode();
+    HandleMovementOpcode(packet.GetOpcode(), packet.Status);
+}
 
-    ObjectGuid guid;
-    recvPacket >> guid.ReadAsPacked();
-
-    if (!IsRightUnitBeingMoved(guid))
-    {
-        recvPacket.rfinish();                     // prevent warnings spam
+void WorldSession::HandleMovementOpcode(OpcodeClient opcode, MovementInfo& movementInfo)
+{
+    if (!IsRightUnitBeingMoved(movementInfo.guid))
         return;
-    }
 
     GameClient* client = GetGameClient();
     Unit* mover = client->GetActivelyMovedUnit();
@@ -296,25 +294,12 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
 
     // ignore, waiting processing in WorldSession::HandleMoveWorldportAckOpcode and WorldSession::HandleMoveTeleportAck
     if (plrMover && plrMover->IsBeingTeleported())
-    {
-        recvPacket.rfinish();                     // prevent warnings spam
         return;
-    }
 
-    /* extract packet */
-
-    // Peek at raw movement flags before ReadMovementInfo strips violations, so the handler
-    // can detect and correct the client when illegal flags are silently removed below.
-    size_t rawFlagsPos = recvPacket.rpos();
-    uint32 rawMovementFlags;
-    recvPacket >> rawMovementFlags;
-    recvPacket.rpos(rawFlagsPos);
-
-    MovementInfo movementInfo;
-    movementInfo.guid = guid;
-    ReadMovementInfo(recvPacket, &movementInfo);
-
-    recvPacket.rfinish();                         // prevent warnings spam
+    // Save raw flags before validation strips violations, so we can detect
+    // and correct the client when illegal flags are removed below.
+    uint32 rawMovementFlags = movementInfo.flags;
+    ValidateMovementInfo(&movementInfo, opcode);
 
     if (!movementInfo.pos.IsPositionValid())
         return;
@@ -359,9 +344,9 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
     movementInfo.time = AdjustClientMovementTime(movementInfo.time);
     mover->m_movementInfo = movementInfo;
 
-    WorldPacket data(opcode, recvPacket.size());
-    WriteMovementInfo(&data, &movementInfo);
-    mover->SendMessageToSet(&data, _player);
+    WorldPackets::Movement::MoveUpdate moveUpdate(opcode);
+    moveUpdate.Status = &mover->m_movementInfo;
+    mover->SendMessageToSet(moveUpdate.Write(), _player);
 
     // Some vehicles allow the passenger to turn by himself
     if (Vehicle* vehicle = mover->GetVehicle())
@@ -412,7 +397,7 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recvPacket)
         else
             plrMover->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_IS_OUT_OF_BOUNDS);
 
-        // If the client sent fly flags that ReadMovementInfo had to strip (no valid aura),
+        // If the client sent fly flags that ValidateMovementInfo had to strip (no valid aura),
         // the server state is already corrected but the client still believes it can fly.
         // Re-send SetCanFly(false) so the client drops its local flying state and stops
         // issuing further illegal fly-flagged packets (water-ground transition exploit).
