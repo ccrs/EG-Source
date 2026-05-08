@@ -26013,6 +26013,13 @@ void Player::DeleteRefundReference(ObjectGuid it)
         m_refundableItems.erase(itr);
 }
 
+void Player::RemoveItemFromSlot(Item const* item)
+{
+    uint8 slot = item->GetSlot();
+    if (item->GetBagSlot() == INVENTORY_SLOT_BAG_0 && slot < PLAYER_SLOTS_COUNT && m_items[slot] == item)
+        m_items[slot] = nullptr;
+}
+
 void Player::SendRefundInfo(Item* item)
 {
     // This function call unsets ITEM_FLAGS_REFUNDABLE if played time is over 2 hours.
