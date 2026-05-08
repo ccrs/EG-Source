@@ -461,7 +461,7 @@ struct npc_thrall_old_hillsbrad : public EscortAI
             case ENTRY_EPOCH:
                 break;
             case SKARLOC_MOUNT:
-                summoned->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+                summoned->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
                 break;
             default:
                 summoned->AI()->AttackStart(me);

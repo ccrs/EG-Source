@@ -93,7 +93,7 @@ struct npc_pet_dk_ebon_gargoyle : CasterAI
             return;
 
         // Stop Fighting
-        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+        me->SetUnitFlag(UNIT_FLAG_NOT_ATTACKABLE_1 | UNIT_FLAG_NON_ATTACKABLE_2);
 
         // Sanctuary
         me->CastSpell(me, SPELL_DK_SANCTUARY, true);

@@ -932,7 +932,7 @@ public:
 
         void Reset() override
         {
-            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2);
         }
 
         void JustEngagedWith(Unit* /*who*/) override
