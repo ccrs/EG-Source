@@ -17589,6 +17589,7 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
     {
         TC_LOG_ERROR("entities.player.loading", "Player::LoadFromDB: Player {} ({}) has invalid SpecCount = {} and/or invalid ActiveSpec = {}.",
             GetName(), GetGUID().ToString(), uint32(GetTalentGroupsCount()), uint32(GetActiveTalentGroup()));
+        SetTalentGroupsCount(std::min(GetTalentGroupsCount(), uint8(MAX_TALENT_GROUPS)));
         SetActiveTalentGroup(0);
     }
 
@@ -25448,9 +25449,6 @@ void Player::BuildPlayerTalentsInfoData(WorldPackets::Talent::TalentInfoUpdate& 
     talentInfo.UnspentTalentPoints = GetFreeTalentPoints(); // unspentTalentPoints
     talentInfo.TalentGroups.resize(GetTalentGroupsCount());        // talent group count (0, 1 or 2)
     talentInfo.ActiveGroup = GetActiveTalentGroup();               // talent group index (0 or 1)
-
-    if (GetTalentGroupsCount() > MAX_TALENT_GROUPS)
-        SetTalentGroupsCount(MAX_TALENT_GROUPS);
 
     // loop through all specs (only 1 for now)
     for (uint32 specIdx = 0; specIdx < GetTalentGroupsCount(); ++specIdx)
