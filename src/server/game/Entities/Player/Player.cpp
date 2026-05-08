@@ -26016,8 +26016,18 @@ void Player::DeleteRefundReference(ObjectGuid it)
 void Player::RemoveItemFromSlot(Item const* item)
 {
     uint8 slot = item->GetSlot();
-    if (item->GetBagSlot() == INVENTORY_SLOT_BAG_0 && slot < PLAYER_SLOTS_COUNT && m_items[slot] == item)
-        m_items[slot] = nullptr;
+    uint8 bagSlot = item->GetBagSlot();
+    if (bagSlot == INVENTORY_SLOT_BAG_0)
+    {
+        if (slot < PLAYER_SLOTS_COUNT && m_items[slot] == item)
+            m_items[slot] = nullptr;
+    }
+    else
+    {
+        if (Bag* bag = GetBagByPos(bagSlot))
+            if (bag->GetItemByPos(slot) == item)
+                bag->RemoveItem(slot, false);
+    }
 }
 
 void Player::SendRefundInfo(Item* item)
