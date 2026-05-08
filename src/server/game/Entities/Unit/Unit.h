@@ -1235,7 +1235,6 @@ class TC_GAME_API Unit : public WorldObject
         void JumpTo(WorldObject* obj, float speedZ, bool withOrientation = false);
 
         void MonsterMoveWithSpeed(float x, float y, float z, float speed, bool generatePath = false, bool forceDestination = false);
-        void SendMovementFlagUpdate(bool self = false);
 
         void SetHoverHeight(float hoverHeight) { SetFloatValue(UNIT_FIELD_HOVERHEIGHT, hoverHeight); }
 
@@ -1255,8 +1254,6 @@ class TC_GAME_API Unit : public WorldObject
         void SetInFront(WorldObject const* target);
         void SetFacingTo(float ori, bool force = true, uint32 id = EVENT_FACE, Milliseconds duration = 0ms);
         void SetFacingToObject(WorldObject const* object, bool force = true, uint32 id = EVENT_FACE, Milliseconds duration = 0ms);
-
-        void BuildHeartBeatMsg(WorldPacket* data) const;
 
         bool IsAlive() const { return (m_deathState == ALIVE); }
         bool isDying() const { return (m_deathState == JUST_DIED); }
