@@ -45,6 +45,7 @@ public:
             SetHeaders(DataHeader);
             SetBossNumber(EncounterCount);
             LoadBossBoundaries(boundaries);
+            _isPortalOpen = false;
         }
 
         void OnCreatureCreate(Creature* creature) override
@@ -118,6 +119,19 @@ public:
             return ObjectGuid::Empty;
         }
 
+        void SetData(uint32 id, uint32 value) override
+        {
+            if (id == DATA_PORTAL_OPEN)
+                _isPortalOpen = (value != 0);
+        }
+
+        uint32 GetData(uint32 id) const override
+        {
+            if (id == DATA_PORTAL_OPEN)
+                return _isPortalOpen ? 1 : 0;
+            return 0;
+        }
+
         void SetGuidData(uint32 id, ObjectGuid guid) override
         {
             if (id == DATA_GONNA_GO_WHEN_THE_VOLCANO_BLOWS)
@@ -142,6 +156,7 @@ public:
         ObjectGuid shadronGUID;
         ObjectGuid vesperonGUID;
         GuidUnorderedSet _playerGUIDs;
+        bool _isPortalOpen;
     };
 
     InstanceScript* GetInstanceScript(InstanceMap* map) const override

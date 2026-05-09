@@ -144,13 +144,13 @@ struct boss_sartharion : public BossAI
         DrakeRespawn();
         Initialize();
 
-        if (me->HasAura(SPELL_TWILIGHT_REVENGE))
-            me->RemoveAurasDueToSpell(SPELL_TWILIGHT_REVENGE);
+        me->RemoveAurasDueToSpell(SPELL_TWILIGHT_REVENGE);
+        me->RemoveAurasDueToSpell(SPELL_WILL_OF_SARTHARION);
 
         me->SetHomePosition(3246.57f, 551.263f, 58.6164f, 4.66003f);
 
         _EncounterCleanup();
-        instance->SetBossState(DATA_PORTAL_OPEN, NOT_STARTED);
+        instance->SetData(DATA_PORTAL_OPEN, 0);
     }
 
     void JustReachedHome() override
@@ -171,9 +171,12 @@ struct boss_sartharion : public BossAI
         events.ScheduleEvent(EVENT_FLAME_BREATH, 20s);
         events.ScheduleEvent(EVENT_TAIL_SWEEP, 20s);
         events.ScheduleEvent(EVENT_FLAME_TSUNAMI, 30s);
-        events.ScheduleEvent(EVENT_CALL_TENEBRON, 30s);
-        events.ScheduleEvent(EVENT_CALL_SHADRON, 75s);
-        events.ScheduleEvent(EVENT_CALL_VESPERON, 120s);
+        if (_tenebronInEncounter)
+            events.ScheduleEvent(EVENT_CALL_TENEBRON, 30s);
+        if (_shadronInEncounter)
+            events.ScheduleEvent(EVENT_CALL_SHADRON, 75s);
+        if (_vesperonInEncounter)
+            events.ScheduleEvent(EVENT_CALL_VESPERON, 120s);
         events.ScheduleEvent(EVENT_HARD_ENRAGE, 15min);
     }
 
@@ -285,7 +288,6 @@ struct boss_sartharion : public BossAI
                 _canUseWill = true;
                 if (!fetchTene->IsInCombat())
                 {
-                    DoCast(me, SPELL_POWER_OF_TENEBRON);
                     fetchTene->GetMotionMaster()->MovePoint(POINT_ID_INIT, TenebronPositions[0]);
                     fetchTene->SetImmuneToAll(true);
                     fetchTene->SetReactState(REACT_PASSIVE);
@@ -304,7 +306,6 @@ struct boss_sartharion : public BossAI
                 _canUseWill = true;
                 if (!fetchShad->IsInCombat())
                 {
-                    DoCast(me, SPELL_POWER_OF_SHADRON);
                     fetchShad->GetMotionMaster()->MovePoint(POINT_ID_INIT, ShadronPositions[0]);
                     fetchShad->SetImmuneToAll(true);
                     fetchShad->SetReactState(REACT_PASSIVE);
@@ -323,7 +324,6 @@ struct boss_sartharion : public BossAI
                 _canUseWill = true;
                 if (!fetchVesp->IsInCombat())
                 {
-                    DoCast(me, SPELL_POWER_OF_VESPERON);
                     fetchVesp->GetMotionMaster()->MovePoint(POINT_ID_INIT, VesperonPositions[0]);
                     fetchVesp->SetImmuneToAll(true);
                     fetchVesp->SetReactState(REACT_PASSIVE);

@@ -23,7 +23,7 @@
 #define OSScriptName "instance_obsidian_sanctum"
 #define DataHeader "OS"
 
-uint32 const EncounterCount = 5;
+uint32 const EncounterCount = 4;
 
 enum OSDataTypes
 {
@@ -59,7 +59,8 @@ enum OSCriteriaIds
 
 enum OSActions
 {
-    ACTION_CANCEL_FREE_MOVEMENT = 1
+    ACTION_CANCEL_FREE_MOVEMENT = 1,
+    ACTION_EGG_DIED
 };
 
 template <class AI, class T>
