@@ -21,6 +21,7 @@ Script Data End */
 
 #include "eye_of_eternity.h"
 #include "CombatAI.h"
+#include "CommonHelpers.h"
 #include "Containers.h"
 #include "CreatureTextMgr.h"
 #include "GameObject.h"
@@ -29,6 +30,7 @@ Script Data End */
 #include "InstanceScript.h"
 #include "Map.h"
 #include "MotionMaster.h"
+#include "MovementTypedefs.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
@@ -1089,7 +1091,19 @@ struct npc_power_spark : public ScriptedAI
 
     void JustDied(Unit* /*killer*/) override
     {
-        me->CastSpell(me, SPELL_POWER_SPARK_DEATH, true); // not supposed to hide the fact it's there by not selectable
+        float heightDiff = me->GetPositionZ() - me->GetFloorZ();
+        if (heightDiff <= 0.5f)
+        {
+            me->CastSpell(me, SPELL_POWER_SPARK_DEATH, true);
+            return;
+        }
+
+        Milliseconds duration = std::chrono::round<Milliseconds>(std::chrono::duration<float>(Movement::computeFallTime(heightDiff, false)));
+        DoAddEvent(duration, new Trinity::Helpers::Events::GenericEvent(me, [](WorldObject* spark) -> bool
+        {
+            spark->ToUnit()->CastSpell(spark->ToUnit(), SPELL_POWER_SPARK_DEATH, true);
+            return true;
+        }));
     }
 
 private:
