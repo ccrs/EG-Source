@@ -200,7 +200,7 @@ public:
 
                             if (Player* player = ref->GetVictim()->ToPlayer())
                             {
-                                if (player->IsGameMaster() || player->HasAura(SPELL_VORTEX_4))
+                                if (player->IsGameMaster() || player->GetVehicle())
                                     continue;
 
                                 player->CastSpell(trigger, SPELL_VORTEX_4, true);

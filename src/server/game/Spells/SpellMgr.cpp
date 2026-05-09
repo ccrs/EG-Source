@@ -5025,6 +5025,37 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->AttributesEx |= SPELL_ATTR1_NO_THREAT;
     });
 
+    // Eye of Eternity - Vortex vehicle-entry spells (55853, 56263)
+    ApplySpellFix({ 55853, 56263 }, [](SpellInfo* spellInfo)
+    {
+        for (SpellEffectInfo& eff : spellInfo->_GetEffects())
+            if (eff.IsEffect())
+                eff.TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
+    });
+
+    // Eye of Eternity - Power Spark death zone (55852)
+    ApplySpellFix({ 55852 }, [](SpellInfo* spellInfo)
+    {
+        SpellEffectInfo& eff = spellInfo->_GetEffect(EFFECT_0);
+        eff.Effect = SPELL_EFFECT_PERSISTENT_AREA_AURA;
+        eff.ApplyAuraName = SPELL_AURA_MOD_DAMAGE_PERCENT_DONE;
+        eff.BasePoints = 49;
+        eff.TriggerSpell = 0;
+        eff.MiscValue = SPELL_SCHOOL_MASK_ALL;
+        eff.RadiusEntry = sSpellRadiusStore.LookupEntry(EFFECT_RADIUS_8_YARDS);
+        eff.TargetA = SpellImplicitTargetInfo(TARGET_DEST_CASTER);
+        eff.TargetB = SpellImplicitTargetInfo(TARGET_UNIT_DEST_AREA_ENEMY);
+        spellInfo->Attributes    &= ~SPELL_ATTR0_PASSIVE;
+        spellInfo->Attributes    &= ~SPELL_ATTR0_HIDDEN_CLIENTSIDE;
+        spellInfo->AttributesEx  &= ~SPELL_ATTR1_DONT_DISPLAY_IN_AURA_BAR;
+    });
+
+    // Eye of Eternity - Vortex visual aura (55873)
+    ApplySpellFix({ 55873 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->DurationEntry = sSpellDurationStore.LookupEntry(1); // 10 seconds
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];

@@ -109,7 +109,7 @@ enum MalygosSpells
     SPELL_MALYGOS_BERSERK                    = 47008, // it's the berserk spell that will hit only Malygos after 10 min of 60670
     SPELL_PORTAL_VISUAL_CLOSED               = 55949,
     SPELL_SUMMON_POWER_PARK                  = 56142,
-    SPELL_POWER_SPARK_DEATH                  = 55852,
+    SPELL_POWER_SPARK_BUFF                   = 55852,
     SPELL_POWER_SPARK_MALYGOS                = 56152,
     SPELL_ARCANE_BREATH                      = 56272,
     SPELL_ARCANE_STORM_P_I                   = 61693,
@@ -835,16 +835,15 @@ struct boss_malygos : public BossAI
                     {
                         for (uint8 rangeDisks = 0; rangeDisks < (GetDifficulty() == RAID_DIFFICULTY_10MAN_NORMAL ? 4 : 5); rangeDisks++)
                         {
-                            Creature* casterDiskSummon = me->SummonCreature(NPC_HOVER_DISK_CASTER, RangeHoverDisksSpawnPositions[rangeDisks]);
-
-                            if (casterDiskSummon->IsAIEnabled())
-                                casterDiskSummon->AI()->DoAction(rangeDisks);
+                            if (Creature* casterDiskSummon = me->SummonCreature(NPC_HOVER_DISK_CASTER, RangeHoverDisksSpawnPositions[rangeDisks]))
+                                if (casterDiskSummon->IsAIEnabled())
+                                    casterDiskSummon->AI()->DoAction(rangeDisks);
                         }
 
                         for (uint8 meleeDisks = 0; meleeDisks < 2; meleeDisks++)
                         {
-                            Creature* meleeDiskSummon = me->SummonCreature(NPC_HOVER_DISK_MELEE, MeleeHoverDisksSpawnPositions[meleeDisks]);
-                            meleeDiskSummon->GetMotionMaster()->MovePoint(meleeDisks * MAX_MELEE_HOVER_DISK_SPAWNPOINTS, MeleeHoverDisksWaypoints[meleeDisks * MAX_MELEE_HOVER_DISK_SPAWNPOINTS]);
+                            if (Creature* meleeDiskSummon = me->SummonCreature(NPC_HOVER_DISK_MELEE, MeleeHoverDisksSpawnPositions[meleeDisks]))
+                                meleeDiskSummon->GetMotionMaster()->MovePoint(meleeDisks * MAX_MELEE_HOVER_DISK_SPAWNPOINTS, MeleeHoverDisksWaypoints[meleeDisks * MAX_MELEE_HOVER_DISK_SPAWNPOINTS]);
                         }
 
                         _arcaneReinforcements = false;
@@ -856,16 +855,15 @@ struct boss_malygos : public BossAI
                 case EVENT_DELAYED_REINFORCEMENTS:
                     for (uint8 rangeDisks = 5; rangeDisks < 8; rangeDisks++)
                     {
-                        Creature* casterDiskSummon = me->SummonCreature(NPC_HOVER_DISK_CASTER, RangeHoverDisksSpawnPositions[rangeDisks]);
-
-                        if (casterDiskSummon->IsAIEnabled())
-                            casterDiskSummon->AI()->DoAction(rangeDisks);
+                        if (Creature* casterDiskSummon = me->SummonCreature(NPC_HOVER_DISK_CASTER, RangeHoverDisksSpawnPositions[rangeDisks]))
+                            if (casterDiskSummon->IsAIEnabled())
+                                casterDiskSummon->AI()->DoAction(rangeDisks);
                     }
 
                     for (uint8 meleeDisks = 2; meleeDisks < 4; meleeDisks++)
                     {
-                        Creature* meleeDiskSummon = me->SummonCreature(NPC_HOVER_DISK_MELEE, MeleeHoverDisksSpawnPositions[meleeDisks]);
-                        meleeDiskSummon->GetMotionMaster()->MovePoint(meleeDisks * MAX_MELEE_HOVER_DISK_SPAWNPOINTS, MeleeHoverDisksWaypoints[meleeDisks * MAX_MELEE_HOVER_DISK_SPAWNPOINTS]);
+                        if (Creature* meleeDiskSummon = me->SummonCreature(NPC_HOVER_DISK_MELEE, MeleeHoverDisksSpawnPositions[meleeDisks]))
+                            meleeDiskSummon->GetMotionMaster()->MovePoint(meleeDisks * MAX_MELEE_HOVER_DISK_SPAWNPOINTS, MeleeHoverDisksWaypoints[meleeDisks * MAX_MELEE_HOVER_DISK_SPAWNPOINTS]);
                     }
                     break;
                 case EVENT_PATHING_AROUND_PLATFORM:
@@ -1010,9 +1008,16 @@ private:
 
 struct npc_portal_eoe : public ScriptedAI
 {
-    npc_portal_eoe(Creature* creature) : ScriptedAI(creature)
+    npc_portal_eoe(Creature* creature) : ScriptedAI(creature), _checkTimer(0)
     {
         _instance = creature->GetInstanceScript();
+    }
+
+    void Reset() override
+    {
+        _checkTimer = 0;
+        if (!me->HasAura(SPELL_PORTAL_OPENED))
+            DoCast(me, SPELL_PORTAL_VISUAL_CLOSED, true);
     }
 
     void SpellHit(WorldObject* /*caster*/, SpellInfo const* spellInfo) override
@@ -1027,11 +1032,12 @@ struct npc_portal_eoe : public ScriptedAI
         }
     }
 
-    void UpdateAI(uint32 /*diff*/) override
+    void UpdateAI(uint32 diff) override
     {
-        // When duration of opened riff visual ends, closed one should be cast
-        if (!me->HasAura(SPELL_PORTAL_VISUAL_CLOSED) && !me->HasAura(SPELL_PORTAL_OPENED))
-            DoCast(me, SPELL_PORTAL_VISUAL_CLOSED, true);
+        _checkTimer += diff;
+        if (_checkTimer < 2000)
+            return;
+        _checkTimer = 0;
 
         if (Creature* malygos = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_MALYGOS)))
         {
@@ -1045,6 +1051,7 @@ struct npc_portal_eoe : public ScriptedAI
 
 private:
     InstanceScript* _instance;
+    uint32 _checkTimer;
 };
 
 struct npc_power_spark : public ScriptedAI
@@ -1094,14 +1101,14 @@ struct npc_power_spark : public ScriptedAI
         float heightDiff = me->GetPositionZ() - me->GetFloorZ();
         if (heightDiff <= 0.5f)
         {
-            me->CastSpell(me, SPELL_POWER_SPARK_DEATH, true);
+            me->CastSpell(me, SPELL_POWER_SPARK_BUFF, true);
             return;
         }
 
         Milliseconds duration = std::chrono::round<Milliseconds>(std::chrono::duration<float>(Movement::computeFallTime(heightDiff, false)));
         DoAddEvent(duration, new Trinity::Helpers::Events::GenericEvent(me, [](WorldObject* spark) -> bool
         {
-            spark->ToUnit()->CastSpell(spark->ToUnit(), SPELL_POWER_SPARK_DEATH, true);
+            spark->ToUnit()->CastSpell(spark->ToUnit(), SPELL_POWER_SPARK_BUFF, true);
             return true;
         }));
     }
@@ -1132,6 +1139,8 @@ struct npc_melee_hover_disk : public VehicleAI
 
         Initialize();
     }
+
+    void EnterEvadeMode(EvadeReason /*why*/) override { }
 
     void PassengerBoarded(Unit* unit, int8 /*seat*/, bool apply) override
     {
@@ -1512,13 +1521,19 @@ class spell_malygos_portal_beam : public AuraScript
     void OnApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
         if (Creature* target = GetTarget()->ToCreature())
+        {
+            target->RemoveAura(SPELL_PORTAL_VISUAL_CLOSED);
             target->CastSpell(target, SPELL_PORTAL_OPENED);
+        }
     }
 
     void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
         if (Creature* target = GetTarget()->ToCreature())
+        {
             target->RemoveAura(SPELL_PORTAL_OPENED);
+            target->CastSpell(target, SPELL_PORTAL_VISUAL_CLOSED, true);
+        }
     }
 
     void Register() override
@@ -1745,8 +1760,9 @@ class spell_nexus_lord_align_disk_aggro : public SpellScript
     void HandleScript(SpellEffIndex /*effIndex*/)
     {
         Creature* caster = GetCaster()->ToCreature();
-        if (Creature* target = GetHitCreature())
-            target->GetMotionMaster()->MoveChase(caster->GetVictim());
+        if (Unit* disk = caster->GetVehicleBase())
+            if (Unit* victim = caster->GetVictim())
+                disk->GetMotionMaster()->MoveChase(victim);
     }
 
     void Register() override
