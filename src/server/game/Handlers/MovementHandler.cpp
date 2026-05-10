@@ -798,6 +798,9 @@ void WorldSession::HandleMoveKnockBackAck(WorldPacket& recvData)
     ReadMovementInfo(recvData, &movementInfo);
     movementInfo.time = AdjustClientMovementTime(movementInfo.time);
 
+    if (!movementInfo.pos.IsPositionValid())
+        return;
+
     if (Vehicle* vehicle = mover->GetVehicle())
     {
         if (!vehicle->NormalizePassengerMovementInfo(mover, movementInfo))
