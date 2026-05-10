@@ -291,7 +291,7 @@ void WorldSession::HandleMoveWorldportAck()
     uint32 newzone, newarea;
     player->GetZoneAndAreaId(newzone, newarea);
 
-    Battlefield* battlefield = sBattlefieldMgr->GetEnabledBattlefield(newzone);
+    Battlefield* battlefield = sBattlefieldMgr->GetBattlefieldToZoneId(newzone);
 
     if (player->IsInFlight())
     {
