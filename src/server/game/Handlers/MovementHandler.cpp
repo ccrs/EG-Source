@@ -312,7 +312,7 @@ void WorldSession::HandleMoveWorldportAck()
         mountAllowed = true;
     else if (mEntry->IsBattlegroundOrArena())
         mountAllowed = true;
-    else if (battlefield && battlefield->IsMountAllowed())
+    else if (battlefield)
         mountAllowed = true;
 
     if (mInstance)
