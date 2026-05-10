@@ -45,6 +45,145 @@
 #include <boost/accumulators/statistics.hpp>
 #include <boost/circular_buffer.hpp>
 
+bool WorldSession::ValidateMovementInfo(Unit const* mover, MovementInfo* mi) const
+{
+    //! Anti-cheat checks. Please keep them in seperate if () blocks to maintain a clear overview.
+    //! Might be subject to latency, so just remove improper flags.
+    #ifdef TRINITY_DEBUG
+    #define REMOVE_VIOLATING_FLAGS(check, maskToRemove) do \
+    { \
+        if (check) \
+        { \
+            TC_LOG_DEBUG("entities.unit", "WorldSession::ReadMovementInfo: Violation of MovementFlags found \"{}\". " \
+                "MovementFlags: {}, MovementFlags2: {} for player {}. Mask {} will be removed.", \
+                STRINGIZE(check), mi->GetMovementFlags(), mi->GetExtraMovementFlags(), GetPlayer()->GetGUID(), maskToRemove); \
+            mi->RemoveMovementFlag((maskToRemove)); \
+        } \
+    } while(0)
+    #else
+    #define REMOVE_VIOLATING_FLAGS(check, maskToRemove) do \
+    { \
+        if (check) \
+            mi->RemoveMovementFlag((maskToRemove)); \
+    } while (0)
+    #endif
+
+    if (!mover)
+        return false;
+
+    if (!mi->pos.IsPositionValid())
+        return false;
+
+    if (!GetPlayer()->GetVehicleBase() || !(GetPlayer()->GetVehicle()->GetVehicleInfo()->Flags & VEHICLE_FLAG_FIXED_POSITION))
+        REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_ROOT), MOVEMENTFLAG_ROOT);
+
+    /*! This must be a packet spoofing attempt. MOVEMENTFLAG_ROOT sent from the client is not valid
+        in conjunction with any of the moving movement flags such as MOVEMENTFLAG_FORWARD.
+        It will freeze clients that receive this player's movement info.
+    */
+    REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_ROOT) && mi->HasMovementFlag(MOVEMENTFLAG_MASK_MOVING),
+        MOVEMENTFLAG_MASK_MOVING);
+
+    //! Cannot hover without SPELL_AURA_HOVER
+    REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_HOVER) && !mover->HasAuraType(SPELL_AURA_HOVER),
+        MOVEMENTFLAG_HOVER);
+
+    //! Cannot ascend and descend at the same time
+    REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_ASCENDING) && mi->HasMovementFlag(MOVEMENTFLAG_DESCENDING),
+        MOVEMENTFLAG_ASCENDING | MOVEMENTFLAG_DESCENDING);
+
+    //! Cannot move left and right at the same time
+    REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_LEFT) && mi->HasMovementFlag(MOVEMENTFLAG_RIGHT),
+        MOVEMENTFLAG_LEFT | MOVEMENTFLAG_RIGHT);
+
+    //! Cannot strafe left and right at the same time
+    REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_STRAFE_LEFT) && mi->HasMovementFlag(MOVEMENTFLAG_STRAFE_RIGHT),
+        MOVEMENTFLAG_STRAFE_LEFT | MOVEMENTFLAG_STRAFE_RIGHT);
+
+    //! Cannot pitch up and down at the same time
+    REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_PITCH_UP) && mi->HasMovementFlag(MOVEMENTFLAG_PITCH_DOWN),
+        MOVEMENTFLAG_PITCH_UP | MOVEMENTFLAG_PITCH_DOWN);
+
+    //! Cannot move forwards and backwards at the same time
+    REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_FORWARD) && mi->HasMovementFlag(MOVEMENTFLAG_BACKWARD),
+        MOVEMENTFLAG_FORWARD | MOVEMENTFLAG_BACKWARD);
+
+    //! Cannot walk on water without SPELL_AURA_WATER_WALK except for ghosts
+    REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_WATERWALKING) &&
+        !mover->HasAuraType(SPELL_AURA_WATER_WALK) &&
+        !mover->HasAuraType(SPELL_AURA_GHOST),
+        MOVEMENTFLAG_WATERWALKING);
+
+    //! Cannot feather fall without SPELL_AURA_FEATHER_FALL
+    REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_FALLING_SLOW) && !mover->HasAuraType(SPELL_AURA_FEATHER_FALL),
+        MOVEMENTFLAG_FALLING_SLOW);
+
+    /*! Cannot fly if no fly auras present. Exception is being a GM.
+        Note that we check for account level instead of Player::IsGameMaster() because in some
+        situations it may be feasable to use .gm fly on as a GM without having .gm on,
+        e.g. aerial combat.
+    */
+
+    REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_FLYING | MOVEMENTFLAG_CAN_FLY) && GetSecurity() == SEC_PLAYER &&
+        !mover->HasAuraType(SPELL_AURA_FLY) &&
+        !mover->HasAuraType(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED),
+        MOVEMENTFLAG_FLYING | MOVEMENTFLAG_CAN_FLY);
+
+    //! Cannot fly and fall at the same time
+    REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_DISABLE_GRAVITY) && mi->HasMovementFlag(MOVEMENTFLAG_FALLING),
+        MOVEMENTFLAG_FALLING);
+
+    REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_SPLINE_ENABLED) &&
+        (!mover->movespline->Initialized() || mover->movespline->Finalized()), MOVEMENTFLAG_SPLINE_ENABLED);
+
+    #undef REMOVE_VIOLATING_FLAGS
+
+    return true;
+}
+
+Unit* WorldSession::ValidateAndGetUnitBeingMoved(ObjectGuid guid, bool forStatusAck) const
+{
+    GameClient* client = GetGameClient();
+
+    // the client is attempting to tamper movement data
+    // edit: this wouldn't happen in retail but it does in TC, even with a legitimate client.
+    Unit* activelyMovedUnit = client->GetActivelyMovedUnit();
+    if (!forStatusAck && (!activelyMovedUnit || activelyMovedUnit->GetGUID() != guid))
+    {
+        TC_LOG_DEBUG("entities.unit", "Attempt at tampering movement data by Player {}", _player->GetName());
+        return nullptr;
+    }
+
+    // This can happen if a legitimate client has lost control of a unit but hasn't received SMSG_CONTROL_UPDATE before
+    // sending this packet yet. The server should silently ignore all MOVE messages coming from the client as soon
+    // as control over that unit is revoked (through a 'SMSG_CONTROL_UPDATE allowMove=false' message).
+    if (!client->IsAllowedToMove(guid))
+    {
+        TC_LOG_DEBUG("entities.unit", "Bad or outdated movement data by Player {}", _player->GetName());
+        return nullptr;
+    }
+
+    if (activelyMovedUnit && activelyMovedUnit->GetGUID() == guid)
+        return activelyMovedUnit;
+
+    if (_player->GetGUID() == guid)
+        return _player;
+
+    return ObjectAccessor::GetUnit(*_player, guid);
+}
+
+uint32 WorldSession::AdjustClientMovementTime(uint32 time) const
+{
+    int64 movementTime = int64(time) + _timeSyncClockDelta;
+    if (_timeSyncClockDelta == 0 || movementTime < 0 || movementTime > SI64LIT(0xFFFFFFFF))
+    {
+        TC_LOG_WARN("misc", "The computed movement time using clockDelta is erronous. Using fallback instead");
+        return GameTime::GetGameTimeMS();
+    }
+    else
+        return uint32(movementTime);
+}
+
 void WorldSession::HandleMoveWorldportAckOpcode(WorldPacket & /*recvPacket*/)
 {
     TC_LOG_DEBUG("network", "WORLD: got MSG_MOVE_WORLDPORT_ACK.");
@@ -205,7 +344,6 @@ void WorldSession::HandleMoveWorldportAck()
         player->RemoveAurasByType(SPELL_AURA_MOUNTED);
 
     // update zone immediately, otherwise leave channel will cause crash in mtmap
-    player->GetZoneAndAreaId(newzone, newarea);
     player->UpdateZone(newzone, newarea);
 
     // honorless target
@@ -230,7 +368,8 @@ void WorldSession::HandleMoveTeleportAck(WorldPacket& recvPacket)
 
     recvPacket >> guid.ReadAsPacked();
 
-    if (!IsRightUnitBeingMoved(guid))
+    Unit* mover = ValidateAndGetUnitBeingMoved(guid, false);
+    if (!mover)
     {
         recvPacket.rfinish();                     // prevent warnings spam
         return;
@@ -239,8 +378,6 @@ void WorldSession::HandleMoveTeleportAck(WorldPacket& recvPacket)
     uint32 sequenceIndex, time;
     recvPacket >> sequenceIndex >> time;
 
-    GameClient* client = GetGameClient();
-    Unit* mover = client->GetActivelyMovedUnit();
     Player* plMover = mover->ToPlayer();
 
     if (!plMover || !plMover->IsBeingTeleportedNear())
@@ -285,23 +422,19 @@ void WorldSession::HandleMovementOpcodes(WorldPackets::Movement::ClientPlayerMov
 
 void WorldSession::HandleMovementOpcode(OpcodeClient opcode, MovementInfo& movementInfo)
 {
-    if (!IsRightUnitBeingMoved(movementInfo.guid))
+    Unit* mover = ValidateAndGetUnitBeingMoved(movementInfo.guid, false);
+
+    // Capture raw flags before ValidateMovementInfo strips violations so the
+    // fly-flag correction below can detect and fix the client's stale state.
+    uint32 rawMovementFlags = movementInfo.flags;
+
+    if (!ValidateMovementInfo(mover, &movementInfo))
         return;
 
-    GameClient* client = GetGameClient();
-    Unit* mover = client->GetActivelyMovedUnit();
     Player* plrMover = mover->ToPlayer();
 
     // ignore, waiting processing in WorldSession::HandleMoveWorldportAckOpcode and WorldSession::HandleMoveTeleportAck
     if (plrMover && plrMover->IsBeingTeleported())
-        return;
-
-    // Save raw flags before validation strips violations, so we can detect
-    // and correct the client when illegal flags are removed below.
-    uint32 rawMovementFlags = movementInfo.flags;
-    ValidateMovementInfo(&movementInfo, opcode);
-
-    if (!movementInfo.pos.IsPositionValid())
         return;
 
     if (!mover->movespline->Finalized())
@@ -557,11 +690,8 @@ void WorldSession::HandleForceSpeedChangeAck(WorldPacket& recvData)
         if (!vehicle->NormalizePassengerMovementInfo(mover, movementInfo))
             return;
     }
-    else
-    {
-        if (!NormalizeTransportMovementInfo(mover, movementInfo))
-            return;
-    }
+    else if (!NormalizeTransportMovementInfo(mover, movementInfo))
+        return;
 
     /*
      * The client data has been verified and movementInfo has been normalized.
@@ -938,14 +1068,13 @@ void WorldSession::HandleMoveTimeSkippedOpcode(WorldPacket& recvData)
     recvData >> guid.ReadAsPacked();
     recvData >> timeSkipped;
 
-    if (!IsRightUnitBeingMoved(guid))
+    Unit* mover = ValidateAndGetUnitBeingMoved(guid, false);
+    if (!mover)
     {
         recvData.rfinish();                     // prevent warnings spam
         return;
     }
 
-    GameClient* client = GetGameClient();
-    Unit* mover = client->GetActivelyMovedUnit();
     mover->m_movementInfo.time += timeSkipped;
 
     WorldPacket data(MSG_MOVE_TIME_SKIPPED, recvData.size());
