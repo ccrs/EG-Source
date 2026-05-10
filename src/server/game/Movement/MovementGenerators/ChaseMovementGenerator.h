@@ -60,6 +60,7 @@ class ChaseMovementGenerator : public MovementGenerator, public AbstractFollower
         float _currentChaseStopDistance = 0.0f;
         bool _movingTowards = true;
         bool _useChaseAngle = false;
+        Optional<float> _lastBroadcastedFacingAngle;
 };
 
 #endif
