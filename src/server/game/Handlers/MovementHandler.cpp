@@ -26,6 +26,7 @@
 #include "InstanceSaveMgr.h"
 #include "Log.h"
 #include "MapManager.h"
+#include "MiscPackets.h"
 #include "MotionMaster.h"
 #include "MovementGenerator.h"
 #include "MovementPackets.h"
@@ -291,7 +292,7 @@ void WorldSession::HandleMoveWorldportAck()
     uint32 newzone, newarea;
     player->GetZoneAndAreaId(newzone, newarea);
 
-    Battlefield* battlefield = sBattlefieldMgr->GetEnabledBattlefield(newzone);
+    Battlefield* battlefield = sBattlefieldMgr->GetBattlefieldToZoneId(newzone);
 
     if (player->IsInFlight())
     {
@@ -312,7 +313,7 @@ void WorldSession::HandleMoveWorldportAck()
         mountAllowed = true;
     else if (mEntry->IsBattlegroundOrArena())
         mountAllowed = true;
-    else if (battlefield && battlefield->IsMountAllowed())
+    else if (battlefield)
         mountAllowed = true;
 
     if (mInstance)
@@ -1086,24 +1087,19 @@ void WorldSession::HandleMoveTimeSkippedOpcode(WorldPacket& recvData)
     GetPlayer()->SendMessageToSet(&data, false);
 }
 
-void WorldSession::HandleTimeSyncResponse(WorldPacket& recvData)
+void WorldSession::HandleTimeSyncResponse(WorldPackets::Misc::TimeSyncResponse& packet)
 {
-    TC_LOG_DEBUG("network", "CMSG_TIME_SYNC_RESP");
-
-    uint32 counter, clientTimestamp;
-    recvData >> counter >> clientTimestamp;
-
-    if (_pendingTimeSyncRequests.count(counter) == 0)
+    if (_pendingTimeSyncRequests.count(packet.SequenceIndex) == 0)
         return;
 
-    uint32 serverTimeAtSent = _pendingTimeSyncRequests.at(counter);
-    _pendingTimeSyncRequests.erase(counter);
+    uint32 serverTimeAtSent = _pendingTimeSyncRequests.at(packet.SequenceIndex);
+    _pendingTimeSyncRequests.erase(packet.SequenceIndex);
 
     // time it took for the request to travel to the client, for the client to process it and reply and for response to travel back to the server.
     // we are going to make 2 assumptions:
     // 1) we assume that the request processing time equals 0.
     // 2) we assume that the packet took as much time to travel from server to client than it took to travel from client to server.
-    uint32 roundTripDuration = getMSTimeDiff(serverTimeAtSent, recvData.GetReceivedTime());
+    uint32 roundTripDuration = getMSTimeDiff(serverTimeAtSent, packet.GetReceivedTime());
     uint32 lagDelay = roundTripDuration / 2;
 
     /*
@@ -1116,7 +1112,7 @@ void WorldSession::HandleTimeSyncResponse(WorldPacket& recvData)
     using the following relation:
     serverTime = clockDelta + clientTime
     */
-    int64 clockDelta = (int64)serverTimeAtSent + (int64)lagDelay - (int64)clientTimestamp;
+    int64 clockDelta = (int64)serverTimeAtSent + (int64)lagDelay - (int64)packet.ClientTime;
     _timeSyncClockDeltaQueue->push_back(std::pair<int64, uint32>(clockDelta, roundTripDuration));
     ComputeNewClockDelta();
 }
