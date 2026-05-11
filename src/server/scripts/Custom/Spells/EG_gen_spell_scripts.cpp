@@ -8,9 +8,9 @@
 #include "Unit.h"
 
 // 45775 - Cosmetic - Divine Shield Blue
-class EG_spell_Cosmetic___Divine_Shield_Blue : public AuraScript
+class EG_spell_cosmetic___divine_shield_blue : public AuraScript
 {
-    PrepareAuraScript(EG_spell_Cosmetic___Divine_Shield_Blue);
+    PrepareAuraScript(EG_spell_cosmetic___divine_shield_blue);
 
     void OnApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
@@ -26,8 +26,8 @@ class EG_spell_Cosmetic___Divine_Shield_Blue : public AuraScript
 
     void Register() override
     {
-        OnEffectApply += AuraEffectApplyFn(EG_spell_Cosmetic___Divine_Shield_Blue::OnApply, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
-        OnEffectRemove += AuraEffectRemoveFn(EG_spell_Cosmetic___Divine_Shield_Blue::OnRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
+        OnEffectApply += AuraEffectApplyFn(EG_spell_cosmetic___divine_shield_blue::OnApply, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
+        OnEffectRemove += AuraEffectRemoveFn(EG_spell_cosmetic___divine_shield_blue::OnRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
     }
 };
 
@@ -247,7 +247,7 @@ class EG_spell_lava_strike : public SpellScript
 
 void AddSC_EG_gen_spell_scripts()
 {
-    RegisterSpellScript(EG_spell_Cosmetic___Divine_Shield_Blue);
+    RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
     RegisterSpellScript(EG_spell_destroy_deathforged_infernal);
     RegisterSpellScript(EG_spell_fel_reaver_sentinel_tag);
     RegisterSpellScript(EG_spell_fel_reaver_controller);
