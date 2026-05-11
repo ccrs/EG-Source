@@ -1,6 +1,7 @@
 #include "ScriptMgr.h"
 #include "Creature.h"
 #include "InstanceScript.h"
+#include "Player.h"
 #include "Spell.h"
 #include "SpellAuraEffects.h"
 #include "SpellInfo.h"
