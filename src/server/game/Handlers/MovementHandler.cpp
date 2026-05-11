@@ -292,7 +292,7 @@ void WorldSession::HandleMoveWorldportAck()
     uint32 newzone, newarea;
     player->GetZoneAndAreaId(newzone, newarea);
 
-    Battlefield* battlefield = sBattlefieldMgr->GetBattlefieldToZoneId(newzone);
+    Battlefield* battlefield = sBattlefieldMgr->GetEnabledBattlefield(newzone);
 
     if (player->IsInFlight())
     {
@@ -313,7 +313,7 @@ void WorldSession::HandleMoveWorldportAck()
         mountAllowed = true;
     else if (mEntry->IsBattlegroundOrArena())
         mountAllowed = true;
-    else if (battlefield)
+    else if (battlefield && battlefield->IsMountAllowed())
         mountAllowed = true;
 
     if (mInstance)
