@@ -3917,6 +3917,12 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->_GetEffect(EFFECT_0).RadiusEntry = sSpellRadiusStore.LookupEntry(EFFECT_RADIUS_10_YARDS);
     });
 
+    // 27812 Void Blast
+    ApplySpellFix({ 27812 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).RadiusEntry = sSpellRadiusStore.LookupEntry(EFFECT_RADIUS_3_YARDS);
+    });
+
     ApplySpellFix({
         37851, // Tag Greater Felfire Diemetradon
         37918  // Arcano-pince
@@ -5013,12 +5019,14 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->ExplicitTargetMask = 0;
     });
 
-    // Pound
+    // 53472 Pound
+    // 59433 Pound
     ApplySpellFix({ 53472, 59433 }, [](SpellInfo* spellInfo)
     {
         spellInfo->_GetEffect(EFFECT_2).Effect = SPELL_EFFECT_NONE;
     });
 
+    // 58026 Blessing of the Crusade
     ApplySpellFix({ 58026 }, [](SpellInfo* spellInfo)
     {
         spellInfo->DurationEntry = sSpellDurationStore.LookupEntry(21); // permanent
