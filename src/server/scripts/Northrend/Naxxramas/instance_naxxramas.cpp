@@ -15,13 +15,14 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "naxxramas.h"
 #include "AreaBoundary.h"
 #include "CreatureAI.h"
 #include "GameObject.h"
 #include "InstanceScript.h"
 #include "Map.h"
-#include "naxxramas.h"
+#include "Player.h"
+#include "ScriptMgr.h"
 #include "TemporarySummon.h"
 
 BossBoundaryData const boundaries =
@@ -124,6 +125,7 @@ class instance_naxxramas : public InstanceMapScript
                 CurrentWingTaunt        = SAY_KELTHUZAD_FIRST_WING_TAUNT;
 
                 playerDied              = false;
+                bigglesworthKilled      = false;
             }
 
             void OnCreatureCreate(Creature* creature) override
@@ -246,6 +248,17 @@ class instance_naxxramas : public InstanceMapScript
                 InstanceScript::OnGameObjectCreate(go);
             }
 
+            void OnPlayerEnter(Player* player) override
+            {
+                if (bigglesworthKilled)
+                    DoCastSpellOnPlayer(player, SPELL_BIGGLESWORTH_CURSE, true, true);
+            }
+
+            void OnPlayerLeave(Player* player) override
+            {
+                DoRemoveAurasDueToSpellOnPlayer(player, SPELL_BIGGLESWORTH_CURSE, true, true);
+            }
+
             void OnUnitDeath(Unit* unit) override
             {
                 if (!playerDied && unit->IsPlayer() && IsEncounterInProgress())
@@ -261,6 +274,10 @@ class instance_naxxramas : public InstanceMapScript
                         instance->LoadGrid(3749.67f, -5114.06f);
                         if (Creature* kelthuzad = instance->GetCreature(KelthuzadGUID))
                             kelthuzad->AI()->Talk(SAY_KELTHUZAD_CAT_DIED);
+
+                        bigglesworthKilled = true;
+                        DoCastSpellOnPlayers(SPELL_BIGGLESWORTH_CURSE, true, true);
+                        SaveToDB();
                     }
             }
 
@@ -348,6 +365,14 @@ class instance_naxxramas : public InstanceMapScript
             {
                 if (!InstanceScript::SetBossState(id, state))
                     return false;
+
+                if (state == DONE && bigglesworthKilled)
+                {
+                    Map::PlayerList const& players = instance->GetPlayers();
+                    for (auto itr = players.begin(); itr != players.end(); ++itr)
+                        if (Player* player = itr->GetSource())
+                            player->AddItem(ITEM_EMBLEM_OF_CONQUEST, 1);
+                }
 
                 switch (id)
                 {
@@ -554,7 +579,7 @@ class instance_naxxramas : public InstanceMapScript
 
             void WriteSaveDataMore(std::ostringstream& data) override
             {
-                data << uint32(playerDied ? 1 : 0);
+                data << uint32(playerDied ? 1 : 0) << ' ' << uint32(bigglesworthKilled ? 1 : 0);
             }
 
             void ReadSaveDataMore(std::istringstream& data) override
@@ -562,6 +587,8 @@ class instance_naxxramas : public InstanceMapScript
                 uint32 tmpState;
                 data >> tmpState;
                 playerDied = tmpState != 0;
+                data >> tmpState;
+                bigglesworthKilled = tmpState != 0;
             }
 
         protected:
@@ -610,6 +637,9 @@ class instance_naxxramas : public InstanceMapScript
 
             /* The Immortal / The Undying */
             bool playerDied;
+
+            /* Mr. Bigglesworth */
+            bool bigglesworthKilled;
 
             EventMap events;
         };

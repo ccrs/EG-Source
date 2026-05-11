@@ -2887,6 +2887,10 @@ void SpellMgr::LoadSpellInfoCustomAttributes()
                 spellInfo->AttributesCu |= SPELL_ATTR0_CU_AURA_CANNOT_BE_SAVED;
     }
 
+    // 1010 Curse of Idiocy - Mr. Bigglesworth curse
+    if (SpellInfo* spellInfo = _GetSpellInfo(1010))
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_AURA_CANNOT_BE_SAVED;
+
     TC_LOG_INFO("server.loading", ">> Loaded SpellInfo custom attributes in {} ms", GetMSTimeDiffToNow(oldMSTime));
 }
 
@@ -5062,6 +5066,24 @@ void SpellMgr::LoadSpellInfoCorrections()
     ApplySpellFix({ 55873 }, [](SpellInfo* spellInfo)
     {
         spellInfo->DurationEntry = sSpellDurationStore.LookupEntry(1); // 10 seconds
+    });
+
+    // 1010 Curse of Idiocy (Naxxramas Mr. Bigglesworth debuff)
+    ApplySpellFix({ 1010 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Dispel = DISPEL_NONE;
+        spellInfo->Attributes |= SPELL_ATTR0_UNAFFECTED_BY_INVULNERABILITY | SPELL_ATTR0_CASTABLE_WHILE_DEAD;
+        spellInfo->AttributesEx |= SPELL_ATTR1_NOT_BREAK_STEALTH;
+        spellInfo->AttributesEx2 |= SPELL_ATTR2_CAN_TARGET_DEAD | SPELL_ATTR2_CAN_TARGET_NOT_IN_LOS | SPELL_ATTR2_NOT_NEED_SHAPESHIFT;
+        spellInfo->AttributesEx3 |= SPELL_ATTR3_DEATH_PERSISTENT;
+        spellInfo->AttributesEx6 |= SPELL_ATTR6_CAN_TARGET_INVISIBLE;
+        spellInfo->_GetEffect(EFFECT_0).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
+        spellInfo->_GetEffect(EFFECT_1).ApplyAuraName = SPELL_AURA_MOD_DAMAGE_PERCENT_DONE;
+        spellInfo->_GetEffect(EFFECT_1).DieSides = 0;
+        spellInfo->_GetEffect(EFFECT_1).BasePoints = -10;
+        spellInfo->_GetEffect(EFFECT_1).MiscValue = SPELL_SCHOOL_MASK_ALL;
+        spellInfo->_GetEffect(EFFECT_1).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
+        spellInfo->_GetEffect(EFFECT_2).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
     });
 
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
