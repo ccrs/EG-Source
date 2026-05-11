@@ -265,7 +265,10 @@ class EG_spell_naxx_bigglesworth_curse : public AuraScript
             return;
 
         for (int32 i = STAT_STRENGTH; i < MAX_STATS; ++i)
-            player->ApplyStatPctModifier(UnitMods(UNIT_MOD_STAT_START + i), BASE_PCT, -15.0f);
+        {
+            float pctCut = (i == STAT_INTELLECT || i == STAT_SPIRIT) ? -20.0f : -15.0f;
+            player->ApplyStatPctModifier(UnitMods(UNIT_MOD_STAT_START + i), BASE_PCT, pctCut);
+        }
     }
 
     void AfterApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
