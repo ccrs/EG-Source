@@ -4046,7 +4046,8 @@ void Spell::EffectSummonObject()
     Map* map = unitCaster->GetMap();
     if (m_targets.HasDst())
     {
-        float floorZ = map->GetHeight(unitCaster->GetPhaseMask(), x, y, z + Z_OFFSET_FIND_HEIGHT * 2.0f);
+        float anchorZ = std::max(z, unitCaster->GetPositionZ()) + Z_OFFSET_FIND_HEIGHT * 2.0f;
+        float floorZ = map->GetHeight(unitCaster->GetPhaseMask(), x, y, anchorZ);
         if (floorZ > INVALID_HEIGHT)
             z = floorZ;
     }
