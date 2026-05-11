@@ -151,7 +151,8 @@ namespace
     {
         for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
             if (Player* member = itr->GetSource())
-                ChatHandler(member->GetSession()).PSendSysMessage("[Random Group Reward] %s received %s x%u from pool '%s'.", playerName.c_str(), itemName.c_str(), quantity, poolName);
+                if (WorldSession* session = member->GetSession())
+                    ChatHandler(session).PSendSysMessage("[Random Group Reward] %s received %s x%u from pool '%s'.", playerName.c_str(), itemName.c_str(), quantity, poolName);
     }
 }
 
