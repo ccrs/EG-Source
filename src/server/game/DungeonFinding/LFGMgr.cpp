@@ -28,6 +28,7 @@
 #include "InstanceScript.h"
 #include "LFGGroupData.h"
 #include "LFGPlayerData.h"
+#include "LFGRandomReward.h"
 #include "LFGScripts.h"
 #include "LFGQueue.h"
 #include "Log.h"
@@ -1384,6 +1385,25 @@ void LFGMgr::UpdateProposal(uint32 proposalId, ObjectGuid guid, bool accept)
         queue.RemoveFromQueue(*it);
 
     MakeNewGroup(proposal);
+
+    // Custom
+    if (proposal.group.IsEmpty())
+    {
+        ObjectGuid newGroupGuid;
+        size_t const totalPlayers = proposal.players.size();
+        size_t confirmedSolo = 0;
+        for (LfgProposalPlayerContainer::const_iterator it = proposal.players.begin(); it != proposal.players.end(); ++it)
+        {
+            ObjectGuid pguid = it->first;
+            if (newGroupGuid.IsEmpty())
+                newGroupGuid = GetGroup(pguid);
+            if (PlayersStore[pguid].GetNumberOfPartyMembersAtJoin() <= 1)
+                ++confirmedSolo;
+        }
+        if (totalPlayers > 0 && confirmedSolo == totalPlayers && !newGroupGuid.IsEmpty())
+            GroupsStore[newGroupGuid].SetPureRandom(true);
+    }
+
     ProposalsStore.erase(itProposal);
 }
 
@@ -1817,7 +1837,16 @@ void LFGMgr::FinishDungeon(ObjectGuid gguid, const uint32 dungeonId, Map const* 
         TC_LOG_DEBUG("lfg.dungeon.finish", "Group: {}, Player: {} done dungeon {}, {} previously done.", gguid.ToString(), guid.ToString(), GetDungeon(gguid), done ? " " : " not");
         LfgPlayerRewardData data = LfgPlayerRewardData(dungeon->Entry(), GetDungeon(gguid, false), done, quest);
         player->GetSession()->SendLfgPlayerReward(data);
+
+        // Custom
+        if (dungeon->difficulty == DUNGEON_DIFFICULTY_HEROIC && player->GetLevel() == DEFAULT_MAX_LEVEL && GroupsStore[gguid].IsPureRandom())
+        {
+            if (Group* group = player->GetGroup())
+                LFGRandomReward::TryReward(player, group);
+        }
     }
+
+    GroupsStore[gguid].ResetPureRandom();
 }
 
 // --------------------------------------------------------------------------//
@@ -2175,7 +2204,13 @@ uint8 LFGMgr::RemovePlayerFromGroup(ObjectGuid gguid, ObjectGuid guid)
 
 void LFGMgr::AddPlayerToGroup(ObjectGuid gguid, ObjectGuid guid)
 {
+    GroupsStore[gguid].OnMemberAdded();
     GroupsStore[gguid].AddPlayer(guid);
+}
+
+void LFGMgr::OnLfgMemberRemoved(ObjectGuid gguid, bool wasVoteKick)
+{
+    GroupsStore[gguid].OnMemberRemoved(wasVoteKick);
 }
 
 void LFGMgr::SetLeader(ObjectGuid gguid, ObjectGuid leader)

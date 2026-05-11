@@ -22,7 +22,8 @@ namespace lfg
 {
 
 LfgGroupData::LfgGroupData(): m_State(LFG_STATE_NONE), m_OldState(LFG_STATE_NONE),
-    m_Leader(), m_Dungeon(0), m_KicksLeft(LFG_GROUP_MAX_KICKS), m_VoteKickActive(false)
+    m_Leader(), m_Dungeon(0), m_KicksLeft(LFG_GROUP_MAX_KICKS), m_VoteKickActive(false),
+    m_IsPureRandom(false), m_VoluntaryDepartures(0)
 { }
 
 LfgGroupData::~LfgGroupData()
@@ -135,6 +136,45 @@ void LfgGroupData::SetVoteKick(bool active)
 bool LfgGroupData::IsVoteKickActive() const
 {
     return m_VoteKickActive;
+}
+
+void LfgGroupData::SetPureRandom(bool pure)
+{
+    m_IsPureRandom = pure;
+    m_VoluntaryDepartures = 0;
+}
+
+bool LfgGroupData::IsPureRandom() const
+{
+    return m_IsPureRandom;
+}
+
+void LfgGroupData::OnMemberAdded()
+{
+    m_IsPureRandom = false;
+}
+
+void LfgGroupData::OnMemberRemoved(bool wasVoteKick)
+{
+    if (!m_IsPureRandom)
+        return;
+
+    if (wasVoteKick)
+    {
+        m_IsPureRandom = false;
+        return;
+    }
+
+    if (m_VoluntaryDepartures == 0)
+        ++m_VoluntaryDepartures;
+    else
+        m_IsPureRandom = false;
+}
+
+void LfgGroupData::ResetPureRandom()
+{
+    m_IsPureRandom = false;
+    m_VoluntaryDepartures = 0;
 }
 
 } // namespace lfg

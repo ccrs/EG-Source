@@ -379,6 +379,8 @@ class TC_GAME_API LFGMgr
         uint8 RemovePlayerFromGroup(ObjectGuid gguid, ObjectGuid guid);
         /// Adds player to group
         void AddPlayerToGroup(ObjectGuid gguid, ObjectGuid guid);
+        ///
+        void OnLfgMemberRemoved(ObjectGuid gguid, bool wasVoteKick);
 
         // LFGHandler
         /// Get locked dungeons

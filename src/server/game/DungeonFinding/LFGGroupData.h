@@ -69,6 +69,13 @@ class TC_GAME_API LfgGroupData
         void SetVoteKick(bool active);
         bool IsVoteKickActive() const;
 
+        // Custom
+        void SetPureRandom(bool pure);
+        bool IsPureRandom() const;
+        void OnMemberAdded();
+        void OnMemberRemoved(bool wasVoteKick);
+        void ResetPureRandom();
+
     private:
         // General
         LfgState m_State;                                  ///< State if group in LFG
@@ -80,6 +87,9 @@ class TC_GAME_API LfgGroupData
         // Vote Kick
         uint8 m_KicksLeft;                                 ///< Number of kicks left
         bool m_VoteKickActive;
+        // Custom
+        bool m_IsPureRandom;                               ///< True when group is pure-random
+        uint8 m_VoluntaryDepartures;                       ///< Count of non-vote-kick leaves
 };
 
 } // namespace lfg
