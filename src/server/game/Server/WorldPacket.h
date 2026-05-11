@@ -34,7 +34,7 @@ class WorldPacket : public ByteBuffer
         WorldPacket(uint16 opcode, size_t res = 200) : ByteBuffer(res),
             m_opcode(opcode) { }
 
-        WorldPacket(WorldPacket&& packet) : ByteBuffer(std::move(packet)), m_opcode(packet.m_opcode)
+        WorldPacket(WorldPacket&& packet) : ByteBuffer(std::move(packet)), m_opcode(packet.m_opcode), m_receivedTime(packet.m_receivedTime)
         {
         }
 
@@ -42,7 +42,7 @@ class WorldPacket : public ByteBuffer
         {
         }
 
-        WorldPacket(WorldPacket const& right) : ByteBuffer(right), m_opcode(right.m_opcode)
+        WorldPacket(WorldPacket const& right) : ByteBuffer(right), m_opcode(right.m_opcode), m_receivedTime(right.m_receivedTime)
         {
         }
 
@@ -51,6 +51,7 @@ class WorldPacket : public ByteBuffer
             if (this != &right)
             {
                 m_opcode = right.m_opcode;
+                m_receivedTime = right.m_receivedTime;
                 ByteBuffer::operator=(right);
             }
 
@@ -62,6 +63,7 @@ class WorldPacket : public ByteBuffer
             if (this != &right)
             {
                 m_opcode = right.m_opcode;
+                m_receivedTime = right.m_receivedTime;
                 ByteBuffer::operator=(std::move(right));
             }
 
