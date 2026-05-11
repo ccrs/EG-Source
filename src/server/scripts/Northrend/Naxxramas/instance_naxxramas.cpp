@@ -363,15 +363,22 @@ class instance_naxxramas : public InstanceMapScript
 
             bool SetBossState(uint32 id, EncounterState state) override
             {
+                EncounterState previous = GetBossState(id);
                 if (!InstanceScript::SetBossState(id, state))
                     return false;
 
-                if (state == DONE && bigglesworthKilled)
+                if (state == DONE && previous == IN_PROGRESS && bigglesworthKilled)
                 {
                     Map::PlayerList const& players = instance->GetPlayers();
                     for (auto itr = players.begin(); itr != players.end(); ++itr)
+                    {
                         if (Player* player = itr->GetSource())
-                            player->AddItem(ITEM_EMBLEM_OF_CONQUEST, 1);
+                        {
+                            player->AddItem(ITEM_EMBLEM_OF_VALOR, 2);
+                            if (id == BOSS_KELTHUZAD)
+                                player->AddItem(ITEM_LIL_PHYLACTERY, 1);
+                        }
+                    }
                 }
 
                 switch (id)
