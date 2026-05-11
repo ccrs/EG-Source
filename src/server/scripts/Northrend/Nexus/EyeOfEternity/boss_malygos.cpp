@@ -188,6 +188,7 @@ enum MalygosActions
     ACTION_LIFT_IN_AIR                         = 3,
     ACTION_HANDLE_RESPAWN                      = 4,
     ACTION_CYCLIC_MOVEMENT                     = 5,
+    ACTION_VORTEX_LAND                         = 6,
 
     // Caster hover disk despawn action
     ACTION_DELAYED_DESPAWN                     = 8,
@@ -471,6 +472,28 @@ struct boss_malygos : public BossAI
                 // the vortex execution continues in the dummy effect of this spell (see it's script)
                 DoCast(me, SPELL_VORTEX_3, true);
                 break;
+            case ACTION_VORTEX_LAND:
+            {
+                Map::PlayerList const& players = me->GetMap()->GetPlayers();
+                for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+                {
+                    if (Player* targetPlayer = itr->GetSource())
+                    {
+                        if (!targetPlayer->IsInWorld() || targetPlayer->IsGameMaster())
+                            continue;
+                        float x = targetPlayer->GetPositionX();
+                        float y = targetPlayer->GetPositionY();
+                        float floorZ = MalygosPositions[2].GetPositionZ();
+                        SpellCastTargets spellTargets;
+                        spellTargets.SetUnitTarget(targetPlayer);
+                        spellTargets.SetDst(Position(x, y, floorZ, targetPlayer->GetOrientation()));
+                        me->CastSpell(CastSpellTargetArg(std::move(spellTargets)), SPELL_VORTEX_6, CastSpellExtraArgs(true));
+                    }
+                }
+                me->RemoveAura(SPELL_VORTEX_1);
+                me->GetMotionMaster()->MoveLand(POINT_LAND_AFTER_VORTEX_P_ONE, MalygosPositions[2]);
+                break;
+            }
             case ACTION_LIFT_IN_AIR:
             {
                 me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
@@ -643,7 +666,7 @@ struct boss_malygos : public BossAI
             return;
 
         if (who->GetEntry() == NPC_POWER_SPARK)
-            if (who->GetDistance(me) <= 2.5f)
+            if (who->GetDistance(me) <= 1.5f)
                 who->CastSpell(me, SPELL_POWER_SPARK_MALYGOS, true);
     }
 
@@ -1101,16 +1124,32 @@ struct npc_power_spark : public ScriptedAI
         float heightDiff = me->GetPositionZ() - me->GetFloorZ();
         if (heightDiff <= 0.5f)
         {
-            me->CastSpell(me, SPELL_POWER_SPARK_BUFF, true);
+            SpawnSurgeOfPower(me);
             return;
         }
 
         Milliseconds duration = std::chrono::round<Milliseconds>(std::chrono::duration<float>(Movement::computeFallTime(heightDiff, false)));
         DoAddEvent(duration, new Trinity::Helpers::Events::GenericEvent(me, [](WorldObject* spark) -> bool
         {
-            spark->ToUnit()->CastSpell(spark->ToUnit(), SPELL_POWER_SPARK_BUFF, true);
+            SpawnSurgeOfPower(spark->ToUnit());
             return true;
         }));
+    }
+
+    static void SpawnSurgeOfPower(Unit* spark)
+    {
+        InstanceScript* instance = spark->GetInstanceScript();
+        if (!instance)
+            return;
+
+        Creature* malygos = ObjectAccessor::GetCreature(*spark, instance->GetGuidData(DATA_MALYGOS));
+        if (!malygos)
+            return;
+
+        Position pos = spark->GetPosition();
+        pos.m_positionZ = spark->GetFloorZ();
+        if (Creature* surge = malygos->SummonCreature(NPC_SURGE_OF_POWER, pos, TEMPSUMMON_TIMED_DESPAWN, 60s))
+            surge->CastSpell(surge, SPELL_POWER_SPARK_BUFF, true);
     }
 
 private:
@@ -1673,34 +1712,11 @@ class spell_malygos_vortex_visual : public AuraScript
         return GetCaster()->GetTypeId() == TYPEID_UNIT;
     }
 
-    bool Validate(SpellInfo const* /*spell*/) override
-    {
-        return ValidateSpellInfo({ SPELL_VORTEX_1, SPELL_VORTEX_6 });
-    }
-
     void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
-        if (Creature* caster = GetCaster()->ToCreature())
-        {
-            for (ThreatReference const* ref : caster->GetThreatManager().GetUnsortedThreatList())
-            {
-                if (Player* targetPlayer = ref->GetVictim()->ToPlayer())
-                {
-                    if (targetPlayer->IsGameMaster())
-                        continue;
-
-                    if (InstanceScript* instance = caster->GetInstanceScript())
-                    {
-                        // Teleport spell - I'm not sure but might be it must be cast by each vehicle when it's passenger leaves it.
-                        if (Creature* trigger = ObjectAccessor::GetCreature(*caster, instance->GetGuidData(DATA_TRIGGER)))
-                            trigger->CastSpell(targetPlayer, SPELL_VORTEX_6, true);
-                    }
-                }
-            }
-
-            caster->GetMotionMaster()->MoveLand(POINT_LAND_AFTER_VORTEX_P_ONE, MalygosPositions[2]);
-            caster->RemoveAura(SPELL_VORTEX_1);
-        }
+        if (InstanceScript* instance = GetOwner()->GetInstanceScript())
+            if (Creature* malygos = ObjectAccessor::GetCreature(*GetOwner(), instance->GetGuidData(DATA_MALYGOS)))
+                malygos->AI()->DoAction(ACTION_VORTEX_LAND);
     }
 
     void Register() override
