@@ -757,7 +757,10 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket& recvData)
 
         if (Group* group = player->GetGroup())
             if (group->isLFGGroup() && player->GetMap()->IsDungeon())
+            {
+                TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] AreaTrigger exit: {} leaving LFG dungeon via exit portal -> TeleportToBGEntryPoint", player->GetName());
                 teleported = player->TeleportToBGEntryPoint();
+            }
     }
 
     if (!teleported)

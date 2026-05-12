@@ -1251,7 +1251,12 @@ void LFGMgr::MakeNewGroup(LfgProposal const& proposal)
             uint32 rDungeonId = (*dungeons.begin());
             LFGDungeonEntry const* dungeonEntry = sLFGDungeonStore.LookupEntry(rDungeonId);
             if (dungeonEntry && dungeonEntry->TypeID == LFG_TYPE_RANDOM)
+            {
+                TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] MakeNewGroup: {} casting LFG_SPELL_DUNGEON_COOLDOWN (IsMounted={} before) - runs BEFORE TeleportPlayer/SaveLFGMountSpell",
+                    player->GetName(), player->IsMounted());
                 player->CastSpell(player, LFG_SPELL_DUNGEON_COOLDOWN, false);
+                TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] MakeNewGroup: {} after LFG_SPELL_DUNGEON_COOLDOWN cast (IsMounted={})", player->GetName(), player->IsMounted());
+            }
         }
     }
 
@@ -1627,7 +1632,9 @@ void LFGMgr::TeleportPlayer(Player* player, bool out, bool fromOpcode /*= false*
 
     if (out)
     {
-        TC_LOG_DEBUG("lfg.teleport", "Player {} is being teleported out. Current Map {} - Expected Map {}", player->GetName(), player->GetMapId(), uint32(dungeon->map));
+        TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] TeleportPlayer OUT: {} fromOpcode={} currentMap={} dungeonMap={} -> {}",
+            player->GetName(), fromOpcode, player->GetMapId(), uint32(dungeon->map),
+            player->GetMapId() == uint32(dungeon->map) ? "calling TeleportToBGEntryPoint" : "SKIPPED (map mismatch, no teleport out)");
         if (player->GetMapId() == uint32(dungeon->map))
             player->TeleportToBGEntryPoint();
 
@@ -1698,6 +1705,10 @@ void LFGMgr::TeleportPlayer(Player* player, bool out, bool fromOpcode /*= false*
                 }
             }
         }
+
+        TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] TeleportPlayer IN: {} fromOpcode={} forceNewInstance={} currentMap={} mapIsDungeon={} IsMounted={} -> {}",
+            player->GetName(), fromOpcode, forceNewInstance, player->GetMapId(), player->GetMap()->IsDungeon(), player->IsMounted(),
+            player->GetMap()->IsDungeon() ? "NOT capturing entry point/mount (already in a dungeon)" : "capturing entry point + mount");
 
         if (!player->GetMap()->IsDungeon())
         {

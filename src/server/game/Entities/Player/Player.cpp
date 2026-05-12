@@ -1813,10 +1813,18 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options /*= 0*/)
 bool Player::TeleportToBGEntryPoint()
 {
     if (m_bgData.joinPos.m_mapId == MAPID_INVALID)
+    {
+        TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] TeleportToBGEntryPoint: {} joinPos INVALID -> aborting (no teleport, no mount restore). m_lfgMountSpell={} m_bgData.mountSpell={}",
+            GetName(), m_lfgMountSpell, m_bgData.mountSpell);
         return false;
+    }
 
     // LFG-specific mount takes priority: it is written at the exact moment of
     // dungeon entry and is not shared with (or overwritten by) BG operations.
+    TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] TeleportToBGEntryPoint: {} joinPos=(map {} {:.1f},{:.1f},{:.1f}) m_lfgMountSpell={} m_bgData.mountSpell(before)={} IsMounted={}",
+        GetName(), m_bgData.joinPos.m_mapId, m_bgData.joinPos.GetPositionX(), m_bgData.joinPos.GetPositionY(), m_bgData.joinPos.GetPositionZ(),
+        m_lfgMountSpell, m_bgData.mountSpell, IsMounted());
+
     if (m_lfgMountSpell)
         m_bgData.mountSpell = m_lfgMountSpell;
 
@@ -1841,6 +1849,8 @@ void Player::ProcessDelayedOperations()
 
     if (m_DelayedOperations & DELAYED_BG_MOUNT_RESTORE)
     {
+        TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] ProcessDelayedOperations(DELAYED_BG_MOUNT_RESTORE): {} m_bgData.mountSpell={} m_lfgMountSpell={} -> {}",
+            GetName(), m_bgData.mountSpell, m_lfgMountSpell, m_bgData.mountSpell ? "casting mount" : "NOTHING TO RESTORE");
         if (m_bgData.mountSpell)
         {
             CastSpell(this, m_bgData.mountSpell, true);
@@ -22104,6 +22114,10 @@ void Player::SetBattlegroundEntryPoint()
 
     if (m_bgData.joinPos.m_mapId == MAPID_INVALID) // In error cases use homebind position
         m_bgData.joinPos = WorldLocation(m_homebindMapId, m_homebindX, m_homebindY, m_homebindZ, 0.0f);
+
+    TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] SetBattlegroundEntryPoint: {} IsMounted={} onTaxi={} mapIsDungeon={} -> m_bgData.mountSpell={} joinPos=(map {} {:.1f},{:.1f},{:.1f})",
+        GetName(), IsMounted(), !m_taxi.empty(), GetMap()->IsDungeon(), m_bgData.mountSpell,
+        m_bgData.joinPos.m_mapId, m_bgData.joinPos.GetPositionX(), m_bgData.joinPos.GetPositionY(), m_bgData.joinPos.GetPositionZ());
 }
 
 void Player::SaveLFGMountSpell()
@@ -22115,6 +22129,9 @@ void Player::SaveLFGMountSpell()
     }
     else
         m_lfgMountSpell = 0;
+
+    TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] SaveLFGMountSpell: {} IsMounted={} mountedAuras={} -> m_lfgMountSpell={}",
+        GetName(), IsMounted(), uint32(GetAuraEffectsByType(SPELL_AURA_MOUNTED).size()), m_lfgMountSpell);
 }
 
 void Player::SetBGTeam(uint32 team)
