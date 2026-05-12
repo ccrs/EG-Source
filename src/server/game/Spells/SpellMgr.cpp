@@ -5065,17 +5065,32 @@ void SpellMgr::LoadSpellInfoCorrections()
     ApplySpellFix({ 1010 }, [](SpellInfo* spellInfo)
     {
         spellInfo->Dispel = DISPEL_NONE;
+        spellInfo->StackAmount = 0;
         spellInfo->Attributes |= SPELL_ATTR0_UNAFFECTED_BY_INVULNERABILITY | SPELL_ATTR0_CASTABLE_WHILE_DEAD;
         spellInfo->AttributesEx |= SPELL_ATTR1_NOT_BREAK_STEALTH;
         spellInfo->AttributesEx2 |= SPELL_ATTR2_CAN_TARGET_DEAD | SPELL_ATTR2_CAN_TARGET_NOT_IN_LOS | SPELL_ATTR2_NOT_NEED_SHAPESHIFT;
         spellInfo->AttributesEx3 |= SPELL_ATTR3_DEATH_PERSISTENT;
         spellInfo->AttributesEx6 |= SPELL_ATTR6_CAN_TARGET_INVISIBLE;
+        spellInfo->_GetEffect(EFFECT_0).ApplyAuraName = SPELL_AURA_MOD_PERCENT_STAT;
+        spellInfo->_GetEffect(EFFECT_0).DieSides = 0;
+        spellInfo->_GetEffect(EFFECT_0).RealPointsPerLevel = 0.0f;
+        spellInfo->_GetEffect(EFFECT_0).BasePoints = -15;
+        spellInfo->_GetEffect(EFFECT_0).MiscValue = -1;
         spellInfo->_GetEffect(EFFECT_0).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
         spellInfo->_GetEffect(EFFECT_1).ApplyAuraName = SPELL_AURA_MOD_DAMAGE_PERCENT_DONE;
         spellInfo->_GetEffect(EFFECT_1).DieSides = 0;
+        spellInfo->_GetEffect(EFFECT_1).RealPointsPerLevel = 0.0f;
         spellInfo->_GetEffect(EFFECT_1).BasePoints = -15;
         spellInfo->_GetEffect(EFFECT_1).MiscValue = SPELL_SCHOOL_MASK_ALL;
         spellInfo->_GetEffect(EFFECT_1).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
+        spellInfo->_GetEffect(EFFECT_2).ApplyAuraName = SPELL_AURA_MOD_PERCENT_STAT;
+        spellInfo->_GetEffect(EFFECT_2).ApplyAuraPeriod = 0;
+        spellInfo->_GetEffect(EFFECT_2).DieSides = 0;
+        spellInfo->_GetEffect(EFFECT_2).RealPointsPerLevel = 0.0f;
+        spellInfo->_GetEffect(EFFECT_2).BasePoints = -6;
+        spellInfo->_GetEffect(EFFECT_2).Amplitude = 0.0f;
+        spellInfo->_GetEffect(EFFECT_2).MiscValue = STAT_INTELLECT;
+        spellInfo->_GetEffect(EFFECT_2).TriggerSpell = 0;
         spellInfo->_GetEffect(EFFECT_2).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
     });
 

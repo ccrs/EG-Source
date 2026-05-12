@@ -257,61 +257,15 @@ class EG_spell_naxx_bigglesworth_curse : public AuraScript
         return GetUnitOwner() && GetUnitOwner()->GetMapId() == 533;
     }
 
-    void HandleApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-    {
-        PreventDefaultAction();
-        Player* player = GetTarget()->ToPlayer();
-        if (!player)
-            return;
-
-        for (int32 i = STAT_STRENGTH; i < MAX_STATS; ++i)
-        {
-            float pctCut = (i == STAT_INTELLECT || i == STAT_SPIRIT) ? -20.0f : -15.0f;
-            player->ApplyStatPctModifier(UnitMods(UNIT_MOD_STAT_START + i), BASE_PCT, pctCut);
-        }
-    }
-
-    void AfterApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    void MakePermanent(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
         SetMaxDuration(-1);
         SetDuration(-1);
     }
 
-    void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-    {
-        PreventDefaultAction();
-        Player* player = GetTarget()->ToPlayer();
-        if (!player)
-            return;
-
-        for (int32 i = STAT_STRENGTH; i < MAX_STATS; ++i)
-        {
-            float amount = player->GetTotalAuraMultiplier(SPELL_AURA_MOD_PERCENT_STAT, [i](AuraEffect const* eff) -> bool
-            {
-                return eff->GetMiscValue() == i || eff->GetMiscValue() == -1;
-            });
-            player->SetStatPctModifier(UnitMods(UNIT_MOD_STAT_START + i), BASE_PCT, amount);
-        }
-    }
-
-    void HandlePrevent(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-    {
-        PreventDefaultAction();
-    }
-
-    void HandlePreventPeriodic(AuraEffect const* /*aurEff*/)
-    {
-        PreventDefaultAction();
-    }
-
     void Register() override
     {
-        OnEffectApply += AuraEffectApplyFn(EG_spell_naxx_bigglesworth_curse::HandleApply, EFFECT_0, SPELL_AURA_MOD_STAT, AURA_EFFECT_HANDLE_REAL);
-        AfterEffectApply += AuraEffectApplyFn(EG_spell_naxx_bigglesworth_curse::AfterApply, EFFECT_0, SPELL_AURA_MOD_STAT, AURA_EFFECT_HANDLE_REAL);
-        OnEffectRemove += AuraEffectRemoveFn(EG_spell_naxx_bigglesworth_curse::HandleRemove, EFFECT_0, SPELL_AURA_MOD_STAT, AURA_EFFECT_HANDLE_REAL);
-        OnEffectApply += AuraEffectApplyFn(EG_spell_naxx_bigglesworth_curse::HandlePrevent, EFFECT_2, SPELL_AURA_PERIODIC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
-        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_naxx_bigglesworth_curse::HandlePreventPeriodic, EFFECT_2, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
-        OnEffectRemove += AuraEffectRemoveFn(EG_spell_naxx_bigglesworth_curse::HandlePrevent, EFFECT_2, SPELL_AURA_PERIODIC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
+        AfterEffectApply += AuraEffectApplyFn(EG_spell_naxx_bigglesworth_curse::MakePermanent, EFFECT_0, SPELL_AURA_MOD_PERCENT_STAT, AURA_EFFECT_HANDLE_REAL);
     }
 };
 
