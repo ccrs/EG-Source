@@ -1293,6 +1293,9 @@ void Map::MoveAllCreaturesInMoveList()
         }
         else
         {
+            if (c->GetTransport())
+                continue;
+
             // if creature can't be move in new cell/grid (not loaded) move it to repawn cell/grid
             // creature coordinates will be updated and notifiers send
             if (!CreatureRespawnRelocation(c, false))
@@ -1348,6 +1351,9 @@ void Map::MoveAllGameObjectsInMoveList()
         }
         else
         {
+            if (go->GetTransport())
+                continue;
+
             // if GameObject can't be move in new cell/grid (not loaded) move it to repawn cell/grid
             // GameObject coordinates will be updated and notifiers send
             if (!GameObjectRespawnRelocation(go, false))
