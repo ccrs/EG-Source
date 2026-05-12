@@ -1392,21 +1392,20 @@ void LFGMgr::UpdateProposal(uint32 proposalId, ObjectGuid guid, bool accept)
     MakeNewGroup(proposal);
 
     // Custom
-    if (proposal.group.IsEmpty())
+    if (proposal.group.IsEmpty() && !proposal.players.empty())
     {
         ObjectGuid newGroupGuid;
-        size_t const totalPlayers = proposal.players.size();
-        size_t confirmedSolo = 0;
-        for (LfgProposalPlayerContainer::const_iterator it = proposal.players.begin(); it != proposal.players.end(); ++it)
+        for (LfgProposalPlayerContainer::const_iterator it = proposal.players.begin(); newGroupGuid.IsEmpty() && it != proposal.players.end(); ++it)
+            newGroupGuid = GetGroup(it->first);
+
+        if (!newGroupGuid.IsEmpty())
         {
-            ObjectGuid pguid = it->first;
-            if (newGroupGuid.IsEmpty())
-                newGroupGuid = GetGroup(pguid);
-            if (PlayersStore[pguid].GetNumberOfPartyMembersAtJoin() <= 1)
-                ++confirmedSolo;
+            LfgGroupData& groupData = GroupsStore[newGroupGuid];
+            groupData.SetCompositionIntact(true);
+            for (LfgProposalPlayerContainer::const_iterator it = proposal.players.begin(); it != proposal.players.end(); ++it)
+                if (it->second.group.IsEmpty())
+                    groupData.AddOriginalSoloMember(it->first);
         }
-        if (totalPlayers > 0 && confirmedSolo == totalPlayers && !newGroupGuid.IsEmpty())
-            GroupsStore[newGroupGuid].SetPureRandom(true);
     }
 
     ProposalsStore.erase(itProposal);
@@ -1850,14 +1849,17 @@ void LFGMgr::FinishDungeon(ObjectGuid gguid, const uint32 dungeonId, Map const* 
         player->GetSession()->SendLfgPlayerReward(data);
 
         // Custom
-        if (dungeon->difficulty == DUNGEON_DIFFICULTY_HEROIC && player->GetLevel() == DEFAULT_MAX_LEVEL && GroupsStore[gguid].IsPureRandom())
+        if (dungeon->difficulty == DUNGEON_DIFFICULTY_HEROIC
+            && player->GetLevel() == DEFAULT_MAX_LEVEL
+            && GroupsStore[gguid].IsOriginalSoloMember(guid)
+            && GroupsStore[gguid].IsCompositionIntact())
         {
             if (Group* group = player->GetGroup())
                 LFGRandomReward::TryReward(player, group);
         }
     }
 
-    GroupsStore[gguid].ResetPureRandom();
+    GroupsStore[gguid].ResetCompositionTracking();
 }
 
 // --------------------------------------------------------------------------//

@@ -23,7 +23,7 @@ namespace lfg
 
 LfgGroupData::LfgGroupData(): m_State(LFG_STATE_NONE), m_OldState(LFG_STATE_NONE),
     m_Leader(), m_Dungeon(0), m_KicksLeft(LFG_GROUP_MAX_KICKS), m_VoteKickActive(false),
-    m_IsPureRandom(false), m_VoluntaryDepartures(0)
+    m_CompositionIntact(false), m_VoluntaryDepartures(0), m_Backfills(0)
 { }
 
 LfgGroupData::~LfgGroupData()
@@ -138,43 +138,63 @@ bool LfgGroupData::IsVoteKickActive() const
     return m_VoteKickActive;
 }
 
-void LfgGroupData::SetPureRandom(bool pure)
+void LfgGroupData::SetCompositionIntact(bool intact)
 {
-    m_IsPureRandom = pure;
+    m_CompositionIntact = intact;
     m_VoluntaryDepartures = 0;
+    m_Backfills = 0;
+    m_OriginalSoloMembers.clear();
 }
 
-bool LfgGroupData::IsPureRandom() const
+bool LfgGroupData::IsCompositionIntact() const
 {
-    return m_IsPureRandom;
+    return m_CompositionIntact;
+}
+
+void LfgGroupData::AddOriginalSoloMember(ObjectGuid guid)
+{
+    m_OriginalSoloMembers.insert(guid);
+}
+
+bool LfgGroupData::IsOriginalSoloMember(ObjectGuid guid) const
+{
+    return m_OriginalSoloMembers.find(guid) != m_OriginalSoloMembers.end();
 }
 
 void LfgGroupData::OnMemberAdded()
 {
-    m_IsPureRandom = false;
+    if (!m_CompositionIntact)
+        return;
+
+    if (m_VoluntaryDepartures > m_Backfills)
+        ++m_Backfills;
+    else
+        m_CompositionIntact = false;
 }
 
 void LfgGroupData::OnMemberRemoved(bool wasVoteKick)
 {
-    if (!m_IsPureRandom)
+    if (!m_CompositionIntact)
         return;
 
     if (wasVoteKick)
     {
-        m_IsPureRandom = false;
+        m_CompositionIntact = false;
         return;
     }
 
     if (m_VoluntaryDepartures == 0)
         ++m_VoluntaryDepartures;
     else
-        m_IsPureRandom = false;
+        m_CompositionIntact = false;
 }
 
-void LfgGroupData::ResetPureRandom()
+void LfgGroupData::ResetCompositionTracking()
 {
-    m_IsPureRandom = false;
+    m_CompositionIntact = false;
     m_VoluntaryDepartures = 0;
+    m_Backfills = 0;
+    m_OriginalSoloMembers.clear();
 }
 
 } // namespace lfg

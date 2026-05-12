@@ -70,11 +70,13 @@ class TC_GAME_API LfgGroupData
         bool IsVoteKickActive() const;
 
         // Custom
-        void SetPureRandom(bool pure);
-        bool IsPureRandom() const;
+        void SetCompositionIntact(bool intact);
+        bool IsCompositionIntact() const;
+        void AddOriginalSoloMember(ObjectGuid guid);
+        bool IsOriginalSoloMember(ObjectGuid guid) const;
         void OnMemberAdded();
         void OnMemberRemoved(bool wasVoteKick);
-        void ResetPureRandom();
+        void ResetCompositionTracking();
 
     private:
         // General
@@ -88,8 +90,10 @@ class TC_GAME_API LfgGroupData
         uint8 m_KicksLeft;                                 ///< Number of kicks left
         bool m_VoteKickActive;
         // Custom
-        bool m_IsPureRandom;                               ///< True when group is pure-random
+        bool m_CompositionIntact;                          ///< Group composition still intact for the bonus reward
         uint8 m_VoluntaryDepartures;                       ///< Count of non-vote-kick leaves
+        uint8 m_Backfills;                                 ///< Count of adds that backfilled a tolerated leave
+        GuidSet m_OriginalSoloMembers;                     ///< Members that queued solo at formation
 };
 
 } // namespace lfg
