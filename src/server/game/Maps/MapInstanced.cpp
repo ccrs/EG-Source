@@ -188,22 +188,14 @@ Map* MapInstanced::CreateInstanceForPlayer(uint32 mapId, Player* player, uint32 
         {
             // if no instanceId via group members or instance saves is found
             // the instance will be created for the first time
+            newInstanceId = sMapMgr->GenerateInstanceId();
+
             Difficulty diff = player->GetGroup() ? player->GetGroup()->GetDifficulty(IsRaid()) : player->GetDifficulty(IsRaid());
-
-            map = nullptr;
-            for (uint8 attempt = 0; !map && attempt < 5; ++attempt)
-            {
-                newInstanceId = sMapMgr->GenerateInstanceId();
-                if (Map* existing = FindInstanceMap(newInstanceId))
-                {
-                    TC_LOG_WARN("maps", "MapInstanced::CreateInstanceForPlayer: freshly generated instance id {} for map {} already maps to a live instance (hasPlayers: {}); discarding it and retrying.", newInstanceId, GetId(), existing->HavePlayers());
-                    continue;
-                }
-                map = CreateInstance(newInstanceId, nullptr, diff, player->GetTeamId());
-            }
-
+            //Seems it is now possible, but I do not know if it should be allowed
+            //ASSERT(!FindInstanceMap(NewInstanceId));
+            map = FindInstanceMap(newInstanceId);
             if (!map)
-                TC_LOG_ERROR("maps", "MapInstanced::CreateInstanceForPlayer: could not obtain a free instance id for map {} (player {}); instance-id freelist is corrupted.", GetId(), player->GetName());
+                map = CreateInstance(newInstanceId, nullptr, diff, player->GetTeamId());
         }
     }
 

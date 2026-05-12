@@ -649,15 +649,15 @@ void InstanceSaveManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficulty, b
         if (!next_reset)
             return;
 
-        // delete/promote instance binds from the DB, even if not loaded
-        // Order matters: expire character binds BEFORE deleting instance rows.
-        // CHAR_DEL_EXPIRED_INSTANCE_BY_MAP_DIFF uses a LEFT JOIN on instance to
-        // filter by map/difficulty, so it must run after the decrement so that
-        // post-decrement extendState values determine which instance rows to keep.
-        // Running it before would delete instance rows whose character entries
-        // still had extendState != 0 at that moment, then the expire-update
-        // would silently miss those entries (LEFT JOIN returns NULL → WHERE map=?
-        // fails), leaving character_instance rows stuck with a stale extendState.
+        // delete/promote instance binds from the DB, even if not loaded.
+        // Order matters:
+        //  1. Delete already-expired / non-permanent character binds first, so the decrement (step 3) never underflows an extendState that is already 0
+        //  2. Delete group binds
+        //  3. Decrement extendState for the surviving permanent binds
+        //  4. Delete character binds again — this catches the ones the decrement just pushed to extendState 0
+        //  5. Delete instance rows that no longer have any extendState != 0 bind
+        //     This must run after the decrement so post-decrement values decide what to keep;
+        //     running it earlier would also break the decrement's LEFT JOIN on instance
         CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
 
         CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_EXPIRED_CHAR_INSTANCE_BY_MAP_DIFF);
@@ -671,6 +671,11 @@ void InstanceSaveManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficulty, b
         trans->Append(stmt);
 
         stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_EXPIRE_CHAR_INSTANCE_BY_MAP_DIFF);
+        stmt->setUInt16(0, uint16(mapid));
+        stmt->setUInt8(1, uint8(difficulty));
+        trans->Append(stmt);
+
+        stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_EXPIRED_CHAR_INSTANCE_BY_MAP_DIFF);
         stmt->setUInt16(0, uint16(mapid));
         stmt->setUInt8(1, uint8(difficulty));
         trans->Append(stmt);
