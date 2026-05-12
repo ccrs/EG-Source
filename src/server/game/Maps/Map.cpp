@@ -4051,20 +4051,22 @@ void InstanceMap::CreateInstanceData(bool load)
         stmt->setUInt32(1, i_InstanceId);
         PreparedQueryResult result = CharacterDatabase.Query(stmt);
 
+        std::string data;
         if (result)
         {
             Field* fields = result->Fetch();
-            std::string data = fields[0].GetString();
+            data = fields[0].GetString();
             i_data->SetCompletedEncountersMask(fields[1].GetUInt32());
-            if (!data.empty())
-            {
-                TC_LOG_DEBUG("maps", "Loading instance data for `{}` with id {}", sObjectMgr->GetScriptName(i_script_id), i_InstanceId);
-                i_data->Load(data.c_str());
-            }
+        }
+
+        if (!data.empty())
+        {
+            TC_LOG_DEBUG("maps", "Loading instance data for `{}` with id {}", sObjectMgr->GetScriptName(i_script_id), i_InstanceId);
+            i_data->Load(data.c_str());
         }
         else
         {
-            TC_LOG_WARN("maps", "CreateInstanceData: no instance record found for map {} instance {} - initializing fresh state", GetId(), i_InstanceId);
+            TC_LOG_WARN("maps", "CreateInstanceData: {} for map {} instance {} - initializing fresh state", result ? "instance record has empty data" : "no instance record found", GetId(), i_InstanceId);
             i_data->Create();
         }
     }
