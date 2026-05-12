@@ -34,43 +34,19 @@ class WorldPacket : public ByteBuffer
         WorldPacket(uint16 opcode, size_t res = 200) : ByteBuffer(res),
             m_opcode(opcode) { }
 
-        WorldPacket(WorldPacket&& packet) : ByteBuffer(std::move(packet)), m_opcode(packet.m_opcode), m_receivedTime(packet.m_receivedTime)
-        {
-        }
-
         WorldPacket(WorldPacket&& packet, TimePoint receivedTime) : ByteBuffer(std::move(packet)), m_opcode(packet.m_opcode), m_receivedTime(receivedTime)
         {
         }
 
-        WorldPacket(WorldPacket const& right) : ByteBuffer(right), m_opcode(right.m_opcode), m_receivedTime(right.m_receivedTime)
-        {
-        }
-
-        WorldPacket& operator=(WorldPacket const& right)
-        {
-            if (this != &right)
-            {
-                m_opcode = right.m_opcode;
-                m_receivedTime = right.m_receivedTime;
-                ByteBuffer::operator=(right);
-            }
-
-            return *this;
-        }
-
-        WorldPacket& operator=(WorldPacket&& right)
-        {
-            if (this != &right)
-            {
-                m_opcode = right.m_opcode;
-                m_receivedTime = right.m_receivedTime;
-                ByteBuffer::operator=(std::move(right));
-            }
-
-            return *this;
-        }
-
         WorldPacket(uint16 opcode, MessageBuffer&& buffer) : ByteBuffer(std::move(buffer)), m_opcode(opcode) { }
+
+        WorldPacket(WorldPacket const& right) = default;
+
+        WorldPacket(WorldPacket&& packet) noexcept = default;
+
+        WorldPacket& operator=(WorldPacket const& right) = default;
+
+        WorldPacket& operator=(WorldPacket&& right) noexcept = default;
 
         void Initialize(uint16 opcode, size_t newres = 200)
         {
