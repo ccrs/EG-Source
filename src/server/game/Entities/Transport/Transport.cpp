@@ -121,6 +121,7 @@ void Transport::CleanupsBeforeDelete(bool finalCleanup /*= true*/)
 void Transport::Update(uint32 diff)
 {
     uint32 const positionUpdateDelay = 100;
+    uint32 const staticPassengerReloadDelay = 1 * IN_MILLISECONDS;
 
     if (AI())
         AI()->UpdateAI(diff);
@@ -203,6 +204,7 @@ void Transport::Update(uint32 diff)
 
     // Set position
     _positionChangeTimer.Update(diff);
+    _staticReloadTimer.Update(diff);
     if (_positionChangeTimer.Passed())
     {
         _positionChangeTimer.Reset(positionUpdateDelay);
@@ -218,20 +220,11 @@ void Transport::Update(uint32 diff)
             UpdatePosition(_currentFrame->Node->Loc.X, _currentFrame->Node->Loc.Y, _currentFrame->Node->Loc.Z, _currentFrame->InitialOrientation);
         else
         {
-            /* There are four possible scenarios that trigger loading/unloading passengers:
-              1. transport moves from inactive to active grid
-              2. the grid that transport is currently in becomes active
-              3. transport moves from active to inactive grid
-              4. the grid that transport is currently in unloads
-            */
-            bool gridActive = GetMap()->IsGridLoaded(GetPositionX(), GetPositionY());
-
-            if (_staticPassengers.empty() && gridActive) // 2.
+            if (_staticReloadTimer.Passed())
+            {
+                _staticReloadTimer.Reset(staticPassengerReloadDelay);
                 LoadStaticPassengers();
-            else if (!_staticPassengers.empty() && !gridActive)
-                // 4. - if transports stopped on grid edge, some passengers can remain in active grids
-                //      unload all static passengers otherwise passengers won't load correctly when the grid that transport is currently in becomes active
-                UnloadStaticPassengers();
+            }
         }
     }
 
@@ -302,6 +295,20 @@ Creature* Transport::CreateNPCPassenger(ObjectGuid::LowType guid, CreatureData c
     if (map->GetCreatureRespawnTime(guid))
         return nullptr;
 
+    if (map->GetCreatureBySpawnIdStore().count(guid))
+        return nullptr;
+
+    float x, y, z, o;
+    data->spawnPoint.GetPosition(x, y, z, o);
+
+    float wx = x, wy = y, wz = z, wo = o;
+    CalculatePassengerPosition(wx, wy, wz, &wo);
+    if (!Trinity::IsValidMapCoord(wx, wy, wz, wo))
+        return nullptr;
+
+    if (!map->IsGridLoaded(wx, wy))
+        return nullptr;
+
     Creature* creature = new Creature();
 
     if (!creature->LoadFromDB(guid, map, false, false))
@@ -310,15 +317,11 @@ Creature* Transport::CreateNPCPassenger(ObjectGuid::LowType guid, CreatureData c
         return nullptr;
     }
 
-    float x, y, z, o;
-    data->spawnPoint.GetPosition(x, y, z, o);
-
     creature->SetTransport(this);
     creature->AddUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
     creature->m_movementInfo.transport.guid = GetGUID();
     creature->m_movementInfo.transport.pos.Relocate(x, y, z, o);
-    CalculatePassengerPosition(x, y, z, &o);
-    creature->Relocate(x, y, z, o);
+    creature->Relocate(wx, wy, wz, wo);
     creature->SetHomePosition(creature->GetPositionX(), creature->GetPositionY(), creature->GetPositionZ(), creature->GetOrientation());
     creature->SetTransportHomePosition(creature->m_movementInfo.transport.pos);
 
@@ -350,6 +353,22 @@ GameObject* Transport::CreateGOPassenger(ObjectGuid::LowType guid, GameObjectDat
     if (map->GetGORespawnTime(guid))
         return nullptr;
 
+    ASSERT(data);
+
+    if (map->GetGameObjectBySpawnIdStore().count(guid))
+        return nullptr;
+
+    float x, y, z, o;
+    data->spawnPoint.GetPosition(x, y, z, o);
+
+    float wx = x, wy = y, wz = z, wo = o;
+    CalculatePassengerPosition(wx, wy, wz, &wo);
+    if (!Trinity::IsValidMapCoord(wx, wy, wz, wo))
+        return nullptr;
+
+    if (!map->IsGridLoaded(wx, wy))
+        return nullptr;
+
     GameObject* go = new GameObject();
 
     if (!go->LoadFromDB(guid, map, false))
@@ -358,17 +377,11 @@ GameObject* Transport::CreateGOPassenger(ObjectGuid::LowType guid, GameObjectDat
         return nullptr;
     }
 
-    ASSERT(data);
-
-    float x, y, z, o;
-    data->spawnPoint.GetPosition(x, y, z, o);
-
     go->SetTransport(this);
     go->m_movementInfo.transport.guid = GetGUID();
     go->m_movementInfo.transport.pos.Relocate(x, y, z, o);
-    CalculatePassengerPosition(x, y, z, &o);
-    go->Relocate(x, y, z, o);
-    go->RelocateStationaryPosition(x, y, z, o);
+    go->Relocate(wx, wy, wz, wo);
+    go->RelocateStationaryPosition(wx, wy, wz, wo);
 
     if (!go->IsPositionValid())
     {
@@ -515,19 +528,14 @@ void Transport::UpdatePosition(float x, float y, float z, float o)
 
     UpdatePassengerPositions(_passengers);
 
-    /* There are four possible scenarios that trigger loading/unloading passengers:
-      1. transport moves from inactive to active grid
-      2. the grid that transport is currently in becomes active
-      3. transport moves from active to inactive grid
-      4. the grid that transport is currently in unloads
-    */
-    if (_staticPassengers.empty() && newActive) // 1.
-        LoadStaticPassengers();
-    else if (!_staticPassengers.empty() && !newActive && oldCell.DiffGrid(Cell(GetPositionX(), GetPositionY()))) // 3.
+    // The transport just crossed into a grid that isn't loaded:
+    // Drop the static roster promptly so we don't leave passengers frozen in a grid that is about to unload
+    // They are recreated by the reconcile pass below once the transport is back over loaded grids
+    if (!_staticPassengers.empty() && !newActive && oldCell.DiffGrid(Cell(GetPositionX(), GetPositionY())))
         UnloadStaticPassengers();
-    else
-        UpdatePassengerPositions(_staticPassengers);
-    // 4. is handed by grid unload
+
+    LoadStaticPassengers();
+    UpdatePassengerPositions(_staticPassengers);
 }
 
 void Transport::LoadStaticPassengers()

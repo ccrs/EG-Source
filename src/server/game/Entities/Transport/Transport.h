@@ -118,6 +118,7 @@ class TC_GAME_API Transport : public GameObject, public TransportBase
         KeyFrameVec::const_iterator _currentFrame;
         KeyFrameVec::const_iterator _nextFrame;
         TimeTracker _positionChangeTimer;
+        TimeTracker _staticReloadTimer; // throttles static-passenger reconcile
         bool _isMoving;
         bool _pendingStop;
 
