@@ -7761,8 +7761,10 @@ void Player::CastItemCombatSpell(DamageInfo const& damageInfo, Item* item, ItemT
     bool canTrigger = (damageInfo.GetHitMask() & (PROC_HIT_NORMAL | PROC_HIT_CRITICAL | PROC_HIT_ABSORB)) != 0;
     if (canTrigger)
     {
-        for (ItemEffect const& effectData : proto->Effects)
+        for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
         {
+            ItemEffect const& effectData = proto->Effects[i];
+
             // wrong triggering type
             if (effectData.TriggerType != ITEM_SPELLTRIGGER_CHANCE_ON_HIT)
                 continue;
@@ -7770,8 +7772,8 @@ void Player::CastItemCombatSpell(DamageInfo const& damageInfo, Item* item, ItemT
             SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(effectData.SpellID);
             if (!spellInfo)
             {
-                TC_LOG_ERROR("entities.player.items", "Player::CastItemCombatSpell: Player '{}' ({}) cast unknown item spell (ID: {})",
-                    GetName(), GetGUID().ToString(), effectData.SpellID);
+                TC_LOG_ERROR("entities.player.items", "Player::CastItemCombatSpell: Player '{}' ({}) has item '{}' (Entry: {}) with chance-on-hit effect in slot spellid_{} referencing unknown spell (ID: {})",
+                    GetName(), GetGUID().ToString(), proto->Name1, proto->ItemId, i + 1, effectData.SpellID);
                 continue;
             }
 
