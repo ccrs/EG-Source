@@ -18578,10 +18578,16 @@ void Player::_LoadBoundInstances(PreparedQueryResult result)
             MapEntry const* mapEntry = sMapStore.LookupEntry(mapId);
             std::string mapname = mapEntry ? mapEntry->MapName[sWorld->GetDefaultDbcLocale()] : "Unknown";
 
-            if (!mapEntry || !mapEntry->IsDungeon())
+            if (fields[2].IsNull())
             {
-                TC_LOG_ERROR("entities.player", "Player::_LoadBoundInstances: Player '{}' ({}) has bind to not existed or not dungeon map {} ({})",
-                    GetName(), GetGUID().ToString(), mapId, mapname);
+                TC_LOG_ERROR("entities.player", "Player::_LoadBoundInstances: Player '{}' ({}) has a bind to instance {} which has no matching `instance` row - removing orphaned bind",
+                    GetName(), GetGUID().ToString(), instanceId);
+                deleteInstance = true;
+            }
+            else if (!mapEntry || !mapEntry->IsDungeon())
+            {
+                TC_LOG_ERROR("entities.player", "Player::_LoadBoundInstances: Player '{}' ({}) has bind to instance {} on non-dungeon map {} ({})",
+                    GetName(), GetGUID().ToString(), instanceId, mapId, mapname);
                 deleteInstance = true;
             }
             else if (difficulty >= MAX_DIFFICULTY)
