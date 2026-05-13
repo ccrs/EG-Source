@@ -110,7 +110,7 @@ namespace
     constexpr LootPool POOLS[] =
     {
         { "Epic Gems", 8.25f, false, EPIC_GEMS_ITEMS },
-        { "Craft Materials", 40.0f, true, CRAFT_COMMON_ITEMS },
+        { "Craft Materials", 20.0f, true, CRAFT_COMMON_ITEMS },
         { "Craft Materials (Uncommon)", 20.0f, false, CRAFT_UNCOMMON_ITEMS },
         { "Craft Materials (Rare)", 5.0f, false, CRAFT_RARE_ITEMS },
         { "Relics (Rare)", 1.0f, false, RELIC_RARE_ITEMS },
