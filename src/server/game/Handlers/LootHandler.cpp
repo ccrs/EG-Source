@@ -109,7 +109,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
         }
         lootViewSlot = lootSlot;
         lootSlot = relatedLootReference.ItemIndex;
-        loot = relatedLootReference.RelatedLoot;
+        loot = &creature->loot;
     }
     else
     {
@@ -208,7 +208,11 @@ void WorldSession::HandleLootMoneyOpcode(WorldPacket& /*recvData*/)
         uint32 totalGold = 0;
         for (LootReference const& reference : player->StoredLoot)
         {
-            Loot* relatedLoot = reference.RelatedLoot;
+            Creature* creature = player->GetMap()->GetCreature(reference.ContainerEntityGUID);
+            if (!creature)
+                continue;
+
+            Loot* relatedLoot = &creature->loot;
             totalGold += relatedLoot->gold;
             relatedLoot->NotifyMoneyRemoved();
             relatedLoot->gold = 0;
