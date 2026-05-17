@@ -3278,6 +3278,8 @@ enum ChatMsg : uint8
     MAX_CHAT_MSG_TYPE
 };
 
+#define GM_SILENCE_AURA 1852
+
 enum PlayerChatTag
 {
     CHAT_TAG_NONE       = 0x00,
@@ -3888,6 +3890,8 @@ enum LineOfSightChecks
 
     LINEOFSIGHT_ALL_CHECKS      = (LINEOFSIGHT_CHECK_VMAP | LINEOFSIGHT_CHECK_GOBJECT)
 };
+
+#define MAX_ACCOUNT_TUTORIAL_VALUES 8
 
 enum ServerProcessTypes
 {
