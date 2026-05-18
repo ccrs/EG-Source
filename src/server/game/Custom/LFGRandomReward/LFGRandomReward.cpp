@@ -47,6 +47,7 @@ namespace
         char const* Name;
         float DropChancePercent;
         bool GuaranteedFirst;
+        bool UniquePerPlayer;
         std::span<PoolItem const> Items;
     };
 
@@ -109,12 +110,12 @@ namespace
     // ---- Pool registry ----
     constexpr LootPool POOLS[] =
     {
-        { "Epic Gems", 8.25f, false, EPIC_GEMS_ITEMS },
-        { "Craft Materials", 20.0f, true, CRAFT_COMMON_ITEMS },
-        { "Craft Materials (Uncommon)", 20.0f, false, CRAFT_UNCOMMON_ITEMS },
-        { "Craft Materials (Rare)", 5.0f, false, CRAFT_RARE_ITEMS },
-        { "Relics (Rare)", 1.0f, false, RELIC_RARE_ITEMS },
-        { "Fortune", 0.0825f, false, FORTUNE_ITEMS },
+        { "Epic Gems", 8.25f, false, false, EPIC_GEMS_ITEMS },
+        { "Craft Materials", 20.0f, true, false, CRAFT_COMMON_ITEMS },
+        { "Craft Materials (Uncommon)", 20.0f, false, false, CRAFT_UNCOMMON_ITEMS },
+        { "Craft Materials (Rare)", 5.0f, false, false, CRAFT_RARE_ITEMS },
+        { "Relics (Rare)", 1.0f, false, true, RELIC_RARE_ITEMS },
+        { "Fortune", 0.0825f, false, false, FORTUNE_ITEMS },
     };
 
     constexpr bool ValidatePools()
@@ -180,6 +181,9 @@ void LFGRandomReward::TryReward(Player* player, Group* group)
 
     auto grant = [&](LootPool const& pool, PoolItem const& item)
     {
+        if (pool.UniquePerPlayer && player->GetItemCount(item.ItemId, true) > 0)
+            return;
+
         uint32 const quantity = RollGeometricQty(item.MinQty, item.MaxQty);
         Item* created = Item::CreateItem(item.ItemId, quantity, player);
         if (!created)
