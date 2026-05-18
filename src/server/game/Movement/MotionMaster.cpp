@@ -204,6 +204,7 @@ MovementGeneratorType MotionMaster::GetCurrentMovementGeneratorType() const
     return movement->GetMovementGeneratorType();
 }
 
+// EG - new accessor: current movement generator priority
 MovementGeneratorPriority MotionMaster::GetCurrentMovementGeneratorPriority() const
 {
     if (Empty())
@@ -364,6 +365,7 @@ void MotionMaster::Add(MovementGenerator* movement, MovementSlot slot/* = MOTION
 
     if (movement->HasFlag(MOVEMENTGENERATOR_FLAG_IMMEDIATE) && movement->HasFlag(MOVEMENTGENERATOR_FLAG_INITIALIZATION_PENDING))
     {
+        // EG - correct replace/insertion handling of new movement generators (priority-ordered container)
         bool wouldBecomeTop = _generators.lower_bound({ movement->Priority, movement->Mode }) == _generators.begin();
         if (!wouldBecomeTop || !movement->Initialize(_owner))
         {
@@ -662,6 +664,7 @@ void MotionMaster::MoveFollow(Unit* target, float dist, ChaseAngle angle, Moveme
         return;
 
     TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::MoveFollow: '{}', starts following '{}'", _owner->GetGUID().ToString(), target->GetGUID().ToString());
+    // EG - optional run/walk override forwarded into FollowMovementGenerator (run parameter)
     Add(new FollowMovementGenerator(target, dist, angle, run), slot);
 }
 
@@ -672,6 +675,7 @@ void MotionMaster::MoveChase(Unit* target, Optional<ChaseRange> dist, Optional<C
         return;
 
     TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::MoveChase: '{}', starts chasing '{}'", _owner->GetGUID().ToString(), target->GetGUID().ToString());
+    // EG - optional checkLostTarget: allow chasing without the lost-target abort
     ChaseMovementGenerator* newMovement = new ChaseMovementGenerator(target, dist, angle);
     if (!checkLostTarget)
         newMovement->CheckLostTarget = false;
@@ -709,11 +713,13 @@ void MotionMaster::MoveFleeing(Unit* enemy, uint32 time)
         Add(new FleeingMovementGenerator<Player>(enemy->GetGUID()));
 }
 
+// EG - forced-destination MovePoint (forzeDestination parameter)
 void MotionMaster::MovePoint(uint32 id, Position const& pos, bool generatePath/* = true*/, Optional<float> finalOrient/* = {}*/, bool forzeDestination/* = false*/)
 {
     MovePoint(id, pos.m_positionX, pos.m_positionY, pos.m_positionZ, generatePath, finalOrient, forzeDestination);
 }
 
+// EG - forced-destination MovePoint (forzeDestination parameter)
 void MotionMaster::MovePoint(uint32 id, float x, float y, float z, bool generatePath, Optional<float> finalOrient, bool forzeDestination/* = false*/)
 {
     if (_owner->GetTypeId() == TYPEID_PLAYER)
@@ -749,6 +755,7 @@ void MotionMaster::MoveCloserAndStop(uint32 id, Unit* target, float distance)
         // We are already close enough. We just need to turn toward the target without changing position.
         std::function<void(Movement::MoveSplineInit&)> initializer = [=, this, target = target->GetGUID()](Movement::MoveSplineInit& init)
         {
+            // EG - facing handled via MotionMaster spline (facing-splines moved into MotionMaster)
             init.MoveTo(_owner->GetPositionX(), _owner->GetPositionY(), _owner->GetPositionZ());
             init.SetFacing(target);
         };
@@ -891,6 +898,7 @@ void MotionMaster::MoveJump(float x, float y, float z, float o, float speedXY, f
         init.MoveTo(x, y, z, false);
         init.SetParabolic(max_height, 0);
         init.SetVelocity(speedXY);
+        // EG - facing handled via MotionMaster spline (facing-splines moved into MotionMaster)
         if (hasOrientation)
             init.SetFacing(o);
     };

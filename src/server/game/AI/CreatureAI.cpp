@@ -177,6 +177,7 @@ void CreatureAI::JustAppeared()
     {
         if (TempSummon* summon = me->ToTempSummon())
         {
+            // EG - follow-on-spawn gating via TempSummon::ShouldFollowOnSpawn + CanFollowOwner
             // Only apply this to specific types of summons
             if (!summon->GetVehicle() && TempSummon::ShouldFollowOnSpawn(summon->m_Properties) && summon->CanFollowOwner())
             {
@@ -203,6 +204,7 @@ void CreatureAI::EnterEvadeMode(EvadeReason why)
 
     TC_LOG_DEBUG("scripts.ai", "CreatureAI::EnterEvadeMode: entering evade mode (why: {}) ({})", why, me->GetGUID().ToString());
 
+    // EG - vehicle-passenger evade handling: new EVADE_REASON_VEHICLE_EVADE + creature-in-vehicle path
     if (why == EVADE_REASON_VEHICLE_EVADE)
     {
         Reset();

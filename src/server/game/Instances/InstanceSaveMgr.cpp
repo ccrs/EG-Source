@@ -254,6 +254,7 @@ bool InstanceSave::UnloadIfEmpty()
             if (map->HavePlayers())
                 return true;
 
+        // EG - guard UnloadIfEmpty against a stale pointer evicting a recycled InstanceSave
         if (!sInstanceSaveMgr->lock_instLists)
         {
             if (sInstanceSaveMgr->GetInstanceSave(GetInstanceId()) == this)
@@ -619,6 +620,7 @@ void InstanceSaveManager::_ResetInstance(uint32 mapid, uint32 instanceId)
     {
         iMap->DeleteRespawnTimes();
         iMap->DeleteCorpseData();
+        // EG - instance-id lifecycle fix:
         // Defer FreeInstanceId until the map is removed from m_InstancedMaps so the
         // old map cannot be handed to a new group via FindInstanceMap() with a recycled ID.
         if (InstanceMap* instMap = iMap->ToInstanceMap())

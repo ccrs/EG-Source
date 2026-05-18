@@ -753,6 +753,7 @@ void Pet::GivePetXP(uint32 xp)
     if (petlevel >= maxlevel)
        return;
 
+    // EG - XP rate: apply the owning player's XP multipliers to the active pet
     if (GetOwnerGUID().IsPlayer())
         if (Player* owner = GetOwner())
             sScriptMgr->OnGivePlayerXP(owner, xp, nullptr);

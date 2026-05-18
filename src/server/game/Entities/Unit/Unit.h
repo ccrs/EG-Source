@@ -598,6 +598,7 @@ struct SpellPeriodicAuraLogInfo
     bool   critical;
 };
 
+// EG - separate positive/negative/pct AP modifier tracking (stale UNIT_FIELD_ATTACK_POWER_MODS sign-change fix)
 struct AttackPowerModInfo
 {
     float PositiveMods = 0;     // int16 in client

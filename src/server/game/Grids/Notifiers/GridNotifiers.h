@@ -818,6 +818,7 @@ namespace Trinity
 
             bool operator()(Unit* u)
             {
+                // EG - exclude critters from this HP-friendly grid searcher (!u->IsCritter())
                 if (u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && !u->IsCritter() && i_obj->IsWithinDistInMap(u, i_range) && u->GetMaxHealth() - u->GetHealth() > i_hp)
                 {
                     i_hp = u->GetMaxHealth() - u->GetHealth();
@@ -839,6 +840,7 @@ namespace Trinity
 
         bool operator()(Unit* u)
         {
+            // EG - exclude critters from this HP-friendly grid searcher (!u->IsCritter())
             if (u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && !u->IsCritter() && i_obj->IsWithinDistInMap(u, i_range) && i_minHpPct <= u->GetHealthPct() && u->GetHealthPct() <= i_maxHpPct && u->GetHealthPct() < i_hpPct)
             {
                 i_hpPct = u->GetHealthPct();
@@ -920,6 +922,7 @@ namespace Trinity
 
             bool operator()(Unit* u) const
             {
+                // EG - exclude critters from this HP-friendly grid searcher (!u->IsCritter())
                 if (u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && !u->IsCritter() && i_obj->IsWithinDistInMap(u, i_range) &&
                     (u->IsFeared() || u->IsCharmed() || u->IsRooted() || u->HasUnitState(UNIT_STATE_STUNNED) || u->HasUnitState(UNIT_STATE_CONFUSED)))
                 {
@@ -940,6 +943,7 @@ namespace Trinity
 
             bool operator()(Unit* u) const
             {
+                // EG - exclude critters from this HP-friendly grid searcher (!u->IsCritter())
                 if (u->IsAlive() && u->IsInCombat() && !i_obj->IsHostileTo(u) && !u->IsCritter() && i_obj->IsWithinDistInMap(u, i_range) && !u->HasAura(i_spell))
                     return true;
 
@@ -1481,6 +1485,7 @@ namespace Trinity
                 if (i_args.GameObjectId && go->GetEntry() != i_args.GameObjectId)
                     return false;
 
+                // EG - FindGameObjectOptions GameObjectIds entry-list filter
                 if (!i_args.GameObjectIds.empty() && !i_args.GameObjectIds.contains(go->GetEntry()))
                     return false;
 

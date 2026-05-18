@@ -38,6 +38,7 @@ void WorldSession::HandleDismissControlledVehicle(WorldPacket &recvData)
     if (!ValidateMovementInfo(mover, &mi))
         return;
 
+    // EG - normalize/validate passenger (vehicle) or transport movement info before dismiss
     if (Vehicle* vehicle = mover->GetVehicle())
     {
         if (!vehicle->NormalizePassengerMovementInfo(mover, mi))

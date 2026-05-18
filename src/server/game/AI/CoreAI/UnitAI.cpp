@@ -47,6 +47,7 @@ void UnitAI::OnCharmed(bool isNew)
 
 void UnitAI::AttackStartCaster(Unit* victim, float dist)
 {
+    // EG - default min/max chase range derived from dist for AttackStartCaster
     if (victim && me->Attack(victim, false))
         me->GetMotionMaster()->MoveChase(victim, ChaseRange(std::min<float>(1.f, dist * 0.1f), std::max<float>(2.f, dist)));
 }
@@ -467,6 +468,7 @@ bool PowerUsersSelector::operator()(Unit const* target) const
     if (_dist < 0.0f && _me->IsWithinCombatRange(target, -_dist))
         return false;
 
+    // EG - nonTank option: exclude the current tank/victim from PowerUsersSelector
     if (_nonTank)
     {
         if (Unit* currentVictim = _me->GetThreatManager().GetCurrentVictim())

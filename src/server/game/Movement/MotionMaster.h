@@ -210,6 +210,7 @@ class TC_GAME_API MotionMaster
         bool HasFlag(uint8 const flag) const { return (_flags & flag) != 0; }
         void RemoveFlag(uint8 const flag) { _flags &= ~flag; }
     private:
+        // EG - reworked MotionMaster main container implementation (priority/mode-keyed map of generator lists)
         typedef std::pair<uint8/*MovementGeneratorPriority*/, uint8/*MovementGeneratorMode*/> MotionMasterContainerKey;
 
         struct MovementGeneratorComparator

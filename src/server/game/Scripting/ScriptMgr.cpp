@@ -1053,6 +1053,7 @@ void ScriptMgr::Initialize()
     // LFGScripts
     lfg::AddSC_LFGScripts();
 
+    // EG - Anticheat: register anticheat script hooks
     AddSC_AnticheatScripts();
 
     // Load all static linked scripts through the script loader function.

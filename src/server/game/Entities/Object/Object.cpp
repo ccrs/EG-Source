@@ -1718,6 +1718,7 @@ bool WorldObject::CanDetectStealthOf(WorldObject const* obj, bool checkAlert) co
     if (unit && !HasInArc(float(M_PI), obj))
         return false;
 
+    // EG - prioritize HasInArc validation over combatReach in stealth detection
     if (distance < combatReach)
         return true;
 
@@ -1970,17 +1971,25 @@ void Map::SummonCreatureGroup(uint8 group, std::list<TempSummon*>* list /*= null
 
 void WorldObject::SetZoneScript()
 {
-    if (Map* map = FindMap())
+    // EG - resolve zone script via Battlefield (Wintergrasp always PvP) before OutdoorPvP
+    Map* map = FindMap();
+    if (!map)
+        return;
+
+    if (map->IsBattlegroundOrArena())
+        return;
+
+    if (map->IsDungeon())
     {
         if (InstanceMap* instanceMap = map->ToInstanceMap())
             m_zoneScript = reinterpret_cast<ZoneScript*>(instanceMap->GetInstanceScript());
-        else if (!map->IsBattlegroundOrArena())
-        {
-            if (Battlefield* bf = sBattlefieldMgr->GetBattlefieldToZoneId(GetZoneId()))
-                m_zoneScript = bf;
-            else
-                m_zoneScript = sOutdoorPvPMgr->GetZoneScript(GetZoneId());
-        }
+    }
+    else
+    {
+        if (Battlefield* battlefield = sBattlefieldMgr->GetBattlefieldToZoneId(GetZoneId()))
+            m_zoneScript = battlefield;
+        else
+            m_zoneScript = sOutdoorPvPMgr->GetZoneScript(GetZoneId());
     }
 }
 

@@ -114,7 +114,7 @@ void WorldSession::SendTaxiMenu(Creature* unit)
 
 void WorldSession::SendDoFlight(uint32 mountDisplayId, uint32 path, uint32 pathNode)
 {
-    // add anticheat helper here to avoid false hits if relog during flight path travel
+    // EG - Anticheat: allow teleport during flight to avoid false hits if relog during flight path travel
     GetPlayer()->SetCanTeleport(true);
 
     // remove fake death
@@ -264,6 +264,7 @@ void WorldSession::HandleActivateTaxiOpcode(WorldPacket& recvData)
     ObjectGuid guid;
     std::vector<uint32> nodes;
     nodes.resize(2);
+    // EG - Anticheat: allow teleport during taxi activation to avoid false hits
     GetPlayer()->SetCanTeleport(true);
     recvData >> guid >> nodes[0] >> nodes[1];
     TC_LOG_DEBUG("network", "WORLD: Received CMSG_ACTIVATETAXI from {} to {}", nodes[0], nodes[1]);
@@ -289,6 +290,7 @@ void WorldSession::HandleActivateTaxiOpcode(WorldPacket& recvData)
 
 void WorldSession::SendActivateTaxiReply(ActivateTaxiReply reply)
 {
+    // EG - Anticheat: allow teleport on taxi reply to avoid false hits
     GetPlayer()->SetCanTeleport(true);
     WorldPacket data(SMSG_ACTIVATETAXIREPLY, 4);
     data << uint32(reply);

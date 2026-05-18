@@ -342,6 +342,7 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
     float val2 = 0.0f;
     float level = float(GetLevel());
 
+    // EG - fix stale UNIT_FIELD_ATTACK_POWER_MODS on AP modifier sign change (track pos/neg flat AP mods separately)
     AttackPowerModIndex unitMod = ranged ? RANGED_AP_MODS : MELEE_AP_MODS;
 
     if (ranged)
@@ -1128,6 +1129,7 @@ void Creature::UpdateMaxPower(Powers power)
 
 void Creature::UpdateAttackPowerAndDamage(bool ranged)
 {
+    // EG - fix stale UNIT_FIELD_ATTACK_POWER_MODS on AP modifier sign change (track pos/neg flat AP mods separately)
     AttackPowerModIndex unitMod = ranged ? RANGED_AP_MODS : MELEE_AP_MODS;
 
     float baseAttackPower       = ranged ? _baseRangedAttackPower : _baseAttackPower;
@@ -1436,6 +1438,7 @@ void Guardian::UpdateAttackPowerAndDamage(bool ranged)
 
     float val = 0.0f;
     float bonusAP = 0.0f;
+    // EG - fix stale UNIT_FIELD_ATTACK_POWER_MODS on AP modifier sign change (track pos/neg flat AP mods separately)
     AttackPowerModIndex unitMod = MELEE_AP_MODS;
 
     if (GetEntry() == ENTRY_IMP)                                   // imp's attack power

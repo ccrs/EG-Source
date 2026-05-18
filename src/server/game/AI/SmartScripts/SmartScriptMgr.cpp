@@ -485,6 +485,7 @@ bool SmartAIMgr::IsTargetValid(SmartScriptHolder const& e)
         case SMART_TARGET_OWNER_OR_SUMMONER:
             TC_SAI_IS_BOOLEAN_VALID(e, e.target.owner.useCharmerOrOwner);
             break;
+        // EG - validate new SAI target SMART_TARGET_LOWEST_HP_FRIENDLY
         case SMART_TARGET_LOWEST_HP_FRIENDLY:
             TC_SAI_IS_BOOLEAN_VALID(e, e.target.lowestHPFriendly.playerOnly);
             TC_SAI_IS_BOOLEAN_VALID(e, e.target.lowestHPFriendly.includeSelf);
@@ -2009,6 +2010,7 @@ bool SmartAIMgr::IsEventValid(SmartScriptHolder& e)
             }
             break;
         }
+        // EG - validate new SAI action SMART_ACTION_SET_NOT_ATTACKABLE
         case SMART_ACTION_SET_NOT_ATTACKABLE:
         {
             TC_SAI_IS_BOOLEAN_VALID(e, e.action.setNotAttackable.apply);

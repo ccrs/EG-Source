@@ -165,6 +165,7 @@ void TempSummon::Update(uint32 diff)
                 m_timer = m_lifetime;
             break;
         }
+        // EG - new TempSummonType TEMPSUMMON_FOLLOWER_DESPAWN: despawn when the summon loses/leaves its follow target
         case TEMPSUMMON_FOLLOWER_DESPAWN:
             if (IsAlive() && _followerDespawnActive && !IsInCombat())
             {
@@ -312,6 +313,7 @@ void TempSummon::RemoveFromWorld()
     Creature::RemoveFromWorld();
 }
 
+// EG - ShouldFollowOnSpawn moved into TempSummon (backs TEMPSUMMON_FOLLOWER_DESPAWN)
 // adapted from logic in Spell:EffectSummonType before commit 8499434
 /*static */bool TempSummon::ShouldFollowOnSpawn(SummonPropertiesEntry const* properties)
 {

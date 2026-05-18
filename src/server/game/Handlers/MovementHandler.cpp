@@ -244,6 +244,7 @@ void WorldSession::HandleMoveWorldportAck()
     player->ResetMap();
     player->SetMap(newMap);
 
+    // EG - proper resurrection sequence for dead teleporting players
     // Resurrect before AddPlayerToMap so SendInitSelf sends alive state; dead state would fire "has died" on the client.
     if (!player->IsAlive())
     {

@@ -644,6 +644,7 @@ void Item::SetState(ItemUpdateState state, Player* forplayer)
         {
             RemoveItemFromUpdateQueueOf(this, forplayer);
             forplayer->DeleteRefundReference(GetGUID());
+            // EG - fix root cause of stale item pointer after ITEM_NEW removal: drop the slot reference
             forplayer->RemoveItemFromSlot(this);
         }
         delete this;
