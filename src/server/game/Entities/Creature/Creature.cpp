@@ -474,6 +474,9 @@ bool Creature::InitEntry(uint32 entry, CreatureData const* data /*= nullptr*/)
     if (GetMap()->Is25ManRaid())
         loot.maxDuplicates = 3;
 
+    // EG - Loot: flag group/raid instance loot
+    loot.isInstanceLoot = GetMap()->IsDungeon();
+
     SetEntry(entry);                                        // normal entry always
     m_creatureInfo = cinfo;                                 // map mode related always
 
