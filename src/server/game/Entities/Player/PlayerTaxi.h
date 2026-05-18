@@ -55,6 +55,7 @@ class TC_GAME_API PlayerTaxi
                 return false;
         }
         void AppendTaximaskTo(ByteBuffer& data, bool all);
+        // EG - Account FlightPath sharing: merge another character's known flight paths into this taximask
         size_t size() const { return m_taximask.size(); }
         void AddSubmaskToTaximask(uint32 field, TaxiMask::value_type submask)
         {

@@ -46,6 +46,7 @@ void WorldSession::HandleInspectArenaTeamsOpcode(WorldPacket& recvData)
     if (!GetPlayer()->IsWithinDistInMap(player, INSPECT_DISTANCE, false))
         return;
 
+    // EG - Crossfaction Arena: allow inspecting the other faction's arena team with the crossfaction arena permission
     if (!HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_ARENA) && GetPlayer()->IsValidAttackTarget(player))
         return;
 
@@ -132,6 +133,7 @@ void WorldSession::HandleArenaTeamInviteOpcode(WorldPacket& recvData)
     if (player->GetSocial()->HasIgnore(GetPlayer()->GetGUID()))
         return;
 
+    // EG - Crossfaction Arena: allow inviting the other faction with the crossfaction arena permission
     if (!HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_ARENA) && player->GetTeam() != GetPlayer()->GetTeam())
     {
         SendArenaTeamCommandResult(ERR_ARENA_TEAM_INVITE_SS, "", "", ERR_ARENA_TEAM_NOT_ALLIED);
@@ -183,6 +185,7 @@ void WorldSession::HandleArenaTeamAcceptOpcode(WorldPacket & /*recvData*/)
         return;
     }
 
+    // EG - Crossfaction Arena
     // Only allow members of the other faction to join the team if cross faction arena interaction is enabled
     if (!HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_ARENA) && _player->GetTeam() != sCharacterCache->GetCharacterTeamByGuid(arenaTeam->GetCaptain()))
     {

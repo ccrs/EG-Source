@@ -98,6 +98,7 @@ void WorldSession::HandleGroupInviteOpcode(WorldPackets::Party::PartyInviteClien
     }
 
     // can't group with
+    // EG - Crossfaction Arena: allow cross-faction group invite with the crossfaction arena permission
     if (!invitingPlayer->IsGameMaster()
         && !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP)
         && !invitingPlayer->GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_ARENA)

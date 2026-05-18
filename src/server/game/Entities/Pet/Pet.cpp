@@ -753,6 +753,7 @@ void Pet::GivePetXP(uint32 xp)
     if (petlevel >= maxlevel)
        return;
 
+    // EG - XP rate: apply the owning player's XP multipliers to the active pet
     if (GetOwnerGUID().IsPlayer())
         if (Player* owner = GetOwner())
             sScriptMgr->OnGivePlayerXP(owner, xp, nullptr);
@@ -2022,6 +2023,7 @@ float Pet::GetNativeObjectScale() const
 
         return scale;
     }
+    // EG - Custom Setting "visuals": warlock demon model/scale override
     if (Player* owner = GetOwner()->ToPlayer())
         if (owner->GetClass() == CLASS_WARLOCK && owner->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_WARLOCK_ACTIVE))
             switch (GetEntry())
@@ -2038,6 +2040,7 @@ float Pet::GetNativeObjectScale() const
 void Pet::SetDisplayId(uint32 modelId)
 {
     uint32 model = modelId;
+    // EG - Custom Setting "visuals": warlock demon model/scale override
     if (Player* owner = GetOwner()->ToPlayer())
     {
         if (owner->GetClass() == CLASS_WARLOCK && owner->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_WARLOCK_ACTIVE))

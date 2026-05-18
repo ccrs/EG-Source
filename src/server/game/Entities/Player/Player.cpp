@@ -1654,6 +1654,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
             //same map, only remove pet if out of range for new position
             if (pet && !pet->IsWithinDist3d(x, y, z, GetMap()->GetVisibilityRange()))
                 UnsummonPetTemporaryIfAny();
+            // EG - reposition the (out-of-combat) pet next to its owner on teleport
             else if (pet && !pet->IsInCombat())
             {
                 Position petTeleportPosition = Position(x, y, z, orientation);
@@ -1838,7 +1839,7 @@ bool Player::TeleportToBGEntryPoint()
         return false;
     }
 
-    // LFG-specific mount takes priority: it is written at the exact moment of
+    // EG - LFG mount restore: LFG-specific mount takes priority: it is written at the exact moment of
     // dungeon entry and is not shared with (or overwritten by) BG operations.
     TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] TeleportToBGEntryPoint: {} joinPos=(map {} {:.1f},{:.1f},{:.1f}) m_lfgMountSpell={} m_bgData.mountSpell(before)={} IsMounted={}",
         GetName(), m_bgData.joinPos.m_mapId, m_bgData.joinPos.GetPositionX(), m_bgData.joinPos.GetPositionY(), m_bgData.joinPos.GetPositionZ(),
@@ -2038,6 +2039,7 @@ void Player::Regenerate(Powers power)
     if (!maxValue)
         return;
 
+    // EG - fix mana regen rollbacks caused by stale POWER_REGEN_INTERRUPTED field
     if (power == POWER_MANA && HasLastManaUse() && !IsUnderLastManaUseEffect())
     {
         SetFloatValue(UNIT_FIELD_POWER_REGEN_INTERRUPTED_FLAT_MODIFIER + AsUnderlyingType(POWER_MANA), 0.f);
@@ -2136,6 +2138,7 @@ void Player::RegenerateHealth()
     if (addValue < 0.0f)
         addValue = 0.0f;
 
+    // EG - carry fractional health regen across ticks (no silent rounding loss)
     addValue += m_healthFraction;
     uint32 integerValue = uint32(addValue);
     m_healthFraction = addValue - integerValue;
@@ -22124,6 +22127,7 @@ void Player::SetBattlegroundEntryPoint()
     if (m_bgData.joinPos.m_mapId == MAPID_INVALID) // In error cases use homebind position
         m_bgData.joinPos = WorldLocation(m_homebindMapId, m_homebindX, m_homebindY, m_homebindZ, 0.0f);
 
+    // EG - LFG mount restore: diagnostic logging of BG entry-point/mount state
     TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] SetBattlegroundEntryPoint: {} IsMounted={} onTaxi={} mapIsDungeon={} -> m_bgData.mountSpell={} joinPos=(map {} {:.1f},{:.1f},{:.1f})",
         GetName(), IsMounted(), !m_taxi.empty(), GetMap()->IsDungeon(), m_bgData.mountSpell,
         m_bgData.joinPos.m_mapId, m_bgData.joinPos.GetPositionX(), m_bgData.joinPos.GetPositionY(), m_bgData.joinPos.GetPositionZ());
@@ -26113,6 +26117,7 @@ void Player::DeleteRefundReference(ObjectGuid it)
         m_refundableItems.erase(itr);
 }
 
+// EG - fix root cause of stale item pointer after ITEM_NEW removal: clear the slot reference safely
 void Player::RemoveItemFromSlot(Item const* item)
 {
     uint8 slot = item->GetSlot();

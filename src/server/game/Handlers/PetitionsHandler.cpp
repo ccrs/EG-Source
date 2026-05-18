@@ -404,6 +404,7 @@ void WorldSession::HandleSignPetition(WorldPacket& recvData)
     if (ownerGuid == _player->GetGUID())
         return;
 
+    // EG - Crossfaction Arena
     // not let enemies sign guild charter; arena charters may be signed cross-faction with the crossfaction arena permission
     if (GetPlayer()->GetTeam() != sCharacterCache->GetCharacterTeamByGuid(ownerGuid)
         && !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GUILD)
@@ -535,6 +536,7 @@ void WorldSession::HandleOfferPetitionOpcode(WorldPacket& recvData)
 
     TC_LOG_DEBUG("network", "OFFER PETITION: type {}, {}, to {}", static_cast<uint32>(type), petitionGuid.ToString(), offererGuid.ToString());
 
+    // EG - Crossfaction Arena
     // arena charters may be offered cross-faction with the crossfaction arena permission
     if (GetPlayer()->GetTeam() != player->GetTeam()
         && !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GUILD)

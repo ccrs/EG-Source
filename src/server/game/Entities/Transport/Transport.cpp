@@ -204,6 +204,7 @@ void Transport::Update(uint32 diff)
 
     // Set position
     _positionChangeTimer.Update(diff);
+    // EG - fix static-passenger NPCs disappearing over time: periodic static-passenger reload
     _staticReloadTimer.Update(diff);
     if (_positionChangeTimer.Passed())
     {
@@ -295,6 +296,7 @@ Creature* Transport::CreateNPCPassenger(ObjectGuid::LowType guid, CreatureData c
     if (map->GetCreatureRespawnTime(guid))
         return nullptr;
 
+    // EG - fix static-passenger NPCs disappearing over time: skip already-spawned guid + validate world coords/grid before spawn
     if (map->GetCreatureBySpawnIdStore().count(guid))
         return nullptr;
 
@@ -355,6 +357,7 @@ GameObject* Transport::CreateGOPassenger(ObjectGuid::LowType guid, GameObjectDat
 
     ASSERT(data);
 
+    // EG - fix static-passenger GOs disappearing over time: skip already-spawned guid + validate world coords/grid before spawn
     if (map->GetGameObjectBySpawnIdStore().count(guid))
         return nullptr;
 

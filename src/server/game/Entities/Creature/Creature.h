@@ -41,6 +41,7 @@ class WorldSession;
 
 enum MovementGeneratorType : uint8;
 
+// EG - LOS delay on creature spawn: lock state for deferred LOS-entry processing
 enum LOSLockStatus : uint8
 {
     LOS_LOCK_NONE = 0,
@@ -483,6 +484,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool _regenerateHealth; // Set on creation
         bool _regenerateHealthLock; // Dynamically set
 
+        // EG - cached base AP for stale UNIT_FIELD_ATTACK_POWER_MODS fix
         // set in UpdateLevelDependantStats, read in UpdateAttackPowerAndDamage
         uint32 _baseAttackPower;
         uint32 _baseRangedAttackPower;

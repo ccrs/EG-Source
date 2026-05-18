@@ -753,6 +753,7 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket& recvData)
             return;
         }
 
+        // EG - LFG mount restore: exit-portal leave routes through TeleportToBGEntryPoint (diagnostic logging)
         if (Group* group = player->GetGroup())
             if (group->isLFGGroup() && player->GetMap()->IsDungeon())
             {

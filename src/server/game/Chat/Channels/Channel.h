@@ -117,6 +117,7 @@ enum ChannelMemberFlags
     // 0x80
 };
 
+// EG - Crossfaction World Chat: reserved world-channel names (default + localized -es)
 static constexpr std::string_view WORLD_CHAT = "world";
 static constexpr std::string_view WORLD_CHAT_ES = "world-es";
 
@@ -169,6 +170,7 @@ class TC_GAME_API Channel
         Channel(uint32 channelId, uint32 team = 0, AreaTableEntry const* zoneEntry = nullptr);  // built-in channel ctor
         Channel(std::string const& name, uint32 team, std::string const& banList = "");         // custom player channel ctor
 
+        // EG - Crossfaction World Chat: identify the world channel(s)
         static bool IsWorldChat(std::string name)
         {
             strToLower(name);

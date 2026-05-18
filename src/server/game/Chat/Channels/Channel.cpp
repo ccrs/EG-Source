@@ -301,6 +301,7 @@ void Channel::KickOrBan(Player const* player, std::string const& badname, bool b
     }
 
     PlayerInfo& info = _playersStore.at(good);
+    // EG - Crossfaction World Chat: world channel is unmoderatable (no kick/ban)
     if (Channel::IsWorldChat(GetName()) || (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR)))
     {
         NotModeratorAppend appender;
@@ -371,6 +372,7 @@ void Channel::UnBan(Player const* player, std::string const& badname)
     }
 
     PlayerInfo& info = _playersStore.at(good);
+    // EG - Crossfaction World Chat: world channel is unmoderatable (no unban)
     if (Channel::IsWorldChat(GetName()) || (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR)))
     {
         NotModeratorAppend appender;
@@ -412,6 +414,7 @@ void Channel::Password(Player const* player, std::string const& pass)
     }
 
     PlayerInfo& info = _playersStore.at(guid);
+    // EG - Crossfaction World Chat: world channel is unmoderatable (no password change)
     if (Channel::IsWorldChat(GetName()) || (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR)))
     {
         NotModeratorAppend appender;
@@ -442,6 +445,7 @@ void Channel::SetMode(Player const* player, std::string const& p2n, bool mod, bo
     }
 
     PlayerInfo& info = _playersStore.at(guid);
+    // EG - Crossfaction World Chat: world channel is unmoderatable (no mode change)
     if (Channel::IsWorldChat(GetName()) || (!info.IsModerator() && !player->GetSession()->HasPermission(rbac::RBAC_PERM_CHANGE_CHANNEL_NOT_MODERATOR)))
     {
         NotModeratorAppend appender;
@@ -551,6 +555,7 @@ void Channel::SetOwner(Player const* player, std::string const& newname)
     Player* newp = ObjectAccessor::FindConnectedPlayerByName(newname);
     ObjectGuid victim = newp ? newp->GetGUID() : ObjectGuid::Empty;
 
+    // EG - Crossfaction World Chat: skip the cross-faction owner-transfer restriction on the world channel
     if (!newp
         || !victim
         || !IsOn(victim)

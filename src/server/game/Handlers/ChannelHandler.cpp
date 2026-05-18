@@ -46,6 +46,7 @@ void WorldSession::HandleJoinChannel(WorldPackets::Channel::JoinChannel& packet)
 
     if (!packet.ChatChannelId)
     {
+        // EG - Crossfaction World Chat: special-case joining the world channel by name
         std::string worldChannelName = packet.ChannelName;
         strToLower(worldChannelName);
         if (Channel::IsWorldChat(worldChannelName))
@@ -135,6 +136,7 @@ void WorldSession::HandleLeaveChannel(WorldPackets::Channel::LeaveChannel& packe
             return;
     }
 
+    // EG - Crossfaction World Chat: special-case leaving the world channel by name
     std::string worldChannelName = packet.ChannelName;
     strToLower(worldChannelName);
     if (!packet.ZoneChannelID && Channel::IsWorldChat(worldChannelName))

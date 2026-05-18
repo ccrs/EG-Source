@@ -7699,6 +7699,7 @@ bool Unit::IsImmunedToSpell(SpellInfo const* spellInfo, WorldObject const* caste
     if (uint32 mechanic = spellInfo->Mechanic)
     {
         SpellImmuneContainer const& mechanicList = m_spellImmune[IMMUNITY_MECHANIC];
+        // EG - spell-level mechanic immunity must not block non-immune sibling effects
         if (hasImmunity(mechanicList, mechanic))
         {
             // If any effect explicitly declares the same mechanic, that effect "owns" the mechanic.
@@ -8749,6 +8750,7 @@ void Unit::setDeathState(DeathState s)
         // Don't clear the movement if the Unit was on a vehicle as we are exiting now
         if (!isOnVehicle)
         {
+            // EG - flag-based fall validation on death (avoid recalculation) + prevent motion re-init
             if (GetMotionMaster()->StopOnDeath())
             {
                 if (!HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED) && GetTypeId() == TYPEID_UNIT && needsToFall && !IsUnderWater())
@@ -9026,6 +9028,7 @@ bool Unit::IsInDisallowedMountForm() const
 
 void ApplyPercentModFloatVar(float& var, float val, bool apply);
 
+// EG - AP modifier accessor backing the stale UNIT_FIELD_ATTACK_POWER_MODS sign-change fix (separate pos/neg/pct indices)
 void Unit::HandleAttackPowerModifier(AttackPowerModIndex index, AttackPowerModType modifierType, float amount, bool apply)
 {
     if (index >= AP_MODS_COUNT || modifierType >= AP_MOD_TYPE_COUNT)
@@ -12321,6 +12324,7 @@ uint32 Unit::GetModelForForm(ShapeshiftForm form, uint32 spellId) const
             break;
     }
 
+    // EG - Custom Setting "visuals": per-faction druid shapeshift model overrides
     if (Player const* player = ToPlayer())
     {
         switch (form)
@@ -13691,6 +13695,7 @@ void Unit::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player const* t
     Player const* player = ToPlayer();
     for (uint16 index = 0; index < m_valuesCount; ++index)
     {
+        // EG - Race Masquerade: send masqueraded race/display to other players in the values update
         if (player
             && player->IsMasqueradingRace()
             && player != target
@@ -13847,6 +13852,7 @@ void Unit::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player const* t
                 else
                     fieldBuffer << m_uint32Values[index];
             }
+            // EG - Transmog "hide" flag: blank out visible item entries in the values update
             else if (index >= PLAYER_VISIBLE_ITEM_1_ENTRYID && index <= PLAYER_VISIBLE_ITEM_19_ENTRYID && (index & 1) && m_uint32Values[index] != 0 && target->HasCustomFlag(CUSTOM_TRANSMOG_FLAGS, CUSTOM_FLAG_TRANSMOG_HIDE))
             {
                 uint8 itemIndex = ((index - PLAYER_VISIBLE_ITEM_1_ENTRYID) / 2U);

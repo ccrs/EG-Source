@@ -269,6 +269,7 @@ class TC_GAME_API InstanceScript : public ZoneScript
         void ResetAreaTriggerDone(uint32 id) { _activatedAreaTriggers.erase(id); }
         bool IsAreaTriggerDone(uint32 id) const { return _activatedAreaTriggers.find(id) != _activatedAreaTriggers.end(); }
 
+        // EG - new method: force respawn on encounters with multiple entities
         // Force-respawn any queued (dead) creatures whose entry matches one of the given IDs.
         // Removes in-memory corpse objects and clears the respawn timer so the creature spawns
         // on the next grid tick. Safe to call when no grids are loaded (e.g. ReadSaveDataMore).

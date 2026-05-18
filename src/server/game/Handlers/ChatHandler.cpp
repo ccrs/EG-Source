@@ -146,7 +146,7 @@ void WorldSession::HandleChatMessage(ChatMsg type, Language lang, std::string ms
                     case CHAT_MSG_RAID:
                     case CHAT_MSG_RAID_LEADER:
                     case CHAT_MSG_RAID_WARNING:
-                        // allow two side chat at group channel if two side group is allowed, or crossfaction arena permission is held
+                        // EG - Crossfaction Arena: allow two side chat at group channel if two side group is allowed, or crossfaction arena permission is held
                         if (sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP) || HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_ARENA))
                             lang = LANG_UNIVERSAL;
                         break;
@@ -473,7 +473,7 @@ void WorldSession::HandleChatMessage(ChatMsg type, Language lang, std::string ms
             }
 
             Channel* chn = nullptr;
-            // Direct lookup for world chat: GetChannelForPlayerByNamePart prefix-matches "WorldDefense" before "world".
+            // EG - Crossfaction World Chat: direct lookup (GetChannelForPlayerByNamePart prefix-matches "WorldDefense" before "world")
             if (Channel::IsWorldChat(target))
             {
                 if (ChannelMgr* cMgr = ChannelMgr::ForTeam(Team::ALLIANCE))

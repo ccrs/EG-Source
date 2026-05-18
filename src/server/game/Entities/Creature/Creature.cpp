@@ -567,7 +567,7 @@ bool Creature::UpdateEntry(uint32 entry, CreatureData const* data /*= nullptr*/,
     if (IsInCombat())
         unitFlags |= UNIT_FLAG_IN_COMBAT;
 
-    // UNIT_FLAG_POSSESSED is set dynamically by SetCharmedBy (both CHARM_TYPE_VEHICLE and CHARM_TYPE_POSSESS), never from the template
+    // EG - honor previously-set UNIT_FLAG_POSSESSED across UpdateEntry (set dynamically by SetCharmedBy, never from the template)
     if (HasUnitFlag(UNIT_FLAG_POSSESSED))
         unitFlags |= UNIT_FLAG_POSSESSED;
 
@@ -685,6 +685,7 @@ void Creature::Update(uint32 diff)
 
     UpdateMovementFlags();
 
+    // EG - LOS delay on creature spawn: defer queued LOS entries until spawn LOS-lock window elapses
     if (IsAIEnabled() && GetLOSLockStatus() == LOS_LOCK_SPAWN)
     {
         _LOSLockDelay.Update(diff);
@@ -1494,6 +1495,7 @@ void Creature::UpdateLevelDependantStats()
     SetBaseWeaponDamage(RANGED_ATTACK, MINDAMAGE, weaponBaseMinDamage);
     SetBaseWeaponDamage(RANGED_ATTACK, MAXDAMAGE, weaponBaseMaxDamage);
 
+    // EG - cache base AP (supports stale UNIT_FIELD_ATTACK_POWER_MODS sign-change fix in StatSystem)
     _baseAttackPower       = stats->AttackPower;
     _baseRangedAttackPower = stats->RangedAttackPower;
 
@@ -1947,7 +1949,7 @@ float Creature::GetAttackDistance(Unit const* target) const
     float maxRadius = (45.0f * sWorld->getRate(RATE_CREATURE_AGGRO));
     float minRadius = (5.0f * sWorld->getRate(RATE_CREATURE_AGGRO));
 
-    // user "owner" Player as reference
+    // EG - always use the owning Player's level for aggro radius when the target belongs in any way to a player
     Player* player = target->GetCharmerOrOwnerPlayerOrPlayerItself();
     uint32 const targetLevel = player ? player->GetLevel() : target->GetLevel();
 
@@ -2167,6 +2169,7 @@ void Creature::ForcedDespawn(uint32 timeMSToDespawn, Seconds forceRespawnTimer)
 
             setDeathState(JUST_DIED);
         }
+        // EG - honor an explicit forceRespawnTimer even when not transitioning through JUST_DIED
         else if (forceRespawnTimer > Seconds::zero())
         {
             SetRespawnDelay(0);
@@ -2520,6 +2523,7 @@ bool Creature::CanCreatureAttack(Unit const* victim, bool /*force*/) const
 
     if (Unit* unit = GetCharmerOrOwner())
         return victim->IsWithinDist(unit, dist);
+    // EG - creatures riding a vehicle: range-check against self so they can evade if the victim is really far
     else if (GetVehicle())
         return IsWithinDist(victim, dist);
     else
@@ -2601,6 +2605,7 @@ bool Creature::LoadCreaturesAddon()
         }
     }
 
+    // EG - apply hover state from creature addon AnimTier on load
     if (GetAnimTier() == AnimTier::Hover)
         SetHover(true);
 
@@ -2667,6 +2672,7 @@ void Creature::GetRespawnPosition(float &x, float &y, float &z, float* ori, floa
 
 void Creature::InitializeMovementFlags()
 {
+    // EG - skip movement-flag init for client-controlled creatures + hover/air handling rework
     // Do not update movement flags if creature is controlled by a player (charm/vehicle)
     if (IsMovedByClient())
         return;
@@ -2704,6 +2710,7 @@ void Creature::InitializeMovementFlags()
 
 void Creature::UpdateMovementFlags()
 {
+    // EG - skip movement-flag update for client-controlled creatures (charm/vehicle)
     // Do not update movement flags if creature is controlled by a player (charm/vehicle)
     if (IsMovedByClient())
         return;

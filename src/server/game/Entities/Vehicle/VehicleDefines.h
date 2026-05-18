@@ -154,6 +154,7 @@ protected:
         if (o)
             *o = Position::NormalizeOrientation(*o - transO);
 
+        // EG - fix passenger position desync: correct world->transport-local coordinate transform
         float const dx = x - transX;
         float const dy = y - transY;
         float const dz = z - transZ;

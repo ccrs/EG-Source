@@ -799,6 +799,7 @@ void WorldSession::LoadAccountData(PreparedQueryResult result, uint32 mask)
     }
     while (result->NextRow());
 
+    // EG - Anticheat: flag accounts using blocked Lua functions in their account data
     bool cheater = sAnticheatMgr->CheckIsLuaCheater(GetAccountId());
     if (!cheater && _player)
     {

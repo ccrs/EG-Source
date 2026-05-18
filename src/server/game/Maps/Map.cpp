@@ -1293,6 +1293,7 @@ void Map::MoveAllCreaturesInMoveList()
         }
         else
         {
+            // EG - fix static-passenger NPCs disappearing: don't relocate transport-bound creatures here
             if (c->GetTransport())
                 continue;
 
@@ -1351,6 +1352,7 @@ void Map::MoveAllGameObjectsInMoveList()
         }
         else
         {
+            // EG - fix static-passenger GOs disappearing: don't relocate transport-bound gameobjects here
             if (go->GetTransport())
                 continue;
 

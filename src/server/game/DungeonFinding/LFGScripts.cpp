@@ -130,6 +130,7 @@ void LFGGroupScript::OnAddMember(Group* group, ObjectGuid guid)
     {
         TC_LOG_DEBUG("lfg", "LFGScripts::OnAddMember [{}]: added [{}] leader [{}]", gguid.ToString(), guid.ToString(), leader.ToString());
         sLFGMgr->SetLeader(gguid, guid);
+        // EG - fix solo-queue entries leaking into the group queue: drop any solo queue state on group add
         LfgState state = sLFGMgr->GetState(guid);
         if (state == LFG_STATE_QUEUED)
             sLFGMgr->LeaveLfg(guid);
@@ -187,7 +188,7 @@ void LFGGroupScript::OnRemoveMember(Group* group, ObjectGuid guid, RemoveMethod 
     sLFGMgr->SetGroup(guid, ObjectGuid::Empty);
     uint8 players = sLFGMgr->RemovePlayerFromGroup(gguid, guid);
 
-    // Custom
+    // EG - LFGRandomReward: track member removal for solo-queue composition eligibility
     sLFGMgr->OnLfgMemberRemoved(gguid, method == GROUP_REMOVEMETHOD_KICK_LFG);
 
     if (Player* player = ObjectAccessor::FindPlayer(guid))

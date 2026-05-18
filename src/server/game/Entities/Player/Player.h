@@ -722,6 +722,7 @@ enum PlayerLoginQueryIndex
     PLAYER_LOGIN_QUERY_LOAD_MONTHLY_QUEST_STATUS,
     PLAYER_LOGIN_QUERY_LOAD_CORPSE_LOCATION,
     PLAYER_LOGIN_QUERY_LOAD_PET_SLOTS,
+    // EG - login queries for Custom Settings, Transmogrification, Account-shared spells, Account characters
     PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS,
     PLAYER_LOGIN_QUERY_LOAD_TRANSMOGRIFICATIONS,
     PLAYER_LOGIN_QUERY_LOAD_ACCOUNT_SHARED_SPELLS,
@@ -894,6 +895,7 @@ private:
     PlayerTalentInfo& operator=(PlayerTalentInfo const&) = delete;
 };
 
+// EG - Player Custom Flags: per-feature flag index (transmog, AOE loot, visuals, ...)
 enum CustomFlagsIndex : uint16
 {
     CUSTOM_TRANSMOG_FLAGS = 0,

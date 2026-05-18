@@ -69,7 +69,7 @@ class TC_GAME_API LfgGroupData
         void SetVoteKick(bool active);
         bool IsVoteKickActive() const;
 
-        // Custom
+        // EG - LFGRandomReward: solo-queue composition tracking for the bonus-loot eligibility gate
         void SetCompositionIntact(bool intact);
         bool IsCompositionIntact() const;
         void AddOriginalSoloMember(ObjectGuid guid);
@@ -89,7 +89,7 @@ class TC_GAME_API LfgGroupData
         // Vote Kick
         uint8 m_KicksLeft;                                 ///< Number of kicks left
         bool m_VoteKickActive;
-        // Custom
+        // EG - LFGRandomReward: solo-queue composition tracking state
         bool m_CompositionIntact;                          ///< Group composition still intact for the bonus reward
         uint8 m_VoluntaryDepartures;                       ///< Count of non-vote-kick leaves
         uint8 m_Backfills;                                 ///< Count of adds that backfilled a tolerated leave

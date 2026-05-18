@@ -301,6 +301,7 @@ bool MapInstanced::DestroyInstance(InstancedMaps::iterator &itr)
     // Free up the instance id and allow it to be reused
     if (itr->second->IsBattlegroundOrArena())
         sMapMgr->FreeInstanceId(itr->second->GetInstanceId());
+    // EG - instance-id lifecycle fix: free the id only on unload when deferred (avoids recycled-id handoff)
     else if (InstanceMap* instMap = itr->second->ToInstanceMap())
         if (instMap->GetFreeInstanceIdOnUnload())
             sMapMgr->FreeInstanceId(instMap->GetInstanceId());

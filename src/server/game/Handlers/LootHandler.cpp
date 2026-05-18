@@ -53,6 +53,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
             return;
         }
 
+        // EG - AOE loot: re-resolve loot slot via StoredLootView (GameObject loot)
         if (player->StoredLootView.find(lootSlot) != player->StoredLootView.end())
         {
             lootViewSlot = lootSlot;
@@ -71,6 +72,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
             return;
         }
 
+        // EG - AOE loot: re-resolve loot slot via StoredLootView (Item loot)
         if (player->StoredLootView.find(lootSlot) != player->StoredLootView.end())
         {
             lootViewSlot = lootSlot;
@@ -88,6 +90,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
             return;
         }
 
+        // EG - AOE loot: re-resolve loot slot via StoredLootView (Corpse loot)
         if (player->StoredLootView.find(lootSlot) != player->StoredLootView.end())
         {
             lootViewSlot = lootSlot;
@@ -96,6 +99,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
         }
         loot = &bones->loot;
     }
+    // EG - AOE loot: resolve the loot container via the player's StoredLootView for the AOE-loot path
     else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->GetLootFromAOELoot(lguid) && player->StoredLootView.contains(lootSlot))
     {
         LootReference const& relatedLootReference = player->StoredLootView.find(lootSlot)->second;
@@ -122,6 +126,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
             return;
         }
 
+        // EG - AOE loot: re-resolve loot slot via StoredLootView (Creature loot)
         if (player->StoredLootView.find(lootSlot) != player->StoredLootView.end())
         {
             lootViewSlot = lootSlot;
@@ -203,6 +208,7 @@ void WorldSession::HandleLootMoneyOpcode(WorldPacket& /*recvData*/)
             return;                                         // unlootable type
     }
 
+    // EG - AOE loot: iterate the player's StoredLoot containers for the AOE-loot release/money path
     if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->GetLootFromAOELoot(guid))
     {
         uint32 totalGold = 0;
@@ -419,6 +425,7 @@ void WorldSession::DoLootRelease(ObjectGuid lguid)
         }
         return;                                             // item can be looted only single player
     }
+    // EG - AOE loot: iterate the player's StoredLoot containers for the AOE-loot money path
     else if (player->HasCustomFlag(CUSTOM_AOELOOT_FLAGS, CUSTOM_FLAG_AOELOOT_ACTIVE) && player->GetLootFromAOELoot(lguid))
     {
         for (LootReference const& currentLoot : player->StoredLoot)

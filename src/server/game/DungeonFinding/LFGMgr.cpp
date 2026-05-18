@@ -1401,6 +1401,7 @@ void LFGMgr::UpdateProposal(uint32 proposalId, ObjectGuid guid, bool accept)
         if (!newGroupGuid.IsEmpty())
         {
             LfgGroupData& groupData = GroupsStore[newGroupGuid];
+            // EG - LFGRandomReward: start solo-queue composition tracking for this freshly-formed group
             groupData.SetCompositionIntact(true);
             for (LfgProposalPlayerContainer::const_iterator it = proposal.players.begin(); it != proposal.players.end(); ++it)
                 if (it->second.group.IsEmpty())
@@ -1849,6 +1850,7 @@ void LFGMgr::FinishDungeon(ObjectGuid gguid, const uint32 dungeonId, Map const* 
         player->GetSession()->SendLfgPlayerReward(data);
 
         // Custom
+        // EG - LFGRandomReward: grant bonus loot to fully solo-queued max-level random-heroic completions
         if (dungeon->difficulty == DUNGEON_DIFFICULTY_HEROIC
             && player->GetLevel() == DEFAULT_MAX_LEVEL
             && GroupsStore[gguid].IsOriginalSoloMember(guid)
@@ -2221,6 +2223,7 @@ void LFGMgr::AddPlayerToGroup(ObjectGuid gguid, ObjectGuid guid)
     GroupsStore[gguid].AddPlayer(guid);
 }
 
+// EG - LFGRandomReward: invalidate solo-queue composition when a member leaves/is kicked
 void LFGMgr::OnLfgMemberRemoved(ObjectGuid gguid, bool wasVoteKick)
 {
     GroupsStore[gguid].OnMemberRemoved(wasVoteKick);
