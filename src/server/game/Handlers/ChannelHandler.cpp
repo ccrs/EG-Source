@@ -44,6 +44,29 @@ void WorldSession::HandleJoinChannel(WorldPackets::Channel::JoinChannel& packet)
             return;
     }
 
+    if (!packet.ChatChannelId)
+    {
+        std::string worldChannelName = packet.ChannelName;
+        strToLower(worldChannelName);
+        if (Channel::IsWorldChat(worldChannelName))
+        {
+            if (packet.Password.length() > MAX_CHANNEL_PASS_STR)
+            {
+                TC_LOG_ERROR("network", "Player {} tried to create a channel with a password more than {} characters long - blocked", GetPlayer()->GetGUID().ToString(), MAX_CHANNEL_PASS_STR);
+                return;
+            }
+
+            if (ChannelMgr* worldMgr = ChannelMgr::ForTeam(Team::ALLIANCE))
+            {
+                if (Channel* channel = worldMgr->GetCustomChannel(worldChannelName))
+                    channel->JoinChannel(GetPlayer());
+                else if (Channel* channel = worldMgr->CreateCustomChannel(worldChannelName))
+                    channel->JoinChannel(GetPlayer());
+            }
+            return;
+        }
+    }
+
     ChannelMgr* cMgr = ChannelMgr::ForTeam(GetPlayer()->GetTeam());
     if (!cMgr)
         return;
@@ -82,20 +105,6 @@ void WorldSession::HandleJoinChannel(WorldPackets::Channel::JoinChannel& packet)
 
         if (!DisallowHyperlinksAndMaybeKick(packet.ChannelName))
             return;
-
-        std::string worldChannelName = packet.ChannelName;
-        strToLower(worldChannelName);
-        if (Channel::IsWorldChat(worldChannelName))
-        {
-            if (ChannelMgr* worldMgr = ChannelMgr::ForTeam(Team::ALLIANCE))
-            {
-                if (Channel* channel = worldMgr->GetCustomChannel(worldChannelName))
-                    channel->JoinChannel(GetPlayer());
-                else if (Channel* channel = worldMgr->CreateCustomChannel(worldChannelName))
-                    channel->JoinChannel(GetPlayer());
-            }
-            return;
-        }
 
         if (Channel* channel = cMgr->GetCustomChannel(packet.ChannelName))
             channel->JoinChannel(GetPlayer(), packet.Password);
