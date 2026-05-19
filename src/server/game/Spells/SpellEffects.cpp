@@ -1840,7 +1840,7 @@ void Spell::EffectOpenLock()
     }
     else if (itemTarget)
     {
-        lockId = itemTarget->GetTemplate()->LockID;
+        lockId = itemTarget->GetTemplate()->GetLockID();
         guid = itemTarget->GetGUID();
     }
     else
@@ -2366,18 +2366,7 @@ void Spell::EffectDispel()
     }
     m_caster->SendMessageToSet(&dataSuccess, true);
 
-    // On success dispel
-    // Devour Magic
-    if (m_spellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK && m_spellInfo->GetCategory() == SPELLCATEGORY_DEVOUR_MAGIC)
-    {
-        CastSpellExtraArgs args(TRIGGERED_FULL_MASK);
-        args.AddSpellMod(SPELLVALUE_BASE_POINT0, m_spellInfo->GetEffect(EFFECT_1).CalcValue());
-        m_caster->CastSpell(m_caster, 19658, args);
-        // Glyph of Felhunter
-        if (Unit* owner = m_caster->GetOwner())
-            if (owner->GetAura(56249))
-                owner->CastSpell(owner, 19658, args);
-    }
+    CallScriptSuccessfulDispel(SpellEffIndex(effectInfo->EffectIndex));
 }
 
 void Spell::EffectDualWield()
@@ -2593,7 +2582,7 @@ void Spell::EffectEnchantItemPerm()
         {
             sLog->OutCommand(player->GetSession()->GetAccountId(), "GM {} (Account: {}) enchanting(perm): {} (Entry: {}) for player: {} (Account: {})",
                 player->GetName(), player->GetSession()->GetAccountId(),
-                itemTarget->GetTemplate()->Name1, itemTarget->GetEntry(),
+                itemTarget->GetNameForLocaleIdx(sWorld->GetDefaultDbcLocale()), itemTarget->GetEntry(),
                 item_owner->GetName(), item_owner->GetSession()->GetAccountId());
         }
 
@@ -2658,7 +2647,7 @@ void Spell::EffectEnchantItemPrismatic()
     {
         sLog->OutCommand(player->GetSession()->GetAccountId(), "GM {} (Account: {}) enchanting(perm): {} (Entry: {}) for player: {} (Account: {})",
             player->GetName(), player->GetSession()->GetAccountId(),
-            itemTarget->GetTemplate()->Name1, itemTarget->GetEntry(),
+            itemTarget->GetNameForLocaleIdx(sWorld->GetDefaultDbcLocale()), itemTarget->GetEntry(),
             item_owner->GetName(), item_owner->GetSession()->GetAccountId());
     }
 
@@ -2789,7 +2778,7 @@ void Spell::EffectEnchantItemTmp()
     {
         sLog->OutCommand(player->GetSession()->GetAccountId(), "GM {} (Account: {}) enchanting(temp): {} (Entry: {}) for player: {} (Account: {})",
             player->GetName(), player->GetSession()->GetAccountId(),
-            itemTarget->GetTemplate()->Name1, itemTarget->GetEntry(),
+            itemTarget->GetNameForLocaleIdx(sWorld->GetDefaultDbcLocale()), itemTarget->GetEntry(),
             item_owner->GetName(), item_owner->GetSession()->GetAccountId());
     }
 
@@ -3098,7 +3087,7 @@ void Spell::EffectWeaponDmg()
                 // 50% more damage with daggers
                 if (unitCaster->GetTypeId() == TYPEID_PLAYER)
                     if (Item* item = unitCaster->ToPlayer()->GetWeaponForAttack(m_attackType, true))
-                        if (item->GetTemplate()->SubClass == ITEM_SUBCLASS_WEAPON_DAGGER)
+                        if (item->GetTemplate()->GetSubClass() == ITEM_SUBCLASS_WEAPON_DAGGER)
                             totalDamagePercentMod *= 1.5f;
             }
             // Mutilate (for each hand)
@@ -3983,7 +3972,7 @@ void Spell::EffectFeedPet()
     if (!pet->IsAlive())
         return;
 
-    int32 benefit = pet->GetCurrentFoodBenefitLevel(foodItem->GetTemplate()->ItemLevel);
+    int32 benefit = pet->GetCurrentFoodBenefitLevel(foodItem->GetTemplate()->GetBaseItemLevel());
     if (benefit <= 0)
         return;
 
@@ -4866,7 +4855,7 @@ void Spell::EffectProspecting()
     if (sWorld->getBoolConfig(CONFIG_SKILL_PROSPECTING))
     {
         uint32 SkillValue = player->GetPureSkillValue(SKILL_JEWELCRAFTING);
-        uint32 reqSkillValue = itemTarget->GetTemplate()->RequiredSkillRank;
+        uint32 reqSkillValue = itemTarget->GetTemplate()->GetRequiredSkillRank();
         player->UpdateGatherSkill(SKILL_JEWELCRAFTING, SkillValue, reqSkillValue);
     }
 
@@ -4891,7 +4880,7 @@ void Spell::EffectMilling()
     if (sWorld->getBoolConfig(CONFIG_SKILL_MILLING))
     {
         uint32 SkillValue = player->GetPureSkillValue(SKILL_INSCRIPTION);
-        uint32 reqSkillValue = itemTarget->GetTemplate()->RequiredSkillRank;
+        uint32 reqSkillValue = itemTarget->GetTemplate()->GetRequiredSkillRank();
         player->UpdateGatherSkill(SKILL_INSCRIPTION, SkillValue, reqSkillValue);
     }
 
@@ -5284,7 +5273,7 @@ void Spell::SummonGuardian(SpellEffectInfo const& spellEffectInfo, uint32 entry,
     // level of pet summoned using engineering item based at engineering skill level
     if (m_CastItem && unitCaster->GetTypeId() == TYPEID_PLAYER)
         if (ItemTemplate const* proto = m_CastItem->GetTemplate())
-            if (proto->RequiredSkill == SKILL_ENGINEERING)
+            if (proto->GetRequiredSkill() == SKILL_ENGINEERING)
                 if (uint16 skill202 = unitCaster->ToPlayer()->GetSkillValue(SKILL_ENGINEERING))
                     level = skill202 / 5;
 

@@ -176,6 +176,12 @@ namespace WorldPackets
         class SaveEquipmentSet;
     }
 
+    namespace GameObject
+    {
+        class GameObjReportUse;
+        class GameObjUse;
+    }
+
     namespace Guild
     {
         class QueryGuildInfo;
@@ -216,6 +222,15 @@ namespace WorldPackets
     namespace Inspect
     {
         class Inspect;
+    }
+
+    namespace Item
+    {
+        class AutoEquipItem;
+        class DestroyItem;
+        class SplitItem;
+        class SwapInvItem;
+        class SwapItem;
     }
 
     namespace LFG
@@ -800,8 +815,8 @@ class TC_GAME_API WorldSession
         void HandleRequestAccountData(WorldPackets::ClientConfig::RequestAccountData& request);
         void HandleSetActionButtonOpcode(WorldPackets::Spells::SetActionButton& packet);
 
-        void HandleGameObjectUseOpcode(WorldPacket& recPacket);
-        void HandleGameobjectReportUse(WorldPacket& recvPacket);
+        void HandleGameObjectUseOpcode(WorldPackets::GameObject::GameObjUse& packet);
+        void HandleGameobjectReportUse(WorldPackets::GameObject::GameObjReportUse& packet);
 
         void HandleNameQueryOpcode(WorldPackets::Query::QueryPlayerName& queryPlayerName);
         void HandleQueryTimeOpcode(WorldPacket& recvPacket);
@@ -942,10 +957,10 @@ class TC_GAME_API WorldSession
         void HandleMailCreateTextItem(WorldPackets::Mail::MailCreateTextItem& createTextItem);
         void HandleQueryNextMailTime(WorldPackets::Mail::MailQueryNextMailTime& queryNextMailTime);
 
-        void HandleSplitItemOpcode(WorldPacket& recvPacket);
-        void HandleSwapInvItemOpcode(WorldPacket& recvPacket);
-        void HandleDestroyItemOpcode(WorldPacket& recvPacket);
-        void HandleAutoEquipItemOpcode(WorldPacket& recvPacket);
+        void HandleSplitItemOpcode(WorldPackets::Item::SplitItem& splitItem);
+        void HandleSwapInvItemOpcode(WorldPackets::Item::SwapInvItem& swapInvItem);
+        void HandleDestroyItemOpcode(WorldPackets::Item::DestroyItem& destroyItem);
+        void HandleAutoEquipItemOpcode(WorldPackets::Item::AutoEquipItem& autoEquipItem);
         void HandleItemQuerySingleOpcode(WorldPackets::Query::QueryItemSingle& query);
         void HandleSellItemOpcode(WorldPacket& recvPacket);
         void HandleBuyItemInSlotOpcode(WorldPacket& recvPacket);
@@ -954,7 +969,7 @@ class TC_GAME_API WorldSession
         void HandleAutoStoreBagItemOpcode(WorldPacket& recvPacket);
         void HandleReadItem(WorldPacket& recvPacket);
         void HandleAutoEquipItemSlotOpcode(WorldPacket& recvPacket);
-        void HandleSwapItem(WorldPacket& recvPacket);
+        void HandleSwapItem(WorldPackets::Item::SwapItem& swapItem);
         void HandleBuybackItem(WorldPacket& recvPacket);
         void HandleWrapItemOpcode(WorldPacket& recvPacket);
 
