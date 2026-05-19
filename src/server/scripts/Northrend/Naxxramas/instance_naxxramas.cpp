@@ -375,8 +375,11 @@ class instance_naxxramas : public InstanceMapScript
                         if (Player* player = itr->GetSource())
                         {
                             player->AddItem(ITEM_EMBLEM_OF_VALOR, 2);
-                            if (id == BOSS_KELTHUZAD)
-                                player->AddItem(ITEM_LIL_PHYLACTERY, 1);
+                            if (id == BOSS_KELTHUZAD && !player->HasItemCount(ITEM_LIL_PHYLACTERY, 1, true))
+                            {
+                                if (!player->AddItem(ITEM_LIL_PHYLACTERY, 1))
+                                    player->SendItemRetrievalMail(ITEM_LIL_PHYLACTERY, 1);
+                            }
                         }
                     }
                 }
