@@ -27,6 +27,7 @@
 #include "Map.h"
 #include "MoveSpline.h"
 #include "MoveSplineInit.h"
+#include "ObjectAccessor.h"
 #include "PathGenerator.h"
 #include "Player.h"
 #include "ScriptSystem.h"
@@ -1145,11 +1146,12 @@ void MotionMaster::MoveFace(WorldObject const* object, uint32 id/* = EVENT_FACE*
 
     TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::MoveFace: '{}', faces '{}'", _owner->GetGUID().ToString(), object->GetGUID().ToString());
 
-    std::function<void(Movement::MoveSplineInit&)> initializer = [owner = _owner, object](Movement::MoveSplineInit& init)
+    ObjectGuid const targetGuid = object->GetGUID();
+    std::function<void(Movement::MoveSplineInit&)> initializer = [owner = _owner, targetGuid](Movement::MoveSplineInit& init)
     {
         init.MoveTo(owner->GetPositionX(), owner->GetPositionY(), owner->GetPositionZ(), false);
-        if (object)
-            init.SetFacing(owner->GetAbsoluteAngle(object));   // when on transport, GetAbsoluteAngle will still return global coordinates (and angle) that needs transforming
+        if (WorldObject const* target = ObjectAccessor::GetWorldObject(*owner, targetGuid))
+            init.SetFacing(owner->GetAbsoluteAngle(target));   // when on transport, GetAbsoluteAngle will still return global coordinates (and angle) that needs transforming
     };
 
     GenericMovementGenerator* movement = new GenericMovementGenerator(std::move(initializer), FACE_MOTION_TYPE, id);
