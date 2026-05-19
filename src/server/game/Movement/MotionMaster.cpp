@@ -1158,6 +1158,8 @@ void MotionMaster::MoveFace(WorldObject const* object, uint32 id/* = EVENT_FACE*
     movement->Priority = MOTION_PRIORITY_NORMAL;
     movement->Mode = MOTION_MODE_OVERRIDE;
     movement->BaseUnitState = UNIT_STATE_FACING;
+    // EG - facing must only initialize if it owns top continuously since creation
+    movement->AddFlag(MOVEMENTGENERATOR_FLAG_NO_DEFERRED_START);
     if (duration != 0ms)
     {
         movement->AddFlag(MOVEMENTGENERATOR_FLAG_FIXED_DURATION);
@@ -1185,6 +1187,8 @@ void MotionMaster::MoveFace(float orientation, uint32 id/* = EVENT_FACE*/, Milli
     movement->Priority = MOTION_PRIORITY_NORMAL;
     movement->Mode = MOTION_MODE_OVERRIDE;
     movement->BaseUnitState = UNIT_STATE_FACING;
+    // EG - facing must only initialize if it owns top continuously since creation
+    movement->AddFlag(MOVEMENTGENERATOR_FLAG_NO_DEFERRED_START);
     if (duration != 0ms)
     {
         movement->AddFlag(MOVEMENTGENERATOR_FLAG_FIXED_DURATION);

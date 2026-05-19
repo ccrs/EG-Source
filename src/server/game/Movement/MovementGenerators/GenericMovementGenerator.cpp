@@ -32,9 +32,13 @@ GenericMovementGenerator::GenericMovementGenerator(std::function<void(Movement::
 
 bool GenericMovementGenerator::Initialize(Unit* owner)
 {
-    if (HasFlag(MOVEMENTGENERATOR_FLAG_DEACTIVATED) && !HasFlag(MOVEMENTGENERATOR_FLAG_INITIALIZATION_PENDING)) // Resume spline is not supported
+    // Resume spline is not supported
+    // Generators flagged NO_DEFERRED_START additionally must never start if they are not initialized from top
+    if (HasFlag(MOVEMENTGENERATOR_FLAG_DEACTIVATED)
+        && (!HasFlag(MOVEMENTGENERATOR_FLAG_INITIALIZATION_PENDING) || HasFlag(MOVEMENTGENERATOR_FLAG_NO_DEFERRED_START))
+    )
     {
-        RemoveFlag(MOVEMENTGENERATOR_FLAG_DEACTIVATED);
+        RemoveFlag(MOVEMENTGENERATOR_FLAG_INITIALIZATION_PENDING | MOVEMENTGENERATOR_FLAG_DEACTIVATED);
         AddFlag(MOVEMENTGENERATOR_FLAG_FINALIZED);
         return true;
     }
