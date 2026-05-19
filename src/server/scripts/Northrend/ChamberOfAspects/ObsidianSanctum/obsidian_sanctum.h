@@ -60,7 +60,8 @@ enum OSCriteriaIds
 enum OSActions
 {
     ACTION_CANCEL_FREE_MOVEMENT = 1,
-    ACTION_EGG_DIED
+    ACTION_EGG_DIED,
+    ACTION_END_PORTAL
 };
 
 template <class AI, class T>

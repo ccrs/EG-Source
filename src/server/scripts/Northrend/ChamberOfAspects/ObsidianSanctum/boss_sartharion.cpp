@@ -62,6 +62,7 @@ enum SartharionEnums
     //In portal is a disciple, when disciple killed remove Power_of_vesperon, portal open multiple times
     NPC_ACOLYTE_OF_SHADRON                      = 31218,    // Acolyte of Shadron
     SPELL_POWER_OF_SHADRON                      = 58105,    // Shadron's presence increases Fire damage taken by all enemies by 100%.
+    SPELL_GIFT_OF_TWILIGTH_SAR                  = 58766,    // damage-immunity granted to Sartharion by an alive Acolyte of Shadron
 
     //Tenebron
     //in the portal spawns 6 eggs, if not killed in time (approx. 20s)  they will hatch,  whelps can cast 60708
@@ -146,6 +147,7 @@ struct boss_sartharion : public BossAI
 
         me->RemoveAurasDueToSpell(SPELL_TWILIGHT_REVENGE);
         me->RemoveAurasDueToSpell(SPELL_WILL_OF_SARTHARION);
+        me->RemoveAurasDueToSpell(SPELL_GIFT_OF_TWILIGTH_SAR);
 
         me->SetHomePosition(3246.57f, 551.263f, 58.6164f, 4.66003f);
 
@@ -165,6 +167,28 @@ struct boss_sartharion : public BossAI
         BossAI::JustEngagedWith(who);
 
         FetchDragons();
+
+        for (auto const& pair : me->GetMap()->GetCreatureBySpawnIdStore())
+        {
+            Creature* trash = pair.second;
+            if (!trash || !trash->IsAlive() || trash->IsInCombat())
+                continue;
+
+            switch (trash->GetEntry())
+            {
+                case NPC_SARTHARION:
+                case NPC_TENEBRON:
+                case NPC_SHADRON:
+                case NPC_VESPERON:
+                case NPC_FIRE_CYCLONE:
+                    continue;
+                default:
+                    break;
+            }
+
+            if (who->IsValidAttackTarget(trash))
+                trash->EngageWithTarget(who);
+        }
 
         events.ScheduleEvent(EVENT_LAVA_STRIKE, 5s);
         events.ScheduleEvent(EVENT_CLEAVE_ATTACK, 7s);
@@ -214,8 +238,6 @@ struct boss_sartharion : public BossAI
             Talk(SAY_SARTHARION_SLAY);
     }
 
-    // me->ResetLootMode() is called from Reset()
-    // AddDrakeLootMode() should only ever be called from FetchDragons(), which is called from Aggro()
     void AddDrakeLootMode()
     {
         if (me->HasLootMode(LOOT_MODE_HARD_MODE_2))      // Has two Drake loot modes
@@ -282,55 +304,61 @@ struct boss_sartharion : public BossAI
 
         if (Creature* fetchTene = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_TENEBRON)))
         {
-            if (fetchTene->IsAlive() && !fetchTene->GetVictim())
+            if (fetchTene->IsAlive())
             {
                 _tenebronInEncounter = true;
                 _canUseWill = true;
+                AddDrakeLootMode();
+                ++drakeCount;
                 if (!fetchTene->IsInCombat())
                 {
                     fetchTene->GetMotionMaster()->MovePoint(POINT_ID_INIT, TenebronPositions[0]);
                     fetchTene->SetImmuneToAll(true);
                     fetchTene->SetReactState(REACT_PASSIVE);
                     fetchTene->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
-                    AddDrakeLootMode();
-                    ++drakeCount;
                 }
+                else
+                    fetchTene->AddAura(SPELL_POWER_OF_TENEBRON, fetchTene);
             }
         }
 
         if (Creature* fetchShad = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_SHADRON)))
         {
-            if (fetchShad->IsAlive() && !fetchShad->GetVictim())
+            if (fetchShad->IsAlive())
             {
                 _shadronInEncounter = true;
                 _canUseWill = true;
+                AddDrakeLootMode();
+                ++drakeCount;
                 if (!fetchShad->IsInCombat())
                 {
                     fetchShad->GetMotionMaster()->MovePoint(POINT_ID_INIT, ShadronPositions[0]);
                     fetchShad->SetImmuneToAll(true);
                     fetchShad->SetReactState(REACT_PASSIVE);
                     fetchShad->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
-                    AddDrakeLootMode();
-                    ++drakeCount;
                 }
+                else
+                    fetchShad->AddAura(SPELL_POWER_OF_SHADRON, fetchShad);
             }
         }
 
         if (Creature* fetchVesp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VESPERON)))
         {
-            if (fetchVesp->IsAlive() && !fetchVesp->GetVictim())
+            if (fetchVesp->IsAlive())
             {
                 _vesperonInEncounter = true;
                 _canUseWill = true;
+                AddDrakeLootMode();
+                ++drakeCount;
                 if (!fetchVesp->IsInCombat())
                 {
                     fetchVesp->GetMotionMaster()->MovePoint(POINT_ID_INIT, VesperonPositions[0]);
                     fetchVesp->SetImmuneToAll(true);
                     fetchVesp->SetReactState(REACT_PASSIVE);
                     fetchVesp->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
-                    AddDrakeLootMode();
-                    ++drakeCount;
                 }
+                else
+                    fetchVesp->AddAura(SPELL_POWER_OF_VESPERON, fetchVesp);
             }
         }
 
