@@ -116,7 +116,7 @@ Quest::Quest(Field* questRecord)
             ++_reqItemsCount;
     }
 
-    // int8 Unknown0 = questRecord[99].GetUInt8();
+    _rewardReputationMask = questRecord[99].GetUInt32();
     // int32 VerifiedBuild = questRecord[104].GetInt32();
 }
 
@@ -246,7 +246,7 @@ void Quest::BuildQuestRewards(WorldPackets::Quest::QuestRewards& rewards, Player
 
             uint32 displayID = 0;
             if (ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(RewardChoiceItemId[i]))
-                displayID = itemTemplate->DisplayInfoID;
+                displayID = itemTemplate->GetDisplayId();
 
             rewards.UnfilteredChoiceItems.emplace_back(RewardChoiceItemId[i], RewardChoiceItemCount[i], displayID);
         }
@@ -258,7 +258,7 @@ void Quest::BuildQuestRewards(WorldPackets::Quest::QuestRewards& rewards, Player
 
             uint32 displayID = 0;
             if (ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(RewardItemId[i]))
-                displayID = itemTemplate->DisplayInfoID;
+                displayID = itemTemplate->GetDisplayId();
 
             rewards.RewardItems.emplace_back(RewardItemId[i], RewardItemIdCount[i], displayID);
         }
@@ -437,6 +437,7 @@ WorldPacket Quest::BuildQueryData(LocaleConstant loc) const
     response.Info.RequiredPlayerKills = GetPlayersSlain();
     response.Info.RewardTalents = GetBonusTalents();
     response.Info.RewardArenaPoints = GetRewArenaPoints();
+    response.Info.RewardFactionFlags = GetRewardReputationMask();
 
     for (uint8 i = 0; i < QUEST_REWARDS_COUNT; ++i)
     {
