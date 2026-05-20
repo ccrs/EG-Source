@@ -130,6 +130,9 @@ class instance_naxxramas : public InstanceMapScript
 
             void OnCreatureCreate(Creature* creature) override
             {
+                if (bigglesworthKilled && (creature->IsCharmedOwnedByPlayerOrPlayer() || creature->IsControlledByPlayer()))
+                    creature->CastSpell(creature, SPELL_BIGGLESWORTH_CURSE, true);
+
                 switch (creature->GetEntry())
                 {
                     case NPC_ANUBREKHAN:
