@@ -963,7 +963,7 @@ struct boss_malygos : public BossAI
                                     if (passenger->GetTypeId() == TYPEID_PLAYER)
                                     {
                                         Talk(EMOTE_SURGE_OF_POWER_WARNING_P3, passenger);
-                                        DoCast(tempSurgeTarget, SPELL_SURGE_OF_POWER_PHASE_3_10, true);
+                                        DoCast(tempSurgeTarget, SPELL_SURGE_OF_POWER_PHASE_3_10, TRIGGERED_IGNORE_CAST_IN_PROGRESS);
                                     }
                                 }
                             }
