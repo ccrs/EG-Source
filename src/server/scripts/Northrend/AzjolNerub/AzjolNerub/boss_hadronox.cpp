@@ -913,6 +913,8 @@ class spell_hadronox_periodic_summon_template_AuraScript : public AuraScript
                 return;
             if (!instance->instance->HavePlayers())
                 return;
+            if (instance->GetBossState(DATA_KRIKTHIR) != DONE)
+                return;
             if (instance->GetBossState(DATA_HADRONOX) == DONE)
                 GetAura()->Remove();
             else
