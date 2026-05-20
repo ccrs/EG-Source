@@ -218,11 +218,9 @@ struct boss_krik_thir : public BossAI
             case ACTION_GASHRA_DIED:
             case ACTION_NARJIL_DIED:
             case ACTION_SILTHIK_DIED:
-                if (!_watchersActive) // something is wrong
-                {
-                    EnterEvadeMode(EVADE_REASON_OTHER);
-                    return;
-                }
+                // a miscount (watcher died before its JustEngagedWith ran) is not a wipe condition
+                if (!_watchersActive)
+                    break;
                 if (!--_watchersActive) // if there are no watchers currently in combat...
                     events.RescheduleEvent(EVENT_SEND_GROUP, Seconds(5)); // ...send the next watcher after the targets sooner
                 break;
@@ -237,6 +235,8 @@ struct boss_krik_thir : public BossAI
                 events.ScheduleEvent(EVENT_SEND_GROUP, 70s);
                 break;
             case ACTION_PET_EVADE:
+                if (me->IsInCombat())
+                    break;
                 EnterEvadeMode(EVADE_REASON_OTHER);
                 break;
         }
