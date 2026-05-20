@@ -12518,6 +12518,10 @@ uint32 Unit::GetModelForForm(ShapeshiftForm form, uint32 spellId) const
                 return 21244;
             case FORM_GHOSTWOLF:
                 break;
+            case FORM_AQUA:
+                if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE))
+                    return 24698;
+                break;
             default:
                 break;
         }

@@ -313,6 +313,9 @@ public:
             case CLASS_PALADIN:
                 flag = CustomFlags::CUSTOM_FLAG_VISUALS_PALADIN_ACTIVE;
                 break;
+            case CLASS_HUNTER:
+                flag = CustomFlags::CUSTOM_FLAG_VISUALS_HUNTER_ACTIVE;
+                break;
             default:
                 break;
         }

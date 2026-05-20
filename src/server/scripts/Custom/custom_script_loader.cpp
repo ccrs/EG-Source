@@ -23,6 +23,7 @@ void AddSC_EG_pet_scripts();
 void AddSC_EG_transmogrification();
 
 void AddSC_EG_gen_spell_scripts();
+void AddSC_EG_hunter_spell_scripts();
 void AddSC_EG_item_spell_scripts();
 void AddSC_EG_priest_spell_scripts();
 
@@ -42,6 +43,7 @@ void AddCustomScripts()
     AddSC_EG_transmogrification();
 
     AddSC_EG_gen_spell_scripts();
+    AddSC_EG_hunter_spell_scripts();
     AddSC_EG_item_spell_scripts();
     AddSC_EG_priest_spell_scripts();
 
