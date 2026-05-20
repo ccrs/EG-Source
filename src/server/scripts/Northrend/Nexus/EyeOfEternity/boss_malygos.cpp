@@ -87,7 +87,8 @@ enum MalygosEvents
     EVENT_ARCANE_BARRAGE             = 1,
 
     // ======== WYRMREST SKYTALON ==========
-    EVENT_CAST_RIDE_SPELL            = 1
+    EVENT_CAST_RIDE_SPELL            = 1,
+    EVENT_MOVE_TO_MALYGOS = 2
 };
 
 enum MalygosPhases
@@ -139,6 +140,7 @@ enum MalygosSpells
     // Transition /II-III/
     SPELL_RIDE_RED_DRAGON_BUDDY              = 56071,
     SPELL_SUMMON_RED_DRAGON_BUDDY_F_CAST     = 58846, // After implicitly hit player targets they will force cast 56070 on self
+    SPELL_VEHICLE_GEAR_SCALING = 66668, // Driver-stat scaling aura, handled by spell_gen_vehicle_scaling
     SPELL_DESTROY_PLATFORM_CHANNEL           = 58842,
     SPELL_DESTROY_PLATFORM_BOOM_VISUAL       = 59084,
     SPELL_DESTROY_PLATFORM_EVENT             = 59099,
@@ -511,9 +513,8 @@ struct boss_malygos : public BossAI
                 break;
             }
             case ACTION_HANDLE_P_THREE_INTRO:
-                events.CancelEventGroup(0);
-                events.CancelEventGroup(1);
-                events.CancelEventGroup(2);
+                events.Reset();
+                events.SetPhase(_phase);
                 // Vehicles shouldn't be despawned with 0 delay if the call comes from virtual function that overrides PassengerBoarded.
                 // Aside from that he doesn't despawn both vehicles and arcane overloads right away, but with some delay.
                 DummyEntryCheckPredicate pred;
@@ -548,6 +549,7 @@ struct boss_malygos : public BossAI
         events.Reset();
         events.SetPhase(phase);
         _phase = phase;
+        _killSpamFilter = false;
         if (setEvents)
             SetPhaseEvents();
     }
@@ -1503,13 +1505,29 @@ struct npc_wyrmrest_skytalon : public VehicleAI
                     if (Player* player = ObjectAccessor::GetPlayer(*me, _summoner))
                         me->CastSpell(player, SPELL_RIDE_RED_DRAGON_TRIGGERED, true);
                     break;
+                case EVENT_MOVE_TO_MALYGOS:
+                    if (InstanceScript* instance = me->GetInstanceScript())
+                        if (Creature* malygos = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_MALYGOS)))
+                        {
+                            Position pos;
+                            pos.m_positionZ = malygos->GetPositionZ();
+                            malygos->GetNearPoint2D(nullptr, pos.m_positionX, pos.m_positionY, frand(20.0f, 40.0f), frand(0.0f, 2.0f * float(M_PI)));
+                            me->GetMotionMaster()->MovePoint(2, pos);
+                        }
+                    break;
             }
         }
     }
 
-    void PassengerBoarded(Unit* /*unit*/, int8 /*seat*/, bool apply) override
+    void PassengerBoarded(Unit* unit, int8 /*seat*/, bool apply) override
     {
-        if (!apply)
+        if (apply)
+        {
+            if (unit->GetTypeId() == TYPEID_PLAYER)
+                unit->CastSpell(me, SPELL_VEHICLE_GEAR_SCALING, true);
+            _events.ScheduleEvent(EVENT_MOVE_TO_MALYGOS, 1s);
+        }
+        else
         {
             me->DespawnOrUnsummon(2050ms);
             me->SetOrientation(2.5f);
