@@ -19,6 +19,7 @@
 #include "AccountMgr.h"
 #include "AchievementMgr.h"
 #include "AnticheatMgr.h"
+#include "Arena1v1Mgr.h"
 #include "ArenaTeam.h"
 #include "ArenaTeamMgr.h"
 #include "Bag.h"
@@ -4153,6 +4154,12 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
             stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CHARACTER_ARENA_STATS);
             stmt->setUInt32(0, guid);
             trans->Append(stmt);
+
+            // EG - 1v1 arena
+            stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_ARENA_1V1);
+            stmt->setUInt32(0, guid);
+            trans->Append(stmt);
+            sArena1v1Mgr->DeleteCachedStats(playerguid);
 
             stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CHAR_AURA);
             stmt->setUInt32(0, guid);

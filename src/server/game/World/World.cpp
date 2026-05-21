@@ -23,6 +23,7 @@
 #include "AccountMgr.h"
 #include "AchievementMgr.h"
 #include "AddonMgr.h"
+#include "Arena1v1Mgr.h"
 #include "ArenaTeamMgr.h"
 #include "AuctionHouseBot.h"
 #include "AuctionHouseMgr.h"
@@ -1647,6 +1648,17 @@ void World::LoadConfigSettings(bool reload)
     m_int_configs[CONFIG_ANTICHEAT_MAX_REPORTS_FOR_JAILS] = sConfigMgr->GetIntDefault("Anticheat.ReportsForJail", 70);
     m_int_configs[CONFIG_ANTICHEAT_ALERT_FREQUENCY] = sConfigMgr->GetIntDefault("Anticheat.AlertFrequency", 5);
 
+    // EG - 1v1 arena
+    m_bool_configs[CONFIG_ARENA_1V1_ENABLE] = sConfigMgr->GetBoolDefault("Arena1v1.Enable", false);
+    m_bool_configs[CONFIG_ARENA_1V1_SAME_IP_CHECK] = sConfigMgr->GetBoolDefault("Arena1v1.SameIPCheck", true);
+    m_int_configs[CONFIG_ARENA_1V1_MIN_LEVEL] = sConfigMgr->GetIntDefault("Arena1v1.MinLevel", 80);
+    m_float_configs[CONFIG_ARENA_1V1_POINTS_MULTI] = sConfigMgr->GetFloatDefault("Arena1v1.ArenaPointsMulti", 0.38f);
+    if (m_float_configs[CONFIG_ARENA_1V1_POINTS_MULTI] < 0.0f)
+    {
+        TC_LOG_ERROR("server.loading", "Arena1v1.ArenaPointsMulti ({}) cannot be negative. Set to 0.", m_float_configs[CONFIG_ARENA_1V1_POINTS_MULTI]);
+        m_float_configs[CONFIG_ARENA_1V1_POINTS_MULTI] = 0.0f;
+    }
+
     // call ScriptMgr if we're reloading the configuration
     if (reload)
         sScriptMgr->OnConfigLoad(reload);
@@ -2086,6 +2098,9 @@ void World::SetInitialWorldSettings()
 
     TC_LOG_INFO("server.loading", "Loading ArenaTeams...");
     sArenaTeamMgr->LoadArenaTeams();
+
+    TC_LOG_INFO("server.loading", "Loading 1v1 Arena stats...");
+    sArena1v1Mgr->LoadFromDB();
 
     TC_LOG_INFO("server.loading", "Loading Groups...");
     sGroupMgr->LoadGroups();

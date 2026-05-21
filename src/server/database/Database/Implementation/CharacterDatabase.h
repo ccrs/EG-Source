@@ -526,6 +526,12 @@ enum CharacterDatabaseStatements : uint32
     // EG - Anticheat
     CHAR_SEL_ANTICHEAT_PLAYER_CHARACTER_BANS,
 
+    // EG - 1v1 arena
+    CHAR_SEL_ARENA_1V1_ALL,
+    CHAR_INS_ARENA_1V1,
+    CHAR_UPD_ARENA_1V1,
+    CHAR_DEL_ARENA_1V1,
+
     MAX_CHARACTERDATABASE_STATEMENTS
 };
 
