@@ -159,7 +159,7 @@ GroupQueueInfo* BattlegroundQueue::AddGroup(Player* leader, Group const* group, 
             sWorld->SendWorldText(LANG_ARENA_QUEUE_ANNOUNCE_WORLD_JOIN, team->GetName().c_str(), m_queueId.TeamSize, m_queueId.TeamSize, ginfo->ArenaTeamRating);
         // EG - 1v1 arena
         else if (m_queueId.TeamSize == 1 && leader)
-            sWorld->SendWorldText(LANG_ARENA_QUEUE_ANNOUNCE_WORLD_JOIN, leader->GetName().c_str(), m_queueId.TeamSize, m_queueId.TeamSize, ginfo->ArenaTeamRating);
+            sWorld->SendWorldText(LANG_ARENA_1V1_QUEUE_ANNOUNCE_JOIN, uint32(m_QueuedPlayers.size() + 1));
     }
 
     //add players from group to ginfo
@@ -352,12 +352,7 @@ void BattlegroundQueue::RemovePlayer(ObjectGuid guid, bool decreaseInvitedCount)
             sWorld->SendWorldText(LANG_ARENA_QUEUE_ANNOUNCE_WORLD_EXIT, team->GetName().c_str(), m_queueId.TeamSize, m_queueId.TeamSize, group->ArenaTeamRating);
         // EG - 1v1 arena
         else if (m_queueId.TeamSize == 1)
-        {
-            std::string playerName = "Unknown";
-            if (CharacterCacheEntry const* info = sCharacterCache->GetCharacterCacheByGuid(guid))
-                playerName = info->Name;
-            sWorld->SendWorldText(LANG_ARENA_QUEUE_ANNOUNCE_WORLD_EXIT, playerName.c_str(), m_queueId.TeamSize, m_queueId.TeamSize, group->ArenaTeamRating);
-        }
+            sWorld->SendWorldText(LANG_ARENA_1V1_QUEUE_ANNOUNCE_EXIT, uint32(m_QueuedPlayers.size()));
     }
 
     // if player leaves queue and he is invited to rated arena match, then he have to lose

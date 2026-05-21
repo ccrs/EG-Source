@@ -6,3 +6,8 @@ INSERT INTO `creature_template` (`entry`, `modelid1`, `modelid2`, `name`, `subna
 DELETE FROM `creature_template_movement` WHERE `CreatureId` = 60004;
 INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`, `Chase`, `Random`) VALUES
 (60004, 1, 0, 0, 0, 0, 0);
+
+DELETE FROM `trinity_string` WHERE `entry` IN (20012, 20013);
+INSERT INTO `trinity_string` (`entry`, `content_default`) VALUES
+(20012, 'A character has joined the 1v1 arena queue. (Queued: %u)'),
+(20013, 'A character has left the 1v1 arena queue. (Queued: %u)');
