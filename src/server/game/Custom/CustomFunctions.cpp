@@ -1,4 +1,7 @@
 #include "CustomFunctions.h"
+#include "BattlegroundMgr.h"
+#include "BattlegroundPackets.h"
+#include "BattlegroundQueue.h"
 #include "InstanceScript.h"
 #include "CellImpl.h"
 #include "Containers.h"
@@ -489,6 +492,32 @@ bool Player::CleanMasqueradeRaceValue()
 
     ForceValuesUpdateAtIndex(UNIT_FIELD_BYTES_0);
     return true;
+}
+
+bool Player::InArenaQueue() const
+{
+    for (uint32 i = 0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; ++i)
+        if (GetBattlegroundQueueTypeId(i).BattlemasterListId == BATTLEGROUND_AA)
+            return true;
+    return false;
+}
+
+void Player::FlushNonArenaBattlegroundQueues()
+{
+    for (uint32 i = 0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; ++i)
+    {
+        BattlegroundQueueTypeId qid = GetBattlegroundQueueTypeId(i);
+        if (qid == BATTLEGROUND_QUEUE_NONE || qid.BattlemasterListId == BATTLEGROUND_AA)
+            continue;
+
+        BattlegroundQueue& bgQueue = sBattlegroundMgr->GetBattlegroundQueue(qid);
+        bgQueue.RemovePlayer(GetGUID(), true);
+        RemoveBattlegroundQueueId(qid);
+
+        WorldPackets::Battleground::BattlefieldStatusNone status;
+        BattlegroundMgr::BuildBattlegroundStatusNone(&status, i);
+        SendDirectMessage(status.Write());
+    }
 }
 
 void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicleExitParameters params)

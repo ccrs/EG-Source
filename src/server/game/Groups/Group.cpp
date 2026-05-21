@@ -2076,9 +2076,14 @@ GroupJoinBattlegroundResult Group::CanJoinBattlegroundQueue(Battleground const* 
         // check if member can join any more battleground queues
         if (!member->HasFreeBattlegroundQueueId())
             return ERR_BATTLEGROUND_TOO_MANY_QUEUES;        // not blizz-like
-        // check if someone in party is using dungeon system
+        // EG - LFG/BG co-queue
         if (member->isUsingLfg())
-            return ERR_LFG_CANT_USE_BATTLEGROUND;
+        {
+            lfg::LfgState lfgState = sLFGMgr->GetState(member->GetGUID());
+            bool inLfgDungeon = (lfgState == lfg::LFG_STATE_DUNGEON || lfgState == lfg::LFG_STATE_FINISHED_DUNGEON);
+            if (bgOrTemplate->GetTypeID() == BATTLEGROUND_AA || inLfgDungeon)
+                return ERR_LFG_CANT_USE_BATTLEGROUND;
+        }
         // check Freeze debuff
         if (member->HasAura(9454))
             return ERR_BATTLEGROUND_JOIN_FAILED;

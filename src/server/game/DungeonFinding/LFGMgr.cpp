@@ -680,7 +680,8 @@ void LFGMgr::JoinLfg(Player* player, uint8 roles, LfgDungeonSet& dungeons, const
     // Check player or group member restrictions
     if (!player->GetSession()->HasPermission(rbac::RBAC_PERM_JOIN_DUNGEON_FINDER))
         joinData.result = LFG_JOIN_NOT_MEET_REQS;
-    else if (player->InBattleground() || player->InArena() || player->InBattlegroundQueue())
+    // EG - LFG/BG co-queue: only arena queues remain mutually exclusive with LFG
+    else if (player->InBattleground() || player->InArena() || player->InArenaQueue())
         joinData.result = LFG_JOIN_USING_BG_SYSTEM;
     else if (player->HasAura(LFG_SPELL_DUNGEON_DESERTER))
         joinData.result = LFG_JOIN_DESERTER;
@@ -707,7 +708,8 @@ void LFGMgr::JoinLfg(Player* player, uint8 roles, LfgDungeonSet& dungeons, const
                         joinData.result = LFG_JOIN_PARTY_DESERTER;
                     else if (!isContinue && plrg->HasAura(LFG_SPELL_DUNGEON_COOLDOWN))
                         joinData.result = LFG_JOIN_PARTY_RANDOM_COOLDOWN;
-                    else if (plrg->InBattleground() || plrg->InArena() || plrg->InBattlegroundQueue())
+                    // EG - LFG/BG co-queue: only arena queues remain mutually exclusive with LFG
+                    else if (plrg->InBattleground() || plrg->InArena() || plrg->InArenaQueue())
                         joinData.result = LFG_JOIN_USING_BG_SYSTEM;
                     else if (plrg->HasAura(9454)) // check Freeze debuff
                         joinData.result = LFG_JOIN_PARTY_NOT_MEET_REQS;
@@ -1388,6 +1390,11 @@ void LFGMgr::UpdateProposal(uint32 proposalId, ObjectGuid guid, bool accept)
     // Remove players/groups from Queue
     for (GuidList::const_iterator it = proposal.queues.begin(); it != proposal.queues.end(); ++it)
         queue.RemoveFromQueue(*it);
+
+    // EG - LFG/BG co-queue
+    for (LfgProposalPlayerContainer::const_iterator it = proposal.players.begin(); it != proposal.players.end(); ++it)
+        if (Player* player = ObjectAccessor::FindConnectedPlayer(it->first))
+            player->FlushNonArenaBattlegroundQueues();
 
     MakeNewGroup(proposal);
 

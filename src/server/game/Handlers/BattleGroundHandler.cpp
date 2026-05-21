@@ -32,6 +32,7 @@
 #include "GameTime.h"
 #include "Group.h"
 #include "Language.h"
+#include "LFGMgr.h"
 #include "Log.h"
 #include "NPCPackets.h"
 #include "Object.h"
@@ -108,7 +109,9 @@ void WorldSession::HandleBattlemasterJoinOpcode(WorldPackets::Battleground::Batt
     // check queue conditions
     if (!battlemasterJoin.JoinAsGroup)
     {
-        if (GetPlayer()->isUsingLfg())
+        // EG - LFG/BG co-queue
+        lfg::LfgState lfgState = sLFGMgr->GetState(_player->GetGUID());
+        if (lfgState == lfg::LFG_STATE_DUNGEON || lfgState == lfg::LFG_STATE_FINISHED_DUNGEON)
         {
             WorldPackets::Battleground::BattlefieldStatusFailed battlefieldStatus;
             BattlegroundMgr::BuildBattlegroundStatusFailed(&battlefieldStatus, ERR_LFG_CANT_USE_BATTLEGROUND);
@@ -378,6 +381,10 @@ void WorldSession::HandleBattleFieldPortOpcode(WorldPackets::Battleground::Battl
 
         if (!_player->IsInvitedForBattlegroundQueueType(bgQueueTypeId))
             return;                                 // cheating?
+
+        // EG - LFG/BG co-queue
+        if (bgQueueTypeId.BattlemasterListId != BATTLEGROUND_AA)
+            sLFGMgr->LeaveLfg(_player->GetGUID());
 
         if (!_player->InBattleground())
             _player->SetBattlegroundEntryPoint();
