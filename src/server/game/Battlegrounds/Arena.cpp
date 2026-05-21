@@ -56,6 +56,17 @@ Arena::Arena()
     StartMessageIds[BG_STARTING_EVENT_FOURTH] = ARENA_TEXT_START_BATTLE_HAS_BEGUN;
 }
 
+void Arena::Apply1v1Overrides()
+{
+    StartDelayTimes[BG_STARTING_EVENT_FIRST] = BG_START_DELAY_30S;
+    StartDelayTimes[BG_STARTING_EVENT_SECOND] = BG_START_DELAY_15S;
+    StartDelayTimes[BG_STARTING_EVENT_THIRD] = BG_START_DELAY_NONE;
+
+    StartMessageIds[BG_STARTING_EVENT_FIRST] = ARENA_TEXT_START_THIRTY_SECONDS;
+    StartMessageIds[BG_STARTING_EVENT_SECOND] = ARENA_TEXT_START_FIFTEEN_SECONDS;
+    StartMessageIds[BG_STARTING_EVENT_THIRD] = 0;
+}
+
 void Arena::AddPlayer(Player* player)
 {
     bool const isInBattleground = IsPlayerInBattleground(player->GetGUID());

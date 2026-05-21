@@ -15,6 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "Arena.h"
 #include "ArenaTeamMgr.h"
 #include "BattlegroundMgr.h"
 #include "BattlegroundAV.h"
@@ -395,12 +396,19 @@ Battleground* BattlegroundMgr::CreateNewBattleground(BattlegroundTypeId original
     bg->SetRated(isRated);
     bg->SetRandom(isRandom);
 
+    // EG - 1v1 arena
+    if (bg->isArena() && arenaType == ARENA_TYPE_1V1)
+        static_cast<Arena*>(bg)->Apply1v1Overrides();
+
     // Set up correct min/max player counts for scoreboards
     if (bg->isArena())
     {
         uint32 maxPlayersPerTeam = 0;
         switch (arenaType)
         {
+            case ARENA_TYPE_1V1: // EG - custom 1v1 arena bracket
+                maxPlayersPerTeam = 1;
+                break;
             case ARENA_TYPE_2v2:
                 maxPlayersPerTeam = 2;
                 break;

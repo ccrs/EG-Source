@@ -270,6 +270,8 @@ bool Arena1v1Mgr::HandleJoinQueue(Player* player, Creature* npc)
     uint32 ateamId = EncodeAteamId(player->GetGUID());
     uint32 previousOpponents = EncodeAteamId(stats.PreviousOpponent);
 
+    bgTpl->SetRated(true);
+
     GroupQueueInfo* ginfo = bgQueue.AddGroup(player, nullptr, bracketEntry, /*isRated*/ true, false,
                                              arenaRating, mmr, ateamId, previousOpponents);
     uint32 avgTime = bgQueue.GetAverageQueueWaitTime(ginfo);

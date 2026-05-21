@@ -26,10 +26,6 @@
 class Creature;
 class Player;
 
-enum : uint8
-{
-    ARENA_TYPE_1V1 = 1
-};
 
 struct Arena1v1Stats
 {
