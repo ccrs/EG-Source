@@ -600,6 +600,7 @@ uint8 ArenaTeam::GetSlotByType(uint32 type)
         case ARENA_TEAM_2v2: return 0;
         case ARENA_TEAM_3v3: return 1;
         case ARENA_TEAM_5v5: return 2;
+        case ARENA_TYPE_1V1: return MAX_ARENA_SLOT; // EG - 1v1 arena uses its own rating store, no ArenaTeam slot
         default:
             break;
     }
