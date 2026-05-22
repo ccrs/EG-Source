@@ -23,7 +23,7 @@
 #define OSScriptName "instance_obsidian_sanctum"
 #define DataHeader "OS"
 
-uint32 const EncounterCount = 5;
+uint32 const EncounterCount = 4;
 
 enum OSDataTypes
 {
@@ -55,6 +55,13 @@ enum OSCriteriaIds
 {
     CRITERIA_VOLCANO_BLOWS_10   = 7326,
     CRITERIA_VOLCANO_BLOWS_25   = 7327
+};
+
+enum OSActions
+{
+    ACTION_CANCEL_FREE_MOVEMENT = 1,
+    ACTION_EGG_DIED,
+    ACTION_END_PORTAL
 };
 
 template <class AI, class T>

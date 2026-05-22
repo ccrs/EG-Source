@@ -3406,6 +3406,40 @@ Account.Mounts = 0
 WorldChat.Enable = 0
 
 #
+#    Arena1v1.Enable
+#        Description: Enable the custom 1v1 arena bracket.
+#        Default:     0 - (Disabled)
+#                     1 - (Enabled)
+
+Arena1v1.Enable = 0
+
+#
+#    Arena1v1.SameIPCheck
+#        Description: Anti-exploit. When enabled, a player cannot join the 1v1
+#                     queue if any other character from the same IP address is
+#                     currently queued for 1v1.
+#        Default:     1 - (Enabled)
+#                     0 - (Disabled)
+
+Arena1v1.SameIPCheck = 1
+
+#
+#    Arena1v1.MinLevel
+#        Description: Minimum player level required to queue for 1v1 arena.
+#        Default:     80
+
+Arena1v1.MinLevel = 80
+
+#
+#    Arena1v1.ArenaPointsMulti
+#        Description: Weekly arena points multiplier applied to the rating curve
+#                     for the 1v1 bracket. For reference: 2v2 uses 0.76, 3v3 uses
+#                     0.88, 5v5 uses 1.00.
+#        Default:     0.38
+
+Arena1v1.ArenaPointsMulti = 0.38
+
+#
 ###################################################################################################
 
 ###################################################################################################

@@ -86,6 +86,7 @@ void Vehicle::InstallAllAccessories(bool evading)
     if (GetBase()->GetTypeId() == TYPEID_PLAYER || !evading)
         RemoveAllPassengers();   // We might have aura's saved in the DB with now invalid casters - remove
 
+    // EG - handle evade on creature passengers inside vehicles: reset them out of evade on accessory reinstall
     if (GetBase()->GetTypeId() == TYPEID_UNIT && evading)
         for (auto const& [_, seat] : Seats)
         {
@@ -874,7 +875,7 @@ bool VehicleJoinEvent::Execute(uint64, uint32)
     if (veSeat->HasFlag(VEHICLE_SEAT_FLAG_PASSENGER_NOT_SELECTABLE))
         Passenger->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
 
-    float o = veSeatAddon ? veSeatAddon->SeatOrientationOffset : 0.f;
+    float o = veSeatAddon ? veSeatAddon->SeatOrientationOffset : (std::isfinite(veSeat->PassengerYaw) ? veSeat->PassengerYaw : 0.f);
     float x = veSeat->AttachmentOffset.X;
     float y = veSeat->AttachmentOffset.Y;
     float z = veSeat->AttachmentOffset.Z;
@@ -885,6 +886,7 @@ bool VehicleJoinEvent::Execute(uint64, uint32)
     Passenger->m_movementInfo.transport.seat = Seat->first;
     Passenger->m_movementInfo.transport.guid = Target->GetBase()->GetGUID();
 
+    // EG - fix passenger position desync (stationary/moving vehicles): derive world pos at join
     // Immediately derive and store the world position so m_movementInfo.pos is never
     // stale pre-boarding data. Without this, passengers that send no movement packets
     // (non-moving seats, turrets) would have a permanently wrong m_movementInfo.pos.

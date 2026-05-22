@@ -23,6 +23,7 @@
 #include "AccountMgr.h"
 #include "AchievementMgr.h"
 #include "AddonMgr.h"
+#include "Arena1v1Mgr.h"
 #include "ArenaTeamMgr.h"
 #include "AuctionHouseBot.h"
 #include "AuctionHouseMgr.h"
@@ -1596,6 +1597,7 @@ void World::LoadConfigSettings(bool reload)
     // Specifies if IP addresses can be logged to the database
     m_bool_configs[CONFIG_ALLOW_LOGGING_IP_ADDRESSES_IN_DATABASE] = sConfigMgr->GetBoolDefault("AllowLoggingIPAddressesInDatabase", true, true);
 
+    // EG - Anticheat: configuration keys
     // ANTICHEAT
     m_bool_configs[CONFIG_ANTICHEAT_ENABLE] = sConfigMgr->GetBoolDefault("Anticheat.Enable", false);
     m_bool_configs[CONFIG_ANTICHEAT_ENABLE_ON_GM] = sConfigMgr->GetBoolDefault("Anticheat.EnabledOnGmAccounts", false);
@@ -1645,6 +1647,17 @@ void World::LoadConfigSettings(bool reload)
     m_int_configs[CONFIG_ANTICHEAT_MAX_REPORTS_FOR_KICKS] = sConfigMgr->GetIntDefault("Anticheat.ReportsForKick", 70);
     m_int_configs[CONFIG_ANTICHEAT_MAX_REPORTS_FOR_JAILS] = sConfigMgr->GetIntDefault("Anticheat.ReportsForJail", 70);
     m_int_configs[CONFIG_ANTICHEAT_ALERT_FREQUENCY] = sConfigMgr->GetIntDefault("Anticheat.AlertFrequency", 5);
+
+    // EG - 1v1 arena
+    m_bool_configs[CONFIG_ARENA_1V1_ENABLE] = sConfigMgr->GetBoolDefault("Arena1v1.Enable", false);
+    m_bool_configs[CONFIG_ARENA_1V1_SAME_IP_CHECK] = sConfigMgr->GetBoolDefault("Arena1v1.SameIPCheck", true);
+    m_int_configs[CONFIG_ARENA_1V1_MIN_LEVEL] = sConfigMgr->GetIntDefault("Arena1v1.MinLevel", 80);
+    m_float_configs[CONFIG_ARENA_1V1_POINTS_MULTI] = sConfigMgr->GetFloatDefault("Arena1v1.ArenaPointsMulti", 0.38f);
+    if (m_float_configs[CONFIG_ARENA_1V1_POINTS_MULTI] < 0.0f)
+    {
+        TC_LOG_ERROR("server.loading", "Arena1v1.ArenaPointsMulti ({}) cannot be negative. Set to 0.", m_float_configs[CONFIG_ARENA_1V1_POINTS_MULTI]);
+        m_float_configs[CONFIG_ARENA_1V1_POINTS_MULTI] = 0.0f;
+    }
 
     // call ScriptMgr if we're reloading the configuration
     if (reload)
@@ -2086,6 +2099,9 @@ void World::SetInitialWorldSettings()
     TC_LOG_INFO("server.loading", "Loading ArenaTeams...");
     sArenaTeamMgr->LoadArenaTeams();
 
+    TC_LOG_INFO("server.loading", "Loading 1v1 Arena stats...");
+    sArena1v1Mgr->LoadFromDB();
+
     TC_LOG_INFO("server.loading", "Loading Groups...");
     sGroupMgr->LoadGroups();
 
@@ -2446,9 +2462,9 @@ void World::Update(uint32 diff)
         if (sWorld->getBoolConfig(CONFIG_PRESERVE_CUSTOM_CHANNELS))
         {
             TC_METRIC_TIMER("world_update_time", TC_METRIC_TAG("type", "Save custom channels"));
-            ChannelMgr* mgr1 = ASSERT_NOTNULL(ChannelMgr::forTeam(ALLIANCE));
+            ChannelMgr* mgr1 = ASSERT_NOTNULL(ChannelMgr::ForTeam(ALLIANCE));
             mgr1->SaveToDB();
-            ChannelMgr* mgr2 = ASSERT_NOTNULL(ChannelMgr::forTeam(HORDE));
+            ChannelMgr* mgr2 = ASSERT_NOTNULL(ChannelMgr::ForTeam(HORDE));
             if (mgr1 != mgr2)
                 mgr2->SaveToDB();
         }
@@ -2737,36 +2753,38 @@ namespace Trinity
     {
         public:
             typedef std::vector<WorldPacket*> WorldPacketList;
-            explicit WorldWorldTextBuilder(uint32 textId, va_list* args = nullptr) : i_textId(textId), i_args(args) { }
-            void operator()(WorldPacketList& data_list, LocaleConstant loc_idx)
-            {
-                char const* text = sObjectMgr->GetTrinityString(i_textId, loc_idx);
+            static size_t const BufferSize = 2048;
 
+            explicit WorldWorldTextBuilder(uint32 textId, va_list* args = nullptr) : i_textId(textId), i_args(args) { }
+
+            void operator()(WorldPacketList& dataList, LocaleConstant locale)
+            {
+                char const* text = sObjectMgr->GetTrinityString(i_textId, locale);
+
+                char strBuffer[BufferSize];
                 if (i_args)
                 {
                     // we need copy va_list before use or original va_list will corrupted
                     va_list ap;
                     va_copy(ap, *i_args);
-
-                    char str[2048];
-                    vsnprintf(str, 2048, text, ap);
+                    vsnprintf(strBuffer, BufferSize, text, ap);
                     va_end(ap);
-
-                    do_helper(data_list, &str[0]);
                 }
                 else
-                    do_helper(data_list, (char*)text);
+                    std::strcpy(strBuffer, text);
+
+                do_helper(dataList, strBuffer);
             }
+
         private:
-            char* lineFromMessage(char*& pos) { char* start = strtok(pos, "\n"); pos = nullptr; return start; }
-            void do_helper(WorldPacketList& data_list, char* text)
+            void do_helper(WorldPacketList& dataList, char* text)
             {
-                char* pos = text;
-                while (char* line = lineFromMessage(pos))
+                while (char* line = ChatHandler::LineFromMessage(text))
                 {
-                    WorldPacket* data = new WorldPacket();
-                    ChatHandler::BuildChatPacket(*data, CHAT_MSG_SYSTEM, LANG_UNIVERSAL, nullptr, nullptr, line);
-                    data_list.push_back(data);
+                    WorldPackets::Chat::Chat packet;
+                    packet.Initialize(CHAT_MSG_SYSTEM, LANG_UNIVERSAL, nullptr, nullptr, line);
+                    packet.Write();
+                    dataList.push_back(new WorldPacket(packet.Move()));
                 }
             }
 
@@ -2823,16 +2841,15 @@ void World::SendGMText(uint32 string_id, ...)
 /// DEPRECATED, only for debug purpose. Send a System Message to all players (except self if mentioned)
 void World::SendGlobalText(char const* text, WorldSession* self)
 {
-    WorldPacket data;
-
     // need copy to prevent corruption by strtok call in LineFromMessage original string
     char* buf = strdup(text);
     char* pos = buf;
 
     while (char* line = ChatHandler::LineFromMessage(pos))
     {
-        ChatHandler::BuildChatPacket(data, CHAT_MSG_SYSTEM, LANG_UNIVERSAL, nullptr, nullptr, line);
-        SendGlobalMessage(&data, self);
+        WorldPackets::Chat::Chat packet;
+        packet.Initialize(CHAT_MSG_SYSTEM, LANG_UNIVERSAL, nullptr, nullptr, line);
+        SendGlobalMessage(packet.Write(), self);
     }
 
     free(buf);

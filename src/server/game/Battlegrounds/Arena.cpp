@@ -16,6 +16,7 @@
  */
 
 #include "Arena.h"
+#include "Arena1v1Mgr.h"
 #include "ArenaScore.h"
 #include "ArenaTeamMgr.h"
 #include "BattlegroundPackets.h"
@@ -53,6 +54,17 @@ Arena::Arena()
     StartMessageIds[BG_STARTING_EVENT_SECOND] = ARENA_TEXT_START_THIRTY_SECONDS;
     StartMessageIds[BG_STARTING_EVENT_THIRD]  = ARENA_TEXT_START_FIFTEEN_SECONDS;
     StartMessageIds[BG_STARTING_EVENT_FOURTH] = ARENA_TEXT_START_BATTLE_HAS_BEGUN;
+}
+
+void Arena::Apply1v1Overrides()
+{
+    StartDelayTimes[BG_STARTING_EVENT_FIRST] = BG_START_DELAY_30S;
+    StartDelayTimes[BG_STARTING_EVENT_SECOND] = BG_START_DELAY_15S;
+    StartDelayTimes[BG_STARTING_EVENT_THIRD] = BG_START_DELAY_NONE;
+
+    StartMessageIds[BG_STARTING_EVENT_FIRST] = ARENA_TEXT_START_THIRTY_SECONDS;
+    StartMessageIds[BG_STARTING_EVENT_SECOND] = ARENA_TEXT_START_FIFTEEN_SECONDS;
+    StartMessageIds[BG_STARTING_EVENT_THIRD] = 0;
 }
 
 void Arena::AddPlayer(Player* player)
@@ -119,19 +131,53 @@ void Arena::RemovePlayerAtLeave(ObjectGuid guid, bool transport, bool sendPacket
         BattlegroundPlayerMap::const_iterator itr = m_Players.find(guid);
         if (itr != m_Players.end()) // check if the player was a participant of the match, or only entered through gm command (appear)
         {
-            // if the player was a match participant, calculate rating
-            uint32 team = itr->second.Team;
-
-            ArenaTeam* winnerArenaTeam = sArenaTeamMgr->GetArenaTeamById(GetArenaTeamIdForTeam(GetOtherTeam(team)));
-            ArenaTeam* loserArenaTeam = sArenaTeamMgr->GetArenaTeamById(GetArenaTeamIdForTeam(team));
-
-            // left a rated match while the encounter was in progress, consider as loser
-            if (winnerArenaTeam && loserArenaTeam && winnerArenaTeam != loserArenaTeam)
+            // EG - 1v1 arena
+            if (GetArenaType() == ARENA_TYPE_1V1)
             {
-                if (Player* player = _GetPlayer(itr->first, itr->second.OfflineRemoveTime != 0, "Arena::RemovePlayerAtLeave"))
-                    loserArenaTeam->MemberLost(player, GetArenaMatchmakerRating(GetOtherTeam(team)));
-                else
-                    loserArenaTeam->OfflineMemberLost(guid, GetArenaMatchmakerRating(GetOtherTeam(team)));
+                uint32 team = itr->second.Team;
+                bool leaverOffline = (itr->second.OfflineRemoveTime != 0);
+                ObjectGuid opponentGuid;
+                bool opponentOffline = false;
+                for (auto const& [pguid, pdata] : m_Players)
+                {
+                    if (pguid != guid && pdata.Team != team)
+                    {
+                        opponentGuid = pguid;
+                        opponentOffline = (pdata.OfflineRemoveTime != 0);
+                        break;
+                    }
+                }
+
+                // Dual-disconnect (both players timed out from offline state)
+                bool dualDisconnect = leaverOffline && opponentOffline;
+                if (!dualDisconnect)
+                {
+                    uint32 opponentMmr = GetArenaMatchmakerRating(GetOtherTeam(team));
+                    Arena1v1MatchOutcome outcome = sArena1v1Mgr->ApplyForfeit(guid, opponentGuid, opponentMmr);
+
+                    uint8 leaverTeamIdx = (team == ALLIANCE) ? PVP_TEAM_ALLIANCE : PVP_TEAM_HORDE;
+                    uint8 opponentTeamIdx = (team == ALLIANCE) ? PVP_TEAM_HORDE : PVP_TEAM_ALLIANCE;
+                    _arenaTeamScores[leaverTeamIdx].Assign(outcome.LoserRatingDelta, outcome.LoserMmrSnapshot, "1v1");
+                    if (!opponentGuid.IsEmpty())
+                        _arenaTeamScores[opponentTeamIdx].Assign(outcome.WinnerRatingDelta, outcome.WinnerMmrSnapshot, "1v1");
+                }
+            }
+            else
+            {
+                // if the player was a match participant, calculate rating
+                uint32 team = itr->second.Team;
+
+                ArenaTeam* winnerArenaTeam = sArenaTeamMgr->GetArenaTeamById(GetArenaTeamIdForTeam(GetOtherTeam(team)));
+                ArenaTeam* loserArenaTeam = sArenaTeamMgr->GetArenaTeamById(GetArenaTeamIdForTeam(team));
+
+                // left a rated match while the encounter was in progress, consider as loser
+                if (winnerArenaTeam && loserArenaTeam && winnerArenaTeam != loserArenaTeam)
+                {
+                    if (Player* player = _GetPlayer(itr->first, itr->second.OfflineRemoveTime != 0, "Arena::RemovePlayerAtLeave"))
+                        loserArenaTeam->MemberLost(player, GetArenaMatchmakerRating(GetOtherTeam(team)));
+                    else
+                        loserArenaTeam->OfflineMemberLost(guid, GetArenaMatchmakerRating(GetOtherTeam(team)));
+                }
             }
         }
     }
@@ -150,6 +196,62 @@ void Arena::CheckWinConditions()
 
 void Arena::EndBattleground(uint32 winner)
 {
+    // EG - 1v1 arena
+    if (isRated() && GetArenaType() == ARENA_TYPE_1V1)
+    {
+        if (winner == 0)
+        {
+            // Draw (45-minute timeout, both alive). Mirror stock arena behavior
+            ObjectGuid playerA;
+            ObjectGuid playerB;
+            uint8 idxA = PVP_TEAM_ALLIANCE;
+            uint8 idxB = PVP_TEAM_HORDE;
+            for (auto const& [pguid, pdata] : m_Players)
+            {
+                if (pdata.Team == ALLIANCE)
+                    playerA = pguid;
+                else
+                    playerB = pguid;
+            }
+            uint32 mmrA = GetArenaMatchmakerRating(ALLIANCE);
+            uint32 mmrB = GetArenaMatchmakerRating(HORDE);
+            if (!playerA.IsEmpty() && !playerB.IsEmpty())
+            {
+                sArena1v1Mgr->ApplyDraw(playerA, playerB);
+                _arenaTeamScores[idxA].Assign(ARENA_TIMELIMIT_POINTS_LOSS, mmrA, "1v1");
+                _arenaTeamScores[idxB].Assign(ARENA_TIMELIMIT_POINTS_LOSS, mmrB, "1v1");
+            }
+            Battleground::EndBattleground(winner);
+            return;
+        }
+
+        ObjectGuid winnerGuid;
+        ObjectGuid loserGuid;
+        for (auto const& [pguid, pdata] : m_Players)
+        {
+            if (pdata.Team == winner)
+                winnerGuid = pguid;
+            else
+                loserGuid = pguid;
+        }
+
+        uint32 winnerMmrSeen = GetArenaMatchmakerRating(winner);
+        uint32 loserMmrSeen = GetArenaMatchmakerRating(GetOtherTeam(winner));
+
+        if (!winnerGuid.IsEmpty() && !loserGuid.IsEmpty())
+        {
+            // Normal match end: both players still in m_Players
+            Arena1v1MatchOutcome outcome = sArena1v1Mgr->ApplyMatchResult(winnerGuid, loserGuid, winnerMmrSeen, loserMmrSeen);
+            uint8 winnerIdx = (winner == ALLIANCE) ? PVP_TEAM_ALLIANCE : PVP_TEAM_HORDE;
+            uint8 loserIdx = (winner == ALLIANCE) ? PVP_TEAM_HORDE : PVP_TEAM_ALLIANCE;
+            _arenaTeamScores[winnerIdx].Assign(outcome.WinnerRatingDelta, outcome.WinnerMmrSnapshot, "1v1");
+            _arenaTeamScores[loserIdx].Assign(outcome.LoserRatingDelta, outcome.LoserMmrSnapshot, "1v1");
+        }
+
+        Battleground::EndBattleground(winner);
+        return;
+    }
+
     // arena rating calculation
     if (isRated())
     {

@@ -424,6 +424,9 @@ bool GameObject::Create(ObjectGuid::LowType guidlow, uint32 name_id, Map* map, u
     if (map->Is25ManRaid())
         loot.maxDuplicates = 3;
 
+    // EG - Loot: flag group/raid instance loot
+    loot.isInstanceLoot = map->IsDungeon();
+
     if (spawnid)
         m_spawnId = spawnid;
 

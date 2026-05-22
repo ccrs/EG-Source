@@ -212,6 +212,17 @@ enum NAXInstanceTexts
     SAY_DIALOGUE_SAPPHIRON_LICH_KING2 = 2
 };
 
+enum NAXSpells
+{
+    SPELL_BIGGLESWORTH_CURSE = 1010
+};
+
+enum NAXItems
+{
+    ITEM_EMBLEM_OF_VALOR = 40753,
+    ITEM_LIL_PHYLACTERY = 49693
+};
+
 template <class AI, class T>
 inline AI* GetNaxxramasAI(T* obj)
 {

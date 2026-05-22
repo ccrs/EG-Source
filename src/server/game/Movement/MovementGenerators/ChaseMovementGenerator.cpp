@@ -91,6 +91,33 @@ static bool IsValidChaseStopDistance(float distance, float minTarget, float maxT
     return distance > 0.0f && distance >= minTarget && distance <= maxTarget;
 }
 
+static constexpr float FACING_BROADCAST_THRESHOLD = 0.0873f; // 5 degrees
+
+static void BroadcastFacingIfNeeded(Unit* owner, Unit* target, Optional<float>& lastBroadcastedAngle)
+{
+    if (owner->HasUnitState(UNIT_STATE_CANNOT_TURN))
+        return;
+
+    float const currentAngle = owner->GetAbsoluteAngle(target);
+    bool sendFacingUpdate = !lastBroadcastedAngle;
+    if (!sendFacingUpdate)
+    {
+        float delta = Position::NormalizeOrientation(currentAngle - *lastBroadcastedAngle);
+        if (delta > float(M_PI))
+            delta -= 2.0f * float(M_PI);
+        sendFacingUpdate = std::fabs(delta) > FACING_BROADCAST_THRESHOLD;
+    }
+    if (sendFacingUpdate)
+    {
+        lastBroadcastedAngle = currentAngle;
+        Movement::MoveSplineInit facingInit(owner);
+        facingInit.MoveTo(owner->GetPositionX(), owner->GetPositionY(), owner->GetPositionZ(), false);
+        facingInit.SetFacing(currentAngle);
+        facingInit.Launch();
+        owner->DisableSpline();
+    }
+}
+
 ChaseMovementGenerator::ChaseMovementGenerator(Unit* target, Optional<ChaseRange> range, Optional<ChaseAngle> angle) : AbstractFollower(ASSERT_NOTNULL(target)), _range(range), _angle(angle), _rangeCheckTimer(0), _relocationCooldown(0)
 {
     Mode = MOTION_MODE_DEFAULT;
@@ -107,6 +134,7 @@ bool ChaseMovementGenerator::Initialize(Unit* owner)
 
     _path = nullptr;
     _lastTargetPosition.reset();
+    _lastBroadcastedFacingAngle.reset();
     _rangeCheckTimer.Reset(0);
     _relocationCooldown.Reset(0s);
     _currentChaseStopDistance = 0.0f;
@@ -137,6 +165,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
     {
         owner->StopMoving();
         _lastTargetPosition.reset();
+        _lastBroadcastedFacingAngle.reset();
         _currentChaseStopDistance = 0.0f;
         if (Creature* cOwner = owner->ToCreature())
             cOwner->SetCannotReachTarget(false);
@@ -151,7 +180,8 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
     float const maxTarget = _range ? _range->MaxTolerance + hitboxSum : CONTACT_DISTANCE + hitboxSum;
     Optional<ChaseAngle> angle = useChaseAngle ? _angle : Optional<ChaseAngle>();
 
-    bool syncFacingOrientation = false;
+    // Decoupled from range-check timer: sync facing every tick when settled so slight owner displacement still updates server orientation.
+    bool syncFacingOrientation = !owner->HasUnitState(UNIT_STATE_CHASE_MOVE);
     if (!_relocationCooldown.Passed())
         _relocationCooldown.Update(diff);
     _rangeCheckTimer.Update(diff);
@@ -229,6 +259,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
                 if (shouldThrottleRelocation && relocationCooldownActive && !_relocationCooldown.Passed())
                 {
                     owner->SetInFront(target);
+                    BroadcastFacingIfNeeded(owner, target, _lastBroadcastedFacingAngle);
                     _lastTargetPosition = currentTargetPosition;
                     _useChaseAngle = useChaseAngle;
                     return true;
@@ -332,6 +363,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
                     }
                 }
 
+                _lastBroadcastedFacingAngle.reset();
                 owner->AddUnitState(UNIT_STATE_CHASE_MOVE);
                 AddFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED);
 
@@ -363,6 +395,8 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
             _useChaseAngle = useChaseAngle;
         }
         syncFacingOrientation = true;
+        if (!owner->HasUnitState(UNIT_STATE_CHASE_MOVE))
+            BroadcastFacingIfNeeded(owner, target, _lastBroadcastedFacingAngle);
     }
 
     // if we're done moving, we want to clean up
@@ -375,6 +409,8 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
             cOwner->SetCannotReachTarget(false);
         owner->ClearUnitState(UNIT_STATE_CHASE_MOVE);
         owner->SetInFront(target);
+        _lastBroadcastedFacingAngle.reset();
+        BroadcastFacingIfNeeded(owner, target, _lastBroadcastedFacingAngle);
         DoMovementInform(owner, target);
     }
 

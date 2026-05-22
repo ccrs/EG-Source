@@ -38,13 +38,14 @@ public:
 
         static ChatCommandTable customCharacterSettings =
         {
-            { "transmogrification", transmogrificationSettings }, 
+            { "transmogrification", transmogrificationSettings },
             { "aoeloot",            HandleAOELoot, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "account",            accountSettings },
             { "xpRate",             HandleXPRate, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "masquerade",         HandleRaceMasquerade, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "weaponSkill",        HandleWeaponSkill, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "visuals",            HandleVisuals, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "resetflags",         HandleResetCustomFlags, rbac::RBAC_ROLE_MODERATOR, Console::No },
         };
 
         static ChatCommandTable commandTable =
@@ -312,6 +313,9 @@ public:
             case CLASS_PALADIN:
                 flag = CustomFlags::CUSTOM_FLAG_VISUALS_PALADIN_ACTIVE;
                 break;
+            case CLASS_HUNTER:
+                flag = CustomFlags::CUSTOM_FLAG_VISUALS_HUNTER_ACTIVE;
+                break;
             default:
                 break;
         }
@@ -331,6 +335,36 @@ public:
                 handler->SendSysMessage("Alternative visuals deactivated.");
             }
         }
+        return true;
+    }
+
+    static bool HandleResetCustomFlags(ChatHandler* handler, Optional<PlayerIdentifier> target)
+    {
+        if (!target)
+            target = PlayerIdentifier::FromTarget(handler);
+        if (!target)
+        {
+            handler->SendSysMessage("Please select a player or provide a player name.");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        if (Player* player = target->GetConnectedPlayer())
+        {
+            for (uint16 i = 0; i < static_cast<uint16>(CustomFlagsIndex::CUSTOM_FLAGS_MAX); ++i)
+                player->SetCustomFlags(CustomFlagsIndex(i), CustomFlags::CUSTOM_FLAG_NONE);
+        }
+
+        std::ostringstream data;
+        for (uint16 i = 0; i < static_cast<uint16>(CustomFlagsIndex::CUSTOM_FLAGS_MAX); ++i)
+            data << 0 << ' ';
+
+        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_CUSTOM_SETTINGS);
+        stmt->setUInt32(0, target->GetGUID().GetCounter());
+        stmt->setString(1, data.str());
+        CharacterDatabase.Execute(stmt);
+
+        handler->PSendSysMessage("Custom flags for player '%s' have been reset to defaults.", target->GetName().c_str());
         return true;
     }
 

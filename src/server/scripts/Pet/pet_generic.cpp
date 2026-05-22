@@ -236,6 +236,8 @@ class spell_pet_gen_lich_pet_periodic_emote : public AuraScript
 
     void OnPeriodic(AuraEffect const* /*aurEff*/)
     {
+        PreventDefaultAction();
+
         // The chance to cast this spell is not 100%.
         // Triggered spell roots creature for 3 sec and plays anim and sound (doesn't require any script).
         // Emote and sound never shows up in sniffs because both comes from spell visual directly.

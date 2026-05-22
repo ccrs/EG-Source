@@ -96,7 +96,7 @@ public:
         _killYellTimer.Reset(0s);
 
         DoCastSelf(SPELL_RETRIBUTION_AURA, true);
-        me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_NON_ATTACKABLE);
+        me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2);
         me->SetStandState(UNIT_STAND_STATE_STAND);
         me->SetReactState(REACT_AGGRESSIVE);
 
@@ -170,7 +170,7 @@ public:
             me->ClearComboPointHolders();
             me->RemoveAllAuras();
             me->ClearAllReactives();
-            me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_NON_ATTACKABLE);
+            me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2);
             me->SetStandState(UNIT_STAND_STATE_DEAD);
             me->SetReactState(REACT_PASSIVE); // prevent Mograine from attacking while fake death
 
@@ -203,7 +203,7 @@ public:
                 events.ScheduleEvent(EVENT_HAMMER_OF_JUSTICE, 10s, 15s);
 
                 // We can now die
-                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2);
                 me->SetReactState(REACT_AGGRESSIVE);
                 _canDie = true;
                 DoCastSelf(SPELL_RETRIBUTION_AURA, true);
@@ -266,7 +266,7 @@ public:
         _killYellTimer.Reset(0s);
 
         DoCastSelf(SPELL_RETRIBUTION_AURA);
-        me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+        me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2);
         me->SetReactState(REACT_AGGRESSIVE);
     }
 
@@ -361,7 +361,7 @@ public:
             _ressurectionInProgress = true;
             _canDie = false;
 
-            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2);
 
             // Cancel all combat events
             _events.CancelEvent(EVENT_HEAL);
@@ -426,7 +426,7 @@ private:
 
         _canDie = true;
 
-        me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+        me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2);
         me->SetReactState(REACT_AGGRESSIVE);
 
         if (me->GetVictim())

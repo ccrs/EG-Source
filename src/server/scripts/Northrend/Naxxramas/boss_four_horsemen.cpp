@@ -258,11 +258,20 @@ struct boss_four_horsemen_baseAI : public BossAI
             }
         }
 
+        void RemoveMarksFromPlayers()
+        {
+            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_THANE_MARK, true, true);
+            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_LADY_MARK, true, true);
+            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BARON_MARK, true, true);
+            instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_SIR_MARK, true, true);
+        }
+
         void ResetEncounter()
         {
             if (instance->GetBossState(BOSS_HORSEMEN) == NOT_STARTED || instance->GetBossState(BOSS_HORSEMEN) == DONE)
                 return;
             instance->SetBossState(BOSS_HORSEMEN, NOT_STARTED);
+            RemoveMarksFromPlayers();
             for (Horseman boss : horsemen)
             {
                 if (Creature* cBoss = getHorsemanHandle(boss))
@@ -279,6 +288,7 @@ struct boss_four_horsemen_baseAI : public BossAI
             instance->SetBossState(BOSS_HORSEMEN, DONE);
             //instance->DoUpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, SPELL_ENCOUNTER_CREDIT);
             DoCastAOE(SPELL_ENCOUNTER_CREDIT, true);
+            RemoveMarksFromPlayers();
         }
 
         void JustEngagedWith(Unit* /*who*/) override

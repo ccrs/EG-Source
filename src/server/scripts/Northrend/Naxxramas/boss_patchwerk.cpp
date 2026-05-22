@@ -52,7 +52,8 @@ enum PatchwerkEvents
 
 enum Misc
 {
-    ACHIEV_MAKE_QUICK_WERK_OF_HIM_STARTING_EVENT  = 10286
+    ACHIEV_MAKE_QUICK_WERK_OF_HIM_STARTING_EVENT  = 10286,
+    NPC_SLUDGE_BELCHER = 16029
 };
 
 enum HatefulThreatAmounts
@@ -91,6 +92,11 @@ struct boss_patchwerk : public BossAI
         Talk(SAY_AGGRO);
         events.ScheduleEvent(EVENT_HATEFUL, 3600ms);
         events.ScheduleEvent(EVENT_BERSERK, 6min);
+
+        std::list<Creature*> aliveSludgeBelchers;
+        me->GetCreatureListWithOptionsInGrid(aliveSludgeBelchers, 250.f, FindCreatureOptions{ .CreatureId = NPC_SLUDGE_BELCHER, .IsAlive = true });
+        for (Creature* current : aliveSludgeBelchers)
+            current->EngageWithTarget(who);
 
         instance->DoStartTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, ACHIEV_MAKE_QUICK_WERK_OF_HIM_STARTING_EVENT);
     }

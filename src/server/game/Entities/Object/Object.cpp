@@ -32,7 +32,7 @@
 #include "Map.h"
 #include "MiscPackets.h"
 #include "MovementInfo.h"
-#include "MovementPacketBuilder.h"
+#include "MovementPackets.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "OutdoorPvPMgr.h"
@@ -315,7 +315,7 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint16 flags) const
 
         // 0x08000000
         if (unit->m_movementInfo.GetMovementFlags() & MOVEMENTFLAG_SPLINE_ENABLED)
-            Movement::PacketBuilder::WriteCreate(*unit->movespline, *data);
+            WorldPackets::Movement::CommonMovement::WriteCreateObjectSplineDataBlock(*unit->movespline, *data);
     }
     else
     {
@@ -1727,6 +1727,7 @@ bool WorldObject::CanDetectStealthOf(WorldObject const* obj, bool checkAlert) co
     if (unit && !HasInArc(float(M_PI), obj))
         return false;
 
+    // EG - prioritize HasInArc validation over combatReach in stealth detection
     if (distance < combatReach)
         return true;
 
@@ -1978,6 +1979,7 @@ void Map::SummonCreatureGroup(uint8 group, std::list<TempSummon*>* list /*= null
 
 void WorldObject::SetZoneScript()
 {
+    // EG - resolve zone script via Battlefield (Wintergrasp always PvP) before OutdoorPvP
     Map* map = FindMap();
     if (!map)
         return;

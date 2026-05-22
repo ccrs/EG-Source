@@ -238,11 +238,10 @@ class spell_intense_cold : public AuraScript
     {
         if (aurEff->GetBase()->GetStackAmount() < 2)
             return;
-        Unit* caster = GetCaster();
-        /// @todo the caster should be boss but not the player
-        if (!caster || !caster->GetAI())
-            return;
-        caster->GetAI()->SetGUID(GetTarget()->GetGUID(), DATA_INTENSE_COLD);
+
+        if (InstanceScript* instance = GetTarget()->GetInstanceScript())
+            if (Creature* keristrasza = ObjectAccessor::GetCreature(*GetTarget(), instance->GetGuidData(DATA_KERISTRASZA)))
+                keristrasza->GetAI()->SetGUID(GetTarget()->GetGUID(), DATA_INTENSE_COLD);
     }
 
     void Register() override
@@ -265,7 +264,7 @@ class achievement_intense_cold : public AchievementCriteriaScript
 
             GuidList _intenseColdList = ENSURE_AI(boss_keristrasza, target->ToCreature()->AI())->_intenseColdList;
             if (!_intenseColdList.empty())
-                for (GuidList::iterator itr = _intenseColdList.begin(); itr != _intenseColdList.end(); ++itr)
+                for (GuidList::const_iterator itr = _intenseColdList.begin(); itr != _intenseColdList.end(); ++itr)
                     if (player->GetGUID() == *itr)
                         return false;
 

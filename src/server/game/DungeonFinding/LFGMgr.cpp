@@ -28,6 +28,7 @@
 #include "InstanceScript.h"
 #include "LFGGroupData.h"
 #include "LFGPlayerData.h"
+#include "LFGRandomReward.h"
 #include "LFGScripts.h"
 #include "LFGQueue.h"
 #include "Log.h"
@@ -679,7 +680,8 @@ void LFGMgr::JoinLfg(Player* player, uint8 roles, LfgDungeonSet& dungeons, const
     // Check player or group member restrictions
     if (!player->GetSession()->HasPermission(rbac::RBAC_PERM_JOIN_DUNGEON_FINDER))
         joinData.result = LFG_JOIN_NOT_MEET_REQS;
-    else if (player->InBattleground() || player->InArena() || player->InBattlegroundQueue())
+    // EG - LFG/BG co-queue: only arena queues remain mutually exclusive with LFG
+    else if (player->InBattleground() || player->InArena() || player->InArenaQueue())
         joinData.result = LFG_JOIN_USING_BG_SYSTEM;
     else if (player->HasAura(LFG_SPELL_DUNGEON_DESERTER))
         joinData.result = LFG_JOIN_DESERTER;
@@ -706,7 +708,8 @@ void LFGMgr::JoinLfg(Player* player, uint8 roles, LfgDungeonSet& dungeons, const
                         joinData.result = LFG_JOIN_PARTY_DESERTER;
                     else if (!isContinue && plrg->HasAura(LFG_SPELL_DUNGEON_COOLDOWN))
                         joinData.result = LFG_JOIN_PARTY_RANDOM_COOLDOWN;
-                    else if (plrg->InBattleground() || plrg->InArena() || plrg->InBattlegroundQueue())
+                    // EG - LFG/BG co-queue: only arena queues remain mutually exclusive with LFG
+                    else if (plrg->InBattleground() || plrg->InArena() || plrg->InArenaQueue())
                         joinData.result = LFG_JOIN_USING_BG_SYSTEM;
                     else if (plrg->HasAura(9454)) // check Freeze debuff
                         joinData.result = LFG_JOIN_PARTY_NOT_MEET_REQS;
@@ -1250,7 +1253,12 @@ void LFGMgr::MakeNewGroup(LfgProposal const& proposal)
             uint32 rDungeonId = (*dungeons.begin());
             LFGDungeonEntry const* dungeonEntry = sLFGDungeonStore.LookupEntry(rDungeonId);
             if (dungeonEntry && dungeonEntry->TypeID == LFG_TYPE_RANDOM)
+            {
+                TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] MakeNewGroup: {} casting LFG_SPELL_DUNGEON_COOLDOWN (IsMounted={} before) - runs BEFORE TeleportPlayer/SaveLFGMountSpell",
+                    player->GetName(), player->IsMounted());
                 player->CastSpell(player, LFG_SPELL_DUNGEON_COOLDOWN, false);
+                TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] MakeNewGroup: {} after LFG_SPELL_DUNGEON_COOLDOWN cast (IsMounted={})", player->GetName(), player->IsMounted());
+            }
         }
     }
 
@@ -1383,7 +1391,31 @@ void LFGMgr::UpdateProposal(uint32 proposalId, ObjectGuid guid, bool accept)
     for (GuidList::const_iterator it = proposal.queues.begin(); it != proposal.queues.end(); ++it)
         queue.RemoveFromQueue(*it);
 
+    // EG - LFG/BG co-queue
+    for (LfgProposalPlayerContainer::const_iterator it = proposal.players.begin(); it != proposal.players.end(); ++it)
+        if (Player* player = ObjectAccessor::FindConnectedPlayer(it->first))
+            player->FlushNonArenaBattlegroundQueues();
+
     MakeNewGroup(proposal);
+
+    // Custom
+    if (proposal.group.IsEmpty() && !proposal.players.empty())
+    {
+        ObjectGuid newGroupGuid;
+        for (LfgProposalPlayerContainer::const_iterator it = proposal.players.begin(); newGroupGuid.IsEmpty() && it != proposal.players.end(); ++it)
+            newGroupGuid = GetGroup(it->first);
+
+        if (!newGroupGuid.IsEmpty())
+        {
+            LfgGroupData& groupData = GroupsStore[newGroupGuid];
+            // EG - LFGRandomReward: start solo-queue composition tracking for this freshly-formed group
+            groupData.SetCompositionIntact(true);
+            for (LfgProposalPlayerContainer::const_iterator it = proposal.players.begin(); it != proposal.players.end(); ++it)
+                if (it->second.group.IsEmpty())
+                    groupData.AddOriginalSoloMember(it->first);
+        }
+    }
+
     ProposalsStore.erase(itProposal);
 }
 
@@ -1607,7 +1639,9 @@ void LFGMgr::TeleportPlayer(Player* player, bool out, bool fromOpcode /*= false*
 
     if (out)
     {
-        TC_LOG_DEBUG("lfg.teleport", "Player {} is being teleported out. Current Map {} - Expected Map {}", player->GetName(), player->GetMapId(), uint32(dungeon->map));
+        TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] TeleportPlayer OUT: {} fromOpcode={} currentMap={} dungeonMap={} -> {}",
+            player->GetName(), fromOpcode, player->GetMapId(), uint32(dungeon->map),
+            player->GetMapId() == uint32(dungeon->map) ? "calling TeleportToBGEntryPoint" : "SKIPPED (map mismatch, no teleport out)");
         if (player->GetMapId() == uint32(dungeon->map))
             player->TeleportToBGEntryPoint();
 
@@ -1679,8 +1713,15 @@ void LFGMgr::TeleportPlayer(Player* player, bool out, bool fromOpcode /*= false*
             }
         }
 
+        TC_LOG_INFO("lfg.teleport.mount", "[LFG-MOUNT] TeleportPlayer IN: {} fromOpcode={} forceNewInstance={} currentMap={} mapIsDungeon={} IsMounted={} -> {}",
+            player->GetName(), fromOpcode, forceNewInstance, player->GetMapId(), player->GetMap()->IsDungeon(), player->IsMounted(),
+            player->GetMap()->IsDungeon() ? "NOT capturing entry point/mount (already in a dungeon)" : "capturing entry point + mount");
+
         if (!player->GetMap()->IsDungeon())
+        {
             player->SetBattlegroundEntryPoint();
+            player->SaveLFGMountSpell();
+        }
 
         player->FinishTaxiFlight();
 
@@ -1814,7 +1855,20 @@ void LFGMgr::FinishDungeon(ObjectGuid gguid, const uint32 dungeonId, Map const* 
         TC_LOG_DEBUG("lfg.dungeon.finish", "Group: {}, Player: {} done dungeon {}, {} previously done.", gguid.ToString(), guid.ToString(), GetDungeon(gguid), done ? " " : " not");
         LfgPlayerRewardData data = LfgPlayerRewardData(dungeon->Entry(), GetDungeon(gguid, false), done, quest);
         player->GetSession()->SendLfgPlayerReward(data);
+
+        // Custom
+        // EG - LFGRandomReward: grant bonus loot to fully solo-queued max-level random-heroic completions
+        if (dungeon->difficulty == DUNGEON_DIFFICULTY_HEROIC
+            && player->GetLevel() == DEFAULT_MAX_LEVEL
+            && GroupsStore[gguid].IsOriginalSoloMember(guid)
+            && GroupsStore[gguid].IsCompositionIntact())
+        {
+            if (Group* group = player->GetGroup())
+                LFGRandomReward::TryReward(player, group);
+        }
     }
+
+    GroupsStore[gguid].ResetCompositionTracking();
 }
 
 // --------------------------------------------------------------------------//
@@ -2172,7 +2226,14 @@ uint8 LFGMgr::RemovePlayerFromGroup(ObjectGuid gguid, ObjectGuid guid)
 
 void LFGMgr::AddPlayerToGroup(ObjectGuid gguid, ObjectGuid guid)
 {
+    GroupsStore[gguid].OnMemberAdded();
     GroupsStore[gguid].AddPlayer(guid);
+}
+
+// EG - LFGRandomReward: invalidate solo-queue composition when a member leaves/is kicked
+void LFGMgr::OnLfgMemberRemoved(ObjectGuid gguid, bool wasVoteKick)
+{
+    GroupsStore[gguid].OnMemberRemoved(wasVoteKick);
 }
 
 void LFGMgr::SetLeader(ObjectGuid gguid, ObjectGuid leader)

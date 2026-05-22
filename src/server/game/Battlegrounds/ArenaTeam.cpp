@@ -107,15 +107,13 @@ bool ArenaTeam::AddMember(ObjectGuid playerGuid)
         playerClass = player->GetClass();
         playerName = player->GetName();
     }
-    else
+    else if (CharacterCacheEntry const* characterInfo = sCharacterCache->GetCharacterCacheByGuid(playerGuid))
     {
-        CharacterCacheEntry const* cInfo = sCharacterCache->GetCharacterCacheByGuid(playerGuid);
-        if (!cInfo)
-            return false;
-
-        playerName = cInfo->Name;
-        playerClass = cInfo->Class;
+        playerName = characterInfo->Name;
+        playerClass = characterInfo->Class;
     }
+    else
+        return false;
 
     // Check if player is already in a similar arena team
     if ((player && player->GetArenaTeamId(GetSlot())) || sCharacterCache->GetCharacterArenaTeamIdByGuid(playerGuid, GetType()) != 0)
@@ -602,6 +600,7 @@ uint8 ArenaTeam::GetSlotByType(uint32 type)
         case ARENA_TEAM_2v2: return 0;
         case ARENA_TEAM_3v3: return 1;
         case ARENA_TEAM_5v5: return 2;
+        case ARENA_TYPE_1V1: return MAX_ARENA_SLOT; // EG - 1v1 arena uses its own rating store, no ArenaTeam slot
         default:
             break;
     }

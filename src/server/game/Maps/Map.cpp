@@ -18,7 +18,7 @@
 #include "Map.h"
 #include "Battleground.h"
 #include "CellImpl.h"
-#include "Chat.h"
+#include "ChatPackets.h"
 #include "DatabaseEnv.h"
 #include "DisableMgr.h"
 #include "DynamicTree.h"
@@ -1293,6 +1293,10 @@ void Map::MoveAllCreaturesInMoveList()
         }
         else
         {
+            // EG - fix static-passenger NPCs disappearing: don't relocate transport-bound creatures here
+            if (c->GetTransport())
+                continue;
+
             // if creature can't be move in new cell/grid (not loaded) move it to repawn cell/grid
             // creature coordinates will be updated and notifiers send
             if (!CreatureRespawnRelocation(c, false))
@@ -1348,6 +1352,10 @@ void Map::MoveAllGameObjectsInMoveList()
         }
         else
         {
+            // EG - fix static-passenger GOs disappearing: don't relocate transport-bound gameobjects here
+            if (go->GetTransport())
+                continue;
+
             // if GameObject can't be move in new cell/grid (not loaded) move it to repawn cell/grid
             // GameObject coordinates will be updated and notifiers send
             if (!GameObjectRespawnRelocation(go, false))
@@ -4051,20 +4059,22 @@ void InstanceMap::CreateInstanceData(bool load)
         stmt->setUInt32(1, i_InstanceId);
         PreparedQueryResult result = CharacterDatabase.Query(stmt);
 
+        std::string data;
         if (result)
         {
             Field* fields = result->Fetch();
-            std::string data = fields[0].GetString();
+            data = fields[0].GetString();
             i_data->SetCompletedEncountersMask(fields[1].GetUInt32());
-            if (!data.empty())
-            {
-                TC_LOG_DEBUG("maps", "Loading instance data for `{}` with id {}", sObjectMgr->GetScriptName(i_script_id), i_InstanceId);
-                i_data->Load(data.c_str());
-            }
+        }
+
+        if (!data.empty())
+        {
+            TC_LOG_DEBUG("maps", "Loading instance data for `{}` with id {}", sObjectMgr->GetScriptName(i_script_id), i_InstanceId);
+            i_data->Load(data.c_str());
         }
         else
         {
-            TC_LOG_WARN("maps", "CreateInstanceData: no instance record found for map {} instance {} - initializing fresh state", GetId(), i_InstanceId);
+            TC_LOG_WARN("maps", "CreateInstanceData: {} for map {} instance {} - initializing fresh state", result ? "instance record has empty data" : "no instance record found", GetId(), i_InstanceId);
             i_data->Create();
         }
     }
@@ -4761,9 +4771,9 @@ void Map::SendZoneWeather(ZoneDynamicInfo const& zoneDynamicInfo, Player* player
 /// Send a System Message to all players in the zone (except self if mentioned)
 void Map::SendZoneText(uint32 zoneId, char const* text, WorldSession const* self, uint32 team) const
 {
-    WorldPacket data;
-    ChatHandler::BuildChatPacket(data, CHAT_MSG_SYSTEM, LANG_UNIVERSAL, nullptr, nullptr, text);
-    SendZoneMessage(zoneId, &data, self, team);
+    WorldPackets::Chat::Chat packet;
+    packet.Initialize(CHAT_MSG_SYSTEM, LANG_UNIVERSAL, nullptr, nullptr, text);
+    SendZoneMessage(zoneId, packet.Write(), self, team);
 }
 
 void Map::SetZoneMusic(uint32 zoneId, uint32 musicId)

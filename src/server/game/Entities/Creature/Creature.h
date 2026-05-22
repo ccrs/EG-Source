@@ -41,6 +41,7 @@ class WorldSession;
 
 enum MovementGeneratorType : uint8;
 
+// EG - LOS delay on creature spawn: lock state for deferred LOS-entry processing
 enum LOSLockStatus : uint8
 {
     LOS_LOCK_NONE = 0,
@@ -63,6 +64,15 @@ typedef std::list<VendorItemCount> VendorItemCounts;
 #define CREATURE_Z_ATTACK_RANGE 3
 
 #define MAX_VENDOR_ITEMS 150                                // Limitation in 3.x.x item count in SMSG_LIST_INVENTORY
+
+enum class VendorInventoryReason : uint8
+{
+    Empty       = 0,
+    DontLikeYou = 1,
+    TooFar      = 2,
+    Dead        = 3,
+    YouAreDead  = 4
+};
 
 //used for handling non-repeatable random texts
 typedef std::vector<uint8> CreatureTextRepeatIds;
@@ -352,7 +362,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool m_isTempWorldObject; //true when possessed
 
         // Handling caster facing during spellcast
-        void SetTarget(ObjectGuid guid) override;
+        void SetTarget(ObjectGuid const& guid) override;
         void DoNotReacquireSpellFocusTarget();
         void SetSpellFocus(Spell const* focusSpell, WorldObject const* target);
         bool HasSpellFocus(Spell const* focusSpell = nullptr) const override;
@@ -474,6 +484,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool _regenerateHealth; // Set on creation
         bool _regenerateHealthLock; // Dynamically set
 
+        // EG - cached base AP for stale UNIT_FIELD_ATTACK_POWER_MODS fix
         // set in UpdateLevelDependantStats, read in UpdateAttackPowerAndDamage
         uint32 _baseAttackPower;
         uint32 _baseRangedAttackPower;

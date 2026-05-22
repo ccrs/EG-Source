@@ -420,35 +420,7 @@ public:
         ItemTemplateContainer const& its = sObjectMgr->GetItemTemplateStore();
         for (auto const& itemTemplatePair : its)
         {
-            uint8 localeIndex = handler->GetSessionDbLocaleIndex();
-            if (ItemLocale const* il = sObjectMgr->GetItemLocale(itemTemplatePair.first))
-            {
-                if (il->Name.size() > localeIndex && !il->Name[localeIndex].empty())
-                {
-                    std::string const& name = il->Name[localeIndex];
-
-                    if (Utf8FitTo(name, wNamePart))
-                    {
-                        if (maxResults && count++ == maxResults)
-                        {
-                            handler->PSendSysMessage(LANG_COMMAND_LOOKUP_MAX_RESULTS, maxResults);
-                            return true;
-                        }
-
-                        if (handler->GetSession())
-                            handler->PSendSysMessage(LANG_ITEM_LIST_CHAT, itemTemplatePair.first, itemTemplatePair.first, name.c_str());
-                        else
-                            handler->PSendSysMessage(LANG_ITEM_LIST_CONSOLE, itemTemplatePair.first, name.c_str());
-
-                        if (!found)
-                            found = true;
-
-                        continue;
-                    }
-                }
-            }
-
-            std::string const& name = itemTemplatePair.second.Name1;
+            std::string name = itemTemplatePair.second.GetName(handler->GetSessionDbLocaleIndex());
             if (name.empty())
                 continue;
 
@@ -485,7 +457,7 @@ public:
 
         if (ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(id))
         {
-            std::string name = itemTemplate->Name1;
+            std::string name = itemTemplate->GetName(handler->GetSessionDbLocaleIndex());
 
             if (name.empty())
             {
@@ -1253,55 +1225,60 @@ public:
         // Search in CharTitles.dbc
         for (uint32 id = 0; id < sCharTitlesStore.GetNumRows(); id++)
         {
-            CharTitlesEntry const* titleInfo = sCharTitlesStore.LookupEntry(id);
-            if (titleInfo)
+            if (CharTitlesEntry const* titleInfo = sCharTitlesStore.LookupEntry(id))
             {
-                /// @todo: implement female support
-                uint8 locale = handler->GetSessionDbcLocale();
-                std::string_view name = titleInfo->Name[locale];
-                if (name.empty())
-                    continue;
-
-                if (!Utf8FitTo(name, wNamePart))
+                for (uint8 gender = GENDER_MALE; gender <= GENDER_FEMALE; ++gender)
                 {
-                    locale = 0;
-                    for (; locale < TOTAL_LOCALES; ++locale)
+                    if (target && target->GetGender() != gender)
+                        continue;
+
+                    LocaleConstant locale = handler->GetSessionDbcLocale();
+                    std::string_view name = (gender == GENDER_MALE ? titleInfo->Name : titleInfo->Name1)[locale];
+
+                    if (name.empty())
+                        continue;
+
+                    if (!Utf8FitTo(name, wNamePart))
                     {
-                        if (locale == handler->GetSessionDbcLocale())
-                            continue;
+                        locale = LOCALE_enUS;
+                        for (; locale < TOTAL_LOCALES; locale = LocaleConstant(locale + 1))
+                        {
+                            if (locale == handler->GetSessionDbcLocale())
+                                continue;
 
-                        name = titleInfo->Name[locale];
-                        if (name.empty())
-                            continue;
+                            name = (gender == GENDER_MALE ? titleInfo->Name : titleInfo->Name1)[locale];
+                            if (name.empty())
+                                continue;
 
-                        if (Utf8FitTo(name, wNamePart))
-                            break;
-                    }
-                }
-
-                if (locale < TOTAL_LOCALES)
-                {
-                    if (maxResults && counter == maxResults)
-                    {
-                        handler->PSendSysMessage(LANG_COMMAND_LOOKUP_MAX_RESULTS, maxResults);
-                        return true;
+                            if (Utf8FitTo(name, wNamePart))
+                                break;
+                        }
                     }
 
-                    char const* knownStr = target && target->HasTitle(titleInfo) ? handler->GetTrinityString(LANG_KNOWN) : "";
+                    if (locale < TOTAL_LOCALES)
+                    {
+                        if (maxResults && counter == maxResults)
+                        {
+                            handler->PSendSysMessage(LANG_COMMAND_LOOKUP_MAX_RESULTS, maxResults);
+                            return true;
+                        }
 
-                    char const* activeStr = target && target->GetUInt32Value(PLAYER_CHOSEN_TITLE) == titleInfo->MaskID
-                        ? handler->GetTrinityString(LANG_ACTIVE)
-                        : "";
+                        char const* knownStr = target && target->HasTitle(titleInfo) ? handler->GetTrinityString(LANG_KNOWN) : "";
 
-                    std::string titleNameStr = ChatHandler::PGetParseString(name, targetName);
+                        char const* activeStr = target && target->GetUInt32Value(PLAYER_CHOSEN_TITLE) == titleInfo->MaskID
+                            ? handler->GetTrinityString(LANG_ACTIVE)
+                            : "";
 
-                    // send title in "id (idx:idx) - [namedlink locale]" format
-                    if (handler->GetSession())
-                        handler->PSendSysMessage(LANG_TITLE_LIST_CHAT, id, titleInfo->MaskID, id, titleNameStr, localeNames[locale], knownStr, activeStr);
-                    else
-                        handler->PSendSysMessage(LANG_TITLE_LIST_CONSOLE, id, titleInfo->MaskID, titleNameStr, localeNames[locale], knownStr, activeStr);
+                        std::string titleNameStr = ChatHandler::PGetParseString(name, targetName);
 
-                    ++counter;
+                        // send title in "id (idx:idx) - [namedlink locale]" format
+                        if (handler->GetSession())
+                            handler->PSendSysMessage(LANG_TITLE_LIST_CHAT, id, titleInfo->MaskID, id, titleNameStr, localeNames[locale], knownStr, activeStr);
+                        else
+                            handler->PSendSysMessage(LANG_TITLE_LIST_CONSOLE, id, titleInfo->MaskID, titleNameStr, localeNames[locale], knownStr, activeStr);
+
+                        ++counter;
+                    }
                 }
             }
         }
@@ -1501,7 +1478,7 @@ public:
         std::string input = args;
         strToLower(input);
 
-        constexpr std::string_view SEP = "|-----------------------|-----------------------|----------------|-----|-----|-----|";
+        constexpr std::string_view SEP = "|-----------------|------|------|-----|";
 
         uint32 count = 0;
         SessionMap const& sessionsMap = sWorld->GetAllSessions();
@@ -1532,11 +1509,11 @@ public:
                 strToUpper(code);
                 handler->PSendSysMessage("Online players from %s (%s):", std::string(countrySegment).c_str(), code.c_str());
                 handler->SendSysMessage(SEP);
-                handler->PSendSysMessage("| %-22s| %-22s| %-15s| %4s| %4s| %3s |", "Account", "Character", "IP", "Map", "Zone", "Sec");
+                handler->PSendSysMessage("| %-15s | %-4s | %-4s | %-3s | %s | %s", "IP", "Map", "Zone", "Sec", "Character", "Account");
                 handler->SendSysMessage(SEP);
             }
 
-            handler->PSendSysMessage("| %-22s| %-22s| %-15s| %4u| %4u| %3d |", session->GetAccountName().c_str(), session->GetPlayerName().c_str(), session->GetRemoteAddress().c_str(), player->GetMapId(), player->GetZoneId(), int32(session->GetSecurity()));
+            handler->PSendSysMessage("| %-15s | %4u | %4u | %3d | %s | %s", session->GetRemoteAddress().c_str(), player->GetMapId(), player->GetZoneId(), int32(session->GetSecurity()), session->GetPlayerName().c_str(), session->GetAccountName().c_str());
             ++count;
         }
 

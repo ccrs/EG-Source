@@ -612,7 +612,7 @@ enum SMART_ACTION
     SMART_ACTION_BOARD_PASSENGER                    = 156,    // seat id (RESERVED, PENDING CHERRYPICK)
     SMART_ACTION_EXIT_VEHICLE                       = 157,    // (RESERVED, PENDING CHERRYPICK)
     SMART_ACTION_RESUME_MOVEMENT                    = 158,    // MovementSlot (default = 0, active = 1, controlled = 2), ResumeTime (ms)
-    SMART_ACTION_SET_NOT_ATTACKABLE                 = 159,
+    SMART_ACTION_SET_NOT_ATTACKABLE                 = 159,    // EG - new SAI action: toggle UNIT_FLAG_NON_ATTACKABLE
     SMART_ACTION_END                                = 160
 };
 
@@ -1197,6 +1197,7 @@ struct SmartAction
             uint32 resumeTimer;
         } resumeMovement;
 
+        // EG - SMART_ACTION_SET_NOT_ATTACKABLE params
         struct
         {
             SAIBool apply;
@@ -1258,7 +1259,7 @@ enum SMARTAI_TARGETS
     SMART_TARGET_FARTHEST                       = 28,   // maxDist, playerOnly, isInLos
     SMART_TARGET_VEHICLE_PASSENGER              = 29,   // seatMask (0 - all seats)
     SMART_TARGET_CLOSEST_UNSPAWNED_GAMEOBJECT   = 30,   // entry(0any), maxDist
-    SMART_TARGET_LOWEST_HP_FRIENDLY             = 31,   // maxDist, playerOnly
+    SMART_TARGET_LOWEST_HP_FRIENDLY             = 31,   // EG - new SAI target: maxDist, playerOnly, includeSelf
 
     SMART_TARGET_END                            = 32
 };
@@ -1393,6 +1394,7 @@ struct SmartTarget
             uint32 maxDist;
         } threatList;
 
+        // EG - SMART_TARGET_LOWEST_HP_FRIENDLY params
         struct
         {
             uint32 maxDist;

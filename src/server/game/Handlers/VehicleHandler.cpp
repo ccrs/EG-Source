@@ -19,6 +19,7 @@
 #include "DBCStructure.h"
 #include "Log.h"
 #include "Map.h"
+#include "MovementPackets.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "Vehicle.h"
@@ -28,32 +29,32 @@ void WorldSession::HandleDismissControlledVehicle(WorldPacket &recvData)
 {
     TC_LOG_DEBUG("network", "WORLD: Recvd CMSG_DISMISS_CONTROLLED_VEHICLE");
 
-    ObjectGuid vehicleGUID = _player->GetCharmedGUID();
-
-    if (!vehicleGUID)                                       // something wrong here...
-    {
-        recvData.rfinish();                                // prevent warnings spam
-        return;
-    }
-
-    ObjectGuid guid;
-
-    recvData >> guid.ReadAsPacked();
-
     MovementInfo mi;
-    mi.guid = guid;
-    ReadMovementInfo(recvData, &mi);
 
-    bool validPos;
-    if (Vehicle* vehicle = _player->GetVehicle())
-        validPos = vehicle->NormalizePassengerMovementInfo(_player, mi);
-    else
-        validPos = NormalizeTransportMovementInfo(_player, mi);
+    recvData >> mi.guid.ReadAsPacked();
+    recvData >> mi;
 
-    if (validPos)
-        _player->m_movementInfo = mi;
+    Unit* mover = ValidateAndGetUnitBeingMoved(mi.guid, false);
+    if (!ValidateMovementInfo(mover, &mi))
+        return;
 
-    _player->ExitVehicle();
+    // EG - normalize/validate passenger (vehicle) or transport movement info before dismiss
+    if (Vehicle* vehicle = mover->GetVehicle())
+    {
+        if (!vehicle->NormalizePassengerMovementInfo(mover, mi))
+            return;
+    }
+    else if (!NormalizeTransportMovementInfo(mover, mi))
+        return;
+
+    mi.time = AdjustClientMovementTime(mi.time);
+    mover->m_movementInfo = mi;
+
+    if (Unit* vehicleBase = _player->GetVehicleBase())
+    {
+        vehicleBase->SendPetDismissSound();
+        _player->ExitVehicle();
+    }
 }
 
 void WorldSession::HandleChangeSeatsOnControlledVehicle(WorldPacket &recvData)

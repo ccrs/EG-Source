@@ -496,6 +496,10 @@ bool PetAI::CanAttack(Unit* target)
         return false;
     }
 
+    // EG - fix pet chase/stop loop on non-attackable targets (symmetric start/stop validity)
+    if (!me->IsValidAttackTarget(target))
+        return false;
+
     if (!me->GetCharmInfo())
     {
         TC_LOG_WARN("scripts.ai.petai", "me->GetCharmInfo() is NULL in PetAI::CanAttack(). Debug info: {}", GetDebugInfo());

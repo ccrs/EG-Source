@@ -429,6 +429,7 @@ enum CommandStates : uint8
     COMMAND_ABANDON = 3
 };
 
+// EG - CreatureAI override hook for vehicle-exit behavior (spline/resummon/evade/despawn)
 struct UnitVehicleExitParameters
 {
     bool ExitSpline = true;

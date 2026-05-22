@@ -421,10 +421,10 @@ bool Transmogrification::SuitableForTransmogrification(Player* player, ItemTempl
     if (!IsAllowedQuality(proto->Quality))
         return false;
 
-    if ((proto->Flags2 & ITEM_FLAG2_FACTION_HORDE) && player->GetTeam() != HORDE)
+    if (proto->HasFlag(ITEM_FLAG2_FACTION_HORDE) && player->GetTeam() != HORDE)
         return false;
 
-    if ((proto->Flags2 & ITEM_FLAG2_FACTION_ALLIANCE) && player->GetTeam() != ALLIANCE)
+    if (proto->HasFlag(ITEM_FLAG2_FACTION_ALLIANCE) && player->GetTeam() != ALLIANCE)
         return false;
 
     if (!IgnoreReqClass && (proto->AllowableClass & player->GetClassMask()) == 0)
@@ -465,7 +465,7 @@ bool Transmogrification::SuitableForTransmogrification(Player* player, ItemTempl
                 }
             }
             
-            if (proto->Spells[0].SpellId != 0)
+            if (proto->Effects[0].SpellID != 0)
                 found = true;
             
             switch (proto->ItemId)

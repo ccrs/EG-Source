@@ -805,7 +805,7 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
             if (e.action.fleeAssist.withEmote)
             {
                 Trinity::BroadcastTextBuilder builder(me, CHAT_MSG_MONSTER_EMOTE, BROADCAST_TEXT_FLEE_FOR_ASSIST, me->GetGender());
-                sCreatureTextMgr->SendChatPacket(me, builder, CHAT_MSG_MONSTER_EMOTE);
+                CreatureTextMgr::SendChatPacket(me, builder, CHAT_MSG_MONSTER_EMOTE);
             }
             TC_LOG_DEBUG("scripts.ai", "SmartScript::ProcessAction:: SMART_ACTION_FLEE_FOR_ASSIST: Creature {} DoFleeToGetAssistance", me->GetGUID().ToString());
             break;
@@ -1046,7 +1046,7 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                 if (e.action.callHelp.withEmote)
                 {
                     Trinity::BroadcastTextBuilder builder(me, CHAT_MSG_MONSTER_EMOTE, BROADCAST_TEXT_CALL_FOR_HELP, me->GetGender());
-                    sCreatureTextMgr->SendChatPacket(me, builder, CHAT_MSG_MONSTER_EMOTE);
+                    CreatureTextMgr::SendChatPacket(me, builder, CHAT_MSG_MONSTER_EMOTE);
                 }
                 TC_LOG_DEBUG("scripts.ai", "SmartScript::ProcessAction: SMART_ACTION_CALL_FOR_HELP: Creature {}", me->GetGUID().ToString());
             }
@@ -2335,6 +2335,7 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                     target->ToUnit()->ResumeMovement(e.action.resumeMovement.resumeTimer, e.action.resumeMovement.movementSlot);
             break;
         }
+        // EG - execute new SAI action SMART_ACTION_SET_NOT_ATTACKABLE
         case SMART_ACTION_SET_NOT_ATTACKABLE:
         {
             for (WorldObject* const target : targets)
@@ -2762,6 +2763,7 @@ void SmartScript::GetTargets(ObjectVector& targets, SmartScriptHolder const& e, 
                 targets.push_back(target);
             break;
         }
+        // EG - resolve new SAI target SMART_TARGET_LOWEST_HP_FRIENDLY (uses EG grid searcher)
         case SMART_TARGET_LOWEST_HP_FRIENDLY:
         {
             if (me)

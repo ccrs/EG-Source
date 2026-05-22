@@ -610,6 +610,12 @@ void CharacterDatabaseConnection::DoPrepareStatements()
 
     // EG - Anticheat
     PrepareStatement(CHAR_SEL_ANTICHEAT_PLAYER_CHARACTER_BANS, "SELECT FROM_UNIXTIME(bandate), unbandate-bandate, active, unbandate, banreason, bannedby FROM character_banned WHERE guid = ? ORDER BY bandate ASC", CONNECTION_SYNCH);
+
+    // EG - 1v1 arena
+    PrepareStatement(CHAR_SEL_ARENA_1V1_ALL, "SELECT guid, rating, matchMakerRating, weekGames, weekWins, seasonGames, seasonWins, previousOpponent FROM character_arena_1v1", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_INS_ARENA_1V1, "INSERT INTO character_arena_1v1 (guid, rating, matchMakerRating, weekGames, weekWins, seasonGames, seasonWins, previousOpponent) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_ARENA_1V1, "UPDATE character_arena_1v1 SET rating = ?, matchMakerRating = ?, weekGames = ?, weekWins = ?, seasonGames = ?, seasonWins = ?, previousOpponent = ? WHERE guid = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_DEL_ARENA_1V1, "DELETE FROM character_arena_1v1 WHERE guid = ?", CONNECTION_ASYNC);
 }
 
 CharacterDatabaseConnection::CharacterDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo)

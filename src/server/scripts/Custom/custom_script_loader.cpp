@@ -19,10 +19,12 @@
 void AddSC_anticheat_commandscript();
 
 void AddSC_EG_gen_npc_scripts();
+void AddSC_EG_npc_arena1v1();
 void AddSC_EG_pet_scripts();
 void AddSC_EG_transmogrification();
 
 void AddSC_EG_gen_spell_scripts();
+void AddSC_EG_hunter_spell_scripts();
 void AddSC_EG_item_spell_scripts();
 void AddSC_EG_priest_spell_scripts();
 
@@ -38,10 +40,12 @@ void AddCustomScripts()
     AddSC_anticheat_commandscript();
 
     AddSC_EG_gen_npc_scripts();
+    AddSC_EG_npc_arena1v1();
     AddSC_EG_pet_scripts();
     AddSC_EG_transmogrification();
 
     AddSC_EG_gen_spell_scripts();
+    AddSC_EG_hunter_spell_scripts();
     AddSC_EG_item_spell_scripts();
     AddSC_EG_priest_spell_scripts();
 

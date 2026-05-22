@@ -1,6 +1,6 @@
-DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_Cosmetic___Divine_Shield_Blue';
+DELETE FROM `spell_script_names` WHERE `ScriptName` IN ('EG_spell_Cosmetic___Divine_Shield_Blue', 'EG_spell_cosmetic___divine_shield_blue');
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
-(45775, 'EG_spell_Cosmetic___Divine_Shield_Blue');
+(45775, 'EG_spell_cosmetic___divine_shield_blue');
 
  -- Inquisitor Salrand smart ai
 SET @ENTRY := 25584;

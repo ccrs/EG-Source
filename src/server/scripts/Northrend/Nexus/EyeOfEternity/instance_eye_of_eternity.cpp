@@ -83,7 +83,7 @@ public:
                     SpawnGameObject(GO_EXIT_PORTAL, exitPortalPosition);
 
                     if (GameObject* platform = instance->GetGameObject(platformGUID))
-                        platform->RemoveFlag(GO_FLAG_DESTROYED);
+                        platform->SetDestructibleState(GO_DESTRUCTIBLE_INTACT, nullptr, true);
                 }
                 else if (state == DONE)
                     SpawnGameObject(GO_EXIT_PORTAL, exitPortalPosition);
@@ -185,29 +185,34 @@ public:
 
         void VortexHandling()
         {
-            if (Creature* malygos = instance->GetCreature(malygosGUID))
+            Map::PlayerList const& players = instance->GetPlayers();
+            GuidList::const_iterator itr_vortex = vortexTriggers.begin();
+            uint8 counter = 0;
+
+            for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
             {
-                for (GuidList::const_iterator itr_vortex = vortexTriggers.begin(); itr_vortex != vortexTriggers.end(); ++itr_vortex)
+                if (itr_vortex == vortexTriggers.end())
+                    break;
+
+                Player* player = itr->GetSource();
+                if (!player || !player->IsAlive() || !player->IsInWorld() || player->IsGameMaster())
+                    continue;
+                if (player->HasAura(SPELL_VORTEX_4))
+                    continue;
+
+                if (Creature* trigger = instance->GetCreature(*itr_vortex))
                 {
-                    uint8 counter = 0;
-                    if (Creature* trigger = instance->GetCreature(*itr_vortex))
+                    player->CastSpell(trigger, SPELL_VORTEX_4, true);
+                    if (++counter >= 5)
                     {
-                        // each trigger have to cast the spell to 5 players.
-                        for (auto* ref : malygos->GetThreatManager().GetUnsortedThreatList())
-                        {
-                            if (counter >= 5)
-                                break;
-
-                            if (Player* player = ref->GetVictim()->ToPlayer())
-                            {
-                                if (player->IsGameMaster() || player->HasAura(SPELL_VORTEX_4))
-                                    continue;
-
-                                player->CastSpell(trigger, SPELL_VORTEX_4, true);
-                                counter++;
-                            }
-                        }
+                        ++itr_vortex;
+                        counter = 0;
                     }
+                }
+                else
+                {
+                    ++itr_vortex;
+                    counter = 0;
                 }
             }
         }

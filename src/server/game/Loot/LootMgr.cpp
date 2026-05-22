@@ -41,6 +41,9 @@ static Rates const qualityToRate[MAX_ITEM_QUALITY] =
     RATE_DROP_ITEM_ARTIFACT,                                // ITEM_QUALITY_ARTIFACT
 };
 
+// EG - Loot: per-copy weight penalty for the instance-only equal-chanced anti-repeat bias (open interval (0,1), lower = stronger; maxDuplicates cap still enforced)
+static constexpr double LootGroupRepeatBiasFactor = 0.15;
+
 LootStore LootTemplates_Creature("creature_loot_template",           "creature entry",                  true);
 LootStore LootTemplates_Disenchant("disenchant_loot_template",       "item disenchant id",              true);
 LootStore LootTemplates_Fishing("fishing_loot_template",             "area id",                         true);
@@ -288,9 +291,9 @@ bool LootStoreItem::Roll(bool rate) const
 
     ItemTemplate const* pProto = sObjectMgr->GetItemTemplate(itemid);
 
-    float qualityModifier = pProto && rate ? sWorld->getRate(qualityToRate[pProto->Quality]) : 1.0f;
+    float qualityModifier = pProto && rate ? sWorld->getRate(qualityToRate[pProto->GetQuality()]) : 1.0f;
 
-    return roll_chance_f(chance*qualityModifier);
+    return roll_chance_f(chance * qualityModifier);
 }
 
 // Checks correctness of values
@@ -394,9 +397,25 @@ LootStoreItem const* LootTemplate::LootGroup::Roll(Loot& loot, uint16 lootMode) 
     }
 
     possibleLoot = EqualChanced;
-    possibleLoot.remove_if(LootGroupInvalidSelector(loot, lootMode));
+    possibleLoot.remove_if(LootGroupInvalidSelector(loot, lootMode));   // lootmode mask + absolute maxDuplicates hard cap
     if (!possibleLoot.empty())                              // If nothing selected yet - an item is taken from equal-chanced part
-        return Trinity::Containers::SelectRandomContainerElement(possibleLoot);
+    {
+        if (!loot.isInstanceLoot)
+            return Trinity::Containers::SelectRandomContainerElement(possibleLoot);
+
+        // EG - Loot: instance loot only - soft anti-repeat bias layered on the still-enforced maxDuplicates cap (degrades to stock uniform when cap is 1)
+        auto repeatBiasedWeight = [&loot](LootStoreItem* item) -> double
+        {
+            double weight = 1.0;
+            for (LootItem const& lootItem : loot.items)
+                if (lootItem.itemid == item->itemid)
+                    weight *= LootGroupRepeatBiasFactor;
+
+            return weight;
+        };
+
+        return *Trinity::Containers::SelectRandomWeightedContainerElement(possibleLoot, repeatBiasedWeight);
+    }
 
     return nullptr;                                            // Empty drop from the group
 }

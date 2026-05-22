@@ -491,29 +491,22 @@ public:
             return a->Total > b->Total;
         });
 
-        constexpr std::string_view SEP = "|--------------------------|----|------|-----|-------|";
+        constexpr std::string_view SEP = "|----|--------|-------|---------|";
         handler->SendSysMessage(SEP);
-        handler->PSendSysMessage("| %-25s| %-3s|%6s|%5s|%7s|", "Country", "CC", "Online", "Staff", "Players");
+        handler->PSendSysMessage("| %-2s | %-6s | %-5s | %-7s | %s", "CC", "Online", "Staff", "Players", "Country");
         handler->SendSysMessage(SEP);
 
         uint32 grandTotal = 0;
         uint32 grandStaff = 0;
         for (CountryStats const* s : sorted)
         {
-            std::string truncated;
-            std::string_view displayName = s->Name;
-            if (s->Name.size() > 25)
-            {
-                truncated = s->Name.substr(0, 23) + "..";
-                displayName = truncated;
-            }
-            handler->PSendSysMessage("| %-25s| %-3s|%6u|%5u|%7u|", displayName.data(), s->Code.c_str(), s->Total, s->Staff, s->Total - s->Staff);
+            handler->PSendSysMessage("| %-2s | %6u | %5u | %7u | %s", s->Code.c_str(), s->Total, s->Staff, s->Total - s->Staff, s->Name.c_str());
             grandTotal += s->Total;
             grandStaff += s->Staff;
         }
 
         handler->SendSysMessage(SEP);
-        handler->PSendSysMessage("| %-25s| %-3s|%6u|%5u|%7u|", "Total", "", grandTotal, grandStaff, grandTotal - grandStaff);
+        handler->PSendSysMessage("| %-2s | %6u | %5u | %7u | %s", "", grandTotal, grandStaff, grandTotal - grandStaff, "Total");
         handler->SendSysMessage(SEP);
         return true;
     }

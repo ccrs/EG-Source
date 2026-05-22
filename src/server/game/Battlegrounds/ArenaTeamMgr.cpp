@@ -16,6 +16,7 @@
  */
 
 #include "Define.h"
+#include "Arena1v1Mgr.h"
 #include "ArenaTeamMgr.h"
 #include "World.h"
 #include "Log.h"
@@ -149,6 +150,9 @@ void ArenaTeamMgr::DistributeArenaPoints()
     for (auto [teamId, team] : ArenaTeamStore)
         team->UpdateArenaPointsHelper(PlayerPoints);
 
+    // EG - 1v1 arena
+    sArena1v1Mgr->AccumulateWeeklyPoints(PlayerPoints);
+
     CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
 
     CharacterDatabasePreparedStatement* stmt;
@@ -182,6 +186,9 @@ void ArenaTeamMgr::DistributeArenaPoints()
 
         team->NotifyStatsChanged();
     }
+
+    // EG - 1v1 arena
+    sArena1v1Mgr->FinishWeek();
 
     sWorld->SendWorldText(LANG_DIST_ARENA_POINTS_TEAM_END);
 

@@ -46,6 +46,10 @@ enum ArenaWorldStates
 
 class TC_GAME_API Arena : public Battleground
 {
+    public:
+        // EG - 1v1 arena: halve the start countdown
+        void Apply1v1Overrides();
+
     protected:
         Arena();
 

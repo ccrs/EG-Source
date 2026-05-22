@@ -1133,7 +1133,7 @@ void SpellMgr::LoadSpellTargetPositions()
 
     mSpellTargetPositions.clear();                                // need for reload case
 
-    //                                                0      1          2        3         4           5            6
+    //                                               0   1            2      3          4          5          6
     QueryResult result = WorldDatabase.Query("SELECT ID, EffectIndex, MapID, PositionX, PositionY, PositionZ, Orientation FROM spell_target_position");
     if (!result)
     {
@@ -2887,6 +2887,10 @@ void SpellMgr::LoadSpellInfoCustomAttributes()
                 spellInfo->AttributesCu |= SPELL_ATTR0_CU_AURA_CANNOT_BE_SAVED;
     }
 
+    // 1010 Curse of Idiocy - Mr. Bigglesworth curse
+    if (SpellInfo* spellInfo = _GetSpellInfo(1010))
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_AURA_CANNOT_BE_SAVED;
+
     TC_LOG_INFO("server.loading", ">> Loaded SpellInfo custom attributes in {} ms", GetMSTimeDiffToNow(oldMSTime));
 }
 
@@ -3915,6 +3919,12 @@ void SpellMgr::LoadSpellInfoCorrections()
     ApplySpellFix({ 28864, 29105 }, [](SpellInfo* spellInfo)
     {
         spellInfo->_GetEffect(EFFECT_0).RadiusEntry = sSpellRadiusStore.LookupEntry(EFFECT_RADIUS_10_YARDS);
+    });
+
+    // 27812 Void Blast
+    ApplySpellFix({ 27812 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).RadiusEntry = sSpellRadiusStore.LookupEntry(EFFECT_RADIUS_3_YARDS);
     });
 
     ApplySpellFix({
@@ -5013,16 +5023,75 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->ExplicitTargetMask = 0;
     });
 
-    // Pound
+    // 53472 Pound
+    // 59433 Pound
     ApplySpellFix({ 53472, 59433 }, [](SpellInfo* spellInfo)
     {
         spellInfo->_GetEffect(EFFECT_2).Effect = SPELL_EFFECT_NONE;
     });
 
+    // 58026 Blessing of the Crusade
     ApplySpellFix({ 58026 }, [](SpellInfo* spellInfo)
     {
         spellInfo->DurationEntry = sSpellDurationStore.LookupEntry(21); // permanent
         spellInfo->AttributesEx |= SPELL_ATTR1_NO_THREAT;
+    });
+
+    // 55853 Vortex - Eye of Eternity - vehicle-entry spell
+    ApplySpellFix({ 55853 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
+    });
+
+    // 73040 Vortex - Eye of Eternity - landing teleport
+    ApplySpellFix({ 73040 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).TargetB = SpellImplicitTargetInfo(TARGET_DEST_DEST);
+    });
+
+    // 55873 Vortex - Eye of Eternity - visual aura
+    ApplySpellFix({ 55873 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->DurationEntry = sSpellDurationStore.LookupEntry(1); // 10 seconds
+    });
+
+    // 55849 Power Spark - Eye of Eternity
+    ApplySpellFix({ 55849 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->StackAmount = 1;
+    });
+
+    // 1010 Curse of Idiocy (Naxxramas Mr. Bigglesworth debuff)
+    ApplySpellFix({ 1010 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Dispel = DISPEL_NONE;
+        spellInfo->StackAmount = 0;
+        spellInfo->Attributes |= SPELL_ATTR0_UNAFFECTED_BY_INVULNERABILITY | SPELL_ATTR0_CASTABLE_WHILE_DEAD;
+        spellInfo->AttributesEx |= SPELL_ATTR1_NOT_BREAK_STEALTH;
+        spellInfo->AttributesEx2 |= SPELL_ATTR2_CAN_TARGET_DEAD | SPELL_ATTR2_CAN_TARGET_NOT_IN_LOS | SPELL_ATTR2_NOT_NEED_SHAPESHIFT;
+        spellInfo->AttributesEx3 |= SPELL_ATTR3_DEATH_PERSISTENT;
+        spellInfo->AttributesEx6 |= SPELL_ATTR6_CAN_TARGET_INVISIBLE;
+        spellInfo->_GetEffect(EFFECT_0).ApplyAuraName = SPELL_AURA_MOD_PERCENT_STAT;
+        spellInfo->_GetEffect(EFFECT_0).DieSides = 0;
+        spellInfo->_GetEffect(EFFECT_0).RealPointsPerLevel = 0.0f;
+        spellInfo->_GetEffect(EFFECT_0).BasePoints = -25;
+        spellInfo->_GetEffect(EFFECT_0).MiscValue = -1;
+        spellInfo->_GetEffect(EFFECT_0).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
+        spellInfo->_GetEffect(EFFECT_1).ApplyAuraName = SPELL_AURA_MOD_DAMAGE_PERCENT_DONE;
+        spellInfo->_GetEffect(EFFECT_1).DieSides = 0;
+        spellInfo->_GetEffect(EFFECT_1).RealPointsPerLevel = 0.0f;
+        spellInfo->_GetEffect(EFFECT_1).BasePoints = -25;
+        spellInfo->_GetEffect(EFFECT_1).MiscValue = SPELL_SCHOOL_MASK_ALL;
+        spellInfo->_GetEffect(EFFECT_1).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
+        spellInfo->_GetEffect(EFFECT_2).ApplyAuraName = SPELL_AURA_MOD_PERCENT_STAT;
+        spellInfo->_GetEffect(EFFECT_2).ApplyAuraPeriod = 0;
+        spellInfo->_GetEffect(EFFECT_2).DieSides = 0;
+        spellInfo->_GetEffect(EFFECT_2).RealPointsPerLevel = 0.0f;
+        spellInfo->_GetEffect(EFFECT_2).BasePoints = -10;
+        spellInfo->_GetEffect(EFFECT_2).Amplitude = 0.0f;
+        spellInfo->_GetEffect(EFFECT_2).MiscValue = STAT_INTELLECT;
+        spellInfo->_GetEffect(EFFECT_2).TriggerSpell = 0;
+        spellInfo->_GetEffect(EFFECT_2).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
     });
 
     // Liquid Pyrite
