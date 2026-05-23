@@ -1924,8 +1924,8 @@ void Unit::HandleEmoteCommand(Emote emoteId)
 
     damageInfo.ModifyDamage(absorbIgnoringDamage);
 
-    // split damage auras - only when not damaging self
-    if (damageInfo.GetVictim() != damageInfo.GetAttacker())
+    // split damage auras - require a real attacker (DoT casters may be gone) and not damaging self
+    if (damageInfo.GetAttacker() && damageInfo.GetVictim() != damageInfo.GetAttacker())
     {
         // We're going to call functions which can modify content of the list during iteration over it's elements
         // Let's copy the list so we can prevent iterator invalidation
