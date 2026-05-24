@@ -342,7 +342,6 @@ struct boss_malygos : public BossAI
     {
         Initialize();
         _despawned = instance->GetBossState(DATA_MALYGOS_EVENT) == FAIL;
-        _flySpeed = me->GetSpeed(MOVE_FLIGHT); // Get initial fly speed, otherwise on each wipe fly speed would add up if we get it
         _phase = PHASE_NOT_STARTED;
     }
 
@@ -376,8 +375,7 @@ struct boss_malygos : public BossAI
         me->SetCanFly(true);
         me->SetImmuneToAll(true);
         me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-        // TO DO: find what in core is making boss slower than in retail (when correct speed data) or find missing movement flag update or forced spline change
-        me->SetSpeedRate(MOVE_FLIGHT, _flySpeed * 0.25f);
+        me->SetSpeedRate(MOVE_FLIGHT, 1.75f);
         if (_despawned)
             DoAction(ACTION_HANDLE_RESPAWN);
 
@@ -499,6 +497,8 @@ struct boss_malygos : public BossAI
             case ACTION_LIFT_IN_AIR:
             {
                 me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
+                me->SetDisableGravity(true);
+                me->SetCanFly(true);
                 Position _zToLift = me->GetPosition();
                 if (_phase == PHASE_ONE)
                 {
@@ -691,7 +691,7 @@ struct boss_malygos : public BossAI
                 me->SetDisableGravity(false);
                 me->SetCanFly(false);
                 me->GetMotionMaster()->MoveIdle();
-                events.ScheduleEvent(EVENT_LAND_START_ENCOUNTER, 7s, 1, PHASE_NOT_STARTED);
+                events.ScheduleEvent(EVENT_LAND_START_ENCOUNTER, 3s, 1, PHASE_NOT_STARTED);
                 break;
             case POINT_VORTEX_P_ONE:
                 DoAction(ACTION_EXECUTE_VORTEX);
@@ -1027,8 +1027,6 @@ private:
     bool _firstCyclicMovementStarted; // At first movement start he throws one shield asap, so this check is needed for it only.
     bool _performingSurgeOfPower; // Used to prevent starting Cyclic Movement called in Arcane Bomb event.
     bool _performingDestroyPlatform; // Used to prevent starting some movements right when Destroy Platfrom event starts.
-
-    float _flySpeed; // Used to store base fly speed to prevent stacking on each evade.
 };
 
 struct npc_portal_eoe : public ScriptedAI
@@ -1510,7 +1508,7 @@ struct npc_wyrmrest_skytalon : public VehicleAI
                         if (Creature* malygos = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_MALYGOS)))
                         {
                             Position pos;
-                            pos.m_positionZ = malygos->GetPositionZ();
+                            pos.m_positionZ = MalygosPositions[4].GetPositionZ();
                             malygos->GetNearPoint2D(nullptr, pos.m_positionX, pos.m_positionY, frand(20.0f, 40.0f), frand(0.0f, 2.0f * float(M_PI)));
                             me->GetMotionMaster()->MovePoint(2, pos);
                         }

@@ -229,18 +229,6 @@ public:
         if (raceValue == 9 || raceValue == 10)
             ++raceValue;
 
-        uint32 playerTeam = Player::TeamForRace(player->GetRace());
-        if (Player::TeamForRace(raceValue) != playerTeam)
-        {
-            std::string racesForTeam;
-            if (playerTeam == ALLIANCE)
-                racesForTeam = "0 - HIDE all\n1 - Human\n3 - Dwarf\n4 - Nightelf\n7 - Gnome\n10 - Dranei\n11 - Reset";
-            else
-                racesForTeam = "0 - HIDE all\n2 - Orc\n5 - Undead\n6 - Tauren\n8 - Troll\n9 - Bloodelf\n11 - Reset";
-            handler->SendSysMessage("Please select a race from your current Faction.\nOptions:\n" + racesForTeam);
-            return true;
-        }
-
         Races masqueradeRace = Races(raceValue);
         player->SetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE, CustomFlags(1 << (value)));
         handler->PSendSysMessage(LANG_MASQUERADE_RACE_ENABLED, EnumUtils::ToTitle(masqueradeRace));

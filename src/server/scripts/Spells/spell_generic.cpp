@@ -3822,7 +3822,7 @@ class spell_gen_vehicle_scaling : public AuraScript
         {
             case SPELL_GEAR_SCALING:
                 factor = 1.0f;
-                baseItemLevel = 205;
+                baseItemLevel = 190;
                 break;
             default:
                 factor = 1.0f;
