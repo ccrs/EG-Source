@@ -1398,37 +1398,14 @@ void AuraEffect::HandleModInvisibility(AuraApplication const* aurApp, uint8 mode
     }
     else
     {
-        if (!target->HasAuraType(SPELL_AURA_MOD_INVISIBILITY))
-        {
-            // if not have different invisibility auras.
-            // always remove glow vision
-            if (target->GetTypeId() == TYPEID_PLAYER)
-                target->RemoveByteFlag(PLAYER_FIELD_BYTES2, PLAYER_FIELD_BYTES_2_OFFSET_AURA_VISION, PLAYER_FIELD_BYTE2_INVISIBILITY_GLOW);
-
+        if (!target->HasAuraTypeWithMiscvalue(SPELL_AURA_MOD_INVISIBILITY, type))
             target->m_invisibility.DelFlag(type);
-        }
-        else
-        {
-            bool found = false;
-            Unit::AuraEffectList const& invisAuras = target->GetAuraEffectsByType(SPELL_AURA_MOD_INVISIBILITY);
-            for (Unit::AuraEffectList::const_iterator i = invisAuras.begin(); i != invisAuras.end(); ++i)
-            {
-                if (GetMiscValue() == (*i)->GetMiscValue())
-                {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found)
-            {
-                target->m_invisibility.DelFlag(type);
 
-                // if not have invisibility auras of type INVISIBILITY_GENERAL or INVISIBILITY_UNK10
-                // remove glow vision
-                if (target->GetTypeId() == TYPEID_PLAYER && !target->m_invisibility.HasFlag(INVISIBILITY_GENERAL) && !target->m_invisibility.HasFlag(INVISIBILITY_UNK10))
-                    target->RemoveByteFlag(PLAYER_FIELD_BYTES2, PLAYER_FIELD_BYTES_2_OFFSET_AURA_VISION, PLAYER_FIELD_BYTE2_INVISIBILITY_GLOW);
-            }
-        }
+        // if not have invisibility auras of type INVISIBILITY_GENERAL or INVISIBILITY_UNK10
+        // remove glow vision
+        if (!target->m_invisibility.HasFlag(INVISIBILITY_GENERAL) && !target->m_invisibility.HasFlag(INVISIBILITY_UNK10))
+            if (Player* playerTarget = target->ToPlayer())
+                playerTarget->RemoveByteFlag(PLAYER_FIELD_BYTES2, PLAYER_FIELD_BYTES_2_OFFSET_AURA_VISION, PLAYER_FIELD_BYTE2_INVISIBILITY_GLOW);
 
         target->m_invisibility.AddValue(type, -GetAmount());
     }
@@ -1491,33 +1468,15 @@ void AuraEffect::HandleModStealth(AuraApplication const* aurApp, uint8 mode, boo
     {
         target->m_stealth.AddValue(type, -GetAmount());
 
-        if (!target->HasAuraType(SPELL_AURA_MOD_STEALTH))
-        {
+        // EG: collapsed the per-MiscValue scan into HasAuraTypeWithMiscvalue
+        if (!target->HasAuraTypeWithMiscvalue(SPELL_AURA_MOD_STEALTH, type))
             target->m_stealth.DelFlag(type);
-        }
-        else
-        {
-            // Other MOD_STEALTH auras remain — only clear the flag for this specific
-            // StealthType if none of those remaining auras share the same MiscValue.
-            bool found = false;
-            Unit::AuraEffectList const& stealthAuras = target->GetAuraEffectsByType(SPELL_AURA_MOD_STEALTH);
-            for (Unit::AuraEffectList::const_iterator i = stealthAuras.begin(); i != stealthAuras.end(); ++i)
-            {
-                if (GetMiscValue() == (*i)->GetMiscValue())
-                {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found)
-                target->m_stealth.DelFlag(type);
-        }
 
         if (!target->m_stealth.GetFlags())
         {
             target->RemoveVisFlag(UNIT_VIS_FLAGS_CREEP);
-            if (target->GetTypeId() == TYPEID_PLAYER)
-                target->RemoveByteFlag(PLAYER_FIELD_BYTES2, PLAYER_FIELD_BYTES_2_OFFSET_AURA_VISION, PLAYER_FIELD_BYTE2_STEALTH);
+            if (Player* playerTarget = target->ToPlayer())
+                playerTarget->RemoveByteFlag(PLAYER_FIELD_BYTES2, PLAYER_FIELD_BYTES_2_OFFSET_AURA_VISION, PLAYER_FIELD_BYTE2_STEALTH);
         }
     }
 
