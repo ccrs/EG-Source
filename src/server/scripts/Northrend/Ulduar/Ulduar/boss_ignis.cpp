@@ -149,7 +149,6 @@ class boss_ignis : public CreatureScript
                 events.ScheduleEvent(EVENT_SCORCH, 25s);
                 events.ScheduleEvent(EVENT_SLAG_POT, 35s);
                 events.ScheduleEvent(EVENT_CONSTRUCT, 15s);
-                events.ScheduleEvent(EVENT_END_POT, 40s);
                 events.ScheduleEvent(EVENT_BERSERK, 480s);
                 Initialize();
                 instance->DoStartTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, ACHIEVEMENT_IGNIS_START_EVENT);
@@ -224,7 +223,7 @@ class boss_ignis : public CreatureScript
                             events.ScheduleEvent(EVENT_JET, 35s, 40s);
                             break;
                         case EVENT_SLAG_POT:
-                            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 100, true))
+                            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true, false))
                             {
                                 Talk(SAY_SLAG_POT);
                                 _slagPotGUID = target->GetGUID();
@@ -309,18 +308,7 @@ class npc_iron_construct : public CreatureScript
         {
             npc_iron_constructAI(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript())
             {
-                Initialize();
                 creature->SetReactState(REACT_PASSIVE);
-            }
-
-            void Initialize()
-            {
-                _brittled = false;
-            }
-
-            void Reset() override
-            {
-                Initialize();
             }
 
             void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
@@ -347,16 +335,13 @@ class npc_iron_construct : public CreatureScript
                     {
                         me->RemoveAura(SPELL_HEAT);
                         DoCast(SPELL_MOLTEN);
-                        _brittled = false;
                     }
                 }
 
-                // Water pools
-                if (me->IsInWater() && !_brittled && me->HasAura(SPELL_MOLTEN))
+                if (me->IsInWater() && me->HasAura(SPELL_MOLTEN))
                 {
                     DoCast(SPELL_BRITTLE);
                     me->RemoveAura(SPELL_MOLTEN);
-                    _brittled = true;
                 }
 
                 DoMeleeAttackIfReady();
@@ -364,7 +349,6 @@ class npc_iron_construct : public CreatureScript
 
         private:
             InstanceScript* _instance;
-            bool _brittled;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -401,7 +385,7 @@ class npc_scorch_ground : public CreatureScript
                 {
                     if (who->GetEntry() == NPC_IRON_CONSTRUCT)
                     {
-                        if (!who->HasAura(SPELL_HEAT) || !who->HasAura(SPELL_MOLTEN))
+                        if (!who->HasAura(SPELL_HEAT) && !who->HasAura(SPELL_MOLTEN))
                         {
                             _constructGUID = who->GetGUID();
                             _heat = true;
