@@ -25,12 +25,14 @@
 #include "ulduar.h"
 #include "CellImpl.h"
 #include "CombatAI.h"
+#include "CommonHelpers.h"
 #include "Containers.h"
 #include "Creature.h"
 #include "GameObjectAI.h"
 #include "GridNotifiersImpl.h"
 #include "InstanceScript.h"
 #include "MotionMaster.h"
+#include "MovementTypedefs.h"
 #include "ObjectAccessor.h"
 #include "PassiveAI.h"
 #include "ScriptedEscortAI.h"
@@ -75,6 +77,8 @@ enum FlameLeviathanSpells
     SPELL_AUTO_REPAIR              = 62705,
     SPELL_LIQUID_PYRITE            = 62494,
     SPELL_LIQUID_PYRITE_RELOAD     = 62496,
+    SPELL_LIQUID_PYRITE_DRIP       = 62987,
+    SPELL_SPAWN_PYRITE             = 62543,
     SPELL_DUSTY_EXPLOSION          = 63360,
     SPELL_DUST_CLOUD_IMPACT        = 54740,
     AURA_STEALTH_DETECTION         = 18950,
@@ -322,9 +326,9 @@ class boss_flame_leviathan : public CreatureScript
                 BossAI::JustEngagedWith(who);
                 events.ScheduleEvent(EVENT_PURSUE, 1ms);
                 events.ScheduleEvent(EVENT_MISSILE, 1500ms, 4s);
-                events.ScheduleEvent(EVENT_VENT, 20s);
+                events.ScheduleEvent(EVENT_VENT, 31s);
                 events.ScheduleEvent(EVENT_SHUTDOWN, 150s);
-                events.ScheduleEvent(EVENT_SPEED, 15s);
+                events.ScheduleEvent(EVENT_SPEED, 10s);
                 events.ScheduleEvent(EVENT_SUMMON, 1s);
                 events.RescheduleEvent(EVENT_CHECK_WIPE, 5s);
 
@@ -455,9 +459,10 @@ class boss_flame_leviathan : public CreatureScript
 
                 events.Update(diff);
 
-                if (Shutdown == RAID_MODE(TWO_SEATS, FOUR_SEATS))
+                if (Shutdown >= RAID_MODE(TWO_SEATS, FOUR_SEATS))
                 {
                     Shutdown = 0;
+                    events.CancelEvent(EVENT_SHUTDOWN);
                     events.ScheduleEvent(EVENT_SHUTDOWN, 4s);
                     me->RemoveAurasDueToSpell(SPELL_OVERLOAD_CIRCUIT);
                     me->InterruptNonMeleeSpells(true);
@@ -475,7 +480,7 @@ class boss_flame_leviathan : public CreatureScript
                             _pursueTarget.Clear();
                             if (SpellCastResult::SPELL_CAST_OK == DoCast(SPELL_PURSUED))  // Will select target in spellscript
                                 Talk(SAY_TARGET);
-                            events.ScheduleEvent(EVENT_PURSUE, 35s);
+                            events.ScheduleEvent(EVENT_PURSUE, 31s);
                             break;
                         case EVENT_MISSILE:
                             DoCast(me, SPELL_MISSILE_BARRAGE, true);
@@ -487,7 +492,7 @@ class boss_flame_leviathan : public CreatureScript
                             break;
                         case EVENT_SPEED:
                             DoCastAOE(SPELL_GATHERING_SPEED);
-                            events.ScheduleEvent(EVENT_SPEED, 15s);
+                            events.ScheduleEvent(EVENT_SPEED, 10s);
                             break;
                         case EVENT_SUMMON:
                             if (summons.size() < 15)
@@ -878,15 +883,22 @@ class boss_flame_leviathan_safety_container : public CreatureScript
 
             void JustDied(Unit* /*killer*/) override
             {
-                float x, y, z;
-                me->GetPosition(x, y, z);
-                z = me->GetMap()->GetHeight(me->GetPhaseMask(), x, y, z);
-                me->GetMotionMaster()->MovePoint(0, x, y, z);
-                me->UpdatePosition(x, y, z, 0);
-            }
+                float heightDiff = me->GetPositionZ() - me->GetFloorZ();
+                if (heightDiff <= 0.5f)
+                {
+                    DoCastAOE(SPELL_DUSTY_EXPLOSION, true);
+                    me->CastSpell(me, SPELL_SPAWN_PYRITE, true);
+                    return;
+                }
 
-            void UpdateAI(uint32 /*diff*/) override
-            {
+                Milliseconds fallTime = std::chrono::round<Milliseconds>(std::chrono::duration<float>(Movement::computeFallTime(heightDiff, false)));
+                me->m_Events.AddEventAtOffset(new Trinity::Helpers::Events::GenericEvent(me, [](WorldObject* o)
+                {
+                    Unit* c = o->ToUnit();
+                    c->CastSpell(c, SPELL_DUSTY_EXPLOSION, true);
+                    c->CastSpell(c, SPELL_SPAWN_PYRITE, true);
+                    return true;
+                }), fallTime);
             }
         };
 
@@ -906,6 +918,7 @@ class npc_mechanolift : public CreatureScript
             npc_mechanoliftAI(Creature* creature) : PassiveAI(creature)
             {
                 Initialize();
+                me->GetMotionMaster()->MoveRandom(50.f);
             }
 
             void Initialize()
@@ -916,17 +929,15 @@ class npc_mechanolift : public CreatureScript
             void Reset() override
             {
                 Initialize();
-                me->GetMotionMaster()->MoveRandom(50.f);
             }
 
             void JustDied(Unit* /*killer*/) override
             {
-                DoCastAOE(SPELL_DUSTY_EXPLOSION, true);
-                if (Creature* liquid = DoSummon(NPC_LIQUID_PYRITE, me, 0.f))
-                {
-                    liquid->CastSpell(liquid, SPELL_LIQUID_PYRITE, true);
-                    liquid->CastSpell(liquid, SPELL_DUST_CLOUD_IMPACT, true);
-                }
+                DoCastAOE(SPELL_LIQUID_PYRITE_DRIP, true);
+
+                if (Vehicle* kit = me->GetVehicleKit())
+                    if (Unit* container = kit->GetPassenger(1))  // seat 1 — see vehicle_template_accessory 33214 -> 33218
+                        container->ExitVehicle();
             }
 
             void MovementInform(uint32 type, uint32 id) override
@@ -1264,6 +1275,10 @@ class npc_freya_ward_summon : public CreatureScript
             {
                 Initialize();
                 creature->GetMotionMaster()->MoveRandom(100.0f);
+
+                if (InstanceScript* instance = creature->GetInstanceScript())
+                    if (Creature* leviathan = instance->GetCreature(DATA_FLAME_LEVIATHAN))
+                        leviathan->AI()->JustSummoned(creature);
             }
 
             void Initialize()
@@ -1274,9 +1289,6 @@ class npc_freya_ward_summon : public CreatureScript
             void Reset() override
             {
                 Initialize();
-                if (InstanceScript* instance = me->GetInstanceScript())
-                    if (Creature* leviathan = instance->GetCreature(DATA_FLAME_LEVIATHAN))
-                        leviathan->AI()->JustSummoned(me);
             }
 
             void UpdateAI(uint32 diff) override
@@ -1407,6 +1419,18 @@ struct EG_npc_salvaged_demolisher_mechanic_seat : public VehicleAI
                 me->CastSpell(me, SPELL_LIQUID_PYRITE_RELOAD, true);
                 who->ToCreature()->DespawnOrUnsummon(5s);
             }
+    }
+};
+
+struct EG_npc_flame_leviathan_outro_flying_machine : public PassiveAI
+{
+    EG_npc_flame_leviathan_outro_flying_machine(Creature* creature) : PassiveAI(creature) { }
+
+    void MovementInform(uint32 type, uint32 id) override
+    {
+        if (type == POINT_MOTION_TYPE && id == POINT_FL_OUTRO_FLYING_MACHINE_LAND)
+            if (InstanceScript* instance = me->GetInstanceScript())
+                instance->SetData(DATA_FL_OUTRO_FLYING_MACHINE_LANDED, 0);
     }
 };
 
@@ -2036,6 +2060,7 @@ void AddSC_boss_flame_leviathan()
     new npc_brann_bronzebeard_ulduar_intro();
     new npc_lorekeeper();
     RegisterUlduarCreatureAI(EG_npc_salvaged_demolisher_mechanic_seat);
+    RegisterUlduarCreatureAI(EG_npc_flame_leviathan_outro_flying_machine);
     new go_ulduar_tower();
 
     new achievement_three_car_garage_demolisher();

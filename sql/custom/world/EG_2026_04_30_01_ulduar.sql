@@ -65,3 +65,64 @@ UPDATE `creature_template` SET `flags_extra` = `flags_extra` | 0x200 WHERE `entr
 DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_brundir_lightning_tendrils_visual';
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (61884, 'EG_spell_brundir_lightning_tendrils_visual');
+
+-- Flame Leviathan Seat (33114): subseat 1 = Defense Turret, subseat 2 = Overload Device
+DELETE FROM `vehicle_template_accessory` WHERE `entry` = 33114 AND `seat_id` IN (1, 2);
+INSERT INTO `vehicle_template_accessory` (`entry`, `accessory_entry`, `seat_id`, `minion`, `description`, `summontype`, `summontimer`) VALUES
+(33114, 33142, 1, 1, 'Flame Leviathan Seat - Leviathan Defense Turret', 6, 30000),
+(33114, 33143, 2, 1, 'Flame Leviathan Seat - Overload Control Device', 6, 30000);
+
+-- FL 25-man (34003) spellclick: Ride Vehicle (46598)
+DELETE FROM `npc_spellclick_spells` WHERE `npc_entry` = 34003;
+INSERT INTO `npc_spellclick_spells` (`npc_entry`, `spell_id`, `cast_flags`, `user_type`) VALUES
+(34003, 46598, 1, 0);
+
+-- FL 25-man (34003) accessories: mirror 33113 layout (2x Seat, 1x Static Cannon)
+DELETE FROM `vehicle_template_accessory` WHERE `entry` = 34003;
+INSERT INTO `vehicle_template_accessory` (`entry`, `accessory_entry`, `seat_id`, `minion`, `description`, `summontype`, `summontimer`) VALUES
+(34003, 33114, 2, 1, 'Flame Leviathan (25) - Seat L', 6, 30000),
+(34003, 33114, 3, 1, 'Flame Leviathan (25) - Seat R', 6, 30000),
+(34003, 33139, 7, 1, 'Flame Leviathan (25) - Static Cannon', 6, 30000);
+
+-- Spawn Pyrite (62543)
+DELETE FROM `spell_dbc` WHERE `Id` = 62543;
+INSERT INTO `spell_dbc` (`Id`, `Attributes`, `CastingTimeIndex`, `DurationIndex`, `RangeIndex`, `Effect1`, `EffectImplicitTargetA1`, `EffectMiscValue1`, `EffectMiscValueB1`, `EffectBasePoints1`, `SpellName`, `SchoolMask`) VALUES
+(62543, 256, 1, 3, 1, 28, 32, 33189, 64, 0, 'Spawn Pyrite', 1);
+
+-- Liquid Pyrite (33189)
+UPDATE `creature_template_addon` SET `auras` = '62494' WHERE `entry` = 33189;
+
+-- Bronzebeard Radio (34054)
+DELETE FROM `creature_text` WHERE `CreatureID` = 34054;
+INSERT INTO `creature_text` (`CreatureID`, `GroupID`, `ID`, `Type`, `Language`, `Probability`, `Emote`, `Duration`, `Sound`, `BroadcastTextId`, `TextRange`, `comment`) VALUES
+(34054, 0, 0, 12, 0, 100, 0, 0, 0, 34154, 3, 'Bronzebeard Radio SAY_BRANN_RADIO_LEVIATHAN'),
+(34054, 1, 0, 12, 0, 100, 0, 0, 0, 34155, 3, 'Bronzebeard Radio SAY_BRANN_RADIO_LEVIATHAN2'),
+(34054, 2, 0, 12, 0, 100, 0, 0, 0, 34156, 3, 'Bronzebeard Radio SAY_BRANN_RADIO_LEVIATHAN3');
+
+-- Move 4 RX-214 Repair-o-matic Station
+UPDATE `gameobject` SET `position_x` = 155.553 WHERE `guid` = 55106;
+UPDATE `gameobject` SET `position_x` = 156.895 WHERE `guid` = 55153;
+UPDATE `gameobject` SET `position_x` = 163.516 WHERE `guid` = 55126;
+UPDATE `gameobject` SET `position_x` = 164.857 WHERE `guid` = 55193;
+
+-- Brann's Flying Machine (34120)
+UPDATE `creature_template` SET `ScriptName` = 'EG_npc_flame_leviathan_outro_flying_machine' WHERE `entry` = 34120;
+
+-- Brann (34119) outro yells
+DELETE FROM `creature_text` WHERE `CreatureID` = 34119;
+INSERT INTO `creature_text` (`CreatureID`, `GroupID`, `ID`, `Text`, `Type`, `Language`, `Probability`, `Emote`, `Duration`, `Sound`, `BroadcastTextId`, `TextRange`, `comment`) VALUES
+(34119, 0, 0, '', 14, 0, 100, 0, 0, 0, 34225, 0, 'Brann FL outro 1 - What a battle'),
+(34119, 1, 0, '', 14, 0, 100, 0, 0, 0, 34226, 0, 'Brann FL outro 3 - Perhaps so'),
+(34119, 2, 0, '', 14, 0, 100, 0, 0, 0, 34229, 0, 'Brann FL outro 5 - Oi'),
+(34119, 3, 0, '', 14, 0, 100, 0, 0, 0, 34231, 0, 'Brann FL outro 6 - What about plated proto-drake'),
+(34119, 4, 0, '', 14, 0, 100, 0, 0, 0, 34233, 0, 'Brann FL outro 9 - Sneak marmots'),
+(34119, 5, 0, '', 14, 0, 100, 0, 0, 0, 34235, 0, 'Brann FL outro 11 - Fine');
+
+-- Rhydian (33696) outro yells
+DELETE FROM `creature_text` WHERE `CreatureID` = 33696 AND `GroupID` IN (2, 3, 4, 5, 6);
+INSERT INTO `creature_text` (`CreatureID`, `GroupID`, `ID`, `Text`, `Type`, `Language`, `Probability`, `Emote`, `Duration`, `Sound`, `BroadcastTextId`, `TextRange`, `comment`) VALUES
+(33696, 2, 0, 'Our friends fought well, Brann, but we''re not done yet.', 14, 0, 100, 0, 0, 0, 0, 0, 'Rhydian FL outro 2'),
+(33696, 3, 0, 'None at all. I suspect it has something to do with that giant mechanical construct that our scouts spotted in front of the gate.', 14, 0, 100, 0, 0, 0, 0, 0, 'Rhydian FL outro 4'),
+(33696, 4, 0, 'The Kirin Tor can''t possibly spare any additional resources to take on anything that size. We may not have to though.', 14, 0, 100, 0, 0, 0, 0, 0, 'Rhydian FL outro 7'),
+(33696, 5, 0, 'We can sneak past them. As long as we can take down that construct in front of the gate, we should be able to get inside.', 14, 0, 100, 0, 0, 0, 0, 0, 'Rhydian FL outro 8'),
+(33696, 6, 0, 'We''re hunting an old god, Brann.', 14, 0, 100, 0, 0, 0, 0, 0, 'Rhydian FL outro 10');

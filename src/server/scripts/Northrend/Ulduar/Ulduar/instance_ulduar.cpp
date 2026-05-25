@@ -141,6 +141,12 @@ ObjectData const objectData[] =
 };
 
 static Position const BrannRadioSummonPos = { -312.553f, 294.34140f, 525.1342f, 5.408990f };
+static Position const FlameLeviathanOutroFlyingMachineSpawn = { 166.760f, -273.302f, 499.799f, 1.43817f };
+static Position const FlameLeviathanOutroFlyingMachineLand = { 246.189f,  -80.410f, 409.747f, 3.14159f };
+static Position const FlameLeviathanOutroRhydianSpawn = { 235.560f, -136.188f, 409.651f, 1.57080f };
+static Position const FlameLeviathanOutroRhydianWalkTo = { 244.500f,  -94.000f, 409.819f, 1.57080f };
+
+static constexpr uint32 FlameLeviathanOutroSummonDespawnMs = 5 * MINUTE * IN_MILLISECONDS;
 
 UlduarKeeperDespawnEvent::UlduarKeeperDespawnEvent(Creature* owner, Milliseconds despawnTimerOffset) : _owner(owner), _despawnTimer(despawnTimerOffset)
 {
@@ -583,7 +589,10 @@ class instance_ulduar : public InstanceMapScript
                 {
                     case DATA_FLAME_LEVIATHAN:
                         if (state == DONE)
+                        {
                             _events.ScheduleEvent(EVENT_DESPAWN_LEVIATHAN_VEHICLES, 5s);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_SPAWN, 10s);
+                        }
                         else if (state == NOT_STARTED)
                             ForceRespawnQueuedCreaturesByEntry({ NPC_SALVAGED_DEMOLISHER, NPC_SALVAGED_SIEGE_ENGINE, NPC_SALVAGED_CHOPPER });
                         break;
@@ -748,6 +757,9 @@ class instance_ulduar : public InstanceMapScript
                         break;
                     case DATA_STUNNED:
                         _stunned = data;
+                        break;
+                    case DATA_FL_OUTRO_FLYING_MACHINE_LANDED:
+                        _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_1, 2s);
                         break;
                     default:
                         break;
@@ -1041,6 +1053,94 @@ class instance_ulduar : public InstanceMapScript
                             if (GameObject* gameObject = instance->GetGameObject(LeviathanGateGUID))
                                 gameObject->SetGoState(GO_STATE_DESTROYED);
                             break;
+                        case EVENT_FL_OUTRO_SPAWN:
+                        {
+                            Creature* flyingMachine = instance->SummonCreature(NPC_BRANN_S_FLYING_MACHINE, FlameLeviathanOutroFlyingMachineSpawn, nullptr, FlameLeviathanOutroSummonDespawnMs);
+                            Creature* brann = instance->SummonCreature(NPC_BRANN_BRONZEBEARD_FLYING_MACHINE, FlameLeviathanOutroFlyingMachineSpawn, nullptr, FlameLeviathanOutroSummonDespawnMs);
+                            Creature* rhydian = instance->SummonCreature(NPC_ARCHMAGE_RHYDIAN, FlameLeviathanOutroRhydianSpawn, nullptr, FlameLeviathanOutroSummonDespawnMs);
+                            if (flyingMachine && brann)
+                            {
+                                brann->EnterVehicle(flyingMachine);
+                                flyingMachine->SetCanFly(true);
+                                flyingMachine->SetDisableGravity(true);
+                                flyingMachine->GetMotionMaster()->MovePoint(POINT_FL_OUTRO_FLYING_MACHINE_LAND, FlameLeviathanOutroFlyingMachineLand);
+                                OutroFlameLeviathanFlyingMachineGUID = flyingMachine->GetGUID();
+                                OutroFlameLeviathanBrannGUID = brann->GetGUID();
+                            }
+                            if (rhydian)
+                            {
+                                OutroFlameLeviathanRhydianGUID = rhydian->GetGUID();
+                                rhydian->SetWalk(true);
+                                rhydian->GetMotionMaster()->MovePoint(POINT_FL_OUTRO_RHYDIAN_WALK_TO_LANDING, FlameLeviathanOutroRhydianWalkTo);
+                            }
+                            break;
+                        }
+                        case EVENT_FL_OUTRO_LINE_1:
+                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                                brann->AI()->Talk(0);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_2, 9s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_2:
+                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                                rhydian->AI()->Talk(2);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_3, 9s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_3:
+                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                                brann->AI()->Talk(1);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_4, 8s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_4:
+                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                                rhydian->AI()->Talk(3);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_5, 8s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_5:
+                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                                brann->AI()->Talk(2);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_6, 9s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_6:
+                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                                brann->AI()->Talk(3);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_7, 8s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_7:
+                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                                rhydian->AI()->Talk(4);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_8, 9s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_8:
+                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                                rhydian->AI()->Talk(5);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_9, 8s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_9:
+                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                                brann->AI()->Talk(4);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_10, 9s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_10:
+                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                                rhydian->AI()->Talk(6);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_11, 8s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_11:
+                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                                brann->AI()->Talk(5);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_DESPAWN, 30s);
+                            break;
+                        case EVENT_FL_OUTRO_DESPAWN:
+                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                                brann->DespawnOrUnsummon();
+                            if (Creature* flyingMachine = instance->GetCreature(OutroFlameLeviathanFlyingMachineGUID))
+                                flyingMachine->DespawnOrUnsummon();
+                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                                rhydian->DespawnOrUnsummon();
+                            OutroFlameLeviathanFlyingMachineGUID.Clear();
+                            OutroFlameLeviathanBrannGUID.Clear();
+                            OutroFlameLeviathanRhydianGUID.Clear();
+                            break;
                     }
                 }
             }
@@ -1092,6 +1192,9 @@ class instance_ulduar : public InstanceMapScript
             ObjectGuid FreyaAchieveTriggerGUID;
             ObjectGuid MimironVehicleGUIDs[3];
             ObjectGuid KeeperGUIDs[4];
+            ObjectGuid OutroFlameLeviathanFlyingMachineGUID;
+            ObjectGuid OutroFlameLeviathanBrannGUID;
+            ObjectGuid OutroFlameLeviathanRhydianGUID;
             // GameObjects
             ObjectGuid LeviathanGateGUID;
             ObjectGuid KologarnChestGUID;
