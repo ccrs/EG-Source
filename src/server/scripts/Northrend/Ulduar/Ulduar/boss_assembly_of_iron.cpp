@@ -24,6 +24,8 @@ EndScriptData */
 
 #include "ulduar.h"
 #include "InstanceScript.h"
+#include "LootMgr.h"
+#include "Map.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "ScriptedCreature.h"
@@ -91,7 +93,8 @@ enum AssemblyEvents
     EVENT_FLIGHT                                 = 14,
     EVENT_ENDFLIGHT                              = 15,
     EVENT_GROUND                                 = 16,
-    EVENT_LAND                                   = 17
+    EVENT_LAND                                   = 17,
+    EVENT_TAKEOFF                                = 18
 };
 
 enum AssemblyActions
@@ -131,11 +134,13 @@ enum AssemblyMisc
 {
     NPC_WORLD_TRIGGER                            = 22515,
 
-    DATA_PHASE_3                                 = 1
+    DATA_PHASE_3                                 = 1,
+    POINT_BRUNDIR_LAND                           = 1,
+    POINT_BRUNDIR_TAKEOFF                        = 2
 };
 
 #define FLOOR_Z 427.28f
-#define FINAL_FLIGHT_Z 435.0f
+#define HOVER_HEIGHT 13.0f
 
 class boss_steelbreaker : public CreatureScript
 {
@@ -166,6 +171,7 @@ class boss_steelbreaker : public CreatureScript
             void JustEngagedWith(Unit* who) override
             {
                 BossAI::JustEngagedWith(who);
+                me->SetLootMode(0);
                 Talk(SAY_STEELBREAKER_AGGRO);
                 DoCast(me, SPELL_HIGH_VOLTAGE);
                 events.SetPhase(++phase);
@@ -209,12 +215,23 @@ class boss_steelbreaker : public CreatureScript
 
                 if (instance->GetBossState(DATA_ASSEMBLY_OF_IRON) == DONE)
                 {
+                    me->ResetLootMode();
+                    if (Player* lootOwner = me->GetLootRecipient())
+                    {
+                        me->loot.clear();
+                        if (uint32 lootId = me->GetCreatureTemplate()->lootid)
+                            me->loot.FillLoot(lootId, LootTemplates_Creature, lootOwner, false, false, me->GetLootMode());
+                        me->loot.generateMoneyLoot(me->GetCreatureTemplate()->mingold, me->GetCreatureTemplate()->maxgold);
+                        if (!me->loot.isLooted())
+                            me->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+                    }
                     DoCastAOE(SPELL_KILL_CREDIT, true);
                     Talk(SAY_STEELBREAKER_ENCOUNTER_DEFEATED);
                 }
                 else
                 {
                     me->SetLootRecipient(nullptr);
+                    me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
                     Talk(SAY_STEELBREAKER_DEATH);
                     //DoCastAOE(SPELL_SUPERCHARGE, true);
 
@@ -316,6 +333,7 @@ class boss_runemaster_molgeim : public CreatureScript
             void JustEngagedWith(Unit* who) override
             {
                 BossAI::JustEngagedWith(who);
+                me->SetLootMode(0);
                 Talk(SAY_MOLGEIM_AGGRO);
                 events.SetPhase(++phase);
                 events.ScheduleEvent(EVENT_BERSERK, 15min);
@@ -359,12 +377,23 @@ class boss_runemaster_molgeim : public CreatureScript
 
                 if (instance->GetBossState(DATA_ASSEMBLY_OF_IRON) == DONE)
                 {
+                    me->ResetLootMode();
+                    if (Player* lootOwner = me->GetLootRecipient())
+                    {
+                        me->loot.clear();
+                        if (uint32 lootId = me->GetCreatureTemplate()->lootid)
+                            me->loot.FillLoot(lootId, LootTemplates_Creature, lootOwner, false, false, me->GetLootMode());
+                        me->loot.generateMoneyLoot(me->GetCreatureTemplate()->mingold, me->GetCreatureTemplate()->maxgold);
+                        if (!me->loot.isLooted())
+                            me->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+                    }
                     DoCastAOE(SPELL_KILL_CREDIT, true);
                     Talk(SAY_MOLGEIM_ENCOUNTER_DEFEATED);
                 }
                 else
                 {
                     me->SetLootRecipient(nullptr);
+                    me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
                     Talk(SAY_MOLGEIM_DEATH);
                     //DoCastAOE(SPELL_SUPERCHARGE, true);
 
@@ -481,7 +510,9 @@ class boss_stormcaller_brundir : public CreatureScript
                 _Reset();
                 Initialize();
                 me->RemoveAllAuras();
-                me->SetDisableGravity(false);
+                me->SetHover(false);
+                me->SetFloatValue(UNIT_FIELD_HOVERHEIGHT, 1.0f);
+                me->SetObjectScale(me->GetNativeObjectScale());
                 me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_INTERRUPT, false);  // Should be interruptable unless overridden by spell (Overload)
                 me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_STUN, false);       // Reset immumity, Brundir should be stunnable by default
             }
@@ -497,6 +528,7 @@ class boss_stormcaller_brundir : public CreatureScript
             void JustEngagedWith(Unit* who) override
             {
                 BossAI::JustEngagedWith(who);
+                me->SetLootMode(0);
                 Talk(SAY_BRUNDIR_AGGRO);
                 events.SetPhase(++phase);
                 events.ScheduleEvent(EVENT_BERSERK, 15min);
@@ -534,6 +566,9 @@ class boss_stormcaller_brundir : public CreatureScript
                             if (Unit* victim = me->GetVictim())
                                 me->GetMotionMaster()->MoveChase(victim);
                             DoCast(me, SPELL_STORMSHIELD);
+
+                            me->SetObjectScale(1.3f);
+                            me->SetFloatValue(UNIT_FIELD_HOVERHEIGHT, HOVER_HEIGHT);
                             events.RescheduleEvent(EVENT_LIGHTNING_TENDRILS, 50s, 60s);
                             me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_STUN, true); // Apply immumity to stuns
                         }
@@ -550,12 +585,23 @@ class boss_stormcaller_brundir : public CreatureScript
 
                 if (instance->GetBossState(DATA_ASSEMBLY_OF_IRON) == DONE)
                 {
+                    me->ResetLootMode();
+                    if (Player* lootOwner = me->GetLootRecipient())
+                    {
+                        me->loot.clear();
+                        if (uint32 lootId = me->GetCreatureTemplate()->lootid)
+                            me->loot.FillLoot(lootId, LootTemplates_Creature, lootOwner, false, false, me->GetLootMode());
+                        me->loot.generateMoneyLoot(me->GetCreatureTemplate()->mingold, me->GetCreatureTemplate()->maxgold);
+                        if (!me->loot.isLooted())
+                            me->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+                    }
                     DoCastAOE(SPELL_KILL_CREDIT, true);
                     Talk(SAY_BRUNDIR_ENCOUNTER_DEFEATED);
                 }
                 else
                 {
                     me->SetLootRecipient(nullptr);
+                    me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
                     Talk(SAY_BRUNDIR_DEATH);
                     //DoCastAOE(SPELL_SUPERCHARGE, true);
 
@@ -573,6 +619,29 @@ class boss_stormcaller_brundir : public CreatureScript
             {
                 if (who->GetTypeId() == TYPEID_PLAYER)
                     Talk(SAY_BRUNDIR_SLAY);
+            }
+
+            void MovementInform(uint32 type, uint32 id) override
+            {
+                if (type != EFFECT_MOTION_TYPE)
+                    return;
+
+                switch (id)
+                {
+                    case POINT_BRUNDIR_TAKEOFF:
+                        events.ScheduleEvent(EVENT_FLIGHT, 2s);
+                        break;
+                    case POINT_BRUNDIR_LAND:
+                        me->SetHover(false);
+                        me->SetDisableGravity(false);
+                        me->RemoveAurasDueToSpell(sSpellMgr->GetSpellIdForDifficulty(SPELL_LIGHTNING_TENDRILS, me));
+                        me->RemoveAurasDueToSpell(SPELL_LIGHTNING_TENDRILS_VISUAL);
+                        ResetThreatList();
+                        DoStartMovement(me->GetVictim());
+                        break;
+                    default:
+                        break;
+                }
             }
 
             void SpellHitTarget(WorldObject* target, SpellInfo const* spellInfo) override
@@ -617,47 +686,46 @@ class boss_stormcaller_brundir : public CreatureScript
                             events.ScheduleEvent(EVENT_LIGHTNING_WHIRL, 15s, 20s);
                             break;
                         case EVENT_LIGHTNING_TENDRILS:
-                            Talk(SAY_BRUNDIR_FLIGHT);
+                        {
+                            me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
+                            me->AttackStop();
                             DoCast(me, SPELL_LIGHTNING_TENDRILS);
                             DoCast(me, SPELL_LIGHTNING_TENDRILS_VISUAL);
-                            me->AttackStop();
-                            me->SetDisableGravity(true);
-                            me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
-                            me->GetMotionMaster()->MovePoint(0, me->GetPositionX(), me->GetPositionY(), FINAL_FLIGHT_Z);
-                            events.DelayEvents(35s);
-                            events.ScheduleEvent(EVENT_FLIGHT, 2500ms);
-                            events.ScheduleEvent(EVENT_ENDFLIGHT, 32500ms);
+
+                            float floorZ = me->GetFloorZ();
+                            me->Relocate(me->GetPositionX(), me->GetPositionY(), floorZ + HOVER_HEIGHT);
+                            me->SetHover(true);
+                            me->Relocate(me->GetPositionX(), me->GetPositionY(), floorZ);
+
+                            Talk(SAY_BRUNDIR_FLIGHT);
+                            events.DelayEvents(30s);
+                            events.ScheduleEvent(EVENT_TAKEOFF, 2500ms);
+                            events.ScheduleEvent(EVENT_ENDFLIGHT, 25s);
                             events.ScheduleEvent(EVENT_LIGHTNING_TENDRILS, 90s);
                             break;
+                        }
+                        case EVENT_TAKEOFF:
+                        {
+                            me->SetDisableGravity(true);
+                            Position takeoffPos(me->GetPositionX(), me->GetPositionY(), me->GetFloorZ() + HOVER_HEIGHT, me->GetOrientation());
+                            me->GetMotionMaster()->MoveTakeoff(POINT_BRUNDIR_TAKEOFF, takeoffPos, 7.0f);
+                            break;
+                        }
                         case EVENT_FLIGHT:
-                            me->SetHover(true);
                             if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
-                                me->GetMotionMaster()->MovePoint(0, target->GetPositionX(), target->GetPositionY(), FINAL_FLIGHT_Z);
-                            events.ScheduleEvent(EVENT_FLIGHT, 6s);
+                                me->GetMotionMaster()->MovePoint(0, target->GetPositionX(), target->GetPositionY(), FLOOR_Z + HOVER_HEIGHT, false);
+                            events.ScheduleEvent(EVENT_FLIGHT, 5s);
                             break;
                         case EVENT_ENDFLIGHT:
+                        {
                             me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
-                            me->GetMotionMaster()->MovePoint(0, 1586.920166f, 119.848984f, FINAL_FLIGHT_Z);
                             events.CancelEvent(EVENT_FLIGHT);
                             events.CancelEvent(EVENT_ENDFLIGHT);
-                            events.ScheduleEvent(EVENT_LAND, 4s);
+
+                            Position landingPos(me->GetPositionX(), me->GetPositionY(), me->GetFloorZ(), me->GetOrientation());
+                            me->GetMotionMaster()->MoveLand(POINT_BRUNDIR_LAND, landingPos, 3.75f);
                             break;
-                        case EVENT_LAND:
-                            me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
-                            me->SetHover(false);
-                            me->Relocate(me->GetPositionX(), me->GetPositionY(), FINAL_FLIGHT_Z);
-                            me->GetMotionMaster()->MovePoint(0, me->GetPositionX(), me->GetPositionY(), FLOOR_Z);
-                            events.CancelEvent(EVENT_LAND);
-                            events.ScheduleEvent(EVENT_GROUND, 2500ms);
-                            break;
-                        case EVENT_GROUND:
-                            me->SetDisableGravity(false);
-                            me->RemoveAurasDueToSpell(sSpellMgr->GetSpellIdForDifficulty(SPELL_LIGHTNING_TENDRILS, me));
-                            me->RemoveAurasDueToSpell(SPELL_LIGHTNING_TENDRILS_VISUAL);
-                            DoStartMovement(me->GetVictim());
-                            events.CancelEvent(EVENT_GROUND);
-                            ResetThreatList();
-                            break;
+                        }
                         default:
                             break;
                     }
@@ -771,6 +839,39 @@ class spell_assembly_rune_of_summoning : public SpellScriptLoader
         }
 };
 
+class EG_spell_brundir_lightning_tendrils_visual : public SpellScript
+{
+    PrepareSpellScript(EG_spell_brundir_lightning_tendrils_visual);
+
+    void RandomizeDest(SpellDestination& dest)
+    {
+        Unit* caster = GetCaster();
+        if (!caster)
+            return;
+
+        constexpr float RADIUS_MIN = 3.0f;
+        constexpr float GROUND_OFFSET = 1.5f;
+        constexpr float HEIGHT_SEARCH = 50.0f;
+        float radiusMax = std::max(GetEffectInfo(EFFECT_0).CalcRadius(caster), RADIUS_MIN);
+
+        float angle = float(rand_norm()) * 2.0f * float(M_PI);
+        float dist = RADIUS_MIN + float(rand_norm()) * (radiusMax - RADIUS_MIN);
+        float x = caster->GetPositionX() + dist * std::cos(angle);
+        float y = caster->GetPositionY() + dist * std::sin(angle);
+
+        float groundZ = caster->GetMap()->GetHeight(caster->GetPhaseMask(), x, y, caster->GetPositionZ(), true, HEIGHT_SEARCH);
+        if (groundZ <= INVALID_HEIGHT)
+            groundZ = caster->GetFloorZ();
+
+        dest.Relocate({ x, y, groundZ + GROUND_OFFSET, 0.0f });
+    }
+
+    void Register() override
+    {
+        OnDestinationTargetSelect += SpellDestinationTargetSelectFn(EG_spell_brundir_lightning_tendrils_visual::RandomizeDest, EFFECT_0, TARGET_DEST_CASTER_RANDOM);
+    }
+};
+
 class achievement_assembly_i_choose_you : public AchievementCriteriaScript
 {
     public:
@@ -790,5 +891,6 @@ void AddSC_boss_assembly_of_iron()
     new spell_shield_of_runes();
     new spell_assembly_meltdown();
     new spell_assembly_rune_of_summoning();
+    RegisterSpellScript(EG_spell_brundir_lightning_tendrils_visual);
     new achievement_assembly_i_choose_you();
 }
