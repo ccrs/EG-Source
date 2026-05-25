@@ -1339,12 +1339,11 @@ class instance_ulduar : public InstanceMapScript
 
             void DespawnLeviatanVehicle(Creature* vehicleCreature)
             {
+                vehicleCreature->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                vehicleCreature->RemoveNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
                 if (Vehicle* vehicle = vehicleCreature->GetVehicleKit())
-                {
                     vehicle->RemoveAllPassengers();
-                    vehicleCreature->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-                    vehicleCreature->DespawnOrUnsummon(5min);
-                }
+                vehicleCreature->DespawnOrUnsummon(5min);
             }
 
             void UpdateDoorState(GameObject* door) override
