@@ -711,6 +711,8 @@ class instance_ulduar : public InstanceMapScript
                             ForceRespawnQueuedCreaturesByEntry({ NPC_SALVAGED_DEMOLISHER, NPC_SALVAGED_SIEGE_ENGINE, NPC_SALVAGED_CHOPPER });
 
                             _events.CancelEvent(EVENT_FL_GAUNTLET_RADIO_POLL);
+                            if (_flIntroCompleted)
+                                _events.ScheduleEvent(EVENT_FL_GAUNTLET_RADIO_POLL, 3s);
                         }
                         else if (state == IN_PROGRESS)
                             _events.CancelEvent(EVENT_FL_GAUNTLET_RADIO_POLL);
@@ -847,7 +849,10 @@ class instance_ulduar : public InstanceMapScript
                         ColossusData = data;
                         if (data >= 2 && GetBossState(DATA_FLAME_LEVIATHAN) == NOT_STARTED)
                         {
-                            if (Creature* radio = instance->SummonCreature(NPC_BRONZEBEARD_RADIO, BrannRadioSummonPos))
+                            Creature* radio = GetCreature(DATA_BRONZEBEARD_RADIO);
+                            if (!radio)
+                                radio = instance->SummonCreature(NPC_BRONZEBEARD_RADIO, BrannRadioSummonPos);
+                            if (radio)
                             {
                                 radio->AI()->Talk(SAY_BRANN_RADIO_LEVIATHAN);
                                 if (GetBossState(DATA_FLAME_LEVIATHAN) != DONE)
@@ -1261,9 +1266,14 @@ class instance_ulduar : public InstanceMapScript
                                 norgannon->DespawnOrUnsummon();
                             break;
                         case EVENT_FL_HARDMODE_BRANN_RADIO_WARN_1:
-                            if (Creature* radio = instance->SummonCreature(NPC_BRONZEBEARD_RADIO, BrannRadioSummonPos))
+                        {
+                            Creature* radio = GetCreature(DATA_BRONZEBEARD_RADIO);
+                            if (!radio)
+                                radio = instance->SummonCreature(NPC_BRONZEBEARD_RADIO, BrannRadioSummonPos);
+                            if (radio)
                                 radio->AI()->Talk(SAY_BRANN_RADIO_HARDMODE_WARN_1);
                             break;
+                        }
                         case EVENT_FL_HARDMODE_DELLORAH_YELL_1:
                             if (Creature* dellorah = GetCreature(DATA_DELLORAH))
                             {
