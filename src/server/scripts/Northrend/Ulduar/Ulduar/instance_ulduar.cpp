@@ -416,6 +416,9 @@ class instance_ulduar : public InstanceMapScript
 
                 switch (gameObject->GetEntry())
                 {
+                    case GO_KOLOGARN_DOOR:
+                        HandleGameObject(ObjectGuid::Empty, false, gameObject);
+                        break;
                     case GO_KOLOGARN_CHEST_HERO:
                     case GO_KOLOGARN_CHEST:
                         KologarnChestGUID = gameObject->GetGUID();
