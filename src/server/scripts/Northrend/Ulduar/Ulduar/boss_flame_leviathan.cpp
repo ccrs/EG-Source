@@ -870,44 +870,6 @@ class boss_flame_leviathan_overload_device : public CreatureScript
         }
 };
 
-class boss_flame_leviathan_safety_container : public CreatureScript
-{
-    public:
-        boss_flame_leviathan_safety_container() : CreatureScript("boss_flame_leviathan_safety_container") { }
-
-        struct boss_flame_leviathan_safety_containerAI : public PassiveAI
-        {
-            boss_flame_leviathan_safety_containerAI(Creature* creature) : PassiveAI(creature)
-            {
-            }
-
-            void JustDied(Unit* /*killer*/) override
-            {
-                float heightDiff = me->GetPositionZ() - me->GetFloorZ();
-                if (heightDiff <= 0.5f)
-                {
-                    DoCastAOE(SPELL_DUSTY_EXPLOSION, true);
-                    me->CastSpell(me, SPELL_SPAWN_PYRITE, true);
-                    return;
-                }
-
-                Milliseconds fallTime = std::chrono::round<Milliseconds>(std::chrono::duration<float>(Movement::computeFallTime(heightDiff, false)));
-                me->m_Events.AddEventAtOffset(new Trinity::Helpers::Events::GenericEvent(me, [](WorldObject* o)
-                {
-                    Unit* c = o->ToUnit();
-                    c->CastSpell(c, SPELL_DUSTY_EXPLOSION, true);
-                    c->CastSpell(c, SPELL_SPAWN_PYRITE, true);
-                    return true;
-                }), fallTime);
-            }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return GetUlduarAI<boss_flame_leviathan_safety_containerAI>(creature);
-        }
-};
-
 class npc_mechanolift : public CreatureScript
 {
     public:
@@ -917,54 +879,52 @@ class npc_mechanolift : public CreatureScript
         {
             npc_mechanoliftAI(Creature* creature) : PassiveAI(creature)
             {
-                Initialize();
                 me->GetMotionMaster()->MoveRandom(50.f);
             }
 
-            void Initialize()
+            void JustAppeared() override
             {
-                _moveTimer = 0;
-            }
-
-            void Reset() override
-            {
-                Initialize();
+                if (Vehicle* kit = me->GetVehicleKit())
+                    if (Unit* container = kit->GetPassenger(1))
+                        _containerGuid = container->GetGUID();
             }
 
             void JustDied(Unit* /*killer*/) override
             {
                 DoCastAOE(SPELL_LIQUID_PYRITE_DRIP, true);
 
-                if (Vehicle* kit = me->GetVehicleKit())
-                    if (Unit* container = kit->GetPassenger(1))  // seat 1 — see vehicle_template_accessory 33214 -> 33218
-                        container->ExitVehicle();
-            }
+                float groundZ = me->GetFloorZ();
+                float heightDiff = me->GetPositionZ() - groundZ;
+                Position landing(me->GetPositionX(), me->GetPositionY(), groundZ, me->GetOrientation());
+                ObjectGuid containerGuid = _containerGuid;
 
-            void MovementInform(uint32 type, uint32 id) override
-            {
-                if (type == POINT_MOTION_TYPE && id == 1)
-                    if (Creature* container = me->FindNearestCreature(NPC_CONTAINER, 5, true))
-                        container->EnterVehicle(me);
-            }
-
-            void UpdateAI(uint32 diff) override
-            {
-                if (_moveTimer <= diff)
+                if (heightDiff <= 0.5f)
                 {
-                    if (me->GetVehicleKit()->HasEmptySeat(-1))
-                    {
-                        Creature* container = me->FindNearestCreature(NPC_CONTAINER, 50.f, true);
-                        if (container && !container->GetVehicle())
-                            me->GetMotionMaster()->MovePoint(1, container->GetPosition());
-                    }
-
-                    _moveTimer = 30000; //check next 30 seconds
+                    FireDrop(me, containerGuid, landing);
+                    return;
                 }
-                else
-                    _moveTimer -= diff;
+
+                Milliseconds fallTime = std::chrono::round<Milliseconds>(std::chrono::duration<float>(Movement::computeFallTime(heightDiff, false)));
+                me->m_Events.AddEventAtOffset(new Trinity::Helpers::Events::GenericEvent(me, [containerGuid, landing](WorldObject* o)
+                {
+                    if (Unit* mecha = o->ToUnit())
+                        FireDrop(mecha, containerGuid, landing);
+                    return true;
+                }), fallTime);
             }
+
         private:
-            uint32 _moveTimer;
+            static void FireDrop(Unit* mechanolift, ObjectGuid containerGuid, Position const& landing)
+            {
+                Unit* caster = mechanolift;
+                if (Creature* container = ObjectAccessor::GetCreature(*mechanolift, containerGuid))
+                    caster = container;
+                caster->CastSpell(landing, SPELL_DUSTY_EXPLOSION, true);
+                caster->CastSpell(caster, SPELL_DUST_CLOUD_IMPACT, true);
+                caster->CastSpell(landing, SPELL_SPAWN_PYRITE, true);
+            }
+
+            ObjectGuid _containerGuid;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -1341,8 +1301,8 @@ class npc_brann_bronzebeard_ulduar_intro : public CreatureScript
                 {
                     me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                     player->PlayerTalkClass->SendCloseGossip();
-                    if (Creature* loreKeeper = _instance->GetCreature(DATA_LORE_KEEPER_OF_NORGANNON))
-                        loreKeeper->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+                    _instance->SetGuidData(DATA_FL_INTRO_PLAYER, player->GetGUID());
+                    _instance->SetData(DATA_FL_INTRO_START, 1);
                 }
                 return false;
             }
@@ -1359,8 +1319,8 @@ class npc_brann_bronzebeard_ulduar_intro : public CreatureScript
 
 enum LoreKeeperGossips
 {
-    GOSSIP_MENU_LORE_KEEPER   = 10477,
-    GOSSIP_OPTION_LORE_KEEPER = 0
+    GOSSIP_MENU_LORE_KEEPER_CONFIRM   = 10477,
+    GOSSIP_OPTION_LORE_KEEPER_CONFIRM = 0
 };
 
 class npc_lorekeeper : public CreatureScript
@@ -1377,22 +1337,21 @@ class npc_lorekeeper : public CreatureScript
 
             bool OnGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
             {
-                if (menuId == GOSSIP_MENU_LORE_KEEPER && gossipListId == GOSSIP_OPTION_LORE_KEEPER)
+                if (menuId == GOSSIP_MENU_LORE_KEEPER_CONFIRM && gossipListId == GOSSIP_OPTION_LORE_KEEPER_CONFIRM)
                 {
-                    me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
-                    player->PlayerTalkClass->SendCloseGossip();
-                    _instance->instance->LoadGrid(364, -16); // make sure leviathan is loaded
-                    _instance->SetData(DATA_ACTIVE_TOWERS, 1);
-                    me->SetVisible(false);
-                    if (Creature* delorah = _instance->GetCreature(DATA_DELLORAH))
+                    if (_instance->GetData(DATA_ACTIVE_TOWERS) != 0)
                     {
-                        if (Creature* brann = _instance->GetCreature(DATA_BRANN_BRONZEBEARD_INTRO))
-                        {
-                            brann->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
-                            delorah->GetMotionMaster()->MovePoint(0, brann->GetPositionX() - 4, brann->GetPositionY(), brann->GetPositionZ());
-                            /// @todo delorah->AI()->Talk(xxxx, brann->GetGUID()); when reached at branz
-                        }
+                        player->PlayerTalkClass->SendCloseGossip();
+                        return false;
                     }
+                    player->PlayerTalkClass->SendCloseGossip();
+                    _instance->instance->LoadGrid(FlameLeviathanCenter.GetPositionX(), FlameLeviathanCenter.GetPositionY());
+                    _instance->SetData(DATA_ACTIVE_TOWERS, 1);
+                    if (Creature* brann = _instance->GetCreature(DATA_BRANN_BRONZEBEARD_INTRO))
+                        brann->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+                    Talk(SAY_LORE_KEEPER_CONFIRMED);
+                    _instance->SetGuidData(DATA_FL_HARDMODE_PLAYER, player->GetGUID());
+                    _instance->SetData(DATA_FL_HARDMODE_CONFIRMED, 1);
                 }
                 return false;
             }
@@ -1428,7 +1387,7 @@ struct EG_npc_flame_leviathan_outro_flying_machine : public PassiveAI
 
     void MovementInform(uint32 type, uint32 id) override
     {
-        if (type == POINT_MOTION_TYPE && id == POINT_FL_OUTRO_FLYING_MACHINE_LAND)
+        if ((type == EFFECT_MOTION_TYPE || type == POINT_MOTION_TYPE) && id == POINT_FL_OUTRO_FLYING_MACHINE_LAND)
             if (InstanceScript* instance = me->GetInstanceScript())
                 instance->SetData(DATA_FL_OUTRO_FLYING_MACHINE_LANDED, 0);
     }
@@ -2048,7 +2007,6 @@ void AddSC_boss_flame_leviathan()
     new boss_flame_leviathan_defense_turret();
     new boss_flame_leviathan_defense_cannon();
     new boss_flame_leviathan_overload_device();
-    new boss_flame_leviathan_safety_container();
     new npc_mechanolift();
     new npc_pool_of_tar();
     new npc_colossus();

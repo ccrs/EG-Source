@@ -131,3 +131,5 @@ INSERT INTO `creature_text` (`CreatureID`, `GroupID`, `ID`, `Text`, `Type`, `Lan
 DELETE FROM `spell_script_names` WHERE `spell_id` = 62488 AND `ScriptName` = 'EG_spell_ignis_activate_construct';
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (62488, 'EG_spell_ignis_activate_construct');
+
+UPDATE `creature_template` SET `ScriptName` = '' WHERE `entry` = 33218;
