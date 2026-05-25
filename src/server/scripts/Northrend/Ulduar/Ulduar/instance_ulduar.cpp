@@ -191,6 +191,42 @@ enum DellorahHardmodeTexts
     SAY_DELLORAH_HARDMODE_WARN        // "Brann! $n just activated the orbital defense system!..."
 };
 
+struct FlGauntletProximityPoint
+{
+    Position pos;
+    float radius;
+    uint32 brannGroup;   // creature_text GroupID on Bronzebeard Radio (34054)
+    uint32 firedMask;    // bit in _flGauntletRadioFiredMask once played
+    bool hardmodeOnly;   // tower warnings only fire under hardmode
+};
+
+enum FlGauntletRadioBits : uint32
+{
+    GAUNTLET_RADIO_IRON_DWARVES = 0x01,
+    GAUNTLET_RADIO_GENERATORS   = 0x02,
+    GAUNTLET_RADIO_TOWER_FROST  = 0x04,
+    GAUNTLET_RADIO_TOWER_LIFE   = 0x08,
+    GAUNTLET_RADIO_TOWER_FLAMES = 0x10,
+    GAUNTLET_RADIO_TOWER_STORMS = 0x20,
+    GAUNTLET_RADIO_REPAIR_PAD   = 0x40
+};
+
+static FlGauntletProximityPoint const FlGauntletProximityPoints[] =
+{
+    // Tower of Frost (GO 194370) - Hammer of Hodir
+    { {  82.86f, -394.29f, 406.85f, 0.f }, 60.0f, SAY_BRANN_RADIO_GAUNTLET_TOWER_FROST,  GAUNTLET_RADIO_TOWER_FROST,  true  },
+    // Tower of Life (GO 194375) - Freya
+    { {-223.56f, -298.56f, 365.34f, 0.f }, 60.0f, SAY_BRANN_RADIO_GAUNTLET_TOWER_LIFE,   GAUNTLET_RADIO_TOWER_LIFE,   true  },
+    // Tower of Flames (GO 194371) - Mimiron's Gaze
+    { { -79.40f,   89.11f, 430.44f, 0.f }, 60.0f, SAY_BRANN_RADIO_GAUNTLET_TOWER_FLAMES, GAUNTLET_RADIO_TOWER_FLAMES, true  },
+    // Tower of Storms (GO 194377) - Krolmir / Thorim
+    { { 339.89f,  318.53f, 405.78f, 0.f }, 60.0f, SAY_BRANN_RADIO_GAUNTLET_TOWER_STORMS, GAUNTLET_RADIO_TOWER_STORMS, true  },
+    // Repair pad south (GO 194261)
+    { { 155.55f, -128.06f, 409.80f, 0.f }, 30.0f, SAY_BRANN_RADIO_GAUNTLET_REPAIR_PAD,   GAUNTLET_RADIO_REPAIR_PAD,   false },
+    // Repair pad north (GO 194261)
+    { { 163.52f,   56.11f, 409.80f, 0.f }, 30.0f, SAY_BRANN_RADIO_GAUNTLET_REPAIR_PAD,   GAUNTLET_RADIO_REPAIR_PAD,   false }
+};
+
 UlduarKeeperDespawnEvent::UlduarKeeperDespawnEvent(Creature* owner, Milliseconds despawnTimerOffset) : _owner(owner), _despawnTimer(despawnTimerOffset)
 {
 }
@@ -241,6 +277,7 @@ class instance_ulduar : public InstanceMapScript
                 _destroyedTowers = 0;
                 _stunned = 1;
                 _flIntroCompleted = false;
+                _flGauntletRadioFiredMask = 0;
             }
 
             void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override
@@ -567,6 +604,11 @@ class instance_ulduar : public InstanceMapScript
 
                 switch (creature->GetEntry())
                 {
+                    case NPC_STEELFORGED_DEFFENDER:
+                    case NPC_STEELFORGED_DEFENDER_GENERATOR_SUMMON:
+                        if (_flIntroCompleted && GetData(DATA_ACTIVE_TOWERS) != 0)
+                            FireGauntletRadioWarning(SAY_BRANN_RADIO_GAUNTLET_GENERATORS, GAUNTLET_RADIO_GENERATORS);
+                        break;
                     case NPC_CORRUPTED_SERVITOR:
                     case NPC_MISGUIDED_NYMPH:
                     case NPC_GUARDIAN_LASHER:
@@ -653,6 +695,7 @@ class instance_ulduar : public InstanceMapScript
                         {
                             _events.ScheduleEvent(EVENT_DESPAWN_LEVIATHAN_VEHICLES, 5s);
                             _events.ScheduleEvent(EVENT_FL_OUTRO_SPAWN, 10s);
+                            _events.CancelEvent(EVENT_FL_GAUNTLET_RADIO_POLL);
                         }
                         else if (state == NOT_STARTED)
                         {
@@ -666,7 +709,11 @@ class instance_ulduar : public InstanceMapScript
                                     }
                             }
                             ForceRespawnQueuedCreaturesByEntry({ NPC_SALVAGED_DEMOLISHER, NPC_SALVAGED_SIEGE_ENGINE, NPC_SALVAGED_CHOPPER });
+
+                            _events.CancelEvent(EVENT_FL_GAUNTLET_RADIO_POLL);
                         }
+                        else if (state == IN_PROGRESS)
+                            _events.CancelEvent(EVENT_FL_GAUNTLET_RADIO_POLL);
                         break;
                     case DATA_IGNIS:
                         if (state == NOT_STARTED)
@@ -850,7 +897,6 @@ class instance_ulduar : public InstanceMapScript
                         _events.ScheduleEvent(EVENT_FL_HARDMODE_LINE_DEACTIVATING, 14s);
                         _events.ScheduleEvent(EVENT_FL_HARDMODE_NORGANNON_DESPAWN, 18s);
                         _events.ScheduleEvent(EVENT_FL_HARDMODE_BRANN_RADIO_WARN_1, 4s);
-                        _events.ScheduleEvent(EVENT_FL_HARDMODE_BRANN_RADIO_WARN_2, 13s);
                         _events.ScheduleEvent(EVENT_FL_HARDMODE_DELLORAH_YELL_1, 20s);
                         _events.ScheduleEvent(EVENT_FL_HARDMODE_DELLORAH_RUN, 21s);
                         _events.ScheduleEvent(EVENT_FL_HARDMODE_DELLORAH_YELL_2, 37s);
@@ -1204,6 +1250,7 @@ class instance_ulduar : public InstanceMapScript
                                 }
                             }
                             _flIntroPlayerGUID.Clear();
+                            _events.ScheduleEvent(EVENT_FL_GAUNTLET_RADIO_POLL, 3s);
                             break;
                         case EVENT_FL_HARDMODE_LINE_DEACTIVATING:
                             if (Creature* norgannon = GetCreature(DATA_LORE_KEEPER_OF_NORGANNON))
@@ -1216,10 +1263,6 @@ class instance_ulduar : public InstanceMapScript
                         case EVENT_FL_HARDMODE_BRANN_RADIO_WARN_1:
                             if (Creature* radio = instance->SummonCreature(NPC_BRONZEBEARD_RADIO, BrannRadioSummonPos))
                                 radio->AI()->Talk(SAY_BRANN_RADIO_HARDMODE_WARN_1);
-                            break;
-                        case EVENT_FL_HARDMODE_BRANN_RADIO_WARN_2:
-                            if (Creature* radio = GetCreature(DATA_BRONZEBEARD_RADIO))
-                                radio->AI()->Talk(SAY_BRANN_RADIO_HARDMODE_WARN_2);
                             break;
                         case EVENT_FL_HARDMODE_DELLORAH_YELL_1:
                             if (Creature* dellorah = GetCreature(DATA_DELLORAH))
@@ -1244,6 +1287,51 @@ class instance_ulduar : public InstanceMapScript
                             if (Creature* brann = GetCreature(DATA_BRANN_BRONZEBEARD_INTRO))
                                 brann->AI()->Talk(SAY_BRANN_INTRO_BRING_DOWN_SHIELD);
                             break;
+                        case EVENT_FL_GAUNTLET_RADIO_POLL:
+                        {
+                            bool const hardmode = GetData(DATA_ACTIVE_TOWERS) != 0;
+
+                            // proximity warnings
+                            Map::PlayerList const& players = instance->GetPlayers();
+                            for (FlGauntletProximityPoint const& point : FlGauntletProximityPoints)
+                            {
+                                if (_flGauntletRadioFiredMask & point.firedMask)
+                                    continue;
+                                if (point.hardmodeOnly && !hardmode)
+                                    continue;
+                                for (auto i = players.begin(); i != players.end(); ++i)
+                                {
+                                    Player* player = i->GetSource();
+                                    if (!player || !player->GetVehicleCreatureBase())
+                                        continue;
+                                    if (player->GetExactDist2d(point.pos.GetPositionX(), point.pos.GetPositionY()) <= point.radius)
+                                    {
+                                        FireGauntletRadioWarning(point.brannGroup, point.firedMask);
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (!(_flGauntletRadioFiredMask & GAUNTLET_RADIO_IRON_DWARVES))
+                            {
+                                for (auto i = players.begin(); i != players.end(); ++i)
+                                {
+                                    Player* player = i->GetSource();
+                                    if (!player)
+                                        continue;
+                                    if (Creature* vehicle = player->GetVehicleCreatureBase())
+                                    {
+                                        if (vehicle->IsInCombat())
+                                        {
+                                            FireGauntletRadioWarning(SAY_BRANN_RADIO_GAUNTLET_IRON_DWARVES, GAUNTLET_RADIO_IRON_DWARVES);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            _events.ScheduleEvent(EVENT_FL_GAUNTLET_RADIO_POLL, 3s);
+                            break;
+                        }
                         case EVENT_FL_OUTRO_SPAWN:
                         {
                             Creature* flyingMachine = instance->SummonCreature(NPC_BRANN_S_FLYING_MACHINE, FlameLeviathanOutroFlyingMachineSpawn, nullptr, FlameLeviathanOutroSummonDespawnMs);
@@ -1347,6 +1435,18 @@ class instance_ulduar : public InstanceMapScript
                 vehicleCreature->DespawnOrUnsummon(5min);
             }
 
+            void FireGauntletRadioWarning(uint32 brannGroup, uint32 firedBit)
+            {
+                if (_flGauntletRadioFiredMask & firedBit)
+                    return;
+                _flGauntletRadioFiredMask |= firedBit;
+                Creature* radio = GetCreature(DATA_BRONZEBEARD_RADIO);
+                if (!radio)
+                    radio = instance->SummonCreature(NPC_BRONZEBEARD_RADIO, BrannRadioSummonPos);
+                if (radio)
+                    radio->AI()->Talk(brannGroup);
+            }
+
             void UpdateDoorState(GameObject* door) override
             {
                 // Leviathan doors are set to DOOR_TYPE_ROOM except the one it uses to enter the room
@@ -1427,6 +1527,7 @@ class instance_ulduar : public InstanceMapScript
             bool _flIntroCompleted;
             ObjectGuid _flIntroPlayerGUID;
             ObjectGuid _flHardmodePlayerGUID;
+            uint32 _flGauntletRadioFiredMask;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override
