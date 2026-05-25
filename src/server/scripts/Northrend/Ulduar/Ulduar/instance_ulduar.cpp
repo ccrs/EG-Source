@@ -597,6 +597,9 @@ class instance_ulduar : public InstanceMapScript
                             ForceRespawnQueuedCreaturesByEntry({ NPC_SALVAGED_DEMOLISHER, NPC_SALVAGED_SIEGE_ENGINE, NPC_SALVAGED_CHOPPER });
                         break;
                     case DATA_IGNIS:
+                        if (state == NOT_STARTED)
+                            ForceRespawnQueuedCreaturesByEntry({ NPC_IRON_CONSTRUCT });
+                        break;
                     case DATA_RAZORSCALE:
                     case DATA_XT002:
                         break;

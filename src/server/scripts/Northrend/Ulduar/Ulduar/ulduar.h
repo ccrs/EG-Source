@@ -60,6 +60,7 @@ enum UlduarNPCs
     NPC_SALVAGED_SIEGE_ENGINE               = 33060,
     NPC_SALVAGED_CHOPPER                    = 33062,
     NPC_IGNIS                               = 33118,
+    NPC_IRON_CONSTRUCT                      = 33121,
     NPC_RAZORSCALE                          = 33186,
     NPC_STEELFORGED_DEFFENDER               = 33236,
     NPC_XT002                               = 33293,

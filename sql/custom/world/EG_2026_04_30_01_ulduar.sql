@@ -126,3 +126,8 @@ INSERT INTO `creature_text` (`CreatureID`, `GroupID`, `ID`, `Text`, `Type`, `Lan
 (33696, 4, 0, 'The Kirin Tor can''t possibly spare any additional resources to take on anything that size. We may not have to though.', 14, 0, 100, 0, 0, 0, 0, 0, 'Rhydian FL outro 7'),
 (33696, 5, 0, 'We can sneak past them. As long as we can take down that construct in front of the gate, we should be able to get inside.', 14, 0, 100, 0, 0, 0, 0, 0, 'Rhydian FL outro 8'),
 (33696, 6, 0, 'We''re hunting an old god, Brann.', 14, 0, 100, 0, 0, 0, 0, 0, 'Rhydian FL outro 10');
+
+--
+DELETE FROM `spell_script_names` WHERE `spell_id` = 62488 AND `ScriptName` = 'EG_spell_ignis_activate_construct';
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(62488, 'EG_spell_ignis_activate_construct');

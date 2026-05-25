@@ -5118,6 +5118,12 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->_GetEffect(EFFECT_1).TargetB = SpellImplicitTargetInfo(TARGET_UNIT_DEST_AREA_ENEMY);
     });
 
+    // Activate Construct
+    ApplySpellFix({ 62488 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->RangeEntry = sSpellRangeStore.LookupEntry(13); // 50000yd
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];

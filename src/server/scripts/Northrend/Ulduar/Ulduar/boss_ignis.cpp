@@ -15,17 +15,19 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "ulduar.h"
+#include "Containers.h"
 #include "GameTime.h"
+#include "GridNotifiers.h"
 #include "InstanceScript.h"
 #include "ObjectAccessor.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "SpellAuras.h"
 #include "SpellScript.h"
-#include "ulduar.h"
 #include "Vehicle.h"
 
-enum Yells
+enum IgnisYells
 {
     SAY_AGGRO       = 0,
     SAY_SUMMON      = 1,
@@ -37,7 +39,7 @@ enum Yells
     EMOTE_JETS      = 7
 };
 
-enum Spells
+enum IgnisSpells
 {
     SPELL_FLAME_JETS            = 62680,
     SPELL_SCORCH                = 62546,
@@ -56,9 +58,10 @@ enum Spells
     SPELL_BRITTLE_25            = 67114,
     SPELL_SHATTER               = 62383,
     SPELL_GROUND                = 62548,
+    SPELL_FREEZE_ANIM           = 16245,
 };
 
-enum Events
+enum IgnisEvents
 {
     EVENT_JET           = 1,
     EVENT_SCORCH        = 2,
@@ -70,47 +73,22 @@ enum Events
     EVENT_BERSERK       = 8,
 };
 
-enum Actions
+enum IgnisActions
 {
-    ACTION_REMOVE_BUFF = 20,
+    ACTION_REMOVE_BUFF          = 20,
+    ACTION_ACTIVATE_CONSTRUCT,
+    ACTION_RESET_DORMANT,
 };
 
-enum Creatures
+enum IgnisCreatures
 {
-    NPC_IRON_CONSTRUCT  = 33121,
     NPC_GROUND_SCORCH   = 33221,
 };
 
-enum AchievementData
+enum IgnisAchievementData
 {
     DATA_SHATTERED                  = 29252926,
     ACHIEVEMENT_IGNIS_START_EVENT   = 20951,
-};
-
-#define CONSTRUCT_SPAWN_POINTS 20
-
-Position const ConstructSpawnPosition[CONSTRUCT_SPAWN_POINTS] =
-{
-    {630.366f, 216.772f, 360.891f, 3.001970f},
-    {630.594f, 231.846f, 360.891f, 3.124140f},
-    {630.435f, 337.246f, 360.886f, 3.211410f},
-    {630.493f, 313.349f, 360.886f, 3.054330f},
-    {630.444f, 321.406f, 360.886f, 3.124140f},
-    {630.366f, 247.307f, 360.888f, 3.211410f},
-    {630.698f, 305.311f, 360.886f, 3.001970f},
-    {630.500f, 224.559f, 360.891f, 3.054330f},
-    {630.668f, 239.840f, 360.890f, 3.159050f},
-    {630.384f, 329.585f, 360.886f, 3.159050f},
-    {543.220f, 313.451f, 360.886f, 0.104720f},
-    {543.356f, 329.408f, 360.886f, 6.248280f},
-    {543.076f, 247.458f, 360.888f, 6.213370f},
-    {543.117f, 232.082f, 360.891f, 0.069813f},
-    {543.161f, 305.956f, 360.886f, 0.157080f},
-    {543.277f, 321.482f, 360.886f, 0.052360f},
-    {543.316f, 337.468f, 360.886f, 6.195920f},
-    {543.280f, 239.674f, 360.890f, 6.265730f},
-    {543.265f, 217.147f, 360.891f, 0.174533f},
-    {543.256f, 224.831f, 360.891f, 0.122173f},
 };
 
 class boss_ignis : public CreatureScript
@@ -139,6 +117,21 @@ class boss_ignis : public CreatureScript
                     _vehicle->RemoveAllPassengers();
 
                 instance->DoStopTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, ACHIEVEMENT_IGNIS_START_EVENT);
+
+                std::list<Creature*> constructs;
+                me->GetCreatureListWithEntryInGrid(constructs, NPC_IRON_CONSTRUCT, 200.0f);
+                for (Creature* construct : constructs)
+                {
+                    if (construct->IsAlive())
+                    {
+                        if (construct->GetReactState() == REACT_PASSIVE)
+                            continue;
+                        if (construct->IsAIEnabled())
+                            construct->AI()->DoAction(ACTION_RESET_DORMANT);
+                    }
+                    else
+                        construct->Respawn(true);
+                }
             }
 
             void JustEngagedWith(Unit* who) override
@@ -172,22 +165,6 @@ class boss_ignis : public CreatureScript
             {
                 if (who->GetTypeId() == TYPEID_PLAYER)
                     Talk(SAY_SLAY);
-            }
-
-            void JustSummoned(Creature* summon) override
-            {
-                if (summon->GetEntry() == NPC_IRON_CONSTRUCT)
-                {
-                    summon->SetFaction(FACTION_MONSTER_2);
-                    summon->SetReactState(REACT_AGGRESSIVE);
-                    summon->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_PACIFIED | UNIT_FLAG_STUNNED);
-                    summon->SetImmuneToPC(false);
-                    summon->SetControlled(false, UNIT_STATE_ROOT);
-                }
-
-                summon->AI()->AttackStart(me->GetVictim());
-                summon->AI()->DoZoneInCombat();
-                summons.Summon(summon);
             }
 
             void DoAction(int32 action) override
@@ -267,10 +244,7 @@ class boss_ignis : public CreatureScript
                             events.ScheduleEvent(EVENT_SCORCH, 25s);
                             break;
                         case EVENT_CONSTRUCT:
-                            Talk(SAY_SUMMON);
-                            DoSummon(NPC_IRON_CONSTRUCT, ConstructSpawnPosition[urand(0, CONSTRUCT_SPAWN_POINTS - 1)], 30s, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT);
-                            DoCast(SPELL_STRENGHT);
-                            DoCast(me, SPELL_ACTIVATE_CONSTRUCT);
+                            DoCastAOE(SPELL_ACTIVATE_CONSTRUCT);
                             events.ScheduleEvent(EVENT_CONSTRUCT, RAID_MODE(40s, 30s));
                             break;
                         case EVENT_BERSERK:
@@ -306,15 +280,40 @@ class npc_iron_construct : public CreatureScript
 
         struct npc_iron_constructAI : public ScriptedAI
         {
-            npc_iron_constructAI(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript())
+            npc_iron_constructAI(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript()) { }
+
+            void JustAppeared() override
             {
-                creature->SetReactState(REACT_PASSIVE);
+                EnterDormantState();
+            }
+
+            void DoAction(int32 action) override
+            {
+                switch (action)
+                {
+                    case ACTION_ACTIVATE_CONSTRUCT:
+                        me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
+                        me->SetImmuneToPC(false);
+                        me->SetControlled(false, UNIT_STATE_ROOT);
+                        me->SetControlled(false, UNIT_STATE_STUNNED);
+                        me->SetReactState(REACT_AGGRESSIVE);
+                        me->RemoveAurasDueToSpell(SPELL_FREEZE_ANIM);
+                        if (Creature* ignis = _instance->GetCreature(DATA_IGNIS))
+                            if (Unit* victim = ignis->GetVictim())
+                                AttackStart(victim);
+                        DoZoneInCombat();
+                        break;
+                    case ACTION_RESET_DORMANT:
+                        me->DespawnOrUnsummon(0s, 1s);
+                        break;
+                }
             }
 
             void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
             {
                 if (me->HasAura(RAID_MODE(SPELL_BRITTLE, SPELL_BRITTLE_25)) && damage >= 5000)
                 {
+                    me->SetReactState(REACT_PASSIVE);
                     DoCast(SPELL_SHATTER);
                     if (Creature* ignis = _instance->GetCreature(DATA_IGNIS))
                         if (ignis->AI())
@@ -348,6 +347,16 @@ class npc_iron_construct : public CreatureScript
             }
 
         private:
+            void EnterDormantState()
+            {
+                me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
+                me->SetImmuneToPC(true);
+                me->SetControlled(true, UNIT_STATE_ROOT);
+                me->SetControlled(true, UNIT_STATE_STUNNED);
+                me->SetReactState(REACT_PASSIVE);
+                DoCastSelf(SPELL_FREEZE_ANIM, true);
+            }
+
             InstanceScript* _instance;
         };
 
@@ -473,6 +482,54 @@ class spell_ignis_slag_pot : public SpellScriptLoader
         }
 };
 
+// 62488 - Activate Construct
+class EG_spell_ignis_activate_construct : public SpellScript
+{
+    PrepareSpellScript(EG_spell_ignis_activate_construct);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_STRENGHT });
+    }
+
+    void FilterTargets(std::list<WorldObject*>& targets)
+    {
+        targets.remove_if([](WorldObject const* obj)
+        {
+            Creature const* c = obj->ToCreature();
+            return !c || !c->IsAlive() || c->GetReactState() != REACT_PASSIVE;
+        });
+        if (targets.empty())
+            return;
+        WorldObject* chosen = Trinity::Containers::SelectRandomContainerElement(targets);
+        targets.clear();
+        targets.push_back(chosen);
+    }
+
+    void HandleScriptEffect(SpellEffIndex /*effIndex*/)
+    {
+        Creature* construct = GetHitCreature();
+        Unit* caster = GetCaster();
+        if (!construct || !caster)
+            return;
+
+        if (construct->IsAIEnabled())
+            construct->AI()->DoAction(ACTION_ACTIVATE_CONSTRUCT);
+
+        if (Creature* ignis = caster->ToCreature())
+            if (ignis->IsAIEnabled())
+                ignis->AI()->Talk(SAY_SUMMON);
+
+        caster->CastSpell(caster, SPELL_STRENGHT, true);
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(EG_spell_ignis_activate_construct::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
+        OnEffectHitTarget += SpellEffectFn(EG_spell_ignis_activate_construct::HandleScriptEffect, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
 class achievement_ignis_shattered : public AchievementCriteriaScript
 {
     public:
@@ -492,6 +549,7 @@ void AddSC_boss_ignis()
     new boss_ignis();
     new npc_iron_construct();
     new npc_scorch_ground();
+    RegisterSpellScript(EG_spell_ignis_activate_construct);
     new spell_ignis_slag_pot();
     new achievement_ignis_shattered();
 }
