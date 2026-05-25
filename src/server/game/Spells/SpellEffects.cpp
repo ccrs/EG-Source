@@ -3460,8 +3460,6 @@ void Spell::EffectScriptEffect()
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
         return;
 
-    Unit* unitCaster = GetUnitCasterForEffectHandlers();
-
     /// @todo we must implement hunter pet summon at login there (spell 6962)
     /// @todo: move this to scripts
     switch (m_spellInfo->SpellFamilyName)
@@ -3573,25 +3571,6 @@ void Spell::EffectScriptEffect()
                     // Delete item from inventory at death
                     m_caster->ToPlayer()->DestroyItemCount(damage, 5, true);
 
-                    return;
-                }
-                case 62482: // Grab Crate
-                {
-                    if (!unitCaster)
-                        return;
-
-                    if (unitTarget)
-                    {
-                        if (Unit* seat = unitCaster->GetVehicleBase())
-                        {
-                            if (Unit* parent = seat->GetVehicleBase())
-                            {
-                                /// @todo a hack, range = 11, should after some time cast, otherwise too far
-                                unitCaster->CastSpell(parent, 62496, true);
-                                unitTarget->CastSpell(parent, m_spellInfo->GetEffect(EFFECT_0).CalcValue());
-                            }
-                        }
-                    }
                     return;
                 }
             }

@@ -16,6 +16,7 @@
  */
 
 #include "ulduar.h"
+#include "Containers.h"
 #include "CreatureTextMgr.h"
 #include "GridNotifiers.h"
 #include "InstanceScript.h"
@@ -33,7 +34,7 @@
 #include "SpellScript.h"
 #include "TemporarySummon.h"
 
-enum Yells
+enum YoggSaronYells
 {
     // Sara
     SAY_SARA_ULDUAR_SCREAM_1                = 0,  // screams randomly in a whole instance, unused on retail
@@ -109,7 +110,7 @@ enum Yells
     SAY_STORMWIND_ROLEPLAY_5                = 0,
 };
 
-enum Spells
+enum YoggSaronSpells
 {
     // Voice of Yogg-Saron
     SPELL_SUMMON_GUARDIAN_2                 = 62978,
@@ -279,7 +280,7 @@ enum Spells
     SPELL_IN_THE_MAWS_OF_THE_OLD_GOD        = 64184,
 };
 
-enum Phases
+enum YoggSaronPhases
 {
     PHASE_ONE               = 1,
     PHASE_TRANSFORM         = 2,
@@ -287,7 +288,7 @@ enum Phases
     PHASE_THREE             = 4,
 };
 
-enum Events
+enum YoggSaronEvents
 {
     // Voice of Yogg-Saron
     EVENT_LOCK_DOOR                         = 1,
@@ -357,12 +358,12 @@ enum Events
     EVENT_STORMWIND_ROLEPLAY_7              = 47,
 };
 
-enum EventGroups
+enum YoggSaronEventGroups
 {
     EVENT_GROUP_SUMMON_TENTACLES            = 1,
 };
 
-enum Actions
+enum YoggSaronActions
 {
     ACTION_PHASE_TRANSFORM              = 0,
     ACTION_PHASE_TWO                    = 1,
@@ -375,7 +376,7 @@ enum Actions
     ACTION_TOGGLE_SHATTERED_ILLUSION    = 9,
 };
 
-enum CreatureGroups
+enum YoggSaronCreatureGroups
 {
     CREATURE_GROUP_CLOUDS       = 0,
     CREATURE_GROUP_PORTALS_10   = 1,
@@ -403,7 +404,7 @@ Position const IllusionsMiscPos[2] =
     {1912.324f, -155.7967f, 239.9896f, 0.0f}, // Saurfang end position
 };
 
-enum MiscData
+enum YoggSaronMiscData
 {
     ACHIEV_TIMED_START_EVENT                = 21001,
     SOUND_LUNATIC_GAZE                      = 15757,
@@ -2123,7 +2124,11 @@ class spell_yogg_saron_brain_link : public SpellScriptLoader    // 63802
             void FilterTargets(std::list<WorldObject*>& targets)
             {
                 targets.remove_if(Trinity::UnitAuraCheck(true, SPELL_ILLUSION_ROOM));
+                targets.remove_if(Trinity::ObjectTypeIdCheck(TYPEID_PLAYER, false));
+                if (targets.empty())
+                    return;
 
+                Trinity::Containers::RandomResize(targets, 2);
                 if (targets.size() != 2)
                 {
                     targets.clear();
@@ -2372,6 +2377,26 @@ class spell_yogg_saron_constrictor_tentacle : public SpellScriptLoader     // 64
     public:
         spell_yogg_saron_constrictor_tentacle() : SpellScriptLoader("spell_yogg_saron_constrictor_tentacle") { }
 
+        class spell_yogg_saron_constrictor_tentacle_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_yogg_saron_constrictor_tentacle_SpellScript);
+
+            void FilterTargets(std::list<WorldObject*>& targets)
+            {
+                targets.remove_if(Trinity::UnitAuraCheck(true, SPELL_ILLUSION_ROOM));
+                if (targets.empty())
+                    return;
+                WorldObject* target = Trinity::Containers::SelectRandomContainerElement(targets);
+                targets.clear();
+                targets.push_back(target);
+            }
+
+            void Register() override
+            {
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_yogg_saron_constrictor_tentacle_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+            }
+        };
+
         class spell_yogg_saron_constrictor_tentacle_AuraScript : public AuraScript
         {
             PrepareAuraScript(spell_yogg_saron_constrictor_tentacle_AuraScript);
@@ -2391,6 +2416,11 @@ class spell_yogg_saron_constrictor_tentacle : public SpellScriptLoader     // 64
                 AfterEffectApply += AuraEffectApplyFn(spell_yogg_saron_constrictor_tentacle_AuraScript::OnApply, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
             }
         };
+
+        SpellScript* GetSpellScript() const override
+        {
+            return new spell_yogg_saron_constrictor_tentacle_SpellScript();
+        }
 
         AuraScript* GetAuraScript() const override
         {

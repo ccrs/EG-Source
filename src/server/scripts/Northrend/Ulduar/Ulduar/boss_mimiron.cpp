@@ -15,7 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "ulduar.h"
 #include "Containers.h"
 #include "GameObject.h"
 #include "GameObjectAI.h"
@@ -25,13 +25,13 @@
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
 #include "SpellScript.h"
 #include "TemporarySummon.h"
-#include "ulduar.h"
 #include "Vehicle.h"
 
-enum Yells
+enum MimironYells
 {
     SAY_AGGRO                                   = 0,
     SAY_HARDMODE_ON                             = 1,
@@ -50,7 +50,7 @@ enum Yells
     SAY_BERSERK                                 = 14
 };
 
-enum ComputerYells
+enum MimironComputerYells
 {
     SAY_SELF_DESTRUCT_INITIATED                 = 0,
     SAY_SELF_DESTRUCT_TERMINATED                = 1,
@@ -67,7 +67,7 @@ enum ComputerYells
     SAY_SELF_DESTRUCT_FINALIZED                 = 12
 };
 
-enum Spells
+enum MimironSpells
 {
     // Mimiron
     SPELL_WELD                                  = 63339, // Idle aura.
@@ -182,7 +182,7 @@ enum Spells
     SPELL_FREEZE_ANIM                           = 16245  // Idle aura. Freezes animation.
 };
 
-enum Data
+enum MimironData
 {
     DATA_SETUP_MINE,
     DATA_SETUP_BOMB,
@@ -193,7 +193,7 @@ enum Data
     DATA_MOVE_NEW
 };
 
-enum Events
+enum MimironEvents
 {
     // Leviathan MK II
     EVENT_PROXIMITY_MINE = 1,
@@ -279,7 +279,7 @@ enum Events
     EVENT_WATER_SPRAY
 };
 
-enum Actions
+enum MimironActions
 {
     DO_START_MKII,
     DO_HARDMODE_MKII,
@@ -306,7 +306,7 @@ enum Actions
     DO_ENCOUNTER_DONE
 };
 
-enum Phases
+enum MimironPhases
 {
     PHASE_LEVIATHAN_MK_II = 1,
     PHASE_VX_001,
@@ -314,7 +314,7 @@ enum Phases
     PHASE_VOL7RON
 };
 
-enum Waypoints
+enum MimironWaypoints
 {
     WP_MKII_P1_IDLE = 1,
     WP_MKII_P4_POS_1,
@@ -325,14 +325,14 @@ enum Waypoints
     WP_AERIAL_P4_POS
 };
 
-enum SeatIds : int8
+enum MimironSeatIds : int8
 {
     MKII_SEAT_CANNON  = 3,
     ROCKET_SEAT_LEFT  = 5,
     ROCKET_SEAT_RIGHT = 6
 };
 
-uint32 const RepairSpells[4] =
+uint32 const MimironRepairSpells[4] =
 {
     SPELL_SEAT_1,
     SPELL_SEAT_2,
@@ -340,7 +340,7 @@ uint32 const RepairSpells[4] =
     SPELL_SEAT_5
 };
 
-Position const VehicleRelocation[] =
+Position const MimironVehicleRelocation[] =
 {
     { 0.0f, 0.0f, 0.0f},
     { 2792.070f, 2596.320f, 364.3136f }, // WP_MKII_P1_IDLE
@@ -355,7 +355,7 @@ Position const VehicleRelocation[] =
 Position const VX001SummonPos = { 2744.431f, 2569.385f, 364.3968f, 3.141593f };
 Position const ACUSummonPos   = { 2744.650f, 2569.460f, 380.0000f, 3.141593f };
 
-static bool IsEncounterFinished(Unit* who)
+static bool MimironIsEncounterFinished(Unit* who)
 {
     InstanceScript* instance = who->GetInstanceScript();
 
@@ -408,7 +408,7 @@ class boss_mimiron : public CreatureScript
                     case DO_ACTIVATE_V0L7R0N_1:
                         Talk(SAY_AERIAL_DEATH);
                         if (Creature* mkii = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_LEVIATHAN_MK_II)))
-                            mkii->GetMotionMaster()->MovePoint(WP_MKII_P4_POS_1, VehicleRelocation[WP_MKII_P4_POS_1]);
+                            mkii->GetMotionMaster()->MovePoint(WP_MKII_P4_POS_1, MimironVehicleRelocation[WP_MKII_P4_POS_1]);
                         break;
                     case DO_ACTIVATE_V0L7R0N_2:
                         events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_1, 1s);
@@ -611,7 +611,7 @@ class boss_mimiron : public CreatureScript
                             break;
                         case EVENT_VOL7RON_ACTIVATION_3:
                             if (Creature* mkii = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_LEVIATHAN_MK_II)))
-                                mkii->GetMotionMaster()->MovePoint(WP_MKII_P4_POS_4, VehicleRelocation[WP_MKII_P4_POS_4]);
+                                mkii->GetMotionMaster()->MovePoint(WP_MKII_P4_POS_4, MimironVehicleRelocation[WP_MKII_P4_POS_4]);
                             events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_4, 5s);
                             break;
                         case EVENT_VOL7RON_ACTIVATION_4:
@@ -702,8 +702,10 @@ class boss_leviathan_mk_ii : public CreatureScript
                 {
                     damage = me->GetHealth() - 1; // Let creature fall to 1 hp, but do not let it die or damage itself with SetHealth().
                     me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-                    DoCast(me, SPELL_VEHICLE_DAMAGED, true);
+                    me->InterruptNonMeleeSpells(true);
+                    DoCastSelf(SPELL_VEHICLE_DAMAGED, true);
                     me->AttackStop();
+                    me->SetTarget(ObjectGuid::Empty);
                     me->SetReactState(REACT_PASSIVE);
                     me->RemoveAllAurasExceptType(SPELL_AURA_CONTROL_VEHICLE, SPELL_AURA_MOD_INCREASE_HEALTH_PERCENT);
 
@@ -714,14 +716,14 @@ class boss_leviathan_mk_ii : public CreatureScript
                             turret->KillSelf();
 
                         me->SetSpeedRate(MOVE_RUN, 1.5f);
-                        me->GetMotionMaster()->MovePoint(WP_MKII_P1_IDLE, VehicleRelocation[WP_MKII_P1_IDLE]);
+                        me->GetMotionMaster()->MovePoint(WP_MKII_P1_IDLE, MimironVehicleRelocation[WP_MKII_P1_IDLE]);
                     }
                     else if (events.IsInPhase(PHASE_VOL7RON))
                     {
                         me->SetStandState(UNIT_STAND_STATE_DEAD);
 
                         Unit* ref = who ? who : me;
-                        if (IsEncounterFinished(ref))
+                        if (MimironIsEncounterFinished(ref))
                             return;
 
                         me->CastStop();
@@ -896,13 +898,13 @@ class boss_leviathan_mk_ii : public CreatureScript
                                 events.RescheduleEvent(EVENT_PLASMA_BLAST, 2s, 0, PHASE_LEVIATHAN_MK_II);  // The actual spell is cast by the turret, we should not let it interrupt itself.
                             break;
                         case EVENT_MOVE_POINT_2:
-                            me->GetMotionMaster()->MovePoint(WP_MKII_P4_POS_2, VehicleRelocation[WP_MKII_P4_POS_2]);
+                            me->GetMotionMaster()->MovePoint(WP_MKII_P4_POS_2, MimironVehicleRelocation[WP_MKII_P4_POS_2]);
                             break;
                         case EVENT_MOVE_POINT_3:
-                            me->GetMotionMaster()->MovePoint(WP_MKII_P4_POS_3, VehicleRelocation[WP_MKII_P4_POS_3]);
+                            me->GetMotionMaster()->MovePoint(WP_MKII_P4_POS_3, MimironVehicleRelocation[WP_MKII_P4_POS_3]);
                             break;
                         case EVENT_MOVE_POINT_5:
-                            me->GetMotionMaster()->MovePoint(WP_MKII_P4_POS_5, VehicleRelocation[WP_MKII_P4_POS_5]);
+                            me->GetMotionMaster()->MovePoint(WP_MKII_P4_POS_5, MimironVehicleRelocation[WP_MKII_P4_POS_5]);
                             break;
                         default:
                             break;
@@ -949,7 +951,9 @@ class boss_vx_001 : public CreatureScript
                 {
                     damage = me->GetHealth() - 1; // Let creature fall to 1 hp, but do not let it die or damage itself with SetHealth().
                     me->AttackStop();
+                    me->InterruptNonMeleeSpells(true);
                     DoCast(me, SPELL_VEHICLE_DAMAGED, true);
+                    me->SetTarget(ObjectGuid::Empty);
                     me->RemoveAllAurasExceptType(SPELL_AURA_CONTROL_VEHICLE, SPELL_AURA_MOD_INCREASE_HEALTH_PERCENT);
 
                     if (events.IsInPhase(PHASE_VX_001))
@@ -967,7 +971,7 @@ class boss_vx_001 : public CreatureScript
                         me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
 
                         Unit* ref = who ? who : me;
-                        if (IsEncounterFinished(ref))
+                        if (MimironIsEncounterFinished(ref))
                             return;
 
                         me->CastStop();
@@ -1124,6 +1128,8 @@ class boss_aerial_command_unit : public CreatureScript
                 me->SetReactState(REACT_PASSIVE);
                 me->SetDisableGravity(true);
                 fireFigther = false;
+                moving = false;
+                magneticPull = false;
             }
 
             void DamageTaken(Unit* who, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
@@ -1131,8 +1137,11 @@ class boss_aerial_command_unit : public CreatureScript
                 if (damage >= me->GetHealth())
                 {
                     damage = me->GetHealth() - 1; // Let creature fall to 1 hp, but do not let it die or damage itself with SetHealth().
+                    magneticPull = false;
                     me->SetReactState(REACT_PASSIVE);
                     me->AttackStop();
+                    me->InterruptNonMeleeSpells(true);
+                    me->SetTarget(ObjectGuid::Empty);
                     me->SetDisableGravity(true);
                     me->SetAnimTier(AnimTier::Ground);
 
@@ -1140,15 +1149,15 @@ class boss_aerial_command_unit : public CreatureScript
 
                     if (events.IsInPhase(PHASE_AERIAL_COMMAND_UNIT))
                     {
-                        me->GetMotionMaster()->Clear();
-                        me->GetMotionMaster()->MovePoint(WP_AERIAL_P4_POS, VehicleRelocation[WP_AERIAL_P4_POS]);
+                        me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
+                        me->GetMotionMaster()->MovePoint(WP_AERIAL_P4_POS, MimironVehicleRelocation[WP_AERIAL_P4_POS]);
                     }
                     else if (events.IsInPhase(PHASE_VOL7RON))
                     {
                         me->SetStandState(UNIT_STAND_STATE_DEAD);
 
                         Unit* ref = who ? who : me;
-                        if (IsEncounterFinished(ref))
+                        if (MimironIsEncounterFinished(ref))
                             return;
 
                         me->CastStop();
@@ -1173,6 +1182,8 @@ class boss_aerial_command_unit : public CreatureScript
                         me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
                         me->SetImmuneToPC(false);
                         me->SetReactState(REACT_AGGRESSIVE);
+                        me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
+                        magneticPull = true;
 
                         events.SetPhase(PHASE_AERIAL_COMMAND_UNIT);
                         events.ScheduleEvent(EVENT_SUMMON_JUNK_BOT, 5s, 0, PHASE_AERIAL_COMMAND_UNIT);
@@ -1180,14 +1191,27 @@ class boss_aerial_command_unit : public CreatureScript
                         events.ScheduleEvent(EVENT_SUMMON_BOMB_BOT, 9s, 0, PHASE_AERIAL_COMMAND_UNIT);
                         break;
                     case DO_DISABLE_AERIAL:
+                    {
                         me->CastStop();
+                        me->InterruptNonMeleeSpells(true);
+                        me->SetTarget(ObjectGuid::Empty);
                         me->SetReactState(REACT_PASSIVE);
                         me->AttackStop();
-                        me->GetMotionMaster()->MoveFall();
+                        Position ground = me->GetPosition();
+                        ground.m_positionZ = 1.0f + me->GetMap()->GetHeight(ground.GetPositionX(), ground.GetPositionY(), ground.GetPositionZ());
+                        me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
+                        me->GetMotionMaster()->MovePoint(2, ground);
                         events.DelayEvents(23s);
                         break;
+                    }
                     case DO_ENABLE_AERIAL:
-                        me->SetReactState(REACT_AGGRESSIVE);
+                        if (magneticPull)
+                        {
+                            Position air = me->GetPosition();
+                            air.m_positionZ = ACUSummonPos.GetPositionZ();
+                            me->GetMotionMaster()->MoveIdle();
+                            me->GetMotionMaster()->MovePoint(3, air);
+                        }
                         break;
                     case DO_ASSEMBLED_COMBAT:
                         me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
@@ -1219,16 +1243,41 @@ class boss_aerial_command_unit : public CreatureScript
                         mimiron->AI()->Talk(events.IsInPhase(PHASE_AERIAL_COMMAND_UNIT) ? SAY_AERIAL_SLAY : SAY_V07TRON_SLAY);
             }
 
+            void AttackStart(Unit* who) override
+            {
+                if (who)
+                    me->Attack(who, true);
+            }
+
             void MovementInform(uint32 type, uint32 point) override
             {
                 if (type == POINT_MOTION_TYPE && point == WP_AERIAL_P4_POS)
                 {
-                    me->SetFacingTo(VehicleRelocation[WP_AERIAL_P4_POS].GetOrientation());
+                    me->SetFacingTo(MimironVehicleRelocation[WP_AERIAL_P4_POS].GetOrientation());
                     me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                     DoCastSelf(SPELL_CLEAR_ALL_DEBUFFS);
 
                     if (Creature* mimiron = instance->GetCreature(DATA_MIMIRON))
                         mimiron->AI()->DoAction(DO_ACTIVATE_V0L7R0N_1);
+                }
+                else if (type == POINT_MOTION_TYPE && point == 1)
+                {
+                    if (me->GetVictim() && me->GetDistance(me->GetVictim()) > 30.0f)
+                    {
+                        Position pos = me->GetVictim()->GetNearPosition(10.0f, 0.0f);
+                        pos.m_positionZ = ACUSummonPos.GetPositionZ();
+                        me->GetMotionMaster()->MovePoint(1, pos);
+                    }
+                    else
+                        moving = false;
+                }
+                else if (type == POINT_MOTION_TYPE && point == 2)
+                    me->GetMotionMaster()->MoveRotate(0, 15 * IN_MILLISECONDS, urand(0, 1) ? ROTATE_DIRECTION_LEFT : ROTATE_DIRECTION_RIGHT);
+                else if (type == POINT_MOTION_TYPE && point == 3)
+                {
+                    me->SetReactState(REACT_AGGRESSIVE);
+                    if (me->GetVictim())
+                        me->SetTarget(me->GetVictim()->GetGUID());
                 }
             }
 
@@ -1236,6 +1285,14 @@ class boss_aerial_command_unit : public CreatureScript
             {
                 if (!UpdateVictim())
                     return;
+
+                if (events.IsInPhase(PHASE_AERIAL_COMMAND_UNIT) && me->HasReactState(REACT_AGGRESSIVE) && !moving && me->GetVictim() && me->GetDistance(me->GetVictim()) > 30.0f)
+                {
+                    moving = true;
+                    Position pos = me->GetVictim()->GetNearPosition(10.0f, 0.0f);
+                    pos.m_positionZ = ACUSummonPos.GetPositionZ();
+                    me->GetMotionMaster()->MovePoint(1, pos);
+                }
 
                 events.Update(diff);
 
@@ -1274,6 +1331,8 @@ class boss_aerial_command_unit : public CreatureScript
 
         private:
             bool fireFigther;
+            bool moving;
+            bool magneticPull;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -2771,7 +2830,7 @@ class spell_mimiron_weld : public SpellScriptLoader
                 if (Unit* vehicle = caster->GetVehicleBase())
                 {
                     if (aurEff->GetTickNumber() % 5 == 0)
-                        caster->CastSpell(vehicle, RepairSpells[urand(0, 3)]);
+                        caster->CastSpell(vehicle, MimironRepairSpells[urand(0, 3)]);
                     caster->SetFacingToObject(vehicle);
                 }
             }

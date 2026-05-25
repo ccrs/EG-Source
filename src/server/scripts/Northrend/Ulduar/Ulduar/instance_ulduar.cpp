@@ -22,6 +22,8 @@
 #include "InstanceScript.h"
 #include "Item.h"
 #include "Map.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "TemporarySummon.h"
@@ -109,6 +111,8 @@ ObjectData const creatureData[] =
     { NPC_BRAIN_OF_YOGG_SARON,      DATA_BRAIN_OF_YOGG_SARON      },
     { NPC_BRANN_BRONZBEARD_ALG,     DATA_BRANN_BRONZEBEARD_ALG    },
     { NPC_BRANN_BRONZEBEARD_INTRO,  DATA_BRANN_BRONZEBEARD_INTRO  },
+    { NPC_ARCHMAGE_PENTARUS,        DATA_ARCHMAGE_PENTARUS        },
+    { NPC_ARCHMAGE_RHYDIAN,         DATA_ARCHMAGE_RHYDIAN         },
     { NPC_LORE_KEEPER_OF_NORGANNON, DATA_LORE_KEEPER_OF_NORGANNON },
     { NPC_HIGH_EXPLORER_DELLORAH,   DATA_DELLORAH                 },
     { NPC_BRONZEBEARD_RADIO,        DATA_BRONZEBEARD_RADIO        },
@@ -138,6 +142,53 @@ ObjectData const objectData[] =
     { GO_GIFT_OF_THE_OBSERVER_10,      DATA_GIFT_OF_THE_OBSERVER },
     { GO_GIFT_OF_THE_OBSERVER_25,      DATA_GIFT_OF_THE_OBSERVER },
     { 0,                               0                         }
+};
+
+static Position const BrannRadioSummonPos = { -312.553f, 294.34140f, 525.1342f, 5.408990f };
+static Position const FlameLeviathanOutroFlyingMachineSpawn = { 166.760f, -273.302f, 499.799f, 1.43817f };
+static Position const FlameLeviathanOutroFlyingMachineLand = { 246.4216f, -80.0379f, 416.2025f, 3.14159f };
+static Position const FlameLeviathanOutroFlyingMachinePath[] =
+{
+    { 162.31393f, -298.57043f, 499.29520f, 0.0f },
+    { 163.25363f, -298.22842f, 499.29520f, 0.0f },
+    { 187.40060f, -142.13303f, 499.75803f, 0.0f },
+    { 216.52350f, -102.91764f, 475.61917f, 0.0f },
+    { 207.26460f,   -0.70204f, 460.25810f, 0.0f },
+    { 201.75299f,   29.98020f, 465.31372f, 0.0f },
+    { 231.98503f,   47.57292f, 459.28592f, 0.0f },
+    { 247.23238f,   44.02615f, 459.17484f, 0.0f },
+    { 253.05849f,   22.74127f, 446.11926f, 0.0f },
+    { 255.55441f,  -23.08404f, 431.00824f, 0.0f },
+    { 260.49127f,  -54.52697f, 421.70270f, 0.0f },
+    { 246.42160f,  -80.03793f, 416.20250f, 0.0f }
+};
+static Position const FlameLeviathanOutroRhydianSpawn = { 235.560f, -136.188f, 409.651f, 1.78024f };
+static Position const FlameLeviathanOutroRhydianWalkTo = { 244.500f,  -94.000f, 409.819f, 1.57080f };
+static Position const FlameLeviathanOutroBrannWalkTo = { 244.500f,  -91.000f, 409.819f, 4.71239f };
+static Position const FlameLeviathanHardmodeDellorahNearBrann = { -716.500f, -58.000f, 430.000f, 1.59000f };
+
+static constexpr uint32 FlameLeviathanOutroSummonDespawnMs = 10 * MINUTE * IN_MILLISECONDS;
+
+enum BrannIntroTexts
+{
+    SAY_BRANN_INTRO_PENTARUS_YOU_HEARD = 0,
+    SAY_BRANN_INTRO_LETS_MOVE_OUT,
+    SAY_BRANN_INTRO_BRING_DOWN_SHIELD
+};
+
+enum PentarusIntroTexts
+{
+    SAY_PENTARUS_INTRO_OF_COURSE_BRANN = 0,
+    SAY_PENTARUS_INTRO_MAGES_OF_KIRIN_TOR
+};
+
+static constexpr ObjectGuid::LowType ShieldChannelMageSpawnIdEast = 136525;
+static constexpr ObjectGuid::LowType ShieldChannelMageSpawnIdNorthEast = 136528;
+
+enum DellorahHardmodeTexts
+{
+    SAY_DELLORAH_HARDMODE_REACT = 7,  // "What... What did you just do, $n?! Brann! Braaaaannn!"
+    SAY_DELLORAH_HARDMODE_WARN        // "Brann! $n just activated the orbital defense system!..."
 };
 
 UlduarKeeperDespawnEvent::UlduarKeeperDespawnEvent(Creature* owner, Milliseconds despawnTimerOffset) : _owner(owner), _despawnTimer(despawnTimerOffset)
@@ -185,42 +236,12 @@ class instance_ulduar : public InstanceMapScript
 
                 memset(_summonObservationRingKeeper, 0, sizeof(_summonObservationRingKeeper));
                 memset(_summonYSKeeper, 0, sizeof(_summonYSKeeper));
+
+                _activeTowers = false;
+                _destroyedTowers = 0;
+                _stunned = 1;
+                _flIntroCompleted = false;
             }
-
-            // Creatures
-            GuidVector LeviathanVehicleGUIDs;
-
-            ObjectGuid XTToyPileGUIDs[4];
-            ObjectGuid AssemblyGUIDs[3];
-
-            ObjectGuid ElderGUIDs[3];
-            ObjectGuid FreyaAchieveTriggerGUID;
-            ObjectGuid MimironVehicleGUIDs[3];
-            ObjectGuid KeeperGUIDs[4];
-
-            // GameObjects
-            ObjectGuid LeviathanGateGUID;
-            ObjectGuid KologarnChestGUID;
-            ObjectGuid KologarnBridgeGUID;
-            ObjectGuid ThorimDarkIronPortcullisGUID;
-            ObjectGuid CacheOfStormsGUID;
-            ObjectGuid CacheOfStormsHardmodeGUID;
-            ObjectGuid HodirRareCacheGUID;
-            ObjectGuid HodirChestGUID;
-            ObjectGuid MimironTramGUID;
-
-            ObjectGuid BrainRoomDoorGUIDs[3];
-
-            // Miscellaneous
-            uint32 TeamInInstance;
-            uint32 ColossusData;
-            uint8 elderCount;
-            uint8 illusion;
-            uint8 keepersCount;
-            bool conSpeedAtory;
-            bool lumberjacked;
-            bool Unbroken;
-            bool IsDriveMeCrazyEligible;
 
             void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override
             {
@@ -290,6 +311,18 @@ class instance_ulduar : public InstanceMapScript
                         else
                             LeviathanVehicleGUIDs.push_back(creature->GetGUID());
                         break;
+                    case NPC_KIRIN_TOR_BATTLE_MAGE:
+                        if (creature->GetSpawnId() == ShieldChannelMageSpawnIdEast || creature->GetSpawnId() == ShieldChannelMageSpawnIdNorthEast)
+                        {
+                            if (!_flIntroCompleted)
+                                KirinTorMageGUIDs.push_back(creature->GetGUID());
+                            else
+                            {
+                                creature->InterruptNonMeleeSpells(true);
+                                creature->SetEmoteState(EMOTE_STATE_NONE);
+                            }
+                        }
+                        break;
 
                     // XT-002 Deconstructor
                     case NPC_XT_TOY_PILE:
@@ -318,12 +351,12 @@ class instance_ulduar : public InstanceMapScript
                         break;
 
                     // Freya
-                    case NPC_IRONBRANCH:
+                    case NPC_BRIGHTLEAF:
                         ElderGUIDs[0] = creature->GetGUID();
                         if (GetBossState(DATA_FREYA) == DONE)
                             creature->DespawnOrUnsummon();
                         break;
-                    case NPC_BRIGHTLEAF:
+                    case NPC_IRONBRANCH:
                         ElderGUIDs[1] = creature->GetGUID();
                         if (GetBossState(DATA_FREYA) == DONE)
                             creature->DespawnOrUnsummon();
@@ -445,6 +478,9 @@ class instance_ulduar : public InstanceMapScript
 
                 switch (gameObject->GetEntry())
                 {
+                    case GO_KOLOGARN_DOOR:
+                        HandleGameObject(ObjectGuid::Empty, false, gameObject);
+                        break;
                     case GO_KOLOGARN_CHEST_HERO:
                     case GO_KOLOGARN_CHEST:
                         KologarnChestGUID = gameObject->GetGUID();
@@ -480,6 +516,11 @@ class instance_ulduar : public InstanceMapScript
                         LeviathanGateGUID = gameObject->GetGUID();
                         if (GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
                             gameObject->SetGoState(GO_STATE_DESTROYED);
+                        break;
+                    case GO_LEVIATHAN_PROTECTIVE_BUBBLE:
+                        LeviathanProtectiveBubbleGUID = gameObject->GetGUID();
+                        if (_flIntroCompleted || GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
+                            gameObject->DespawnOrUnsummon();
                         break;
                     case GO_BRAIN_ROOM_DOOR_1:
                         BrainRoomDoorGUIDs[0] = gameObject->GetGUID();
@@ -560,20 +601,16 @@ class instance_ulduar : public InstanceMapScript
                 {
                     // Flame Leviathan's Tower Event triggers
                     case EVENT_TOWER_OF_STORM_DESTROYED:
-                        if (Creature* flameLeviathan = GetCreature(DATA_FLAME_LEVIATHAN))
-                            flameLeviathan->AI()->DoAction(ACTION_TOWER_OF_STORM_DESTROYED);
+                        _destroyedTowers |= ACTION_TOWER_OF_STORM_DESTROYED;
                         break;
                     case EVENT_TOWER_OF_FROST_DESTROYED:
-                        if (Creature* flameLeviathan = GetCreature(DATA_FLAME_LEVIATHAN))
-                            flameLeviathan->AI()->DoAction(ACTION_TOWER_OF_FROST_DESTROYED);
+                        _destroyedTowers |= ACTION_TOWER_OF_FROST_DESTROYED;
                         break;
                     case EVENT_TOWER_OF_FLAMES_DESTROYED:
-                        if (Creature* flameLeviathan = GetCreature(DATA_FLAME_LEVIATHAN))
-                            flameLeviathan->AI()->DoAction(ACTION_TOWER_OF_FLAMES_DESTROYED);
+                        _destroyedTowers |= ACTION_TOWER_OF_FLAMES_DESTROYED;
                         break;
                     case EVENT_TOWER_OF_LIFE_DESTROYED:
-                        if (Creature* flameLeviathan = GetCreature(DATA_FLAME_LEVIATHAN))
-                            flameLeviathan->AI()->DoAction(ACTION_TOWER_OF_LIFE_DESTROYED);
+                        _destroyedTowers |= ACTION_TOWER_OF_LIFE_DESTROYED;
                         break;
 
                     // Hodir Event triggers
@@ -613,12 +650,35 @@ class instance_ulduar : public InstanceMapScript
                 {
                     case DATA_FLAME_LEVIATHAN:
                         if (state == DONE)
+                        {
                             _events.ScheduleEvent(EVENT_DESPAWN_LEVIATHAN_VEHICLES, 5s);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_SPAWN, 10s);
+                        }
+                        else if (state == NOT_STARTED)
+                        {
+                            for (ObjectGuid const& vehicleGuid : LeviathanVehicleGUIDs)
+                            {
+                                if (Creature* vehicleCreature = instance->GetCreature(vehicleGuid))
+                                    if (vehicleCreature->IsAlive())
+                                    {
+                                        vehicleCreature->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                                        vehicleCreature->DespawnOrUnsummon(0ms, 30s);
+                                    }
+                            }
+                            ForceRespawnQueuedCreaturesByEntry({ NPC_SALVAGED_DEMOLISHER, NPC_SALVAGED_SIEGE_ENGINE, NPC_SALVAGED_CHOPPER });
+                        }
                         break;
                     case DATA_IGNIS:
+                        if (state == NOT_STARTED)
+                            ForceRespawnQueuedCreaturesByEntry({ NPC_IRON_CONSTRUCT });
+                        break;
                     case DATA_RAZORSCALE:
                     case DATA_XT002:
+                        break;
                     case DATA_ASSEMBLY_OF_IRON:
+                        if (state == NOT_STARTED)
+                            ForceRespawnQueuedCreaturesByEntry({ NPC_STEELBREAKER, NPC_MOLGEIM, NPC_BRUNDIR });
+                        break;
                     case DATA_AURIAYA:
                     case DATA_VEZAX:
                     case DATA_YOGG_SARON:
@@ -740,8 +800,12 @@ class instance_ulduar : public InstanceMapScript
                         ColossusData = data;
                         if (data >= 2 && GetBossState(DATA_FLAME_LEVIATHAN) == NOT_STARTED)
                         {
-                            _events.ScheduleEvent(EVENT_LEVIATHAN_BREAK_DOOR, 5s);
-                            SaveToDB();
+                            if (Creature* radio = instance->SummonCreature(NPC_BRONZEBEARD_RADIO, BrannRadioSummonPos))
+                            {
+                                radio->AI()->Talk(SAY_BRANN_RADIO_LEVIATHAN);
+                                if (GetBossState(DATA_FLAME_LEVIATHAN) != DONE)
+                                    _events.ScheduleEvent(EVENT_BRANN_RADIO, 8s);
+                            }
                         }
                         break;
                     case DATA_UNBROKEN:
@@ -763,13 +827,54 @@ class instance_ulduar : public InstanceMapScript
                     case DATA_ALGALON_SUMMON_STATE:
                         _algalonSummoned = true;
                         break;
+                    case DATA_ACTIVE_TOWERS:
+                        _activeTowers = data ? true : false;
+                        break;
+                    case DATA_STUNNED:
+                        _stunned = data;
+                        break;
+                    case DATA_FL_OUTRO_FLYING_MACHINE_LANDED:
+                        if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                        {
+                            brann->ExitVehicle();
+                            brann->NearTeleportTo(FlameLeviathanOutroFlyingMachineLand.GetPositionX(), FlameLeviathanOutroFlyingMachineLand.GetPositionY(), 409.747f, FlameLeviathanOutroFlyingMachineLand.GetOrientation());
+                            brann->SetWalk(true);
+                            brann->GetMotionMaster()->MovePoint(POINT_FL_OUTRO_BRANN_WALK_TO_RHYDIAN, FlameLeviathanOutroBrannWalkTo);
+                        }
+                        _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_1, 6500ms);
+                        break;
+                    case DATA_FL_INTRO_START:
+                        _events.ScheduleEvent(EVENT_FL_INTRO_LINE_1, 1s);
+                        break;
+                    case DATA_FL_HARDMODE_CONFIRMED:
+                        _events.ScheduleEvent(EVENT_FL_HARDMODE_LINE_DEACTIVATING, 14s);
+                        _events.ScheduleEvent(EVENT_FL_HARDMODE_NORGANNON_DESPAWN, 18s);
+                        _events.ScheduleEvent(EVENT_FL_HARDMODE_BRANN_RADIO_WARN_1, 4s);
+                        _events.ScheduleEvent(EVENT_FL_HARDMODE_BRANN_RADIO_WARN_2, 13s);
+                        _events.ScheduleEvent(EVENT_FL_HARDMODE_DELLORAH_YELL_1, 20s);
+                        _events.ScheduleEvent(EVENT_FL_HARDMODE_DELLORAH_RUN, 21s);
+                        _events.ScheduleEvent(EVENT_FL_HARDMODE_DELLORAH_YELL_2, 37s);
+                        _events.ScheduleEvent(EVENT_FL_HARDMODE_BRANN_RESPOND, 40s);
+                        _events.ScheduleEvent(EVENT_FL_INTRO_SHIELD_DOWN, 44s);
+                        break;
                     default:
                         break;
                 }
             }
 
-            void SetGuidData(uint32 /*type*/, ObjectGuid /*data*/) override
+            void SetGuidData(uint32 type, ObjectGuid data) override
             {
+                switch (type)
+                {
+                    case DATA_FL_INTRO_PLAYER:
+                        _flIntroPlayerGUID = data;
+                        break;
+                    case DATA_FL_HARDMODE_PLAYER:
+                        _flHardmodePlayerGUID = data;
+                        break;
+                    default:
+                        break;
+                }
             }
 
             ObjectGuid GetGuidData(uint32 data) const override
@@ -846,6 +951,11 @@ class instance_ulduar : public InstanceMapScript
                             case ALLIANCE: return 1;
                             case HORDE: return 2;
                         }
+                        break;
+                    case DATA_ACTIVE_TOWERS:
+                        return _activeTowers ? 1 : 0;
+                    case DATA_DESTROYED_TOWERS:
+                        return _destroyedTowers;
                     default:
                         break;
                 }
@@ -923,6 +1033,21 @@ class instance_ulduar : public InstanceMapScript
                     case CRITERIA_C_O_U_YOGG_SARON_10:
                     case CRITERIA_C_O_U_YOGG_SARON_25:
                         return (_CoUAchivePlayerDeathMask & (1 << DATA_YOGG_SARON)) == 0;
+                    case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_10_SB:
+                    case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_25_SB:
+                        if (Creature* stormcaller = instance->GetCreature(AssemblyGUIDs[2]))
+                            return _stunned == 1 && stormcaller->AI()->GetData(1 /*DATA_PHASE_3*/) == 1;
+                        break;
+                    case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_10_S:
+                    case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_25_S:
+                        if (Creature* steelbreaker = instance->GetCreature(AssemblyGUIDs[0]))
+                            return _stunned == 1 && steelbreaker->AI()->GetData(1 /*DATA_PHASE_3*/) == 1;
+                        break;
+                    case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_10_RM:
+                    case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_25_RM:
+                        if (Creature* runeMaster = instance->GetCreature(AssemblyGUIDs[1]))
+                            return _stunned == 1 && runeMaster->AI()->GetData(1 /*DATA_PHASE_3*/) == 1;
+                        break;
                 }
 
                 return false;
@@ -936,6 +1061,9 @@ class instance_ulduar : public InstanceMapScript
                     data << ' ' << uint32(!KeeperGUIDs[i].IsEmpty() ? 1 : 0);
 
                 data << ' ' << _CoUAchivePlayerDeathMask;
+                data << ' ' << uint32(_activeTowers ? 1 : 0);
+                data << ' ' << _destroyedTowers;
+                data << ' ' << uint32(_flIntroCompleted ? 1 : 0);
             }
 
             void ReadSaveDataMore(std::istringstream& data) override
@@ -974,6 +1102,20 @@ class instance_ulduar : public InstanceMapScript
                     _summonObservationRingKeeper[3] = true;
 
                 data >> _CoUAchivePlayerDeathMask;
+
+                data >> tempState;
+                _activeTowers = tempState != 0;
+
+                data >> _destroyedTowers;
+
+                uint32 introCompletedTemp = 0;
+                data >> introCompletedTemp;
+                _flIntroCompleted = introCompletedTemp != 0;
+
+                if (GetBossState(DATA_FLAME_LEVIATHAN) == NOT_STARTED)
+                    ForceRespawnQueuedCreaturesByEntry({ NPC_SALVAGED_DEMOLISHER, NPC_SALVAGED_SIEGE_ENGINE, NPC_SALVAGED_CHOPPER });
+                if (GetBossState(DATA_ASSEMBLY_OF_IRON) == NOT_STARTED)
+                    ForceRespawnQueuedCreaturesByEntry({ NPC_STEELBREAKER, NPC_MOLGEIM, NPC_BRUNDIR });
             }
 
             void Update(uint32 diff) override
@@ -1007,11 +1149,190 @@ class instance_ulduar : public InstanceMapScript
                                 if (Creature* vehicleCreature = instance->GetCreature(vehicleGuid))
                                     DespawnLeviatanVehicle(vehicleCreature);
                             break;
+                        case EVENT_BRANN_RADIO:
+                            if (Creature* radio = GetCreature(DATA_BRONZEBEARD_RADIO))
+                                radio->AI()->Talk(SAY_BRANN_RADIO_LEVIATHAN2);
+                            _events.ScheduleEvent(EVENT_BRANN_RADIO2, 5s);
+                            break;
+                        case EVENT_BRANN_RADIO2:
+                            if (Creature* radio = GetCreature(DATA_BRONZEBEARD_RADIO))
+                                radio->AI()->Talk(SAY_BRANN_RADIO_LEVIATHAN3);
+                            _events.ScheduleEvent(EVENT_LEVIATHAN_BREAK_DOOR, 5s);
+                            break;
                         case EVENT_LEVIATHAN_BREAK_DOOR:
                             if (Creature* leviathan = GetCreature(DATA_FLAME_LEVIATHAN))
                                 leviathan->AI()->DoAction(ACTION_MOVE_TO_CENTER_POSITION);
                             if (GameObject* gameObject = instance->GetGameObject(LeviathanGateGUID))
                                 gameObject->SetGoState(GO_STATE_DESTROYED);
+                            break;
+                        case EVENT_FL_INTRO_LINE_1:
+                            if (Creature* brann = GetCreature(DATA_BRANN_BRONZEBEARD_INTRO))
+                                brann->AI()->Talk(SAY_BRANN_INTRO_PENTARUS_YOU_HEARD, ObjectAccessor::GetPlayer(*brann, _flIntroPlayerGUID));
+                            _events.ScheduleEvent(EVENT_FL_INTRO_LINE_2, 9s);
+                            break;
+                        case EVENT_FL_INTRO_LINE_2:
+                            if (Creature* pentarus = GetCreature(DATA_ARCHMAGE_PENTARUS))
+                                pentarus->AI()->Talk(SAY_PENTARUS_INTRO_OF_COURSE_BRANN);
+                            _events.ScheduleEvent(EVENT_FL_INTRO_LINE_3, 9s);
+                            break;
+                        case EVENT_FL_INTRO_LINE_3:
+                            if (Creature* brann = GetCreature(DATA_BRANN_BRONZEBEARD_INTRO))
+                                brann->AI()->Talk(SAY_BRANN_INTRO_LETS_MOVE_OUT);
+                            _events.ScheduleEvent(EVENT_FL_INTRO_LINE_4, 23s);
+                            break;
+                        case EVENT_FL_INTRO_LINE_4:
+                            if (Creature* pentarus = GetCreature(DATA_ARCHMAGE_PENTARUS))
+                                pentarus->AI()->Talk(SAY_PENTARUS_INTRO_MAGES_OF_KIRIN_TOR);
+                            _events.ScheduleEvent(EVENT_FL_INTRO_LINE_5, 10s);
+                            break;
+                        case EVENT_FL_INTRO_LINE_5:
+                            if (Creature* brann = GetCreature(DATA_BRANN_BRONZEBEARD_INTRO))
+                                brann->AI()->Talk(SAY_BRANN_INTRO_BRING_DOWN_SHIELD);
+                            _events.ScheduleEvent(EVENT_FL_INTRO_SHIELD_DOWN, 13s);
+                            break;
+                        case EVENT_FL_INTRO_SHIELD_DOWN:
+                            _flIntroCompleted = true;
+                            SaveToDB();
+                            if (GameObject* shield = instance->GetGameObject(LeviathanProtectiveBubbleGUID))
+                                shield->DespawnOrUnsummon();
+                            for (ObjectGuid const& mageGuid : KirinTorMageGUIDs)
+                            {
+                                if (Creature* mage = instance->GetCreature(mageGuid))
+                                {
+                                    mage->InterruptNonMeleeSpells(true);
+                                    mage->SetEmoteState(EMOTE_STATE_NONE);
+                                }
+                            }
+                            _flIntroPlayerGUID.Clear();
+                            break;
+                        case EVENT_FL_HARDMODE_LINE_DEACTIVATING:
+                            if (Creature* norgannon = GetCreature(DATA_LORE_KEEPER_OF_NORGANNON))
+                                norgannon->AI()->Talk(SAY_LORE_KEEPER_DEACTIVATING);
+                            break;
+                        case EVENT_FL_HARDMODE_NORGANNON_DESPAWN:
+                            if (Creature* norgannon = GetCreature(DATA_LORE_KEEPER_OF_NORGANNON))
+                                norgannon->DespawnOrUnsummon();
+                            break;
+                        case EVENT_FL_HARDMODE_BRANN_RADIO_WARN_1:
+                            if (Creature* radio = instance->SummonCreature(NPC_BRONZEBEARD_RADIO, BrannRadioSummonPos))
+                                radio->AI()->Talk(SAY_BRANN_RADIO_HARDMODE_WARN_1);
+                            break;
+                        case EVENT_FL_HARDMODE_BRANN_RADIO_WARN_2:
+                            if (Creature* radio = GetCreature(DATA_BRONZEBEARD_RADIO))
+                                radio->AI()->Talk(SAY_BRANN_RADIO_HARDMODE_WARN_2);
+                            break;
+                        case EVENT_FL_HARDMODE_DELLORAH_YELL_1:
+                            if (Creature* dellorah = GetCreature(DATA_DELLORAH))
+                            {
+                                dellorah->AI()->SetData(99, 99);
+                                dellorah->AI()->Talk(SAY_DELLORAH_HARDMODE_REACT, ObjectAccessor::GetPlayer(*dellorah, _flHardmodePlayerGUID));
+                            }
+                            break;
+                        case EVENT_FL_HARDMODE_DELLORAH_RUN:
+                            if (Creature* dellorah = GetCreature(DATA_DELLORAH))
+                            {
+                                dellorah->SetWalk(false);
+                                dellorah->GetMotionMaster()->MovePoint(POINT_FL_HARDMODE_DELLORAH_TO_BRANN, FlameLeviathanHardmodeDellorahNearBrann);
+                            }
+                            break;
+                        case EVENT_FL_HARDMODE_DELLORAH_YELL_2:
+                            if (Creature* dellorah = GetCreature(DATA_DELLORAH))
+                                dellorah->AI()->Talk(SAY_DELLORAH_HARDMODE_WARN, ObjectAccessor::GetPlayer(*dellorah, _flHardmodePlayerGUID));
+                            _flHardmodePlayerGUID.Clear();
+                            break;
+                        case EVENT_FL_HARDMODE_BRANN_RESPOND:
+                            if (Creature* brann = GetCreature(DATA_BRANN_BRONZEBEARD_INTRO))
+                                brann->AI()->Talk(SAY_BRANN_INTRO_BRING_DOWN_SHIELD);
+                            break;
+                        case EVENT_FL_OUTRO_SPAWN:
+                        {
+                            Creature* flyingMachine = instance->SummonCreature(NPC_BRANN_S_FLYING_MACHINE, FlameLeviathanOutroFlyingMachineSpawn, nullptr, FlameLeviathanOutroSummonDespawnMs);
+                            Creature* brann = instance->SummonCreature(NPC_BRANN_BRONZEBEARD_FLYING_MACHINE, FlameLeviathanOutroFlyingMachineSpawn, nullptr, FlameLeviathanOutroSummonDespawnMs);
+                            Creature* rhydian = instance->SummonCreature(NPC_ARCHMAGE_RHYDIAN, FlameLeviathanOutroRhydianSpawn, nullptr, FlameLeviathanOutroSummonDespawnMs);
+                            if (flyingMachine && brann)
+                            {
+                                brann->EnterVehicle(flyingMachine);
+                                flyingMachine->SetCanFly(true);
+                                flyingMachine->SetDisableGravity(true);
+                                flyingMachine->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                                flyingMachine->RemoveNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
+                                flyingMachine->GetMotionMaster()->MoveSmoothPath(POINT_FL_OUTRO_FLYING_MACHINE_LAND, FlameLeviathanOutroFlyingMachinePath, std::size(FlameLeviathanOutroFlyingMachinePath), false);
+                                OutroFlameLeviathanFlyingMachineGUID = flyingMachine->GetGUID();
+                                OutroFlameLeviathanBrannGUID = brann->GetGUID();
+                            }
+                            if (rhydian)
+                            {
+                                OutroFlameLeviathanRhydianGUID = rhydian->GetGUID();
+                                rhydian->SetWalk(true);
+                                rhydian->GetMotionMaster()->MovePoint(POINT_FL_OUTRO_RHYDIAN_WALK_TO_LANDING, FlameLeviathanOutroRhydianWalkTo);
+                            }
+                            break;
+                        }
+                        case EVENT_FL_OUTRO_LINE_1:
+                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                                brann->AI()->Talk(0);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_2, 9s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_2:
+                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                                rhydian->AI()->Talk(2);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_3, 9s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_3:
+                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                                brann->AI()->Talk(1);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_4, 8s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_4:
+                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                                rhydian->AI()->Talk(3);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_5, 8s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_5:
+                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                                brann->AI()->Talk(2);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_6, 9s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_6:
+                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                                brann->AI()->Talk(3);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_7, 8s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_7:
+                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                                rhydian->AI()->Talk(4);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_8, 9s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_8:
+                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                                rhydian->AI()->Talk(5);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_9, 8s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_9:
+                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                                brann->AI()->Talk(4);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_10, 9s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_10:
+                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                                rhydian->AI()->Talk(6);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_11, 8s);
+                            break;
+                        case EVENT_FL_OUTRO_LINE_11:
+                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                                brann->AI()->Talk(5);
+                            _events.ScheduleEvent(EVENT_FL_OUTRO_DESPAWN, 30s);
+                            break;
+                        case EVENT_FL_OUTRO_DESPAWN:
+                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                                brann->DespawnOrUnsummon();
+                            if (Creature* flyingMachine = instance->GetCreature(OutroFlameLeviathanFlyingMachineGUID))
+                                flyingMachine->DespawnOrUnsummon();
+                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                                rhydian->DespawnOrUnsummon();
+                            OutroFlameLeviathanFlyingMachineGUID.Clear();
+                            OutroFlameLeviathanBrannGUID.Clear();
+                            OutroFlameLeviathanRhydianGUID.Clear();
                             break;
                     }
                 }
@@ -1019,12 +1340,11 @@ class instance_ulduar : public InstanceMapScript
 
             void DespawnLeviatanVehicle(Creature* vehicleCreature)
             {
+                vehicleCreature->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                vehicleCreature->RemoveNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
                 if (Vehicle* vehicle = vehicleCreature->GetVehicleKit())
-                {
                     vehicle->RemoveAllPassengers();
-                    vehicleCreature->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-                    vehicleCreature->DespawnOrUnsummon(5min);
-                }
+                vehicleCreature->DespawnOrUnsummon(5min);
             }
 
             void UpdateDoorState(GameObject* door) override
@@ -1056,6 +1376,41 @@ class instance_ulduar : public InstanceMapScript
             }
 
         private:
+            // Creatures
+            GuidVector LeviathanVehicleGUIDs;
+            GuidVector KirinTorMageGUIDs;
+            ObjectGuid XTToyPileGUIDs[4];
+            ObjectGuid AssemblyGUIDs[3];
+            ObjectGuid ElderGUIDs[3];
+            ObjectGuid FreyaAchieveTriggerGUID;
+            ObjectGuid MimironVehicleGUIDs[3];
+            ObjectGuid KeeperGUIDs[4];
+            ObjectGuid OutroFlameLeviathanFlyingMachineGUID;
+            ObjectGuid OutroFlameLeviathanBrannGUID;
+            ObjectGuid OutroFlameLeviathanRhydianGUID;
+            // GameObjects
+            ObjectGuid LeviathanGateGUID;
+            ObjectGuid LeviathanProtectiveBubbleGUID;
+            ObjectGuid KologarnChestGUID;
+            ObjectGuid KologarnBridgeGUID;
+            ObjectGuid ThorimDarkIronPortcullisGUID;
+            ObjectGuid CacheOfStormsGUID;
+            ObjectGuid CacheOfStormsHardmodeGUID;
+            ObjectGuid HodirRareCacheGUID;
+            ObjectGuid HodirChestGUID;
+            ObjectGuid MimironTramGUID;
+            ObjectGuid BrainRoomDoorGUIDs[3];
+            // Miscellaneous
+            uint32 TeamInInstance;
+            uint32 ColossusData;
+            uint8 elderCount;
+            uint8 illusion;
+            uint8 keepersCount;
+            bool conSpeedAtory;
+            bool lumberjacked;
+            bool Unbroken;
+            bool IsDriveMeCrazyEligible;
+
             EventMap _events;
             uint32 _algalonTimer;
             bool _summonAlgalon;
@@ -1065,6 +1420,13 @@ class instance_ulduar : public InstanceMapScript
             uint32 _maxArmorItemLevel;
             uint32 _maxWeaponItemLevel;
             uint32 _CoUAchivePlayerDeathMask;
+            bool _activeTowers;
+            uint32 _destroyedTowers;
+            uint8 _stunned;
+
+            bool _flIntroCompleted;
+            ObjectGuid _flIntroPlayerGUID;
+            ObjectGuid _flHardmodePlayerGUID;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override

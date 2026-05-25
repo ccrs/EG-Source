@@ -15,7 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "ulduar.h"
 #include "Containers.h"
 #include "InstanceScript.h"
 #include "MotionMaster.h"
@@ -24,14 +24,14 @@
 #include "PassiveAI.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
 #include "SpellMgr.h"
 #include "SpellScript.h"
-#include "ulduar.h"
 #include "Vehicle.h"
 #include "WorldPacket.h"
 
-enum Spells
+enum XT002Spells
 {
     SPELL_TYMPANIC_TANTRUM                  = 62776,
     SPELL_SEARING_LIGHT                     = 63018,
@@ -81,7 +81,7 @@ enum Spells
     SPELL_ACHIEVEMENT_CREDIT_NERF_SCRAPBOTS = 65037
 };
 
-enum Events
+enum XT002Events
 {
     EVENT_TYMPANIC_TANTRUM = 1,
     EVENT_PHASE_CHECK,
@@ -100,7 +100,7 @@ enum XT002Phases
     PHASE_HEART
 };
 
-enum Actions
+enum XT002Actions
 {
     ACTION_ENTER_HARD_MODE,
     ACTION_START_PHASE_HEART,
@@ -115,7 +115,7 @@ enum XT002Data
     DATA_GRAVITY_BOMB_CASUALTY
 };
 
-enum Yells
+enum XT002Yells
 {
     SAY_AGGRO              = 0,
     SAY_HEART_OPENED       = 1,
@@ -131,7 +131,7 @@ enum Yells
     EMOTE_SCRAPBOT         = 11
 };
 
-enum Misc
+enum XT002Misc
 {
     ACHIEV_MUST_DECONSTRUCT_FASTER = 21027,
     HEART_VEHICLE_SEAT_EXPOSED     = 1,
@@ -176,6 +176,8 @@ struct boss_xt002 : public BossAI
         me->SetReactState(REACT_DEFENSIVE);
         Initialize();
         instance->DoStopTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, ACHIEV_MUST_DECONSTRUCT_FASTER);
+        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_SEARING_LIGHT);
+        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_GRAVITY_BOMB);
     }
 
     void EnterEvadeMode(EvadeReason /*why*/) override
@@ -213,6 +215,8 @@ struct boss_xt002 : public BossAI
         Talk(SAY_DEATH);
         _JustDied();
         me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_SEARING_LIGHT);
+        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_GRAVITY_BOMB);
     }
 
     void ExposeHeart()
@@ -623,6 +627,9 @@ struct npc_life_spark : public ScriptedAI
 
     void Reset() override
     {
+        if (InstanceScript* instance = me->GetInstanceScript())
+            if (Creature* xt002 = instance->GetCreature(DATA_XT002))
+                xt002->AI()->JustSummoned(me);
         DoCastSelf(SPELL_ARCANE_POWER_STATE);
         _scheduler.CancelAll();
     }
@@ -688,6 +695,10 @@ class spell_xt002_searing_light_spawn_life_spark : public AuraScript
 
     void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
     {
+        if (InstanceScript* instance = GetOwner()->GetInstanceScript())
+            if (instance->GetBossState(DATA_XT002) != IN_PROGRESS)
+                return;
+
         if (Player* player = GetOwner()->ToPlayer())
             if (Unit* xt002 = GetCaster())
                 if (xt002->HasAura(aurEff->GetAmount()))   // Heartbreak aura indicating hard mode
@@ -712,6 +723,10 @@ class spell_xt002_gravity_bomb_aura : public AuraScript
 
     void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
     {
+        if (InstanceScript* instance = GetOwner()->GetInstanceScript())
+            if (instance->GetBossState(DATA_XT002) != IN_PROGRESS)
+                return;
+
         if (Player* player = GetOwner()->ToPlayer())
             if (Unit* xt002 = GetCaster())
                 if (xt002->HasAura(aurEff->GetAmount()))   // Heartbreak aura indicating hard mode
