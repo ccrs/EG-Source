@@ -90,11 +90,9 @@ enum AssemblyEvents
     EVENT_OVERLOAD                               = 11,
     EVENT_LIGHTNING_WHIRL                        = 12,
     EVENT_LIGHTNING_TENDRILS                     = 13,
-    EVENT_FLIGHT                                 = 14,
-    EVENT_ENDFLIGHT                              = 15,
-    EVENT_GROUND                                 = 16,
-    EVENT_LAND                                   = 17,
-    EVENT_TAKEOFF                                = 18
+    EVENT_TAKEOFF                                = 14,
+    EVENT_FLIGHT                                 = 15,
+    EVENT_ENDFLIGHT                              = 16
 };
 
 enum AssemblyActions
