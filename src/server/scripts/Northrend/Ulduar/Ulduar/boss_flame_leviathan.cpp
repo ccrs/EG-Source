@@ -641,7 +641,16 @@ class boss_flame_leviathan : public CreatureScript
                 {
                     case POINT_ENGAGE:
                         me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
-                        SetAggressiveStateAfter(2s);
+                        me->m_Events.AddEvent(new Trinity::Helpers::Events::GenericEvent(me, [](WorldObject* obj) -> bool
+                        {
+                            if (Creature* c = obj->ToCreature())
+                            {
+                                c->SetReactState(REACT_AGGRESSIVE);
+                                if (c->IsAIEnabled())
+                                    c->AI()->DoZoneInCombat();
+                            }
+                            return true;
+                        }), me->m_Events.CalculateTime(2s));
                     default:
                         break;
                 }
@@ -942,7 +951,6 @@ class npc_pool_of_tar : public CreatureScript
         {
             npc_pool_of_tarAI(Creature* creature) : ScriptedAI(creature)
             {
-                me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                 me->SetReactState(REACT_PASSIVE);
                 me->CastSpell(me, SPELL_TAR_PASSIVE, true);
             }
@@ -1625,13 +1633,45 @@ class spell_tar_blaze : public AuraScript
 
     void PeriodicTick(AuraEffect const* aurEff)
     {
-        // should we use custom damage?
         GetTarget()->CastSpell(nullptr, aurEff->GetSpellEffectInfo().TriggerSpell, true);
     }
 
     void Register() override
     {
         OnEffectPeriodic += AuraEffectPeriodicFn(spell_tar_blaze::PeriodicTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
+// 62290 - SCHOOL_DAMAGE periodic blast from a burning Pool of Tar (triggered by 62292 every 1s)
+//   DBC effect 0:
+//     TargetA = 22 (TARGET_SRC_CASTER, sets source position)
+//     TargetB = 30 (TARGET_UNIT_SRC_AREA_ALLY, units within 15y, ALLY check vs caster)
+class EG_spell_pool_of_tar_blaze_damage : public SpellScript
+{
+    PrepareSpellScript(EG_spell_pool_of_tar_blaze_damage);
+
+    void FilterTargets(std::list<WorldObject*>& targets)
+    {
+        Unit* caster = GetCaster();
+        if (!caster)
+            return;
+
+        float radius = GetEffectInfo().CalcRadius(caster);
+        targets.clear();
+
+        std::list<Unit*> units;
+        Trinity::AnyUnitInObjectRangeCheck check(caster, radius);
+        Trinity::UnitListSearcher<Trinity::AnyUnitInObjectRangeCheck> searcher(caster, units, check);
+        Cell::VisitAllObjects(caster, searcher, radius);
+
+        for (Unit* u : units)
+            if (u != caster && u->IsAlive())
+                targets.push_back(u);
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(EG_spell_pool_of_tar_blaze_damage::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ALLY);
     }
 };
 
@@ -2000,6 +2040,41 @@ class EG_spell_flame_leviathan_grab_crate_triggered : public SpellScript
     }
 };
 
+class EG_spell_salvaged_vehicle_ride_gate : public SpellScript
+{
+    PrepareSpellScript(EG_spell_salvaged_vehicle_ride_gate);
+
+    SpellCastResult CheckCast()
+    {
+        Unit* target = GetExplTargetUnit();
+        if (!target)
+            return SPELL_FAILED_BAD_TARGETS;
+        Creature* vehicleCreature = target->ToCreature();
+        if (!vehicleCreature)
+            return SPELL_FAILED_BAD_TARGETS;
+        Vehicle* vehicle = vehicleCreature->GetVehicleKit();
+        if (!vehicle)
+            return SPELL_FAILED_BAD_TARGETS;
+
+        for (auto const& kv : vehicle->Seats)
+        {
+            VehicleSeatEntry const* seatInfo = kv.second.SeatInfo;
+            if (!seatInfo)
+                continue;
+            if (!kv.second.IsEmpty())
+                continue;
+            if (seatInfo->Flags & (VEHICLE_SEAT_FLAG_CAN_CONTROL | VEHICLE_SEAT_FLAG_CAN_ATTACK))
+                return SPELL_CAST_OK;
+        }
+        return SPELL_FAILED_NO_VALID_TARGETS;
+    }
+
+    void Register() override
+    {
+        OnCheckCast += SpellCheckCastFn(EG_spell_salvaged_vehicle_ride_gate::CheckCast);
+    }
+};
+
 void AddSC_boss_flame_leviathan()
 {
     new boss_flame_leviathan();
@@ -2033,6 +2108,7 @@ void AddSC_boss_flame_leviathan()
 
     RegisterSpellScript(spell_overload_circuit);
     RegisterSpellScript(spell_tar_blaze);
+    RegisterSpellScript(EG_spell_pool_of_tar_blaze_damage);
     new spell_load_into_catapult();
     new spell_auto_repair();
     new spell_systems_shutdown();
@@ -2040,4 +2116,5 @@ void AddSC_boss_flame_leviathan()
     new spell_vehicle_throw_passenger();
     RegisterSpellScript(EG_spell_flame_leviathan_mimirons_inferno);
     RegisterSpellScript(EG_spell_flame_leviathan_grab_crate_triggered);
+    RegisterSpellScript(EG_spell_salvaged_vehicle_ride_gate);
 }
