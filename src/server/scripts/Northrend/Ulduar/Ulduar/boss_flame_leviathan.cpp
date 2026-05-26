@@ -1663,7 +1663,8 @@ class EG_spell_pool_of_tar_blaze_damage : public SpellScript
         if (!caster)
             return;
 
-        float radius = GetSpellInfo()->GetEffect(EFFECT_0).CalcRadius(caster);
+        SpellInfo const* spellInfo = GetSpellInfo();
+        float radius = spellInfo->GetEffect(EFFECT_0).CalcRadius(caster);
         targets.clear();
 
         std::list<Unit*> units;
@@ -1676,6 +1677,10 @@ class EG_spell_pool_of_tar_blaze_damage : public SpellScript
             if (u == caster || !u->IsAlive())
                 continue;
             if (u->GetVehicle())
+                continue;
+            if (u->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE))
+                continue;
+            if (u->IsImmunedToSpell(spellInfo, caster))
                 continue;
             targets.push_back(u);
         }
