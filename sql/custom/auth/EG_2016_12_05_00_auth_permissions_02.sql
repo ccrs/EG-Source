@@ -19,6 +19,7 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (194,  44), -- Receive global GM messages/texts
 (194,  45), -- Join channels without announce
 (194,  47), -- Can ignore non-strong lower security checks if it\'s disabled in config
+(194,  48), -- Enable IP, Last Login and EMail output in pinfo
 (194,  52), -- No battleground deserter debuff
 (194,  53), -- Can be AFK on the battleground
 (194, 195), -- Role: Sec Level Player
@@ -27,6 +28,14 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (198, 232), -- Command: arena
 (198, 236), -- Command: arena info
 (198, 237), -- Command: arena lookup
+(198, 244), -- Command: baninfo
+(198, 245), -- Command: baninfo account
+(198, 246), -- Command: baninfo character
+(198, 247), -- Command: baninfo ip
+(198, 248), -- Command: banlist
+(198, 249), -- Command: banlist account
+(198, 250), -- Command: banlist character
+(198, 251), -- Command: banlist ip
 (198, 291), -- Command: cheat
 (198, 292), -- Command: cheat casttime
 (198, 293), -- Command: cheat cooldown

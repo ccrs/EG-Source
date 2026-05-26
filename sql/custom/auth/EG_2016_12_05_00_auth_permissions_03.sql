@@ -13,7 +13,6 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (193,  31), -- Use params with .unstuck command
 (193,  35), -- See all security levels with who command
 (193,  46), -- Change channel settings without being channel moderator
-(193,  48), -- Enable IP, Last Login and EMail output in pinfo
 (193, 194), -- Role: Sec Level Moderator
 (193, 197), -- Role: Gamemaster Commands
 --
@@ -32,14 +31,6 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (197, 241), -- Command: ban character
 (197, 242), -- Command: ban ip
 (197, 243), -- Command: ban playeraccount
-(197, 244), -- Command: baninfo
-(197, 245), -- Command: baninfo account
-(197, 246), -- Command: baninfo character
-(197, 247), -- Command: baninfo ip
-(197, 248), -- Command: banlist
-(197, 249), -- Command: banlist account
-(197, 250), -- Command: banlist character
-(197, 251), -- Command: banlist ip
 (197, 252), -- Command: unban
 (197, 253), -- Command: unban account
 (197, 254), -- Command: unban character
