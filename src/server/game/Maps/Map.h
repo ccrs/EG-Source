@@ -544,7 +544,7 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         BattlegroundMap* ToBattlegroundMap() { if (IsBattlegroundOrArena()) return reinterpret_cast<BattlegroundMap*>(this); else return nullptr;  }
         BattlegroundMap const* ToBattlegroundMap() const { if (IsBattlegroundOrArena()) return reinterpret_cast<BattlegroundMap const*>(this); return nullptr; }
 
-        float GetWaterOrGroundLevel(uint32 phasemask, float x, float y, float z, float* ground = nullptr, bool swim = false, float collisionHeight = 2.03128f) const; // DEFAULT_COLLISION_HEIGHT in Object.h
+        float GetWaterOrGroundLevel(uint32 phasemask, float x, float y, float z, float* ground = nullptr, bool swim = false, float collisionHeight = 2.03128f, float maxSearchDist = DEFAULT_HEIGHT_SEARCH) const; // DEFAULT_COLLISION_HEIGHT in Object.h
         float GetMinHeight(float x, float y) const;
         float GetHeight(float x, float y, float z, bool checkVMap = true, float maxSearchDist = DEFAULT_HEIGHT_SEARCH) const;
         float GetGridHeight(float x, float y) const;

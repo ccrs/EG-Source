@@ -8,6 +8,7 @@
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "DatabaseEnv.h"
+#include "GenericMovementGenerator.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "Item.h"
@@ -534,33 +535,57 @@ void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicl
         }
 
         float const vehicleCollisionHeight = vehicle->GetBase()->GetCollisionHeight();
-        bool const serverDrivenFallEligible = IsAlive() && GetTypeId() == TYPEID_UNIT && !CanFly();
 
-        std::function<void(Movement::MoveSplineInit&)> initializer = [safePos, vehicleCollisionHeight, serverDrivenFallEligible, this](Movement::MoveSplineInit& init)
+        if (!IsAlive() && GetTypeId() == TYPEID_PLAYER)
         {
             float const startHeight = safePos.GetPositionZ() + vehicleCollisionHeight;
             float groundHeight = startHeight;
-            float const waterOrGroundLevel = GetMap()->GetWaterOrGroundLevel(GetPhaseMask(), safePos.GetPositionX(), safePos.GetPositionY(), startHeight, &groundHeight);
+            float const waterOrGroundLevel = GetMap()->GetWaterOrGroundLevel(GetPhaseMask(), safePos.GetPositionX(), safePos.GetPositionY(), startHeight, &groundHeight, false, DEFAULT_COLLISION_HEIGHT, 1000.0f);
 
-            float const dropTolerance = 10.0f;
-            bool const groundFound = waterOrGroundLevel > INVALID_HEIGHT;
-            bool const safePlacement = groundFound && (safePos.GetPositionZ() - waterOrGroundLevel) <= dropTolerance;
-
-            if (safePlacement)
-                init.MoveTo(safePos.GetPositionX(), safePos.GetPositionY(), groundHeight, false);
-            else if (groundFound && serverDrivenFallEligible)
+            if (waterOrGroundLevel > INVALID_HEIGHT)
             {
-                init.SetFall();
-                init.MoveTo(safePos.GetPositionX(), safePos.GetPositionY(), groundHeight, false);
+                Position groundPos(safePos.GetPositionX(), safePos.GetPositionY(), groundHeight, safePos.GetOrientation());
+                DisableSpline();
+                GetMotionMaster()->InterruptOnTeleport();
+                SendTeleportPacket(groundPos);
+                UpdatePosition(groundPos, true);
+                UpdateObjectVisibility();
             }
-            else
-                init.MoveTo(safePos.GetPositionX(), safePos.GetPositionY(), safePos.GetPositionZ(), false);
+        }
+        else
+        {
+            bool const serverDrivenFallEligible = !IsAlive() || (GetTypeId() == TYPEID_UNIT && !CanFly());
 
-            init.SetFacing(safePos.GetOrientation());
-            init.SetTransportExit();
-        };
+            std::function<void(Movement::MoveSplineInit&)> initializer = [safePos, vehicleCollisionHeight, serverDrivenFallEligible, this](Movement::MoveSplineInit& init)
+            {
+                float const startHeight = safePos.GetPositionZ() + vehicleCollisionHeight;
+                float groundHeight = startHeight;
+                float const waterOrGroundLevel = GetMap()->GetWaterOrGroundLevel(GetPhaseMask(), safePos.GetPositionX(), safePos.GetPositionY(), startHeight, &groundHeight, false, DEFAULT_COLLISION_HEIGHT, 1000.0f);
 
-        GetMotionMaster()->LaunchMoveSpline(std::move(initializer), EVENT_VEHICLE_EXIT, MOTION_PRIORITY_HIGHEST, EFFECT_MOTION_TYPE, MOTION_MODE_OVERRIDE);
+                float const dropTolerance = 10.0f;
+                bool const groundFound = waterOrGroundLevel > INVALID_HEIGHT;
+                bool const safePlacement = groundFound && (safePos.GetPositionZ() - waterOrGroundLevel) <= dropTolerance;
+
+                if (safePlacement)
+                    init.MoveTo(safePos.GetPositionX(), safePos.GetPositionY(), groundHeight, false);
+                else if (groundFound && serverDrivenFallEligible)
+                {
+                    init.SetFall();
+                    init.MoveTo(safePos.GetPositionX(), safePos.GetPositionY(), groundHeight, false);
+                }
+                else
+                    init.MoveTo(safePos.GetPositionX(), safePos.GetPositionY(), safePos.GetPositionZ(), false);
+
+                init.SetFacing(safePos.GetOrientation());
+                init.SetTransportExit();
+            };
+
+            GenericMovementGenerator* movement = new GenericMovementGenerator(std::move(initializer), EFFECT_MOTION_TYPE, EVENT_VEHICLE_EXIT);
+            movement->Priority = MOTION_PRIORITY_HIGHEST;
+            movement->Mode = MOTION_MODE_OVERRIDE;
+            movement->AddFlag(MOVEMENTGENERATOR_FLAG_PERSIST_ON_DEATH);
+            GetMotionMaster()->Add(movement);
+        }
     }
 
     if (Player* player = ToPlayer())
