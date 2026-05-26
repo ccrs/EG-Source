@@ -8,6 +8,7 @@
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "DatabaseEnv.h"
+#include "GenericMovementGenerator.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "Item.h"
@@ -524,22 +525,36 @@ void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicl
 {
     if (params.ExitSpline && IsInWorld() && !m_Events.HasEventType(EventType::EVENT_TYPE_VEHICLE_JOIN))
     {
-        if (IsAlive())
+        Position safePos = pos;
+        bool const posValid = !(std::fabs(pos.GetPositionX()) < 0.01f && std::fabs(pos.GetPositionY()) < 0.01f) && pos.GetPositionZ() > INVALID_HEIGHT;
+        if (!posValid)
         {
-            std::function<void(Movement::MoveSplineInit&)> initializer = [=, this, vehicleCollisionHeight = vehicle->GetBase()->GetCollisionHeight()](Movement::MoveSplineInit& init)
-            {
-                float height = pos.GetPositionZ() + vehicleCollisionHeight;
-
-                // Creatures without inhabit type air should begin falling after exiting the vehicle
-                if (GetTypeId() == TYPEID_UNIT && !CanFly() && height > GetMap()->GetWaterOrGroundLevel(GetPhaseMask(), pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ() + vehicleCollisionHeight, &height))
-                    init.SetFall();
-
-                init.MoveTo(pos.GetPositionX(), pos.GetPositionY(), height, false);
-                init.SetFacing(pos.GetOrientation());
-                init.SetTransportExit();
-            };
-            GetMotionMaster()->LaunchMoveSpline(std::move(initializer), EVENT_VEHICLE_EXIT, MOTION_PRIORITY_HIGHEST, EFFECT_MOTION_TYPE, MOTION_MODE_OVERRIDE);
+            TC_LOG_WARN("entities.vehicle", "Unit {} vehicle exit pos invalid ({:.2f}, {:.2f}, {:.2f}); falling back to passenger pos ({:.2f}, {:.2f}, {:.2f})",
+                GetGUID().ToString(), pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), GetPositionX(), GetPositionY(), GetPositionZ());
+            safePos = GetPosition();
         }
+
+        float const vehicleCollisionHeight = vehicle->GetBase()->GetCollisionHeight();
+
+        std::function<void(Movement::MoveSplineInit&)> initializer = [safePos, vehicleCollisionHeight, this](Movement::MoveSplineInit& init)
+        {
+            float const startHeight = safePos.GetPositionZ() + vehicleCollisionHeight;
+            float groundHeight = startHeight;
+            float const waterOrGroundLevel = GetMap()->GetWaterOrGroundLevel(GetPhaseMask(), safePos.GetPositionX(), safePos.GetPositionY(), startHeight, &groundHeight);
+
+            if (!CanFly() && startHeight > waterOrGroundLevel)
+                init.SetFall();
+
+            init.MoveTo(safePos.GetPositionX(), safePos.GetPositionY(), groundHeight, false);
+            init.SetFacing(safePos.GetOrientation());
+            init.SetTransportExit();
+        };
+
+        GenericMovementGenerator* movement = new GenericMovementGenerator(std::move(initializer), EFFECT_MOTION_TYPE, EVENT_VEHICLE_EXIT);
+        movement->Priority = MOTION_PRIORITY_HIGHEST;
+        movement->Mode = MOTION_MODE_OVERRIDE;
+        movement->AddFlag(MOVEMENTGENERATOR_FLAG_PERSIST_ON_DEATH);
+        GetMotionMaster()->Add(movement);
     }
 
     if (Player* player = ToPlayer())
@@ -567,7 +582,8 @@ void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicl
             despawn = true;
         }
     }
-    if (!despawn && params.Evade && GetTypeId() == TYPEID_UNIT)
+
+    if (IsAlive() && !despawn && params.Evade && GetTypeId() == TYPEID_UNIT)
     {
         Creature* toCreature = ToCreature();
         toCreature->SetSpawnHealth();
