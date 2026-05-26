@@ -269,6 +269,27 @@ class EG_spell_naxx_bigglesworth_curse : public AuraScript
     }
 };
 
+// 65099 - Deploy Salvage Saws
+class EG_spell_deploy_salvage_saws : public SpellScript
+{
+    PrepareSpellScript(EG_spell_deploy_salvage_saws);
+
+    void SelectRandomTargetDest(SpellDestination& dest)
+    {
+        Creature* caster = GetCaster() ? GetCaster()->ToCreature() : nullptr;
+        if (!caster || !caster->IsAIEnabled())
+            return;
+
+        if (Unit* target = caster->AI()->SelectTarget(SelectTargetMethod::Random, 0, 40.0f, true))
+            dest.Relocate(*target);
+    }
+
+    void Register() override
+    {
+        OnDestinationTargetSelect += SpellDestinationTargetSelectFn(EG_spell_deploy_salvage_saws::SelectRandomTargetDest, EFFECT_0, TARGET_DEST_DEST_RADIUS);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
@@ -281,4 +302,5 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_fiery_lance);
     RegisterSpellScript(EG_spell_lava_strike);
     RegisterSpellScript(EG_spell_naxx_bigglesworth_curse);
+    RegisterSpellScript(EG_spell_deploy_salvage_saws);
 }
