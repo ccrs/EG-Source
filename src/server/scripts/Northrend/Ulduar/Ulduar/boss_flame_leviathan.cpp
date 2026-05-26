@@ -1665,8 +1665,13 @@ class EG_spell_pool_of_tar_blaze_damage : public SpellScript
         Cell::VisitAllObjects(caster, searcher, radius);
 
         for (Unit* u : units)
-            if (u != caster && u->IsAlive())
-                targets.push_back(u);
+        {
+            if (u == caster || !u->IsAlive())
+                continue;
+            if (u->GetVehicle())
+                continue;
+            targets.push_back(u);
+        }
     }
 
     void Register() override
