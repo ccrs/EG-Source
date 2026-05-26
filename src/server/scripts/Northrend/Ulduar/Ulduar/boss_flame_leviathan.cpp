@@ -319,6 +319,7 @@ class boss_flame_leviathan : public CreatureScript
                 _pursueTarget.Clear();
 
                 me->SetReactState(REACT_DEFENSIVE);
+                me->SetRegenerateHealth(false);
             }
 
             void JustEngagedWith(Unit* who) override
@@ -339,6 +340,12 @@ class boss_flame_leviathan : public CreatureScript
             {
                 instance->SetBossState(DATA_FLAME_LEVIATHAN, FAIL);
                 BossAI::EnterEvadeMode(why);
+            }
+
+            void JustReachedHome() override
+            {
+                BossAI::JustReachedHome();
+                me->SetFullHealth();
             }
 
             void CheckTowers()
