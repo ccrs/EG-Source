@@ -1656,7 +1656,7 @@ class EG_spell_pool_of_tar_blaze_damage : public SpellScript
         if (!caster)
             return;
 
-        float radius = GetEffectInfo().CalcRadius(caster);
+        float radius = GetSpellInfo()->GetEffect(EFFECT_0).CalcRadius(caster);
         targets.clear();
 
         std::list<Unit*> units;
