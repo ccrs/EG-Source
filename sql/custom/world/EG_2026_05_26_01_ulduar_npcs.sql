@@ -99,7 +99,7 @@ UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `en
 DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
 INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
 (@ENTRY, 0, 0, 0, 25, 0, 100, 0, 0, 0, 0, 0, 17, 69, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Set emote state to STATE_USESTANDING (69)'),
-(@ENTRY, 0, 1, 0, 0, 0, 100, 0, 5000, 8000, 8000, 15000, 11, 65073, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 8 - 15 seconds (5 - 8s initially) (IC) - Self: Cast spell  Trash Compactor (65073) on Victim'),
+(@ENTRY, 0, 1, 0, 0, 0, 100, 0, 5000, 8000, 8000, 15000, 11, 65073, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Every 8 - 15 seconds (5 - 8s initially) (IC) - Self: Cast spell  Trash Compactor (65073) on Random hostile'),
 (@ENTRY, 0, 2, 0, 4, 0, 100, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On aggro - Self: Set emote state to 0');
 
 
@@ -146,6 +146,17 @@ DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` 
 
 -- Pyrite Safety Container (33218) - remove all static creature spawns
 DELETE FROM `creature` WHERE `id` = 33218;
+
+DELETE FROM `creature` WHERE `guid` BETWEEN 1300001 AND 1300008;
+INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `wander_distance`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `dynamicflags`) VALUES
+(1300001, 33214, 603, 0, 0, 3, 1, 0, 0, 216.17625,  -80.22845,  472.06964, 0, 60, 5, 0, 6000, 0, 1, 0, 0, 0),
+(1300002, 33214, 603, 0, 0, 3, 1, 0, 0, 237.32623,  -47.4763,   471.6273,  0, 60, 5, 0, 6000, 0, 1, 0, 0, 0),
+(1300003, 33214, 603, 0, 0, 3, 1, 0, 0, 268.1065,   -49.56539,  470.55142, 0, 60, 5, 0, 6000, 0, 1, 0, 0, 0),
+(1300004, 33214, 603, 0, 0, 3, 1, 0, 0, 285.8383,   -25.682486, 470.2107,  0, 60, 5, 0, 6000, 0, 1, 0, 0, 0),
+(1300005, 33214, 603, 0, 0, 3, 1, 0, 0, 297.1522,    -3.337359, 469.69135, 0, 60, 5, 0, 6000, 0, 1, 0, 0, 0),
+(1300006, 33214, 603, 0, 0, 3, 1, 0, 0, 314.72354,    7.240333, 469.8345,  0, 60, 5, 0, 6000, 0, 1, 0, 0, 0),
+(1300007, 33214, 603, 0, 0, 3, 1, 0, 0, 294.79437,  -84.59141,  468.52173, 0, 60, 5, 0, 6000, 0, 1, 0, 0, 0),
+(1300008, 33214, 603, 0, 0, 3, 1, 0, 0, 271.03906, -104.47664,  466.30182, 0, 60, 5, 0, 6000, 0, 1, 0, 0, 0);
 
 UPDATE `creature` SET `spawntimesecs` = 60 WHERE `guid` IN (
     136817, 136823, 136828, 136840, 136849, 136861, 136863, 136893, 136894, 136896,
