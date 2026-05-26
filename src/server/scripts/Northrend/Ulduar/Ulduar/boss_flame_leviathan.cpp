@@ -122,7 +122,6 @@ enum FlameLeviathanEvents
     EVENT_MISSILE              = 2,
     EVENT_VENT                 = 3,
     EVENT_SPEED                = 4,
-    EVENT_SUMMON               = 5,
     EVENT_SHUTDOWN             = 6,
     EVENT_REPAIR               = 7,
     EVENT_THORIM_S_HAMMER      = 8,    // Tower of Storms
@@ -330,7 +329,6 @@ class boss_flame_leviathan : public CreatureScript
                 events.ScheduleEvent(EVENT_VENT, 31s);
                 events.ScheduleEvent(EVENT_SHUTDOWN, 150s);
                 events.ScheduleEvent(EVENT_SPEED, 10s);
-                events.ScheduleEvent(EVENT_SUMMON, 1s);
                 events.RescheduleEvent(EVENT_CHECK_WIPE, 5s);
 
                 CheckTowers();
@@ -501,11 +499,6 @@ class boss_flame_leviathan : public CreatureScript
                             DoCastAOE(SPELL_GATHERING_SPEED);
                             events.ScheduleEvent(EVENT_SPEED, 10s);
                             break;
-                        case EVENT_SUMMON:
-                            if (summons.size() < 15)
-                                DoSummonFlyer(NPC_MECHANOLIFT, me, 30.0f, 50.0f, 0s);
-                            events.ScheduleEvent(EVENT_SUMMON, 2s);
-                            break;
                         case EVENT_SHUTDOWN:
                             Talk(SAY_OVERLOAD);
                             Talk(EMOTE_OVERLOAD);
@@ -651,11 +644,7 @@ class boss_flame_leviathan : public CreatureScript
                         me->m_Events.AddEvent(new Trinity::Helpers::Events::GenericEvent(me, [](WorldObject* obj) -> bool
                         {
                             if (Creature* c = obj->ToCreature())
-                            {
                                 c->SetReactState(REACT_AGGRESSIVE);
-                                if (c->IsAIEnabled())
-                                    c->AI()->DoZoneInCombat();
-                            }
                             return true;
                         }), me->m_Events.CalculateTime(2s));
                     default:
@@ -908,6 +897,7 @@ class npc_mechanolift : public CreatureScript
             void JustDied(Unit* /*killer*/) override
             {
                 DoCastAOE(SPELL_LIQUID_PYRITE_DRIP, true);
+                DoCastSelf(SPELL_DUSTY_EXPLOSION, true);
 
                 float groundZ = me->GetFloorZ();
                 float heightDiff = me->GetPositionZ() - groundZ;
@@ -935,7 +925,6 @@ class npc_mechanolift : public CreatureScript
                 Unit* caster = mechanolift;
                 if (Creature* container = ObjectAccessor::GetCreature(*mechanolift, containerGuid))
                     caster = container;
-                caster->CastSpell(landing, SPELL_DUSTY_EXPLOSION, true);
                 caster->CastSpell(caster, SPELL_DUST_CLOUD_IMPACT, true);
                 caster->CastSpell(landing, SPELL_SPAWN_PYRITE, true);
             }
