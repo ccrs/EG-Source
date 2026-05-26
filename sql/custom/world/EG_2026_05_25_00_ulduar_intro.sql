@@ -17,14 +17,14 @@ INSERT INTO `creature_text` (`CreatureID`, `GroupID`, `ID`, `Type`, `Language`, 
 
 DELETE FROM `creature_text` WHERE `CreatureID` = 34054 AND `GroupID` IN (3,4,5,6,7,8,9,10);
 INSERT INTO `creature_text` (`CreatureID`, `GroupID`, `ID`, `Type`, `Language`, `Probability`, `Emote`, `Duration`, `Sound`, `BroadcastTextId`, `TextRange`, `comment`) VALUES
-(34054, 3, 0, 12, 0, 100, 0, 0, 0, 34146, 0, 'Brann Radio hardmode warning - generators coming online'),
-(34054, 4, 0, 12, 0, 100, 0, 0, 0, 34147, 0, 'Brann Radio gauntlet - four generators sabotage (first iron dwarf killed)'),
-(34054, 5, 0, 12, 0, 100, 0, 0, 0, 34145, 0, 'Brann Radio gauntlet - iron dwarves emerging from bunkers (first dwarf pulled)'),
-(34054, 6, 0, 12, 0, 100, 0, 0, 0, 34148, 0, 'Brann Radio gauntlet - Tower of Frost (Hammer of Hodir, near tower)'),
-(34054, 7, 0, 12, 0, 100, 0, 0, 0, 34149, 0, 'Brann Radio gauntlet - Tower of Life (Freya, near tower)'),
-(34054, 8, 0, 12, 0, 100, 0, 0, 0, 34150, 0, 'Brann Radio gauntlet - Tower of Flames (Mimirons Gaze, near tower)'),
-(34054, 9, 0, 12, 0, 100, 0, 0, 0, 34151, 0, 'Brann Radio gauntlet - Tower of Storms (Krolmir / Thorim, near tower)'),
-(34054, 10, 0, 12, 0, 100, 0, 0, 0, 34153, 0, 'Brann Radio gauntlet - near repair station');
+(34054, 3, 0, 12, 0, 100, 0, 0, 0, 34146, 3, 'Brann Radio hardmode warning - generators coming online'),
+(34054, 4, 0, 12, 0, 100, 0, 0, 0, 34147, 3, 'Brann Radio gauntlet - four generators sabotage (first iron dwarf killed)'),
+(34054, 5, 0, 12, 0, 100, 0, 0, 0, 34145, 3, 'Brann Radio gauntlet - iron dwarves emerging from bunkers (first dwarf pulled)'),
+(34054, 6, 0, 12, 0, 100, 0, 0, 0, 34148, 3, 'Brann Radio gauntlet - Tower of Frost (Hammer of Hodir, near tower)'),
+(34054, 7, 0, 12, 0, 100, 0, 0, 0, 34149, 3, 'Brann Radio gauntlet - Tower of Life (Freya, near tower)'),
+(34054, 8, 0, 12, 0, 100, 0, 0, 0, 34150, 3, 'Brann Radio gauntlet - Tower of Flames (Mimirons Gaze, near tower)'),
+(34054, 9, 0, 12, 0, 100, 0, 0, 0, 34151, 3, 'Brann Radio gauntlet - Tower of Storms (Krolmir / Thorim, near tower)'),
+(34054, 10, 0, 12, 0, 100, 0, 0, 0, 34153, 3, 'Brann Radio gauntlet - near repair station');
 
 DELETE FROM `creature_text` WHERE `CreatureID` = 33701 AND `GroupID` IN (7,8);
 INSERT INTO `creature_text` (`CreatureID`, `GroupID`, `ID`, `Type`, `Language`, `Probability`, `Emote`, `Duration`, `Sound`, `BroadcastTextId`, `Text`, `TextRange`, `comment`) VALUES
