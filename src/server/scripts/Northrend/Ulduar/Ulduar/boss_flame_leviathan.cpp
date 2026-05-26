@@ -1238,11 +1238,13 @@ class npc_freya_ward_summon : public CreatureScript
             npc_freya_ward_summonAI(Creature* creature) : ScriptedAI(creature)
             {
                 Initialize();
-                creature->GetMotionMaster()->MoveRandom(100.0f);
+            }
 
-                if (InstanceScript* instance = creature->GetInstanceScript())
+            void IsSummonedBy(WorldObject* /*summoner*/) override
+            {
+                if (InstanceScript* instance = me->GetInstanceScript())
                     if (Creature* leviathan = instance->GetCreature(DATA_FLAME_LEVIATHAN))
-                        leviathan->AI()->JustSummoned(creature);
+                        leviathan->AI()->JustSummoned(me);
             }
 
             void Initialize()
@@ -1253,6 +1255,7 @@ class npc_freya_ward_summon : public CreatureScript
             void Reset() override
             {
                 Initialize();
+                me->GetMotionMaster()->MoveRandom(100.0f);
             }
 
             void UpdateAI(uint32 diff) override

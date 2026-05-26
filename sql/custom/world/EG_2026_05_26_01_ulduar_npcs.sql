@@ -178,3 +178,5 @@ UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839, `DamageModifi
 -- Iron Mender (class 2 Paladin - likely a healer per name, but applying uniform 13/22 scaling per user direction)
 UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839, `DamageModifier` = 13 WHERE `entry` = 34198;
 UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839, `DamageModifier` = 22 WHERE `entry` = 34236;
+
+UPDATE `creature_template` SET `speed_run` = 2.57143 WHERE `entry` = 34276;
