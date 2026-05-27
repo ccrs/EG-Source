@@ -291,6 +291,22 @@ class EG_spell_deploy_salvage_saws : public SpellScript
     }
 };
 
+// 64783 - Displacement Device
+class EG_spell_displacement_device : public SpellScript
+{
+    PrepareSpellScript(EG_spell_displacement_device);
+
+    void RaiseDestination(SpellDestination& dest)
+    {
+        dest.RelocateOffset({ 0.f, 0.f, 2.f, 0.f });
+    }
+
+    void Register() override
+    {
+        OnDestinationTargetSelect += SpellDestinationTargetSelectFn(EG_spell_displacement_device::RaiseDestination, EFFECT_0, TARGET_DEST_TARGET_ENEMY);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
@@ -304,4 +320,5 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_lava_strike);
     RegisterSpellScript(EG_spell_naxx_bigglesworth_curse);
     RegisterSpellScript(EG_spell_deploy_salvage_saws);
+    RegisterSpellScript(EG_spell_displacement_device);
 }

@@ -179,4 +179,62 @@ UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839, `DamageModifi
 UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839, `DamageModifier` = 13 WHERE `entry` = 34198;
 UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839, `DamageModifier` = 22 WHERE `entry` = 34236;
 
+ -- Iron Mender smart ai
+SET @ENTRY := 34198;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 1, 0, 100, 2, 10000, 20000, 34000, 34000, 11, 64768, 0, 0, 0, 0, 0, 19, 34190, 20, 0, 0, 0, 0, 0, 'Every 34 - 34 seconds (10 - 20s initially) (OOC) - Self: Cast spell  Lightning Channel (64768) on Closest alive creature Hardened Iron Golem (34190) in 20 yards'),
+(@ENTRY, 0, 1, 0, 0, 0, 100, 2, 5000, 8000, 8000, 12000, 11, 64918, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Every 8 - 12 seconds (5 - 8s initially) (IC) - Self: Cast spell  Electro Shock (64918) on Random hostile'),
+(@ENTRY, 0, 2, 0, 0, 0, 100, 4, 5000, 8000, 8000, 12000, 11, 64971, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Every 8 - 12 seconds (5 - 8s initially) (IC) - Self: Cast spell  Electro Shock (64971) on Random hostile'),
+(@ENTRY, 0, 3, 0, 0, 0, 100, 2, 7000, 12000, 15000, 20000, 11, 64903, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Every 15 - 20 seconds (7 - 12s initially) (IC) - Self: Cast spell  Fuse Lightning (64903) on Random hostile'),
+(@ENTRY, 0, 4, 0, 0, 0, 100, 4, 7000, 12000, 15000, 20000, 11, 64970, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Every 15 - 20 seconds (7 - 12s initially) (IC) - Self: Cast spell  Fuse Lightning (64970) on Random hostile'),
+(@ENTRY, 0, 5, 0, 0, 0, 100, 2, 10000, 15000, 20000, 30000, 11, 64897, 0, 0, 0, 0, 0, 31, 20, 0, 1, 0, 0, 0, 0, 'Every 20 - 30 seconds (10 - 15s initially) (IC) - Self: Cast spell  Fuse Metal (64897) on Lowest HP friendly unit in 20 yards including self'),
+(@ENTRY, 0, 6, 0, 0, 0, 100, 4, 10000, 15000, 20000, 30000, 11, 64968, 0, 0, 0, 0, 0, 31, 20, 0, 1, 0, 0, 0, 0, 'Every 20 - 30 seconds (10 - 15s initially) (IC) - Self: Cast spell  Fuse Metal (64968) on Lowest HP friendly unit in 20 yards including self');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 34198 AND `SourceId` = 0;
+
 UPDATE `creature_template` SET `speed_run` = 2.57143 WHERE `entry` = 34276;
+
+-- 64783 Displacement Device
+DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_displacement_device';
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(64783, 'EG_spell_displacement_device');
+
+ -- Displacement Device smart ai
+SET @ENTRY := 34203;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 1, 54, 0, 100, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just summoned - Self: Set react state to Passive'),
+(@ENTRY, 0, 1, 2, 61, 0, 100, 0, 0, 0, 0, 0, 11, 64785, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just summoned - Self: Cast spell  Random Lightning Visual (64785) on Self'),
+(@ENTRY, 0, 2, 3, 61, 0, 100, 0, 0, 0, 0, 0, 11, 64793, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just summoned - Self: Cast spell  Displacement (64793) on Self'),
+(@ENTRY, 0, 3, 4, 61, 0, 100, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just summoned - Self: Disable auto attack'),
+(@ENTRY, 0, 4, 0, 61, 0, 100, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On just summoned - Self: Disable combat based movement');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 34203 AND `SourceId` = 0;
+
+DELETE FROM `creature_template_movement` WHERE `CreatureId` IN (34203,34227);
+INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`, `Chase`, `Random`) VALUES
+(34203, 1, 0, 1, 1, 0, 0),
+(34227, 1, 0, 1, 1, 0, 0);
+
+-- Lightning Charged Iron Dwarf
+UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839, `DamageModifier` = 13 WHERE `entry` = 34199;
+UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839, `DamageModifier` = 22 WHERE `entry` = 34237;
+
+ -- Lightning Charged Iron Dwarf smart ai
+SET @ENTRY := 34199;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 8000, 12000, 30000, 35000, 11, 64889, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Every 30 - 35 seconds (8 - 12s initially) (IC) - Self: Cast spell  Lightning Charged (64889) on Self');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 34199 AND `SourceId` = 0;
+
+DELETE FROM `spelldifficulty_dbc` WHERE `id` = 64889;
+INSERT INTO `spelldifficulty_dbc` (`id`, `spellid0`, `spellid1`, `spellid2`, `spellid3`) VALUES
+(64889, 64889, 64975, 0, 0);
