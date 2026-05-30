@@ -897,7 +897,6 @@ class npc_mechanolift : public CreatureScript
             void JustDied(Unit* /*killer*/) override
             {
                 DoCastAOE(SPELL_LIQUID_PYRITE_DRIP, true);
-                DoCastSelf(SPELL_DUSTY_EXPLOSION, true);
 
                 float groundZ = me->GetFloorZ();
                 float heightDiff = me->GetPositionZ() - groundZ;
@@ -925,6 +924,7 @@ class npc_mechanolift : public CreatureScript
                 Unit* caster = mechanolift;
                 if (Creature* container = ObjectAccessor::GetCreature(*mechanolift, containerGuid))
                     caster = container;
+                caster->CastSpell(landing, SPELL_DUSTY_EXPLOSION, true);
                 caster->CastSpell(caster, SPELL_DUST_CLOUD_IMPACT, true);
                 caster->CastSpell(landing, SPELL_SPAWN_PYRITE, true);
             }
@@ -1383,7 +1383,7 @@ struct EG_npc_salvaged_demolisher_mechanic_seat : public VehicleAI
             if (who->GetEntry() == NPC_LIQUID_PYRITE)
             {
                 me->CastSpell(me, SPELL_LIQUID_PYRITE_RELOAD, true);
-                who->ToCreature()->DespawnOrUnsummon(5s);
+                who->ToCreature()->DespawnOrUnsummon(1s);
             }
     }
 };
