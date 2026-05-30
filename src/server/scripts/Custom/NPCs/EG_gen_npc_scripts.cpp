@@ -967,7 +967,7 @@ class ArachnopodDestroyerChargeTargetSelector
                     return false;
 
                 float distance = _owner->GetDistance(object);
-                if (distance > 10.0f || distance < 40.0f)
+                if (distance > 10.0f && distance < 40.0f)
                     return true;
             }
 
