@@ -339,7 +339,7 @@ class npc_iron_construct : public CreatureScript
 
                 if (me->IsInWater() && me->HasAura(SPELL_MOLTEN))
                 {
-                    DoCast(SPELL_BRITTLE);
+                    DoCast(RAID_MODE(SPELL_BRITTLE, SPELL_BRITTLE_25));
                     me->RemoveAura(SPELL_MOLTEN);
                 }
 
