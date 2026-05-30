@@ -1800,8 +1800,9 @@ class spell_nexus_lord_align_disk_aggro : public SpellScript
     {
         Creature* caster = GetCaster() ? GetCaster()->ToCreature() : nullptr;
         if (caster && caster->GetReactState() == REACT_AGGRESSIVE)
-            if (Unit* victim = caster->GetVictim())
-                if (Vehicle* disk = caster->GetVehicle())
+            if (Vehicle* disk = caster->GetVehicle())
+            {
+                if (Unit* victim = caster->GetVictim())
                 {
                     if (MovementGenerator const* base = disk->GetBase()->GetMotionMaster()->GetMovementGenerator([](MovementGenerator const* movegen) -> bool
                     {
@@ -1809,12 +1810,15 @@ class spell_nexus_lord_align_disk_aggro : public SpellScript
                     }))
                     {
                         ChaseMovementGenerator const* chase = static_cast<ChaseMovementGenerator const*>(base);
-                        if (chase->GetTarget() != caster->GetVictim())
-                            disk->GetBase()->GetMotionMaster()->MoveChase(caster->GetVictim(), 0.f, 0.f, false);
+                        if (chase->GetTarget() != victim)
+                            disk->GetBase()->GetMotionMaster()->MoveChase(victim, 0.f, 0.f, false);
                     }
                     else
-                        disk->GetBase()->GetMotionMaster()->MoveChase(caster->GetVictim(), 0.f, 0.f, false);
+                        disk->GetBase()->GetMotionMaster()->MoveChase(victim, 0.f, 0.f, false);
                 }
+                else
+                    disk->GetBase()->GetMotionMaster()->Clear(MOTION_SLOT_ACTIVE);
+            }
     }
 
     void Register() override
