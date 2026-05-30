@@ -278,9 +278,12 @@ class instance_naxxramas : public InstanceMapScript
                         if (Creature* kelthuzad = instance->GetCreature(KelthuzadGUID))
                             kelthuzad->AI()->Talk(SAY_KELTHUZAD_CAT_DIED);
 
-                        bigglesworthKilled = true;
-                        DoCastSpellOnPlayers(SPELL_BIGGLESWORTH_CURSE, true, true);
-                        SaveToDB();
+                        if (!bigglesworthKilled)
+                        {
+                            bigglesworthKilled = true;
+                            DoCastSpellOnPlayers(SPELL_BIGGLESWORTH_CURSE, true, true);
+                            SaveToDB();
+                        }
                     }
             }
 
