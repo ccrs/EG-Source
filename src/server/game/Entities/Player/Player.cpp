@@ -2048,7 +2048,7 @@ void Player::Regenerate(Powers power)
     }
 
     uint32 curValue = GetPower(power);
-    float addvalue  = GetPowerRegen(power) * 0.001f * m_regenTimer;
+    float addvalue = GetPowerRegen(power) * 0.001f * m_regenTimer;
 
     if (addvalue < 0.0f)
     {
@@ -3856,7 +3856,7 @@ bool Player::ResetTalents(bool involuntarily /*= false*/)
     SetFreeTalentPoints(talentPointsForLevel);
 
     if (involuntarily)
-        SendDirectMessage(WorldPackets::Talent::InvoluntarilyReset(false).Write());
+        SendDirectMessage(WorldPackets::Talent::TalentsInvoluntarilyReset(false).Write());
 
     return true;
 }

@@ -1718,7 +1718,7 @@ bool Pet::resetTalents(bool involuntarily /*= false*/)
         player->PetSpellInitialize();
 
     if (involuntarily)
-        player->SendDirectMessage(WorldPackets::Talent::InvoluntarilyReset(true).Write());
+        player->SendDirectMessage(WorldPackets::Talent::TalentsInvoluntarilyReset(true).Write());
 
     return true;
 }
@@ -1757,7 +1757,7 @@ void Pet::resetTalentsForAllPetsOf(Player* owner, Pet* onlinePet /*= nullptr*/, 
         return;
 
     if (!onlinePet)
-        owner->SendDirectMessage(WorldPackets::Talent::InvoluntarilyReset(true).Write());
+        owner->SendDirectMessage(WorldPackets::Talent::TalentsInvoluntarilyReset(true).Write());
 
     bool need_comma = false;
     std::ostringstream ss;
