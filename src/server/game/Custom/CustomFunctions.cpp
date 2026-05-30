@@ -583,7 +583,8 @@ void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicl
             GenericMovementGenerator* movement = new GenericMovementGenerator(std::move(initializer), EFFECT_MOTION_TYPE, EVENT_VEHICLE_EXIT);
             movement->Priority = MOTION_PRIORITY_HIGHEST;
             movement->Mode = MOTION_MODE_OVERRIDE;
-            movement->AddFlag(MOVEMENTGENERATOR_FLAG_PERSIST_ON_DEATH);
+            if (serverDrivenFallEligible)
+                movement->AddFlag(MOVEMENTGENERATOR_FLAG_PERSIST_ON_DEATH);
             GetMotionMaster()->Add(movement);
         }
     }
