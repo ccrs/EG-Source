@@ -77,7 +77,7 @@ struct EG_npc_damage_test_dummy : public NullCreatureAI
         _rageGainInterval = 3000;
         me->SetLevel(std::min<uint8>(252, target->GetLevel()) + 3);
         UpdateFlags();
-        me->Say(Trinity::StringFormat("OK, %s. Starting attempt in 10 seconds, get ready...", target->GetName().c_str()), LANG_UNIVERSAL);
+        me->Say(Trinity::StringFormat("OK, {}. Starting attempt in 10 seconds, get ready...", target->GetName()), LANG_UNIVERSAL);
     }
 
     void CancelAttempt()
@@ -129,7 +129,7 @@ struct EG_npc_damage_test_dummy : public NullCreatureAI
         {
             size_t const num = _attemptScores.size();
             if (num > 1)
-                me->Say(Trinity::StringFormat("Attempt concluded - %u players participated:", num), LANG_UNIVERSAL);
+                me->Say(Trinity::StringFormat("Attempt concluded - {} players participated:", num), LANG_UNIVERSAL);
             else
                 me->Say("Attempt concluded:", LANG_UNIVERSAL);
             std::vector<std::pair<decltype(_attemptScores)::value_type::second_type::second_type, decltype(_attemptScores)::value_type::second_type::first_type>> _sortable;
@@ -140,11 +140,11 @@ struct EG_npc_damage_test_dummy : public NullCreatureAI
             for (auto const& pair : _sortable)
             {
                 if (num >= 10)
-                    me->Say(Trinity::StringFormat("%02d. %s %s (per sec: %s)", ++index, pair.second, pretty(pair.first), pretty(pair.first / float(_attemptDuration / 1000))), LANG_UNIVERSAL);
+                    me->Say(Trinity::StringFormat("{:02}. {} {} (per sec: {})", ++index, pair.second, pretty(pair.first), pretty(pair.first / float(_attemptDuration / 1000))), LANG_UNIVERSAL);
                 else if (num > 1)
-                    me->Say(Trinity::StringFormat("%d. %s %s (per sec: %s)", ++index, pair.second, pretty(pair.first), pretty(pair.first / float(_attemptDuration / 1000))), LANG_UNIVERSAL);
+                    me->Say(Trinity::StringFormat("{}. {} {} (per sec: {})", ++index, pair.second, pretty(pair.first), pretty(pair.first / float(_attemptDuration / 1000))), LANG_UNIVERSAL);
                 else
-                    me->Say(Trinity::StringFormat("%s - %s (per sec: %s)", pair.second, pretty(pair.first), pretty(pair.first / float(_attemptDuration / 1000))), LANG_UNIVERSAL);
+                    me->Say(Trinity::StringFormat("{} - {} (per sec: {})", pair.second, pretty(pair.first), pretty(pair.first / float(_attemptDuration / 1000))), LANG_UNIVERSAL);
             }
             _currentPlayer.Clear();
             me->GetThreatManager().ClearAllThreat();
@@ -203,7 +203,7 @@ private:
         {
             value %= itr;
             itr /= 1000;
-            result.append(Trinity::StringFormat(",%03d", value / itr));
+            result.append(Trinity::StringFormat(",{:03}", value / itr));
         }
         return result;
     }
@@ -211,7 +211,7 @@ private:
     std::string pretty(float value)
     {
         std::string result = pretty(uint32(value + 0.005f));
-        result.append(Trinity::StringFormat("%.2f", value - std::floor(value)), 1);
+        result.append(Trinity::StringFormat("{:.2f}", value - std::floor(value)), 1);
         return result;
     }
 
@@ -505,7 +505,7 @@ private:
                 AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Add all raid debuffs", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_ALL_DEBUFFS));
                 main = true;
             }
-            AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, Trinity::StringFormat("Add '%s'", spell->SpellName[0]), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_DEBUFF) + i);
+            AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, Trinity::StringFormat("Add '{}'", spell->SpellName[0]), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + AsUnderlyingType(GOSSIP_OFFSET_FIRST_DEBUFF) + i);
         }
         SendGossipMenuFor(player, 7381, me->GetGUID());
     }
