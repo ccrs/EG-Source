@@ -99,6 +99,8 @@ enum UlduarNPCs
     //XT002
     NPC_XS013_SCRAPBOT                      = 33343,
     NPC_HEART_OF_DECONSTRUCTOR              = 33329,
+    NPC_XM024_PUMMELLER                     = 33344,
+    NPC_XE321_BOOMBOT                       = 33346,
 
     // Flame Leviathan
     NPC_ULDUAR_COLOSSUS                     = 33237,

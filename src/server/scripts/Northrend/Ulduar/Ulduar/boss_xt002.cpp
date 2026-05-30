@@ -198,6 +198,15 @@ struct boss_xt002 : public BossAI
         instance->DoStartTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, ACHIEV_MUST_DECONSTRUCT_FASTER);
     }
 
+    void JustSummoned(Creature* summon) override
+    {
+        summons.Summon(summon);
+        if (summon->GetEntry() == NPC_XS013_SCRAPBOT || summon->GetEntry() == NPC_XM024_PUMMELLER || summon->GetEntry() == NPC_XE321_BOOMBOT)
+            return;
+        if (me->IsEngaged())
+            DoZoneInCombat(summon);
+    }
+
     void DoAction(int32 action) override
     {
         if (action == ACTION_ENTER_HARD_MODE)
@@ -462,7 +471,7 @@ struct npc_scrapbot : public ScriptedAI
             Schedule(2s, [this](TaskContext /*StartMove*/)
             {
                 if (Creature* xt002 = _instance->GetCreature(DATA_XT002))
-                    me->GetMotionMaster()->MoveFollow(xt002, 0.0f, 0.0f);
+                    me->GetMotionMaster()->MoveChase(xt002, 0.0f, 0.0f, false);
             })
             .Schedule(1s, [this](TaskContext checkXt002)
             {
@@ -583,7 +592,7 @@ struct npc_boombot : public ScriptedAI
             Schedule(4s, [this](TaskContext /*StartMove*/)
             {
                 if (Creature* xt002 = _instance->GetCreature(DATA_XT002))
-                    me->GetMotionMaster()->MoveFollow(xt002, 0.0f, 0.0f);
+                    me->GetMotionMaster()->MoveChase(xt002, 0.0f, 0.0f, false);
 
             })
             .Schedule(1s, [this](TaskContext checkXt002)
