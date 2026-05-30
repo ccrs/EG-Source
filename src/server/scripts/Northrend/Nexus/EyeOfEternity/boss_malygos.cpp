@@ -20,6 +20,7 @@ SDName: Boss Malygos
 Script Data End */
 
 #include "eye_of_eternity.h"
+#include "ChaseMovementGenerator.h"
 #include "CombatAI.h"
 #include "CommonHelpers.h"
 #include "Containers.h"
@@ -756,7 +757,28 @@ struct boss_malygos : public BossAI
 
     void UpdateAI(uint32 diff) override
     {
-        if (!UpdateVictim() && _phase != PHASE_NOT_STARTED && _phase != PHASE_TWO)
+        if (_phase == PHASE_TWO)
+        {
+            bool anyAlive = false;
+            Map::PlayerList const& players = me->GetMap()->GetPlayers();
+            for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+            {
+                if (Player* player = itr->GetSource())
+                {
+                    if (player->IsAlive() && !player->IsGameMaster())
+                    {
+                        anyAlive = true;
+                        break;
+                    }
+                }
+            }
+            if (!anyAlive)
+            {
+                EnterEvadeMode(EVADE_REASON_OTHER);
+                return;
+            }
+        }
+        else if (!UpdateVictim() && _phase != PHASE_NOT_STARTED)
             return;
 
         events.Update(diff);
@@ -1163,8 +1185,6 @@ struct npc_melee_hover_disk : public VehicleAI
         Initialize();
         _instance = creature->GetInstanceScript();
         me->SetReactState(REACT_PASSIVE);
-        // TO DO: These were a bit faster than what they should be. Not sure what is the reason.
-        me->SetSpeedRate(MOVE_FLIGHT, 1.25f);
     }
 
     void Initialize()
@@ -1177,6 +1197,9 @@ struct npc_melee_hover_disk : public VehicleAI
         VehicleAI::Reset();
 
         Initialize();
+
+        // TO DO: These were a bit faster than what they should be. Not sure what is the reason.
+        me->SetSpeedRate(MOVE_FLIGHT, 1.25f);
     }
 
     void EnterEvadeMode(EvadeReason /*why*/) override { }
@@ -1188,29 +1211,19 @@ struct npc_melee_hover_disk : public VehicleAI
             if (unit->GetTypeId() == TYPEID_UNIT)
             {
                 unit->CastSpell(unit, SPELL_TELEPORT_VISUAL_ONLY);
-                DoZoneInCombat(unit->ToCreature());
             }
             else if (unit->GetTypeId() == TYPEID_PLAYER)
+            {
                 me->SetDisableGravity(true);
+                me->SetCanFly(true);
+            }
         }
         else
         {
-            if (unit->GetTypeId() != TYPEID_PLAYER)
-            {
-
-                me->SetHomePosition(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), me->GetOrientation());
-                me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-                me->SetDisableGravity(false);
-                me->SetCanFly(false);
-            }
-            else if (unit->GetTypeId() == TYPEID_PLAYER)
-            {
-                me->SetDisableGravity(false);
-                me->SetCanFly(false);
-            }
-
+            me->GetMotionMaster()->Clear(MOTION_SLOT_ACTIVE);
             me->SetFaction(FACTION_FRIENDLY);
-            me->RemoveAllAuras();
+            me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+            me->GetMotionMaster()->MoveFall();
         }
     }
 
@@ -1238,18 +1251,18 @@ struct npc_melee_hover_disk : public VehicleAI
 
     void MovementInform(uint32 type, uint32 id) override
     {
-        if (type != POINT_MOTION_TYPE)
-            return;
-
-        if (_wpCount < 3)
+        if (type == POINT_MOTION_TYPE)
         {
-            _events.ScheduleEvent(id + 1, 1ms);
-            ++_wpCount;
+            if (_wpCount < 3)
+            {
+                _events.ScheduleEvent(id + 1, 1ms);
+                ++_wpCount;
+            }
+            else if (Vehicle* hoverDisk = me->GetVehicleKit())
+                if (Unit* passenger = hoverDisk->GetPassenger(0))
+                    if (Creature* lordPassenger = passenger->ToCreature())
+                        lordPassenger->AI()->DoAction(ACTION_SET_DISK_VICTIM_CHASE);
         }
-        else if (Vehicle* hoverDisk = me->GetVehicleKit())
-            if (Unit* passenger = hoverDisk->GetPassenger(0))
-                if (Creature* lordPassenger = passenger->ToCreature())
-                    lordPassenger->AI()->DoAction(ACTION_SET_DISK_VICTIM_CHASE);
     }
 
 private:
@@ -1264,19 +1277,17 @@ struct npc_caster_hover_disk : public VehicleAI
     {
         _instance = creature->GetInstanceScript();
         me->SetReactState(REACT_PASSIVE);
-        // TO DO: Something is wrong with calculations for flying creatures that are on WP/Cyclic path.
-        // They should get the same difference as to when at ground from run creature switch to walk.
-        me->SetSpeedRate(MOVE_FLIGHT, 0.45f);
     }
 
     void Reset() override
     {
         VehicleAI::Reset();
+        // TO DO: Something is wrong with calculations for flying creatures that are on WP/Cyclic path.
+        // They should get the same difference as to when at ground from run creature switch to walk.
+        me->SetSpeedRate(MOVE_FLIGHT, 0.45f);
     }
 
-    void EnterEvadeMode(EvadeReason /*why*/) override
-    {
-    }
+    void EnterEvadeMode(EvadeReason /*why*/) override { }
 
     void PassengerBoarded(Unit* unit, int8 /*seat*/, bool apply) override
     {
@@ -1286,12 +1297,7 @@ struct npc_caster_hover_disk : public VehicleAI
                 unit->CastSpell(unit, SPELL_TELEPORT_VISUAL_ONLY);
         }
         else
-        {
-            me->StopMoving();
-            me->SetDisableGravity(false);
-            me->SetCanFly(false);
-            me->RemoveAllAuras();
-        }
+            me->GetMotionMaster()->MoveFall();
     }
 
     void DoAction(int32 action) override
@@ -1315,6 +1321,7 @@ struct npc_nexus_lord : public ScriptedAI
     npc_nexus_lord(Creature* creature) : ScriptedAI(creature)
     {
         _instance = creature->GetInstanceScript();
+        creature->SetReactState(REACT_PASSIVE);
     }
 
     void Reset() override
@@ -1322,15 +1329,15 @@ struct npc_nexus_lord : public ScriptedAI
         _events.Reset();
     }
 
-    void EnterEvadeMode(EvadeReason /*why*/) override
-    {
-    }
+    void EnterEvadeMode(EvadeReason /*why*/) override { }
 
     void DoAction(int32 /*action*/) override
     {
+        me->SetReactState(REACT_AGGRESSIVE);
         _events.ScheduleEvent(EVENT_NUKE_DUMMY, 1ms);
         _events.ScheduleEvent(EVENT_ARCANE_SHOCK, 2s);
         _events.ScheduleEvent(EVENT_HASTE_BUFF, 12s);
+        DoZoneInCombat();
     }
 
     void UpdateAI(uint32 diff) override
@@ -1791,10 +1798,23 @@ class spell_nexus_lord_align_disk_aggro : public SpellScript
 
     void HandleScript(SpellEffIndex /*effIndex*/)
     {
-        Creature* caster = GetCaster()->ToCreature();
-        if (Unit* disk = caster->GetVehicleBase())
+        Creature* caster = GetCaster() ? GetCaster()->ToCreature() : nullptr;
+        if (caster && caster->GetReactState() == REACT_AGGRESSIVE)
             if (Unit* victim = caster->GetVictim())
-                disk->GetMotionMaster()->MoveChase(victim);
+                if (Vehicle* disk = caster->GetVehicle())
+                {
+                    if (MovementGenerator const* base = disk->GetBase()->GetMotionMaster()->GetMovementGenerator([](MovementGenerator const* movegen) -> bool
+                    {
+                        return movegen->GetMovementGeneratorType() == CHASE_MOTION_TYPE;
+                    }))
+                    {
+                        ChaseMovementGenerator const* chase = static_cast<ChaseMovementGenerator const*>(base);
+                        if (chase->GetTarget() != caster->GetVictim())
+                            disk->GetBase()->GetMotionMaster()->MoveChase(caster->GetVictim(), 0.f, 0.f, false);
+                    }
+                    else
+                        disk->GetBase()->GetMotionMaster()->MoveChase(caster->GetVictim(), 0.f, 0.f, false);
+                }
     }
 
     void Register() override
