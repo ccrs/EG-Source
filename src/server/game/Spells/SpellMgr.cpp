@@ -3933,12 +3933,14 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 3000;
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     // Jormungar Strike
     ApplySpellFix({ 56513 }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 2000;
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     ApplySpellFix({
@@ -3947,6 +3949,7 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 6000;
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     ApplySpellFix({
@@ -3956,6 +3959,7 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 10000;
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     ApplySpellFix({
@@ -3964,12 +3968,14 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 12000;
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     // Signal Helmet to Attack
     ApplySpellFix({ 51748 }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 15000;
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     ApplySpellFix({
@@ -3979,6 +3985,7 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 20000;
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     // Summon Frigid Bones
@@ -4987,12 +4994,14 @@ void SpellMgr::LoadSpellInfoCorrections()
     ApplySpellFix({ 61177, 61288 }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 18000000; // 5 hours
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     // Northrend Alchemy Research
     ApplySpellFix({ 60893 }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 43200000; // 12 hours
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     // Glare of the Tribunal
