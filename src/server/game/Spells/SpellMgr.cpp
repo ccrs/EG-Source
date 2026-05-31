@@ -5004,6 +5004,27 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
+    // EG - Alchemy transmutes
+    ApplySpellFix({
+        // Vanilla metal
+        11479, 11480,
+        // Vanilla elemental
+        17559, 17560, 17561, 17562, 17563, 17564, 17565, 17566,
+        // TBC primal
+        28566, 28567, 28568, 28569, 28580, 28581, 28582, 28583, 28584, 28585,
+        // Alchemy specialization passive (also cat 310)
+        46714,
+        // WotLK eternal
+        53771, 53773, 53774, 53775, 53776, 53777, 53779, 53780, 53781, 53782, 53783, 53784, 54020,
+        // WotLK epic gem
+        66658, 66659, 66660, 66662, 66663, 66664
+    }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->RecoveryTime = 21600000; // 6 hours
+        spellInfo->CategoryRecoveryTime = 21600000; // 6 hours
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
+    });
+
     // Glare of the Tribunal
     // Summon Dark Matter Target
     // Summon Searing Gaze Target
