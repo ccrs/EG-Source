@@ -916,7 +916,7 @@ struct EG_npc_ulduar_tower_gauntlet_generator : public ScriptedAI
                 return;
             }
             std::list<Creature*> targets;
-            me->GetCreatureListWithOptionsInGrid(targets, 60.0f, FindCreatureOptions{ .CreatureIds = { NPC_DEMOLISHER, NPC_CHOPPER, NPC_SIEGE_ENGINE }, .IsAlive = true });
+            me->GetCreatureListWithOptionsInGrid(targets, 70.0f, FindCreatureOptions{ .CreatureIds = { NPC_DEMOLISHER, NPC_CHOPPER, NPC_SIEGE_ENGINE }, .IsAlive = true });
             if (!targets.empty())
                 if (Creature* summon = me->SummonCreature(NPC_STEELFORGED_DEFENDER, me->GetPosition(), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10s))
                 {
