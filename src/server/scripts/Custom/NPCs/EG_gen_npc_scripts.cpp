@@ -35,6 +35,7 @@ struct EG_npc_damage_test_dummy : public NullCreatureAI
     void InitializeAI() override
     {
         me->SetReactState(REACT_PASSIVE);
+        me->SetRegenerateHealth(false);
         me->SetMaxHealth(1000000000u);
         me->SetHealth(1000000000u);
         UpdateFlags();
@@ -76,6 +77,7 @@ struct EG_npc_damage_test_dummy : public NullCreatureAI
         _healthUpdateInterval = 1000;
         _rageGainInterval = 3000;
         me->SetLevel(std::min<uint8>(252, target->GetLevel()) + 3);
+        me->SetHealth(me->GetMaxHealth()); // snap bar to full so the 10s countdown shows a healthy dummy
         UpdateFlags();
         me->Say(Trinity::StringFormat("OK, {}. Starting attempt in 10 seconds, get ready...", target->GetName()), LANG_UNIVERSAL);
     }
@@ -86,6 +88,7 @@ struct EG_npc_damage_test_dummy : public NullCreatureAI
         _currentPlayer.Clear();
         me->GetThreatManager().ClearAllThreat();
         me->CombatStop();
+        me->SetHealth(me->GetMaxHealth());
         UpdateFlags();
     }
 
@@ -149,6 +152,7 @@ struct EG_npc_damage_test_dummy : public NullCreatureAI
             _currentPlayer.Clear();
             me->GetThreatManager().ClearAllThreat();
             me->CombatStop();
+            me->SetHealth(me->GetMaxHealth());
             UpdateFlags();
             return;
         }
