@@ -58,6 +58,8 @@ void HomeMovementGenerator<Creature>::SetTargetLocation(Creature* owner)
         return;
     }
 
+    RemoveFlag(MOVEMENTGENERATOR_FLAG_INTERRUPTED);
+
     owner->ClearUnitState(UNIT_STATE_ALL_ERASABLE & ~UNIT_STATE_EVADE);
     owner->AddUnitState(UNIT_STATE_ROAMING_MOVE);
 
