@@ -386,6 +386,18 @@ class instance_naxxramas : public InstanceMapScript
                                 if (!player->AddItem(ITEM_LIL_PHYLACTERY, 1))
                                     player->SendItemRetrievalMail(ITEM_LIL_PHYLACTERY, 1);
                             }
+                            switch (id)
+                            {
+                                case BOSS_KELTHUZAD: // Frostwyrm Lair
+                                case BOSS_MAEXXNA: // Arachnid Quarter
+                                case BOSS_LOATHEB: // Plague Quarter
+                                case BOSS_HORSEMEN: // Military Quarter
+                                case BOSS_THADDIUS: // Construct Quarter
+                                    player->AddItem(ITEM_EMBLEM_OF_CONQUEST, 1);
+                                    break;
+                                default:
+                                    break;
+                            }
                         }
                     }
                 }

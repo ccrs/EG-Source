@@ -5104,13 +5104,13 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->_GetEffect(EFFECT_0).ApplyAuraName = SPELL_AURA_MOD_PERCENT_STAT;
         spellInfo->_GetEffect(EFFECT_0).DieSides = 0;
         spellInfo->_GetEffect(EFFECT_0).RealPointsPerLevel = 0.0f;
-        spellInfo->_GetEffect(EFFECT_0).BasePoints = -25;
+        spellInfo->_GetEffect(EFFECT_0).BasePoints = -30;
         spellInfo->_GetEffect(EFFECT_0).MiscValue = -1;
         spellInfo->_GetEffect(EFFECT_0).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
         spellInfo->_GetEffect(EFFECT_1).ApplyAuraName = SPELL_AURA_MOD_DAMAGE_PERCENT_DONE;
         spellInfo->_GetEffect(EFFECT_1).DieSides = 0;
         spellInfo->_GetEffect(EFFECT_1).RealPointsPerLevel = 0.0f;
-        spellInfo->_GetEffect(EFFECT_1).BasePoints = -25;
+        spellInfo->_GetEffect(EFFECT_1).BasePoints = -35;
         spellInfo->_GetEffect(EFFECT_1).MiscValue = SPELL_SCHOOL_MASK_ALL;
         spellInfo->_GetEffect(EFFECT_1).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
         spellInfo->_GetEffect(EFFECT_2).ApplyAuraName = SPELL_AURA_MOD_PERCENT_STAT;
