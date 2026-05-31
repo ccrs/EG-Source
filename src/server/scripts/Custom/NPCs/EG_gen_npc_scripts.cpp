@@ -62,9 +62,9 @@ struct EG_npc_damage_test_dummy : public NullCreatureAI
     void UpdateFlags()
     {
         if (!_currentPlayer.IsEmpty())
-            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_IMMUNE_TO_PC);
+            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NON_ATTACKABLE_2);
         else
-            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_IMMUNE_TO_PC);
+            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NON_ATTACKABLE_2);
     }
 
     void BeginAttempt(Player* target, TestDummyModes /*mode*/, Milliseconds timer)
@@ -265,6 +265,16 @@ std::vector<TestDummyBuffInfo> const debuffs =
 
 int8 constexpr NUM_DUMMY = 3;
 
+struct npc_damage_test_buffdummy : public NullCreatureAI
+{
+    npc_damage_test_buffdummy(Creature* creature) : NullCreatureAI(creature) { }
+
+    void InitializeAI() override
+    {
+        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2);
+    }
+};
+
 struct EG_npc_damage_test_controller : public NullCreatureAI
 {
     typedef EG_npc_damage_test_dummy FriendAI;
@@ -287,10 +297,10 @@ struct EG_npc_damage_test_controller : public NullCreatureAI
         }
         if (isDummy) // we can't determine this in getai yet since creature isn't fully formed
         {
-            me->AIM_Initialize(new FriendAI(me));
+            me->AIM_Initialize(new npc_damage_test_buffdummy(me));
             return;
         }
-        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NON_ATTACKABLE);
+        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2);
         float x, y, z;
         for (int8 i = 0; i < NUM_DUMMY; ++i)
         {
@@ -511,17 +521,6 @@ private:
     }
 
     ObjectGuid _Dummy[NUM_DUMMY];
-};
-
-
-struct npc_damage_test_buffdummy : public NullCreatureAI
-{
-    npc_damage_test_buffdummy(Creature* creature) : NullCreatureAI(creature) { }
-
-    void InitializeAI() override
-    {
-        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_NON_ATTACKABLE);
-    }
 };
 
 enum EvolvingEctoplasm
