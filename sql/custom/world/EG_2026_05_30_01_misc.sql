@@ -9,5 +9,5 @@ INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Fligh
 
 DELETE FROM `spell_proc` WHERE `SpellId` IN (57935, 58835);
 INSERT INTO `spell_proc` (`SpellId`, `SchoolMask`, `SpellFamilyName`, `SpellFamilyMask0`, `SpellFamilyMask1`, `SpellFamilyMask2`, `ProcFlags`, `SpellTypeMask`, `SpellPhaseMask`, `HitMask`, `AttributesMask`, `DisableEffectsMask`, `ProcsPerMinute`, `Chance`, `Cooldown`, `Charges`) VALUES
-(57935, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 1500, 0),
-(58835, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 1500, 0);
+(57935, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 100, 1500, 0),
+(58835, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 100, 1500, 0);
