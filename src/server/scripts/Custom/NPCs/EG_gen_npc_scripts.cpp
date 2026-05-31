@@ -619,48 +619,34 @@ enum PlagueSlime
 
 struct EG_npc_plague_slime : public ScriptedAI
 {
-    EG_npc_plague_slime(Creature* creature) : ScriptedAI(creature), _counter(0) { }
+    enum SlimeColor : uint8
+    {
+        COLOR_BLACK = 0,
+        COLOR_BLUE,
+        COLOR_GREEN,
+        COLOR_RED
+    };
+
+    EG_npc_plague_slime(Creature* creature) : ScriptedAI(creature), _color(COLOR_BLACK) { }
 
     void Reset() override
     {
         _scheduler.CancelAll();
-        _counter = 0;
-        DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_IMMUNITY_SHADOW);
-        DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_TRANSFORM_BLACK);
+        _color = urand(COLOR_BLACK, COLOR_RED);
+        _ApplyColor(_color);
     }
 
     void JustEngagedWith(Unit* /*who*/) override
     {
         _scheduler.Schedule(25s, 30s, [this](TaskContext task)
         {
+            // Pick any color different from the current one — random rotation, no fixed cycle.
+            std::list<uint8> colors{ COLOR_BLACK, COLOR_BLUE, COLOR_GREEN, COLOR_RED };
+            colors.remove(_color);
+            _color = Trinity::Containers::SelectRandomContainerElement(colors);
+
             me->RemoveAllAuras();
-
-            switch (_counter)
-            {
-                case 0:
-                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_IMMUNITY_FROST);
-                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_TRANSFORM_BLUE);
-                    break;
-                case 1:
-                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_IMMUNITY_FIRE);
-                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_TRANSFORM_RED);
-                    break;
-                case 2:
-                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_IMMUNITY_NATURE);
-                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_TRANSFORM_GREEN);
-                    break;
-                case 3:
-                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_IMMUNITY_SHADOW);
-                    DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_TRANSFORM_BLACK);
-                    break;
-                default:
-                    break;
-            }
-
-            if (_counter == 3)
-                _counter = 0;
-            else
-                ++_counter;
+            _ApplyColor(_color);
 
             task.Repeat();
         });
@@ -678,8 +664,33 @@ struct EG_npc_plague_slime : public ScriptedAI
     }
 
 private:
+    void _ApplyColor(uint8 color)
+    {
+        switch (color)
+        {
+            case COLOR_BLACK:
+                DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_IMMUNITY_SHADOW);
+                DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_TRANSFORM_BLACK);
+                break;
+            case COLOR_BLUE:
+                DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_IMMUNITY_FROST);
+                DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_TRANSFORM_BLUE);
+                break;
+            case COLOR_GREEN:
+                DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_IMMUNITY_NATURE);
+                DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_TRANSFORM_GREEN);
+                break;
+            case COLOR_RED:
+                DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_IMMUNITY_FIRE);
+                DoCastSelf(PlagueSlime::SPELL_PLAGUESLIME_TRANSFORM_RED);
+                break;
+            default:
+                break;
+        }
+    }
+
     TaskScheduler _scheduler;
-    uint32 _counter;
+    uint8 _color;
 };
 
 enum CrystallineFrayerMisc
