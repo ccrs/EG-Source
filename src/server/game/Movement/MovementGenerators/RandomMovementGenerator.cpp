@@ -60,10 +60,15 @@ void RandomMovementGenerator<T>::Pause(uint32 timer /*= 0*/)
 template<class T>
 void RandomMovementGenerator<T>::Resume(uint32 overrideTimer /*= 0*/)
 {
-    if (overrideTimer)
-        _timer.Reset(overrideTimer);
-
     this->RemoveFlag(MOVEMENTGENERATOR_FLAG_PAUSED);
+
+    if (overrideTimer)
+    {
+        _timer.Reset(overrideTimer);
+        this->AddFlag(MOVEMENTGENERATOR_FLAG_TIMED_PAUSED);
+    }
+    else
+        this->RemoveFlag(MOVEMENTGENERATOR_FLAG_TIMED_PAUSED);
 }
 
 template MovementGeneratorType RandomMovementGenerator<Creature>::GetMovementGeneratorType() const;
