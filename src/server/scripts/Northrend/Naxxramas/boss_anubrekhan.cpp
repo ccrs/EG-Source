@@ -178,7 +178,7 @@ struct boss_anubrekhan : public BossAI
                 case EVENT_IMPALE:
                     if (events.GetTimeUntilEvent(EVENT_LOCUST) < 5s)
                         break; // don't chain impale tank -> locust swarm
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 45.f, true, false))
                         DoCast(target, SPELL_IMPALE);
                     else
                         EnterEvadeMode();
