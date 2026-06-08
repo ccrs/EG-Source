@@ -5164,6 +5164,7 @@ void SpellMgr::LoadSpellInfoCorrections()
     // Twilight Torment
     ApplySpellFix({ 57948, 58853 }, [](SpellInfo* spellInfo)
     {
+        spellInfo->AttributesEx &= ~(SPELL_ATTR1_CHANNELED_1 | SPELL_ATTR1_CHANNELED_2);
         spellInfo->AttributesEx |= SPELL_ATTR1_NO_THREAT;
         spellInfo->AttributesEx2 |= SPELL_ATTR2_CAN_TARGET_NOT_IN_LOS;
         spellInfo->_GetEffect(EFFECT_1).Effect = SPELL_EFFECT_NONE;

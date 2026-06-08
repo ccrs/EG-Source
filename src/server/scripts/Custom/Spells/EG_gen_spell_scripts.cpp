@@ -6,7 +6,6 @@
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "InstanceScript.h"
-#include "Map.h"
 #include "Player.h"
 #include "Spell.h"
 #include "SpellAuraEffects.h"
