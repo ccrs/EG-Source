@@ -1668,6 +1668,8 @@ class EG_spell_pool_of_tar_blaze_damage : public SpellScript
         {
             if (u == caster || !u->IsAlive())
                 continue;
+            if (spellInfo->CheckTarget(caster, u, true) != SPELL_CAST_OK)
+                continue;
             if (u->GetVehicle())
                 continue;
             if (u->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE))
