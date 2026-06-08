@@ -1981,7 +1981,7 @@ float Creature::GetAttackDistance(Unit const* target) const
     // This makes sure that creatures such as bosses wont have a bigger aggro range than the rest of the npc's
     // The following code is used for blizzlike behaivior such as skippable bosses
     if (GetLevel() > expansionMaxLevel)
-        aggroRadius = baseAggroDistance + float(expansionMaxLevel - targetLevel);
+        aggroRadius = baseAggroDistance + float(int32(expansionMaxLevel) - int32(targetLevel));
 
     // Make sure that we wont go over the total range limits
     if (aggroRadius > maxRadius)
