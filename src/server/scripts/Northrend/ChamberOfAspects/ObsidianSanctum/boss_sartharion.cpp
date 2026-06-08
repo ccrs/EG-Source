@@ -517,10 +517,21 @@ struct boss_sartharion : public BossAI
                 return;
         }
 
-        // At 35% berserk to pressure DPS while any called drake is still alive.
-        // Drakes killed during this fight do not set their boss state to DONE, so alive checks are required.
         if (!_isBerserk && !HealthAbovePct(35))
         {
+            _isBerserk = true;
+
+            events.CancelEvent(EVENT_CALL_TENEBRON);
+            events.CancelEvent(EVENT_CALL_SHADRON);
+            events.CancelEvent(EVENT_CALL_VESPERON);
+
+            if (_tenebronInEncounter)
+                CallDragon(DATA_TENEBRON);
+            if (_shadronInEncounter)
+                CallDragon(DATA_SHADRON);
+            if (_vesperonInEncounter)
+                CallDragon(DATA_VESPERON);
+
             Creature* tenebron = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_TENEBRON));
             Creature* shadron = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_SHADRON));
             Creature* vesperon = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VESPERON));
@@ -529,7 +540,6 @@ struct boss_sartharion : public BossAI
             {
                 Talk(SAY_SARTHARION_BERSERK);
                 DoCast(me, SPELL_BERSERK);
-                _isBerserk = true;
             }
         }
 
