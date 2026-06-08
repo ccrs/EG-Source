@@ -16,6 +16,11 @@ DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_twilight_torment
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (57988, 'EG_spell_twilight_torment_damage');
 
+DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_twilight_torment_carrier';
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(57948, 'EG_spell_twilight_torment_carrier'),
+(58853, 'EG_spell_twilight_torment_carrier');
+
 DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_twilight_torment_phase';
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (57948, 'EG_spell_twilight_torment_phase'),

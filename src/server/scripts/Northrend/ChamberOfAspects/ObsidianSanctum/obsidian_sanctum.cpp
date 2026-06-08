@@ -215,6 +215,15 @@ struct dummy_dragonAI : public ScriptedAI
         events.ScheduleEvent(EVENT_SHADOW_BREATH, 20s);
     }
 
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        if (Creature* sartharion = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_SARTHARION)))
+            if (sartharion->IsAlive() && sartharion->IsInCombat())
+                return;
+
+        ScriptedAI::EnterEvadeMode(why);
+    }
+
     void DoAction(int32 action) override
     {
         switch (action)
@@ -232,7 +241,7 @@ struct dummy_dragonAI : public ScriptedAI
 
         if (instance->GetBossState(DATA_SARTHARION) != IN_PROGRESS)
         {
-            EnterEvadeMode();
+            EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
             return;
         }
 
@@ -707,7 +716,6 @@ struct npc_acolyte_of_shadron : public ScriptedAI
             return;
 
         me->SetTarget(ObjectGuid::Empty);
-        me->AddUnitState(UNIT_STATE_EVADE);
         me->GetMotionMaster()->MoveTargetedHome();
     }
 
@@ -796,7 +804,6 @@ struct npc_acolyte_of_vesperon : public ScriptedAI
             return;
 
         me->SetTarget(ObjectGuid::Empty);
-        me->AddUnitState(UNIT_STATE_EVADE);
         me->GetMotionMaster()->MoveTargetedHome();
     }
 

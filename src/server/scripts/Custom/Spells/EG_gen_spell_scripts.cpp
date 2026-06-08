@@ -1,7 +1,12 @@
 #include "ScriptMgr.h"
+#include "Cell.h"
+#include "CellImpl.h"
 #include "Creature.h"
 #include "CreatureAI.h"
+#include "GridNotifiers.h"
+#include "GridNotifiersImpl.h"
 #include "InstanceScript.h"
+#include "Map.h"
 #include "Player.h"
 #include "Spell.h"
 #include "SpellAuraEffects.h"
@@ -350,6 +355,35 @@ class EG_spell_twilight_torment_damage : public SpellScript
 
 // 57948 - Twilight Torment (Vesperon carrier)  -> triggered debuff 57935 (normal world)
 // 58853 - Twilight Torment (Acolyte carrier)   -> triggered debuff 58835 (twilight realm)
+class EG_spell_twilight_torment_carrier : public SpellScript
+{
+    PrepareSpellScript(EG_spell_twilight_torment_carrier);
+
+    void SelectAllPlayers(std::list<WorldObject*>& targets)
+    {
+        Unit* caster = GetCaster();
+        if (!caster)
+            return;
+
+        float radius = GetSpellInfo()->GetEffect(EFFECT_0).CalcRadius(caster);
+        targets.clear();
+
+        std::list<Player*> players;
+        Trinity::AnyPlayerInPositionRangeCheck check(caster, radius);
+        Trinity::PlayerListSearcher<Trinity::AnyPlayerInPositionRangeCheck> searcher(PHASEMASK_ANYWHERE, players, check);
+        Cell::VisitWorldObjects(caster, searcher, radius);
+
+        for (Player* player : players)
+            if (!player->IsGameMaster())
+                targets.push_back(player);
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(EG_spell_twilight_torment_carrier::SelectAllPlayers, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+    }
+};
+
 class EG_spell_twilight_torment_phase : public AuraScript
 {
     PrepareAuraScript(EG_spell_twilight_torment_phase);
@@ -429,6 +463,7 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_deploy_salvage_saws);
     RegisterSpellScript(EG_spell_displacement_device);
     RegisterSpellScript(EG_spell_twilight_torment_damage);
+    RegisterSpellScript(EG_spell_twilight_torment_carrier);
     RegisterSpellScript(EG_spell_twilight_torment_phase);
     RegisterSpellScript(EG_spell_twilight_torment_trigger);
 }
