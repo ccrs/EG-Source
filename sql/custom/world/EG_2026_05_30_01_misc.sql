@@ -30,3 +30,7 @@ DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_twilight_torment
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (57935, 'EG_spell_twilight_torment_trigger'),
 (58835, 'EG_spell_twilight_torment_trigger');
+
+UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839 WHERE `entry` IN (28860, 30449, 30451, 30452, 31311, 31520, 31534, 31535);
+
+UPDATE `creature_template` SET `mechanic_immune_mask` = 617299775 WHERE `entry` IN (16168, 29576);
