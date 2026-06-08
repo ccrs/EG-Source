@@ -698,6 +698,17 @@ struct npc_acolyte_of_shadron : public ScriptedAI
         }
 
         me->AddAura(SPELL_TWILIGHT_SHIFT_ENTER, me);
+        me->SetRegenerateHealth(false);
+    }
+
+    void EnterEvadeMode(EvadeReason /*why*/) override
+    {
+        if (me->IsInEvadeMode() || !me->IsAlive())
+            return;
+
+        me->SetTarget(ObjectGuid::Empty);
+        me->AddUnitState(UNIT_STATE_EVADE);
+        me->GetMotionMaster()->MoveTargetedHome();
     }
 
     void Cleanup()
@@ -776,6 +787,17 @@ struct npc_acolyte_of_vesperon : public ScriptedAI
     {
         me->AddAura(SPELL_TWILIGHT_SHIFT_ENTER, me);
         DoCast(me, SPELL_TWILIGHT_TORMENT_VESP_ACO);
+        me->SetRegenerateHealth(false);
+    }
+
+    void EnterEvadeMode(EvadeReason /*why*/) override
+    {
+        if (me->IsInEvadeMode() || !me->IsAlive())
+            return;
+
+        me->SetTarget(ObjectGuid::Empty);
+        me->AddUnitState(UNIT_STATE_EVADE);
+        me->GetMotionMaster()->MoveTargetedHome();
     }
 
     void Cleanup()

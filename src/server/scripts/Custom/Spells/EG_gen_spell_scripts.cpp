@@ -388,6 +388,32 @@ class EG_spell_twilight_torment_phase : public AuraScript
     }
 };
 
+// 57935 - Twilight Torment debuff (shadow / normal world)
+// 58835 - Twilight Torment debuff (fire+shadow / twilight realm)
+class EG_spell_twilight_torment_trigger : public AuraScript
+{
+    PrepareAuraScript(EG_spell_twilight_torment_trigger);
+
+    void CalcPeriodic(AuraEffect const* /*aurEff*/, bool& isPeriodic, int32& amplitude)
+    {
+        isPeriodic = true;
+        amplitude = 500;
+    }
+
+    void EnforcePhase(AuraEffect const* /*aurEff*/)
+    {
+        bool isTwilightDebuff = (GetId() == SPELL_TWILIGHT_TORMENT_ACO_PROC);
+        if (GetTarget()->InSamePhase(PHASEMASK_TWILIGHT_REALM) != isTwilightDebuff)
+            Remove();
+    }
+
+    void Register() override
+    {
+        DoEffectCalcPeriodic += AuraEffectCalcPeriodicFn(EG_spell_twilight_torment_trigger::CalcPeriodic, EFFECT_0, SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN);
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_twilight_torment_trigger::EnforcePhase, EFFECT_0, SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
@@ -404,4 +430,5 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_displacement_device);
     RegisterSpellScript(EG_spell_twilight_torment_damage);
     RegisterSpellScript(EG_spell_twilight_torment_phase);
+    RegisterSpellScript(EG_spell_twilight_torment_trigger);
 }
