@@ -11626,7 +11626,11 @@ bool Unit::SetCharmedBy(Unit* charmer, CharmType type, AuraApplication const* au
         return false;
 
     _oldFactionId = GetFaction();
-    SetFaction(charmer->GetFaction());
+    // EG - Crossfaction: in dungeons/raids with two-side interaction allowed
+    if (playerCharmer && GetMap() && GetMap()->IsDungeon() && sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP))
+        SetFaction(1665);
+    else
+        SetFaction(charmer->GetFaction());
 
     // Pause any Idle movement
     PauseMovement(0, 0, false);
