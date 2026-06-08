@@ -628,6 +628,10 @@ void LoadDBCStores(const std::string& dataPath)
         }
     }
 
+    // EG - Warbear Matriarch (vehicle 208) seat missing CAN_ATTACK
+    if (VehicleSeatEntry const* seat = sVehicleSeatStore.LookupEntry(2177))
+        const_cast<VehicleSeatEntry*>(seat)->Flags |= VEHICLE_SEAT_FLAG_CAN_ATTACK;
+
     for (WMOAreaTableEntry const* entry : sWMOAreaTableStore)
         sWMOAreaInfoByTripple[WMOAreaTableKey(entry->WMOID, entry->NameSetID, entry->WMOGroupID)] = entry;
 
