@@ -9,5 +9,14 @@ INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Fligh
 
 DELETE FROM `spell_proc` WHERE `SpellId` IN (57935, 58835);
 INSERT INTO `spell_proc` (`SpellId`, `SchoolMask`, `SpellFamilyName`, `SpellFamilyMask0`, `SpellFamilyMask1`, `SpellFamilyMask2`, `ProcFlags`, `SpellTypeMask`, `SpellPhaseMask`, `HitMask`, `AttributesMask`, `DisableEffectsMask`, `ProcsPerMinute`, `Chance`, `Cooldown`, `Charges`) VALUES
-(57935, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 100, 1500, 0),
-(58835, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 100, 1500, 0);
+(57935, 0, 0, 0, 0, 0, 69904, 1, 1, 0, 256, 0, 0, 0, 2000, 0),
+(58835, 0, 0, 0, 0, 0, 69904, 1, 1, 0, 256, 0, 0, 0, 2000, 0);
+
+DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_twilight_torment_damage';
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(57988, 'EG_spell_twilight_torment_damage');
+
+DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_twilight_torment_phase';
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(57948, 'EG_spell_twilight_torment_phase'),
+(58853, 'EG_spell_twilight_torment_phase');

@@ -307,6 +307,99 @@ class EG_spell_displacement_device : public SpellScript
     }
 };
 
+enum TwilightTorment
+{
+    SPELL_TWILIGHT_TORMENT_VESP = 57948,
+    SPELL_TWILIGHT_TORMENT_PROC = 57935,
+    SPELL_TWILIGHT_TORMENT_ACO = 58853,
+    SPELL_TWILIGHT_TORMENT_ACO_PROC = 58835,
+    PHASEMASK_TWILIGHT_REALM = 16
+};
+
+// 57988 - Twilight Torment
+class EG_spell_twilight_torment_damage : public SpellScript
+{
+    PrepareSpellScript(EG_spell_twilight_torment_damage);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_TWILIGHT_TORMENT_PROC, SPELL_TWILIGHT_TORMENT_ACO_PROC });
+    }
+
+    void RemoveTormentSelfBonus()
+    {
+        Unit* target = GetHitUnit();
+        if (!target)
+            return;
+
+        float factor = 1.0f;
+        if (AuraEffect const* aurEff = target->GetAuraEffect(SPELL_TWILIGHT_TORMENT_PROC, EFFECT_0))
+            AddPct(factor, aurEff->GetAmount());
+        if (AuraEffect const* aurEff = target->GetAuraEffect(SPELL_TWILIGHT_TORMENT_ACO_PROC, EFFECT_0))
+            AddPct(factor, aurEff->GetAmount());
+
+        if (factor > 1.0f)
+            SetHitDamage(int32(GetHitDamage() / factor));
+    }
+
+    void Register() override
+    {
+        OnHit += SpellHitFn(EG_spell_twilight_torment_damage::RemoveTormentSelfBonus);
+    }
+};
+
+// 57948 - Twilight Torment (Vesperon, normal phase)
+// 58853 - Twilight Torment (Acolyte of Vesperon, twilight phase)
+class EG_spell_twilight_torment_phase : public AuraScript
+{
+    PrepareAuraScript(EG_spell_twilight_torment_phase);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_TWILIGHT_TORMENT_PROC, SPELL_TWILIGHT_TORMENT_ACO_PROC });
+    }
+
+    uint32 GetTriggeredSpell() const
+    {
+        return GetId() == SPELL_TWILIGHT_TORMENT_ACO ? SPELL_TWILIGHT_TORMENT_ACO_PROC : SPELL_TWILIGHT_TORMENT_PROC;
+    }
+
+    void CalcPeriodic(AuraEffect const* /*aurEff*/, bool& isPeriodic, int32& amplitude)
+    {
+        isPeriodic = true;
+        amplitude = 1 * IN_MILLISECONDS;
+    }
+
+    void PeriodicTick(AuraEffect const* /*aurEff*/)
+    {
+        Unit* owner = GetTarget();
+        uint32 triggeredSpell = GetTriggeredSpell();
+
+        if (owner->InSamePhase(PHASEMASK_TWILIGHT_REALM) == (GetId() == SPELL_TWILIGHT_TORMENT_ACO))
+        {
+            if (!owner->HasAura(triggeredSpell))
+            {
+                Unit* caster = GetCaster() ? GetCaster() : owner;
+                caster->CastSpell(owner, triggeredSpell, true);
+            }
+        }
+        else
+            owner->RemoveAurasDueToSpell(triggeredSpell);
+    }
+
+    void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        GetTarget()->RemoveAurasDueToSpell(GetTriggeredSpell());
+    }
+
+    void Register() override
+    {
+        DoEffectCalcPeriodic += AuraEffectCalcPeriodicFn(EG_spell_twilight_torment_phase::CalcPeriodic, EFFECT_0, SPELL_AURA_DUMMY);
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_twilight_torment_phase::PeriodicTick, EFFECT_0, SPELL_AURA_DUMMY);
+        AfterEffectRemove += AuraEffectRemoveFn(EG_spell_twilight_torment_phase::HandleRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
@@ -321,4 +414,6 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_naxx_bigglesworth_curse);
     RegisterSpellScript(EG_spell_deploy_salvage_saws);
     RegisterSpellScript(EG_spell_displacement_device);
+    RegisterSpellScript(EG_spell_twilight_torment_damage);
+    RegisterSpellScript(EG_spell_twilight_torment_phase);
 }
