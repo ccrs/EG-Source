@@ -5161,6 +5161,13 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->RangeEntry = sSpellRangeStore.LookupEntry(36); // 45yd
     });
 
+    // Twilight Torment
+    ApplySpellFix({ 57948, 58853 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->AttributesEx6 |= SPELL_ATTR6_CAN_TARGET_INVISIBLE;
+        spellInfo->_GetEffect(EFFECT_1).Effect = SPELL_EFFECT_NONE;
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];

@@ -348,8 +348,8 @@ class EG_spell_twilight_torment_damage : public SpellScript
     }
 };
 
-// 57948 - Twilight Torment (Vesperon, normal phase)
-// 58853 - Twilight Torment (Acolyte of Vesperon, twilight phase)
+// 57948 - Twilight Torment (Vesperon carrier)  -> triggered debuff 57935 (normal world)
+// 58853 - Twilight Torment (Acolyte carrier)   -> triggered debuff 58835 (twilight realm)
 class EG_spell_twilight_torment_phase : public AuraScript
 {
     PrepareAuraScript(EG_spell_twilight_torment_phase);
@@ -359,44 +359,32 @@ class EG_spell_twilight_torment_phase : public AuraScript
         return ValidateSpellInfo({ SPELL_TWILIGHT_TORMENT_PROC, SPELL_TWILIGHT_TORMENT_ACO_PROC });
     }
 
-    uint32 GetTriggeredSpell() const
-    {
-        return GetId() == SPELL_TWILIGHT_TORMENT_ACO ? SPELL_TWILIGHT_TORMENT_ACO_PROC : SPELL_TWILIGHT_TORMENT_PROC;
-    }
-
     void CalcPeriodic(AuraEffect const* /*aurEff*/, bool& isPeriodic, int32& amplitude)
     {
         isPeriodic = true;
-        amplitude = 1 * IN_MILLISECONDS;
+        amplitude = 500;
     }
 
     void PeriodicTick(AuraEffect const* /*aurEff*/)
     {
         Unit* owner = GetTarget();
-        uint32 triggeredSpell = GetTriggeredSpell();
+        bool isTwilightCarrier = (GetId() == SPELL_TWILIGHT_TORMENT_ACO);
+        uint32 triggered = isTwilightCarrier ? SPELL_TWILIGHT_TORMENT_ACO_PROC : SPELL_TWILIGHT_TORMENT_PROC;
 
-        if (owner->InSamePhase(PHASEMASK_TWILIGHT_REALM) == (GetId() == SPELL_TWILIGHT_TORMENT_ACO))
+        if (owner->InSamePhase(PHASEMASK_TWILIGHT_REALM) == isTwilightCarrier)
         {
-            if (!owner->HasAura(triggeredSpell))
-            {
-                Unit* caster = GetCaster() ? GetCaster() : owner;
-                caster->CastSpell(owner, triggeredSpell, true);
-            }
+            if (!owner->HasAura(triggered))
+                if (Unit* caster = GetCaster())
+                    caster->AddAura(triggered, owner);
         }
         else
-            owner->RemoveAurasDueToSpell(triggeredSpell);
-    }
-
-    void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-    {
-        GetTarget()->RemoveAurasDueToSpell(GetTriggeredSpell());
+            owner->RemoveAurasDueToSpell(triggered);
     }
 
     void Register() override
     {
         DoEffectCalcPeriodic += AuraEffectCalcPeriodicFn(EG_spell_twilight_torment_phase::CalcPeriodic, EFFECT_0, SPELL_AURA_DUMMY);
         OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_twilight_torment_phase::PeriodicTick, EFFECT_0, SPELL_AURA_DUMMY);
-        AfterEffectRemove += AuraEffectRemoveFn(EG_spell_twilight_torment_phase::HandleRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
     }
 };
 
