@@ -64,6 +64,8 @@ void TournamentMgr::LoadFromDB()
 {
     uint32 const oldMSTime = getMSTime();
 
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
     _tournaments.clear();
     _teams.clear();
     _memberIndex.clear();
@@ -162,7 +164,7 @@ void TournamentMgr::LoadFromDB()
         uint32(_tournaments.size()), uint32(_teams.size()), GetMSTimeDiffToNow(oldMSTime));
 }
 
-TournamentData const* TournamentMgr::GetActiveTournament() const
+TournamentData const* TournamentMgr::FindActiveTournament() const
 {
     TournamentData const* fallback = nullptr;
     for (auto const& pair : _tournaments)
@@ -175,29 +177,45 @@ TournamentData const* TournamentMgr::GetActiveTournament() const
     return fallback;
 }
 
+TournamentData const* TournamentMgr::GetActiveTournament() const
+{
+    std::shared_lock<std::shared_mutex> lock(_lock);
+    return FindActiveTournament();
+}
+
 TournamentData const* TournamentMgr::GetTournament(uint32 id) const
 {
+    std::shared_lock<std::shared_mutex> lock(_lock);
     return Trinity::Containers::MapGetValuePtr(_tournaments, id);
 }
 
 TournamentTeam const* TournamentMgr::GetTeam(uint32 teamId) const
 {
+    std::shared_lock<std::shared_mutex> lock(_lock);
     return Trinity::Containers::MapGetValuePtr(_teams, teamId);
 }
 
-TournamentTeam const* TournamentMgr::GetTeamByMember(ObjectGuid::LowType charGuid, uint32 tournamentId) const
+TournamentTeam const* TournamentMgr::FindTeamByMember(ObjectGuid::LowType charGuid, uint32 tournamentId) const
 {
     auto range = _memberIndex.equal_range(charGuid);
     for (auto itr = range.first; itr != range.second; ++itr)
-        if (TournamentTeam const* team = GetTeam(itr->second))
+        if (TournamentTeam const* team = Trinity::Containers::MapGetValuePtr(_teams, itr->second))
             if (team->tournamentId == tournamentId)
                 return team;
 
     return nullptr;
 }
 
+TournamentTeam const* TournamentMgr::GetTeamByMember(ObjectGuid::LowType charGuid, uint32 tournamentId) const
+{
+    std::shared_lock<std::shared_mutex> lock(_lock);
+    return FindTeamByMember(charGuid, tournamentId);
+}
+
 std::vector<TournamentTeam const*> TournamentMgr::GetTeams(uint32 tournamentId) const
 {
+    std::shared_lock<std::shared_mutex> lock(_lock);
+
     std::vector<TournamentTeam const*> teams;
     for (auto const& pair : _teams)
         if (pair.second.tournamentId == tournamentId)
@@ -209,6 +227,8 @@ std::vector<TournamentTeam const*> TournamentMgr::GetTeams(uint32 tournamentId) 
 
 uint32 TournamentMgr::CreateTournament(std::string_view name, uint8 difficulty, ObjectGuid::LowType admin)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
     TournamentData data;
     data.id = _nextTournamentId++;
     data.name = name;
@@ -235,6 +255,8 @@ uint32 TournamentMgr::CreateTournament(std::string_view name, uint8 difficulty, 
 
 bool TournamentMgr::DeleteTournament(uint32 id)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
     auto itr = _tournaments.find(id);
     if (itr == _tournaments.end())
         return false;
@@ -245,7 +267,7 @@ bool TournamentMgr::DeleteTournament(uint32 id)
         if (pair.second.tournamentId == id)
             teamIds.push_back(pair.first);
     for (uint32 teamId : teamIds)
-        DeleteTeam(teamId);
+        EraseTeam(teamId);
 
     CharacterDatabasePreparedStatement* delDungeons = CharacterDatabase.GetPreparedStatement(CHAR_DEL_TOURNAMENT_DUNGEON_ALL);
     delDungeons->setUInt32(0, id);
@@ -261,9 +283,17 @@ bool TournamentMgr::DeleteTournament(uint32 id)
 
 bool TournamentMgr::SetState(uint32 id, TournamentState state)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
     TournamentData* data = Trinity::Containers::MapGetValuePtr(_tournaments, id);
     if (!data)
         return false;
+
+    // only one tournament may be RUNNING, the hooks gate on the single active one
+    if (state == TOURNAMENT_STATE_RUNNING)
+        for (auto const& pair : _tournaments)
+            if (pair.first != id && pair.second.state == TOURNAMENT_STATE_RUNNING)
+                return false;
 
     data->state = state;
     if (state == TOURNAMENT_STATE_RUNNING && !data->startTime)
@@ -279,18 +309,15 @@ bool TournamentMgr::SetState(uint32 id, TournamentState state)
     CharacterDatabase.Execute(stmt);
 
     if (state == TOURNAMENT_STATE_RUNNING)
-        RevealDungeons(id);
+        RevealDungeonsOfTournament(*data);
     else
     {
         // live runs only exist while their tournament is RUNNING; void any leftovers
         std::vector<uint32> liveInstances;
-        {
-            std::lock_guard<std::mutex> lock(_runsLock);
-            for (auto const& pair : _runsByInstance)
-                if (TournamentTeam const* team = GetTeam(pair.second.teamId))
-                    if (team->tournamentId == id)
-                        liveInstances.push_back(pair.first);
-        }
+        for (auto const& pair : _runsByInstance)
+            if (TournamentTeam const* team = Trinity::Containers::MapGetValuePtr(_teams, pair.second.teamId))
+                if (team->tournamentId == id)
+                    liveInstances.push_back(pair.first);
 
         for (uint32 instanceId : liveInstances)
             TerminateRun(instanceId, TOURNAMENT_RUN_VOID, "tournament no longer running");
@@ -300,6 +327,8 @@ bool TournamentMgr::SetState(uint32 id, TournamentState state)
 
 bool TournamentMgr::SetIlvlCap(uint32 id, uint16 cap)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
     TournamentData* data = Trinity::Containers::MapGetValuePtr(_tournaments, id);
     if (!data)
         return false;
@@ -315,6 +344,8 @@ bool TournamentMgr::SetIlvlCap(uint32 id, uint16 cap)
 
 bool TournamentMgr::SetDungeon(uint32 id, uint8 slot, uint16 mapId, uint8 difficulty)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
     TournamentData* data = Trinity::Containers::MapGetValuePtr(_tournaments, id);
     if (!data || slot < 1 || slot > TOURNAMENT_DUNGEON_NUM)
         return false;
@@ -339,6 +370,8 @@ bool TournamentMgr::SetDungeon(uint32 id, uint8 slot, uint16 mapId, uint8 diffic
 
 bool TournamentMgr::RemoveDungeon(uint32 id, uint8 slot)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
     TournamentData* data = Trinity::Containers::MapGetValuePtr(_tournaments, id);
     if (!data || !data->dungeons.count(slot))
         return false;
@@ -352,23 +385,29 @@ bool TournamentMgr::RemoveDungeon(uint32 id, uint8 slot)
     return true;
 }
 
-void TournamentMgr::RevealDungeons(uint32 id)
+void TournamentMgr::RevealDungeonsOfTournament(TournamentData& data)
 {
-    TournamentData* data = Trinity::Containers::MapGetValuePtr(_tournaments, id);
-    if (!data)
-        return;
-
-    for (auto& pair : data->dungeons)
+    for (auto& pair : data.dungeons)
         pair.second.revealed = true;
 
     CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_TOURNAMENT_DUNGEON_REVEAL);
     stmt->setBool(0, true);
-    stmt->setUInt32(1, id);
+    stmt->setUInt32(1, data.id);
     CharacterDatabase.Execute(stmt);
+}
+
+void TournamentMgr::RevealDungeons(uint32 id)
+{
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
+    if (TournamentData* data = Trinity::Containers::MapGetValuePtr(_tournaments, id))
+        RevealDungeonsOfTournament(*data);
 }
 
 uint32 TournamentMgr::CreateTeam(uint32 tournamentId, std::string_view name)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
     if (!_tournaments.count(tournamentId))
         return 0;
 
@@ -394,22 +433,19 @@ uint32 TournamentMgr::CreateTeam(uint32 tournamentId, std::string_view name)
 void TournamentMgr::VoidLiveRunsOfTeam(uint32 teamId, std::string_view why)
 {
     std::vector<uint32> liveInstances;
-    {
-        std::lock_guard<std::mutex> lock(_runsLock);
-        for (auto const& pair : _runsByInstance)
-            if (pair.second.teamId == teamId)
-                liveInstances.push_back(pair.first);
-    }
+    for (auto const& pair : _runsByInstance)
+        if (pair.second.teamId == teamId)
+            liveInstances.push_back(pair.first);
 
     for (uint32 instanceId : liveInstances)
         TerminateRun(instanceId, TOURNAMENT_RUN_VOID, why);
 }
 
-bool TournamentMgr::DeleteTeam(uint32 teamId)
+void TournamentMgr::EraseTeam(uint32 teamId)
 {
     auto itr = _teams.find(teamId);
     if (itr == _teams.end())
-        return false;
+        return;
 
     VoidLiveRunsOfTeam(teamId, "team deleted");
 
@@ -425,17 +461,29 @@ bool TournamentMgr::DeleteTeam(uint32 teamId)
     CharacterDatabase.Execute(delTeam);
 
     _teams.erase(itr);
+}
+
+bool TournamentMgr::DeleteTeam(uint32 teamId)
+{
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
+    if (!_teams.count(teamId))
+        return false;
+
+    EraseTeam(teamId);
     return true;
 }
 
 bool TournamentMgr::AddMember(uint32 teamId, ObjectGuid::LowType charGuid, uint32 accountId, TournamentRole role)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
     TournamentTeam* team = Trinity::Containers::MapGetValuePtr(_teams, teamId);
     if (!team)
         return false;
 
     // a character may belong to only one team per tournament
-    if (GetTeamByMember(charGuid, team->tournamentId))
+    if (FindTeamByMember(charGuid, team->tournamentId))
         return false;
 
     if (team->members.size() >= TOURNAMENT_TEAM_SIZE)
@@ -460,6 +508,8 @@ bool TournamentMgr::AddMember(uint32 teamId, ObjectGuid::LowType charGuid, uint3
 
 bool TournamentMgr::RemoveMember(uint32 teamId, ObjectGuid::LowType charGuid)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
     TournamentTeam* team = Trinity::Containers::MapGetValuePtr(_teams, teamId);
     if (!team)
         return false;
@@ -482,6 +532,8 @@ bool TournamentMgr::RemoveMember(uint32 teamId, ObjectGuid::LowType charGuid)
 
 bool TournamentMgr::DisqualifyTeam(uint32 teamId, std::string_view reason)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
     TournamentTeam* team = Trinity::Containers::MapGetValuePtr(_teams, teamId);
     if (!team)
         return false;
@@ -501,6 +553,8 @@ bool TournamentMgr::DisqualifyTeam(uint32 teamId, std::string_view reason)
 
 bool TournamentMgr::RequalifyTeam(uint32 teamId)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
     TournamentTeam* team = Trinity::Containers::MapGetValuePtr(_teams, teamId);
     if (!team)
         return false;
@@ -521,10 +575,12 @@ TournamentTeam const* TournamentMgr::MatchTeam(std::vector<ObjectGuid::LowType> 
     if (memberGuids.size() != TOURNAMENT_TEAM_SIZE)
         return nullptr;
 
+    std::shared_lock<std::shared_mutex> lock(_lock);
+
     // resolve candidate teams via the first member, then require an exact set match
     auto range = _memberIndex.equal_range(memberGuids.front());
     for (auto idxItr = range.first; idxItr != range.second; ++idxItr)
-        if (TournamentTeam const* team = MatchTeamCandidate(GetTeam(idxItr->second), memberGuids))
+        if (TournamentTeam const* team = MatchTeamCandidate(Trinity::Containers::MapGetValuePtr(_teams, idxItr->second), memberGuids))
             return team;
 
     return nullptr;
@@ -557,14 +613,16 @@ Item const* TournamentMgr::GetEquippedViolation(Player const* player, uint16 ilv
 
 Item const* TournamentMgr::GetContestantEntryViolation(Player const* player, uint16 mapId, uint8 difficulty) const
 {
-    TournamentData const* tournament = GetActiveTournament();
+    std::shared_lock<std::shared_mutex> lock(_lock);
+
+    TournamentData const* tournament = FindActiveTournament();
     if (!tournament || tournament->state != TOURNAMENT_STATE_RUNNING)
         return nullptr;
 
     if (!tournament->GetDungeonByMap(mapId, difficulty))
         return nullptr;
 
-    TournamentTeam const* team = GetTeamByMember(player->GetGUID().GetCounter(), tournament->id);
+    TournamentTeam const* team = FindTeamByMember(player->GetGUID().GetCounter(), tournament->id);
     if (!team || team->status != TOURNAMENT_TEAM_ACTIVE)
         return nullptr;
 
@@ -573,11 +631,11 @@ Item const* TournamentMgr::GetContestantEntryViolation(Player const* player, uin
 
 TournamentData const* TournamentMgr::GetRunningTournamentForTeam(uint32 teamId) const
 {
-    TournamentTeam const* team = GetTeam(teamId);
+    TournamentTeam const* team = Trinity::Containers::MapGetValuePtr(_teams, teamId);
     if (!team)
         return nullptr;
 
-    TournamentData const* tournament = GetTournament(team->tournamentId);
+    TournamentData const* tournament = Trinity::Containers::MapGetValuePtr(_tournaments, team->tournamentId);
     if (!tournament || tournament->state != TOURNAMENT_STATE_RUNNING)
         return nullptr;
 
@@ -590,8 +648,6 @@ uint32 TournamentMgr::GetEquipViolationRunId(Player const* player, Item const* i
     if (!map || !map->IsDungeon())
         return 0;
 
-    std::lock_guard<std::mutex> lock(_runsLock);
-
     TournamentRun const* run = Trinity::Containers::MapGetValuePtr(_runsByInstance, map->GetInstanceId());
     if (!run)
         return 0;
@@ -603,8 +659,8 @@ uint32 TournamentMgr::GetEquipViolationRunId(Player const* player, Item const* i
     if (!tournament)
         return 0;
 
-    TournamentTeam const* team = GetTeam(run->teamId);
-    if (!team->GetMember(player->GetGUID().GetCounter()))
+    TournamentTeam const* team = Trinity::Containers::MapGetValuePtr(_teams, run->teamId);
+    if (!team || !team->GetMember(player->GetGUID().GetCounter()))
         return 0;
 
     if (item->GetItemLevel() <= tournament->ilvlCap)
@@ -615,12 +671,19 @@ uint32 TournamentMgr::GetEquipViolationRunId(Player const* player, Item const* i
 
 bool TournamentMgr::IsContestantEquipViolation(Player const* player, Item const* item) const
 {
+    std::shared_lock<std::shared_mutex> lock(_lock);
     return GetEquipViolationRunId(player, item) != 0;
 }
 
 void TournamentMgr::LogEquipViolation(Player const* player, Item const* item)
 {
-    if (uint32 const runId = GetEquipViolationRunId(player, item))
+    uint32 runId = 0;
+    {
+        std::shared_lock<std::shared_mutex> lock(_lock);
+        runId = GetEquipViolationRunId(player, item);
+    }
+
+    if (runId)
         LogEvent(runId, TOURNAMENT_EVENT_GEAR_VIOLATION, Trinity::StringFormat("{} attempted to equip item {} (ilvl {}), denied",
             player->GetName(), item->GetEntry(), item->GetItemLevel()));
 }
@@ -631,7 +694,7 @@ void TournamentMgr::OnPlayerCombatStart(Player const* player)
     if (!map || !map->IsDungeon())
         return;
 
-    std::lock_guard<std::mutex> lock(_runsLock);
+    std::unique_lock<std::shared_mutex> lock(_lock);
 
     TournamentRun* run = Trinity::Containers::MapGetValuePtr(_runsByInstance, map->GetInstanceId());
     if (!run)
@@ -643,8 +706,8 @@ void TournamentMgr::OnPlayerCombatStart(Player const* player)
     if (!GetRunningTournamentForTeam(run->teamId))
         return;
 
-    TournamentTeam const* team = GetTeam(run->teamId);
-    if (!team->GetMember(player->GetGUID().GetCounter()))
+    TournamentTeam const* team = Trinity::Containers::MapGetValuePtr(_teams, run->teamId);
+    if (!team || !team->GetMember(player->GetGUID().GetCounter()))
         return;
 
     StampCombatStart(*run);
@@ -652,10 +715,10 @@ void TournamentMgr::OnPlayerCombatStart(Player const* player)
 
 uint32 TournamentMgr::CreateRun(uint32 teamId, uint8 dungeonSlot, uint16 mapId, uint32 instanceId)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
+
     if (!GetRunningTournamentForTeam(teamId))
         return 0;
-
-    std::lock_guard<std::mutex> lock(_runsLock);
 
     TournamentRun run;
     run.id = _nextRunId++;
@@ -683,20 +746,20 @@ uint32 TournamentMgr::CreateRun(uint32 teamId, uint8 dungeonSlot, uint16 mapId, 
 
 TournamentRun const* TournamentMgr::GetRunByInstance(uint32 instanceId) const
 {
-    std::lock_guard<std::mutex> lock(_runsLock);
+    std::shared_lock<std::shared_mutex> lock(_lock);
     return Trinity::Containers::MapGetValuePtr(_runsByInstance, instanceId);
 }
 
 void TournamentMgr::FlagRunFinalizing(uint32 instanceId)
 {
-    std::lock_guard<std::mutex> lock(_runsLock);
+    std::unique_lock<std::shared_mutex> lock(_lock);
     if (TournamentRun* run = Trinity::Containers::MapGetValuePtr(_runsByInstance, instanceId))
         run->finalizing = true;
 }
 
 bool TournamentMgr::IsRunFinalizing(uint32 instanceId) const
 {
-    std::lock_guard<std::mutex> lock(_runsLock);
+    std::shared_lock<std::shared_mutex> lock(_lock);
     TournamentRun const* run = Trinity::Containers::MapGetValuePtr(_runsByInstance, instanceId);
     return run && run->finalizing;
 }
@@ -715,8 +778,6 @@ void TournamentMgr::StampCombatStart(TournamentRun& run)
 
 bool TournamentMgr::TerminateRun(uint32 instanceId, TournamentRunState state, std::string_view why)
 {
-    std::lock_guard<std::mutex> lock(_runsLock);
-
     auto itr = _runsByInstance.find(instanceId);
     if (itr == _runsByInstance.end())
         return false;
@@ -749,16 +810,19 @@ bool TournamentMgr::TerminateRun(uint32 instanceId, TournamentRunState state, st
 
 void TournamentMgr::CompleteRun(uint32 instanceId)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
     TerminateRun(instanceId, TOURNAMENT_RUN_COMPLETED, "");
 }
 
 void TournamentMgr::RejectRun(uint32 instanceId, std::string_view why)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
     TerminateRun(instanceId, TOURNAMENT_RUN_REJECTED, why);
 }
 
 void TournamentMgr::VoidRun(uint32 instanceId, std::string_view why)
 {
+    std::unique_lock<std::shared_mutex> lock(_lock);
     TerminateRun(instanceId, TOURNAMENT_RUN_VOID, why);
 }
 
@@ -791,23 +855,18 @@ bool TournamentMgr::SetRunVerdict(uint32 runId, TournamentRunState state, std::s
     if (state != TOURNAMENT_RUN_VOID && state != TOURNAMENT_RUN_REJECTED)
         return false;
 
-    // if the run is still live, route through the normal lifecycle so the instance entry is released
-    uint32 liveInstanceId = 0;
     {
-        std::lock_guard<std::mutex> lock(_runsLock);
+        // if the run is still live, route through the normal lifecycle so the instance entry is released
+        std::unique_lock<std::shared_mutex> lock(_lock);
         for (auto const& pair : _runsByInstance)
         {
             if (pair.second.id != runId)
                 continue;
 
-            liveInstanceId = pair.second.instanceId;
-            break;
+            TerminateRun(pair.second.instanceId, state, reason);
+            return true;
         }
     }
-
-    // if the run finished in between, fall through to the stored-row verdict
-    if (liveInstanceId && TerminateRun(liveInstanceId, state, reason))
-        return true;
 
     CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_TOURNAMENT_RUN_VERDICT);
     stmt->setUInt8(0, state);
@@ -823,6 +882,8 @@ bool TournamentMgr::SetRunVerdict(uint32 runId, TournamentRunState state, std::s
 void TournamentMgr::BuildStandings(uint32 tournamentId, std::vector<TournamentStanding>& standings) const
 {
     standings.clear();
+
+    std::shared_lock<std::shared_mutex> lock(_lock);
 
     std::unordered_map<uint32, TournamentStanding> byTeam;
     for (auto const& pair : _teams)
@@ -853,18 +914,22 @@ void TournamentMgr::BuildStandings(uint32 tournamentId, std::vector<TournamentSt
         } while (result->NextRow());
     }
 
-    // only the fastest team of each dungeon slot receives the point
+    // only the fastest team of each dungeon slot receives the point, exact ties go to the lower team id
     for (uint8 slot = 1; slot <= TOURNAMENT_DUNGEON_NUM; ++slot)
     {
         TournamentStanding* fastest = nullptr;
+        uint32 fastestTime = 0;
         for (auto& pair : byTeam)
         {
             auto slotItr = pair.second.bestSlotTimeMs.find(slot);
             if (slotItr == pair.second.bestSlotTimeMs.end())
                 continue;
 
-            if (!fastest || slotItr->second < fastest->bestSlotTimeMs[slot])
+            if (!fastest || slotItr->second < fastestTime || (slotItr->second == fastestTime && pair.second.teamId < fastest->teamId))
+            {
                 fastest = &pair.second;
+                fastestTime = slotItr->second;
+            }
         }
 
         if (fastest)
@@ -880,13 +945,15 @@ void TournamentMgr::BuildStandings(uint32 tournamentId, std::vector<TournamentSt
         standings.push_back(std::move(standing));
     }
 
-    // rank: points desc, then combined time asc (tiebreaker), then completed count desc
+    // rank: points desc, then completed count desc, then combined time asc, exact ties by team id
     std::sort(standings.begin(), standings.end(), [](TournamentStanding const& a, TournamentStanding const& b)
     {
         if (a.points != b.points)
             return a.points > b.points;
         if (a.completedSlots != b.completedSlots)
             return a.completedSlots > b.completedSlots;
-        return a.totalTimeMs < b.totalTimeMs;
+        if (a.totalTimeMs != b.totalTimeMs)
+            return a.totalTimeMs < b.totalTimeMs;
+        return a.teamId < b.teamId;
     });
 }

@@ -3,7 +3,7 @@
 
 #include "Define.h"
 #include "ObjectGuid.h"
-#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -200,19 +200,24 @@ private:
     TournamentMgr(TournamentMgr const&) = delete;
     TournamentMgr& operator=(TournamentMgr const&) = delete;
 
+    // private helpers are lock-free, public entry points hold _lock
     void SaveRun(TournamentRun const& run);
     void StampCombatStart(TournamentRun& run);
+    TournamentData const* FindActiveTournament() const;
+    TournamentTeam const* FindTeamByMember(ObjectGuid::LowType charGuid, uint32 tournamentId) const;
     uint32 GetEquipViolationRunId(Player const* player, Item const* item) const; // 0 when no live-run cap violation
     TournamentData const* GetRunningTournamentForTeam(uint32 teamId) const;
     TournamentTeam const* MatchTeamCandidate(TournamentTeam const* team, std::vector<ObjectGuid::LowType> const& memberGuids) const;
+    void RevealDungeonsOfTournament(TournamentData& data);
     void VoidLiveRunsOfTeam(uint32 teamId, std::string_view why);
+    void EraseTeam(uint32 teamId);
     bool TerminateRun(uint32 instanceId, TournamentRunState state, std::string_view why); // true if a live run was terminated
 
     std::unordered_map<uint32, TournamentData> _tournaments; // id -> tournament
     std::unordered_map<uint32, TournamentTeam> _teams; // teamId -> team
     std::unordered_multimap<ObjectGuid::LowType, uint32> _memberIndex; // charGuid -> teamIds (unique per tournament, not globally)
     std::unordered_map<uint32, TournamentRun> _runsByInstance; // instanceId -> active run
-    mutable std::mutex _runsLock; // run map is touched from multiple map-updater threads
+    mutable std::shared_mutex _lock; // guards all manager state, hooks run on map-updater threads while admin commands run on the world thread
 
     uint32 _nextTournamentId = 1;
     uint32 _nextTeamId = 1;

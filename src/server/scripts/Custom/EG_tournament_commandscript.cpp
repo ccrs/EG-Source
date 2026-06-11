@@ -183,7 +183,7 @@ public:
 
         if (!sTournamentMgr->SetState(tournamentId, state))
         {
-            handler->PSendSysMessage("Tournament %u does not exist.", tournamentId);
+            handler->PSendSysMessage("Could not set tournament %u state (unknown tournament, or another one is already running).", tournamentId);
             return false;
         }
 
