@@ -25,6 +25,7 @@
 #include "AddonMgr.h"
 #include "Arena1v1Mgr.h"
 #include "ArenaTeamMgr.h"
+#include "TournamentMgr.h"
 #include "AuctionHouseBot.h"
 #include "AuctionHouseMgr.h"
 #include "BattlefieldMgr.h"
@@ -2103,6 +2104,10 @@ void World::SetInitialWorldSettings()
 
     TC_LOG_INFO("server.loading", "Loading 1v1 Arena stats...");
     sArena1v1Mgr->LoadFromDB();
+
+    // EG - PvE tournament
+    TC_LOG_INFO("server.loading", "Loading PvE Tournament...");
+    sTournamentMgr->LoadFromDB();
 
     TC_LOG_INFO("server.loading", "Loading Groups...");
     sGroupMgr->LoadGroups();

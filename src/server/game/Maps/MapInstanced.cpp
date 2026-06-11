@@ -26,6 +26,7 @@
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "ScriptMgr.h"
+#include "TournamentMgr.h"
 #include "VMapFactory.h"
 #include "VMapManager2.h"
 #include "World.h"
@@ -98,6 +99,10 @@ void MapInstanced::UnloadAll()
     for (InstancedMaps::iterator i = m_InstancedMaps.begin(); i != m_InstancedMaps.end(); ++i)
     {
         i->second->UnloadAll();
+
+        // EG - PvE tournament
+        if (i->second->IsDungeon())
+            sTournamentMgr->VoidRun(i->second->GetInstanceId(), "instance unloaded");
 
         sScriptMgr->OnDestroyMap(i->second.get());
     }
@@ -295,6 +300,10 @@ bool MapInstanced::DestroyInstance(InstancedMaps::iterator &itr)
         // so in the next map creation, (EnsureGridCreated actually) VMaps will be reloaded
         Map::UnloadAll();
     }
+
+    // EG - PvE tournament
+    if (itr->second->IsDungeon())
+        sTournamentMgr->VoidRun(itr->second->GetInstanceId(), "instance destroyed");
 
     sScriptMgr->OnDestroyMap(itr->second.get());
 

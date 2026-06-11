@@ -1,7 +1,8 @@
 --
-DELETE FROM `rbac_permissions` WHERE `id` = 1003;
+DELETE FROM `rbac_permissions` WHERE `id` IN (1003, 1004);
 INSERT INTO `rbac_permissions` (`id`, `name`) VALUES
-(1003, 'Allow crossfaction arena team interaction');
+(1003, 'Allow crossfaction arena team interaction'),
+(1004, 'Command: tournament');
 
 DELETE FROM `rbac_linked_permissions` WHERE `id` IN (195, 199);
 INSERT INTO `rbac_linked_permissions` VALUES

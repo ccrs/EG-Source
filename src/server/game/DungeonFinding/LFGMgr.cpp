@@ -16,6 +16,7 @@
  */
 
 #include "LFGMgr.h"
+#include "Chat.h"
 #include "Common.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
@@ -26,6 +27,7 @@
 #include "GroupMgr.h"
 #include "InstanceSaveMgr.h"
 #include "InstanceScript.h"
+#include "Item.h"
 #include "LFGGroupData.h"
 #include "LFGPlayerData.h"
 #include "LFGRandomReward.h"
@@ -41,6 +43,7 @@
 #include "RBAC.h"
 #include "SharedDefines.h"
 #include "SocialMgr.h"
+#include "TournamentMgr.h"
 #include "World.h"
 #include "WorldSession.h"
 
@@ -1492,6 +1495,14 @@ void LFGMgr::TeleportPlayer(Player* player, bool out, bool fromOpcode /*= false*
     if (fromOpcode && PendingTeleportInStore.count(player->GetGUID()))
     {
         TC_LOG_DEBUG("lfg.teleport", "Player {} attempted Teleport Back but a deferred LFG teleport is pending; blocking.", player->GetName());
+        player->GetSession()->SendLfgTeleportError(uint8(LFG_TELEPORTERROR_INVALID_LOCATION));
+        return;
+    }
+
+    // EG - PvE tournament: contestants may not enter a tournament dungeon with equipped items above the cap
+    if (Item const* violation = sTournamentMgr->GetContestantEntryViolation(player, dungeon->map, uint8(dungeon->difficulty)))
+    {
+        ChatHandler(player->GetSession()).PSendSysMessage("Tournament: equipped item '%s' exceeds the allowed item level.", violation->GetTemplate()->Name1.c_str());
         player->GetSession()->SendLfgTeleportError(uint8(LFG_TELEPORTERROR_INVALID_LOCATION));
         return;
     }
