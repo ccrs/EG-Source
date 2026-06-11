@@ -123,6 +123,9 @@ void LFGGroupScript::OnAddMember(Group* group, ObjectGuid guid)
     if (!sLFGMgr->isOptionEnabled(LFG_OPTION_ENABLE_DUNGEON_FINDER | LFG_OPTION_ENABLE_RAID_BROWSER))
         return;
 
+    if (group->isBGGroup() || group->isBFGroup())
+        return;
+
     ObjectGuid gguid = group->GetGUID();
     ObjectGuid leader = group->GetLeaderGUID();
 
@@ -130,9 +133,8 @@ void LFGGroupScript::OnAddMember(Group* group, ObjectGuid guid)
     {
         TC_LOG_DEBUG("lfg", "LFGScripts::OnAddMember [{}]: added [{}] leader [{}]", gguid.ToString(), guid.ToString(), leader.ToString());
         sLFGMgr->SetLeader(gguid, guid);
-        // EG - fix solo-queue entries leaking into the group queue: drop any solo queue state on group add
         LfgState state = sLFGMgr->GetState(guid);
-        if (state == LFG_STATE_QUEUED)
+        if (state == LFG_STATE_QUEUED || state == LFG_STATE_PROPOSAL)
             sLFGMgr->LeaveLfg(guid);
     }
     else
@@ -155,6 +157,9 @@ void LFGGroupScript::OnAddMember(Group* group, ObjectGuid guid)
 void LFGGroupScript::OnRemoveMember(Group* group, ObjectGuid guid, RemoveMethod method, ObjectGuid kicker, char const* reason)
 {
     if (!sLFGMgr->isOptionEnabled(LFG_OPTION_ENABLE_DUNGEON_FINDER | LFG_OPTION_ENABLE_RAID_BROWSER))
+        return;
+
+    if (group->isBGGroup() || group->isBFGroup())
         return;
 
     ObjectGuid gguid = group->GetGUID();
@@ -216,6 +221,9 @@ void LFGGroupScript::OnDisband(Group* group)
     if (!sLFGMgr->isOptionEnabled(LFG_OPTION_ENABLE_DUNGEON_FINDER | LFG_OPTION_ENABLE_RAID_BROWSER))
         return;
 
+    if (group->isBGGroup() || group->isBFGroup())
+        return;
+
     ObjectGuid gguid = group->GetGUID();
     TC_LOG_DEBUG("lfg", "LFGScripts::OnDisband [{}]", gguid.ToString());
 
@@ -225,6 +233,9 @@ void LFGGroupScript::OnDisband(Group* group)
 void LFGGroupScript::OnChangeLeader(Group* group, ObjectGuid newLeaderGuid, ObjectGuid oldLeaderGuid)
 {
     if (!sLFGMgr->isOptionEnabled(LFG_OPTION_ENABLE_DUNGEON_FINDER | LFG_OPTION_ENABLE_RAID_BROWSER))
+        return;
+
+    if (group->isBGGroup() || group->isBFGroup())
         return;
 
     ObjectGuid gguid = group->GetGUID();
@@ -238,6 +249,9 @@ void LFGGroupScript::OnChangeLeader(Group* group, ObjectGuid newLeaderGuid, Obje
 void LFGGroupScript::OnInviteMember(Group* group, ObjectGuid guid)
 {
     if (!sLFGMgr->isOptionEnabled(LFG_OPTION_ENABLE_DUNGEON_FINDER | LFG_OPTION_ENABLE_RAID_BROWSER))
+        return;
+
+    if (group->isBGGroup() || group->isBFGroup())
         return;
 
     ObjectGuid gguid = group->GetGUID();

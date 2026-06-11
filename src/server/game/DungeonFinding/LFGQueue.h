@@ -112,6 +112,10 @@ private:
     void AddToFrontCurrentQueue(ObjectGuid guid);
     void RemoveFromNewQueue(ObjectGuid guid);
     void RemoveFromCurrentQueue(ObjectGuid guid);
+    void WarnIfListed(ObjectGuid guid, char const* context) const;
+
+    static bool CompatibleKeyContainsGuid(std::string const& key, ObjectGuid guid);
+    static uint8 CountGuidsInCompatibleKey(std::string const& key);
 
     void SetCompatibles(std::string const& key, LfgCompatibility compatibles);
     LfgCompatibility GetCompatibles(std::string const& key);
