@@ -779,8 +779,27 @@ void InstanceScript::UpdateEncounterState(EncounterCreditType type, uint32 credi
 
     if (dungeonId)
     {
-        // EG - PvE tournament: this credit fires before the final boss state is DONE (JustDied runs later), flag only and let SetBossState evaluate
+        // EG - PvE tournament: KILL credits fire before the final boss state is DONE (JustDied runs later), flag only and let SetBossState evaluate
         sTournamentMgr->FlagRunFinalizing(instance->GetInstanceId());
+
+        // EG - PvE tournament: CAST credits can instead fire after the states already settled, evaluate in place then
+        if (sTournamentMgr->IsRunFinalizing(instance->GetInstanceId()))
+        {
+            bool allEncountersDone = true;
+            bool anyInProgress = false;
+            for (uint32 i = 0; i < GetEncounterCount(); ++i)
+            {
+                if (GetBossState(i) == IN_PROGRESS)
+                    anyInProgress = true;
+                if (GetBossState(i) != DONE)
+                    allEncountersDone = false;
+            }
+
+            if (allEncountersDone)
+                sTournamentMgr->CompleteRun(instance->GetInstanceId());
+            else if (!anyInProgress)
+                sTournamentMgr->RejectRun(instance->GetInstanceId(), "final boss killed before all encounters were cleared");
+        }
 
         Map::PlayerList const& players = instance->GetPlayers();
         for (auto const& ref : players)

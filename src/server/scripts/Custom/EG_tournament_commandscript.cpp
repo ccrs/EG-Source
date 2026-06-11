@@ -281,9 +281,9 @@ public:
         }
 
         MapEntry const* mapEntry = sMapStore.LookupEntry(mapId);
-        if (!mapEntry || !mapEntry->IsDungeon())
+        if (!mapEntry || !mapEntry->IsNonRaidDungeon())
         {
-            handler->PSendSysMessage("Map %u is not a dungeon.", mapId);
+            handler->PSendSysMessage("Map %u is not a 5-player dungeon.", mapId);
             return false;
         }
 
