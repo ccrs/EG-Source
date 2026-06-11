@@ -11150,7 +11150,7 @@ InventoryResult Player::CanEquipItem(uint8 slot, uint16 &dest, Item* pItem, bool
                 if (sTournamentMgr->IsContestantEquipViolation(this, pItem))
                 {
                     sTournamentMgr->LogEquipViolation(this, pItem);
-                    return EQUIP_ERR_CANT_DO_RIGHT_NOW;
+                    return EQUIP_ERR_CLIENT_LOCKED_OUT;
                 }
 
                 // May be here should be more stronger checks; STUNNED checked
