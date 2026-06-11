@@ -3451,6 +3451,15 @@ Arena1v1.ArenaPointsMulti = 0.38
 Arena1v1.VendorRatingOffset = 100
 
 #
+#    Arena1v1.RatingDiscardTimer
+#        Description: Time (in milliseconds) after which matchmaker rating differences
+#                     are ignored when matching 1v1 arena queues.
+#        Default:     60000 - (60 seconds)
+#                     0 - (Use Arena.RatingDiscardTimer)
+
+Arena1v1.RatingDiscardTimer = 60000
+
+#
 ###################################################################################################
 
 ###################################################################################################

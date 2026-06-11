@@ -1659,6 +1659,7 @@ void World::LoadConfigSettings(bool reload)
         m_float_configs[CONFIG_ARENA_1V1_POINTS_MULTI] = 0.0f;
     }
     m_int_configs[CONFIG_ARENA_1V1_VENDOR_RATING_OFFSET] = sConfigMgr->GetIntDefault("Arena1v1.VendorRatingOffset", 100);
+    m_int_configs[CONFIG_ARENA_1V1_RATING_DISCARD_TIMER] = sConfigMgr->GetIntDefault("Arena1v1.RatingDiscardTimer", 60000);
 
     // call ScriptMgr if we're reloading the configuration
     if (reload)

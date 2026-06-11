@@ -140,7 +140,8 @@ void BattlegroundMgr::Update(uint32 diff)
         {
             // forced update for rated arenas (scan all, but skipped non rated)
             TC_LOG_TRACE("bg.arena", "BattlegroundMgr: UPDATING ARENA QUEUES");
-            for (uint8 teamSize : { ARENA_TYPE_2v2, ARENA_TYPE_3v3, ARENA_TYPE_5v5 })
+            // EG - 1v1 arena added to the rated update scan
+            for (uint8 teamSize : { ARENA_TYPE_1V1, ARENA_TYPE_2v2, ARENA_TYPE_3v3, ARENA_TYPE_5v5 })
             {
                 for (int bracket = BG_BRACKET_ID_FIRST; bracket < MAX_BATTLEGROUND_BRACKETS; ++bracket)
                 {

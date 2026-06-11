@@ -916,7 +916,12 @@ void BattlegroundQueue::BattlegroundQueueUpdate(uint32 /*diff*/, bool isRated, u
         // the discard time is current_time - time_to_discard, teams that joined after that, will have their ratings taken into account
         // else leave the discard time on 0, this way all ratings will be discarded
         // this has to be signed value - when the server starts, this value would be negative and thus overflow
-        int32 discardTime = GameTime::GetGameTimeMS() - sBattlegroundMgr->GetRatingDiscardTimer();
+        uint32 ratingDiscardTimer = sBattlegroundMgr->GetRatingDiscardTimer();
+        // EG - 1v1 arena
+        if (m_queueId.TeamSize == 1)
+            if (uint32 discardTimer1v1 = sWorld->getIntConfig(CONFIG_ARENA_1V1_RATING_DISCARD_TIMER))
+                ratingDiscardTimer = discardTimer1v1;
+        int32 discardTime = GameTime::GetGameTimeMS() - ratingDiscardTimer;
 
         // timer for previous opponents
         int32 prevOpponentsTimer = sWorld->getIntConfig(CONFIG_ARENA_PREV_OPPONENTS_DISCARD_TIMER);
