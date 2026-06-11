@@ -324,4 +324,5 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (196, 879), -- Command: debug poolstatus
 (196, 881), -- Command: reload vehicle_template
 (196, 884), -- Command: bg start
-(196, 885); -- Command: bg stop
+(196, 885), -- Command: bg stop
+(196, 1004); -- Command: tournament

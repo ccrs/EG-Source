@@ -616,6 +616,31 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     PrepareStatement(CHAR_INS_ARENA_1V1, "INSERT INTO character_arena_1v1 (guid, rating, matchMakerRating, weekGames, weekWins, seasonGames, seasonWins, previousOpponent) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
     PrepareStatement(CHAR_UPD_ARENA_1V1, "UPDATE character_arena_1v1 SET rating = ?, matchMakerRating = ?, weekGames = ?, weekWins = ?, seasonGames = ?, seasonWins = ?, previousOpponent = ? WHERE guid = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_DEL_ARENA_1V1, "DELETE FROM character_arena_1v1 WHERE guid = ?", CONNECTION_ASYNC);
+
+    // EG - PvE tournament
+    PrepareStatement(CHAR_SEL_TOURNAMENT_ALL, "SELECT id, name, state, difficulty, ilvlCap, startTime, endTime, createdBy FROM tournament", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_INS_TOURNAMENT, "INSERT INTO tournament (id, name, state, difficulty, ilvlCap, startTime, endTime, createdBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_TOURNAMENT_STATE, "UPDATE tournament SET state = ?, startTime = ?, endTime = ? WHERE id = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_TOURNAMENT_ILVL, "UPDATE tournament SET ilvlCap = ? WHERE id = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_DEL_TOURNAMENT, "DELETE FROM tournament WHERE id = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_TOURNAMENT_DUNGEON_ALL, "SELECT tournamentId, slot, mapId, difficulty, revealed FROM tournament_dungeon", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_REP_TOURNAMENT_DUNGEON, "REPLACE INTO tournament_dungeon (tournamentId, slot, mapId, difficulty, revealed) VALUES (?, ?, ?, ?, ?)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_DEL_TOURNAMENT_DUNGEON, "DELETE FROM tournament_dungeon WHERE tournamentId = ? AND slot = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_DEL_TOURNAMENT_DUNGEON_ALL, "DELETE FROM tournament_dungeon WHERE tournamentId = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_TOURNAMENT_DUNGEON_REVEAL, "UPDATE tournament_dungeon SET revealed = ? WHERE tournamentId = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_TOURNAMENT_TEAM_ALL, "SELECT id, tournamentId, name, status, dqReason FROM tournament_team", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_INS_TOURNAMENT_TEAM, "INSERT INTO tournament_team (id, tournamentId, name, status, dqReason) VALUES (?, ?, ?, ?, ?)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_TOURNAMENT_TEAM_STATUS, "UPDATE tournament_team SET status = ?, dqReason = ? WHERE id = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_DEL_TOURNAMENT_TEAM, "DELETE FROM tournament_team WHERE id = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_TOURNAMENT_MEMBER_ALL, "SELECT teamId, charGuid, accountId, role FROM tournament_team_member", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_INS_TOURNAMENT_MEMBER, "INSERT INTO tournament_team_member (teamId, charGuid, accountId, role) VALUES (?, ?, ?, ?)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_DEL_TOURNAMENT_MEMBER, "DELETE FROM tournament_team_member WHERE teamId = ? AND charGuid = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_DEL_TOURNAMENT_MEMBER_BY_TEAM, "DELETE FROM tournament_team_member WHERE teamId = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_TOURNAMENT_RUN_ALL, "SELECT id, teamId, dungeonSlot, mapId, instanceId, state, combatStart, bossFinish, durationMs, rejectReason FROM tournament_run", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_INS_TOURNAMENT_RUN, "INSERT INTO tournament_run (id, teamId, dungeonSlot, mapId, instanceId, state, created) VALUES (?, ?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_TOURNAMENT_RUN, "UPDATE tournament_run SET state = ?, combatStart = ?, bossFinish = ?, durationMs = ?, rejectReason = ?, verifiedBy = ? WHERE id = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_TOURNAMENT_RUN_VERDICT, "UPDATE tournament_run SET state = ?, rejectReason = ?, verifiedBy = ? WHERE id = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_INS_TOURNAMENT_RUN_EVENT, "INSERT INTO tournament_run_event (runId, ts, type, detail) VALUES (?, ?, ?, ?)", CONNECTION_ASYNC);
 }
 
 CharacterDatabaseConnection::CharacterDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo)

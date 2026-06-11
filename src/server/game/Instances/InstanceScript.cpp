@@ -34,6 +34,7 @@
 #include "RBAC.h"
 #include "ScriptMgr.h"
 #include "ScriptReloadMgr.h"
+#include "TournamentMgr.h"
 #include "World.h"
 #include "WorldSession.h"
 #include <cstdarg>
@@ -368,6 +369,23 @@ bool InstanceScript::SetBossState(uint32 id, EncounterState state)
 
             bossInfo->state = state;
             SaveToDB();
+
+            // EG - PvE tournament: final boss state settled, complete only if every encounter is DONE, reject otherwise
+            if (state == DONE && sTournamentMgr->IsRunFinalizing(instance->GetInstanceId()))
+            {
+                bool allEncountersDone = true;
+                for (uint32 i = 0; i < GetEncounterCount(); ++i)
+                    if (GetBossState(i) != DONE)
+                    {
+                        allEncountersDone = false;
+                        break;
+                    }
+
+                if (allEncountersDone)
+                    sTournamentMgr->CompleteRun(instance->GetInstanceId());
+                else
+                    sTournamentMgr->RejectRun(instance->GetInstanceId(), "final boss killed before all encounters were cleared");
+            }
         }
 
         for (uint32 type = 0; type < MAX_DOOR_TYPES; ++type)
@@ -761,6 +779,9 @@ void InstanceScript::UpdateEncounterState(EncounterCreditType type, uint32 credi
 
     if (dungeonId)
     {
+        // EG - PvE tournament: this credit fires before the final boss state is DONE (JustDied runs later), flag only and let SetBossState evaluate
+        sTournamentMgr->FlagRunFinalizing(instance->GetInstanceId());
+
         Map::PlayerList const& players = instance->GetPlayers();
         for (auto const& ref : players)
         {

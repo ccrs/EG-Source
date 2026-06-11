@@ -102,6 +102,7 @@
 #include "StringConvert.h"
 #include "TalentPackets.h"
 #include "TicketMgr.h"
+#include "TournamentMgr.h"
 #include "TradeData.h"
 #include "Trainer.h"
 #include "Transport.h"
@@ -11145,6 +11146,13 @@ InventoryResult Player::CanEquipItem(uint8 slot, uint16 &dest, Item* pItem, bool
             // check this only in game
             if (not_loading)
             {
+                // EG - PvE tournament: contestants may not equip items above the cap during a live run
+                if (sTournamentMgr->IsContestantEquipViolation(this, pItem))
+                {
+                    sTournamentMgr->LogEquipViolation(this, pItem);
+                    return EQUIP_ERR_CANT_DO_RIGHT_NOW;
+                }
+
                 // May be here should be more stronger checks; STUNNED checked
                 // ROOT, CONFUSED, DISTRACTED, FLEEING this needs to be checked.
                 if (HasUnitState(UNIT_STATE_STUNNED))
@@ -24310,6 +24318,12 @@ void Player::ProcessTerrainStatusUpdate(ZLiquidStatus oldLiquidStatus, Optional<
     }
     else
         m_MirrorTimerFlags &= ~(UNDERWATER_INWATER | UNDERWATER_INLAVA | UNDERWATER_INSLIME | UNDERWATER_INDARKWATER);
+}
+
+void Player::AtEnterCombat()
+{
+    Unit::AtEnterCombat();
+    sTournamentMgr->OnPlayerCombatStart(this);
 }
 
 void Player::AtExitCombat()

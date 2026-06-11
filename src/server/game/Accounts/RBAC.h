@@ -756,6 +756,7 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS              = 1000,
     RBAC_PERM_FREE_TRANSMOGRIFICATION                        = 1002,
     RBAC_PERM_TWO_SIDE_INTERACTION_ARENA                     = 1003,
+    RBAC_PERM_COMMAND_TOURNAMENT                             = 1004,
 
     RBAC_PERM_MAX
 };
