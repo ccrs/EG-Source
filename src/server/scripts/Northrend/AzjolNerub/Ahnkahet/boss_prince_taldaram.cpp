@@ -111,7 +111,7 @@ struct boss_prince_taldaram : public BossAI
         BossAI::JustEngagedWith(who);
         Talk(SAY_AGGRO);
         events.ScheduleEvent(EVENT_BLOODTHIRST, 10s);
-        events.ScheduleEvent(EVENT_VANISH, 14s, 18s);
+        events.ScheduleEvent(EVENT_VANISH, 25s, 35s);
         events.ScheduleEvent(EVENT_CONJURE_FLAME_SPHERES, 5s);
     }
 
