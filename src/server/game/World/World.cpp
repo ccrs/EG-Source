@@ -1658,6 +1658,7 @@ void World::LoadConfigSettings(bool reload)
         TC_LOG_ERROR("server.loading", "Arena1v1.ArenaPointsMulti ({}) cannot be negative. Set to 0.", m_float_configs[CONFIG_ARENA_1V1_POINTS_MULTI]);
         m_float_configs[CONFIG_ARENA_1V1_POINTS_MULTI] = 0.0f;
     }
+    m_int_configs[CONFIG_ARENA_1V1_VENDOR_RATING_OFFSET] = sConfigMgr->GetIntDefault("Arena1v1.VendorRatingOffset", 100);
 
     // call ScriptMgr if we're reloading the configuration
     if (reload)

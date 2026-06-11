@@ -21795,6 +21795,18 @@ uint32 Player::GetMaxPersonalArenaRatingRequirement(uint32 minarenaslot) const
                 max_personal_rating = p_rating;
         }
     }
+
+    // EG - 1v1 arena: items without a team-bracket restriction may be purchased with offset 1v1 rating
+    if (minarenaslot == 0 && sArena1v1Mgr->IsEnabled())
+    {
+        if (Arena1v1Stats const* stats = sArena1v1Mgr->TryGetStats(GetGUID()))
+        {
+            int32 effectiveRating = int32(stats->Rating) - int32(sWorld->getIntConfig(CONFIG_ARENA_1V1_VENDOR_RATING_OFFSET));
+            if (effectiveRating > 0 && uint32(effectiveRating) > max_personal_rating)
+                max_personal_rating = uint32(effectiveRating);
+        }
+    }
+
     return max_personal_rating;
 }
 

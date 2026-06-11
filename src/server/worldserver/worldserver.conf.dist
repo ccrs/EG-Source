@@ -3440,6 +3440,17 @@ Arena1v1.MinLevel = 80
 Arena1v1.ArenaPointsMulti = 0.38
 
 #
+#    Arena1v1.VendorRatingOffset
+#        Description: Rating subtracted from a player's 1v1 rating before it is
+#                     compared against vendor arena-rating purchase requirements.
+#                     Effective rating = max(0, 1v1Rating - offset).
+#                     Negative values count as a rating bonus.
+#        Default:     100
+#                     0 - (1v1 rating counts at full 1:1 value)
+
+Arena1v1.VendorRatingOffset = 100
+
+#
 ###################################################################################################
 
 ###################################################################################################
