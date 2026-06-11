@@ -27,38 +27,6 @@
 
 namespace lfg
 {
-namespace
-{
-    bool CompatibleKeyContainsGuid(std::string const& key, ObjectGuid guid)
-    {
-        std::string const wanted = std::to_string(guid.GetRawValue());
-        std::string::size_type begin = 0;
-
-        while (begin <= key.size())
-        {
-            std::string::size_type end = key.find('|', begin);
-            std::string token = end == std::string::npos ? key.substr(begin) : key.substr(begin, end - begin);
-
-            if (token == wanted)
-                return true;
-
-            if (end == std::string::npos)
-                break;
-
-            begin = end + 1;
-        }
-
-        return false;
-    }
-
-    uint8 CountGuidsInCompatibleKey(std::string const& key)
-    {
-        if (key.empty())
-            return 0;
-
-        return uint8(std::count(key.begin(), key.end(), '|') + 1);
-    }
-}
 
 /**
    Given a list of guids returns the concatenation using | as delimiter
@@ -183,6 +151,9 @@ void LFGQueue::RemoveFromQueue(ObjectGuid guid)
 
 void LFGQueue::AddToNewQueue(ObjectGuid guid)
 {
+    WarnIfListed(guid, "AddToNewQueue");
+    currentQueueStore.remove(guid);
+    newToQueueStore.remove(guid);
     newToQueueStore.push_back(guid);
 }
 
@@ -193,12 +164,24 @@ void LFGQueue::RemoveFromNewQueue(ObjectGuid guid)
 
 void LFGQueue::AddToCurrentQueue(ObjectGuid guid)
 {
+    newToQueueStore.remove(guid);
+    currentQueueStore.remove(guid);
     currentQueueStore.push_back(guid);
 }
 
 void LFGQueue::AddToFrontCurrentQueue(ObjectGuid guid)
 {
+    WarnIfListed(guid, "AddToFrontCurrentQueue");
+    newToQueueStore.remove(guid);
+    currentQueueStore.remove(guid);
     currentQueueStore.push_front(guid);
+}
+
+void LFGQueue::WarnIfListed(ObjectGuid guid, char const* context) const
+{
+    if (std::find(newToQueueStore.begin(), newToQueueStore.end(), guid) != newToQueueStore.end()
+        || std::find(currentQueueStore.begin(), currentQueueStore.end(), guid) != currentQueueStore.end())
+        TC_LOG_WARN("lfg.queue.add", "{}: [{}] is already listed in the queue - untraced double-add path, report this", context, guid.ToString());
 }
 
 void LFGQueue::RemoveFromCurrentQueue(ObjectGuid guid)
@@ -208,10 +191,8 @@ void LFGQueue::RemoveFromCurrentQueue(ObjectGuid guid)
 
 void LFGQueue::AddQueueData(ObjectGuid guid, time_t joinTime, LfgDungeonSet const& dungeons, LfgRolesMap const& rolesMap)
 {
-    // Replacing queue data for the same guid invalidates every cached compatibility
-    // result and best-compatible status that involved the previous roles/dungeon
-    // set/group composition. Erase old data before invalidation so recomputation
-    // cannot use stale data for this guid.
+    // EG - replacing queue data for the same guid invalidates every cached [compatibility result and best-compatible status]
+    // that involved the previous roles/dungeon set/group composition, so erase the old data before invalidating to prevent recomputation from picking up stale data for this guid
     RemoveFromNewQueue(guid);
     RemoveFromCurrentQueue(guid);
     QueueDataStore.erase(guid);
@@ -383,11 +364,9 @@ LfgCompatibility LFGQueue::FindNewGroups(GuidList& check, GuidList& all)
         compatibles = CheckCompatibility(check);
     else if (compatibles == LFG_COMPATIBLES_MATCH || compatibles == LFG_COMPATIBLES_BAD_STATES)
     {
-        // A cached MATCH cannot be reused as a result here, because proposal
-        // creation happens inside CheckCompatibility(). Returning MATCH directly
-        // would make FindGroups count a proposal that was never created.
-        // BAD_STATES can become valid again when proposal/rolecheck state changes,
-        // so it also needs recomputation instead of being upgraded directly.
+        // EG - a cached MATCH cannot be reused as a result because proposal creation happens inside CheckCompatibility()
+        // --> returning it directly would make FindGroups() count a proposal that was never created,
+        // and BAD_STATES can become valid again when proposal/rolecheck state changes, so both need recomputation instead of being returned directly
         TC_LOG_DEBUG("lfg.queue.match.check", "Guids: ({}) cached {} is being recalculated", GetDetailedMatchRoles(check), GetCompatibleString(compatibles));
         compatibles = CheckCompatibility(check);
     }
