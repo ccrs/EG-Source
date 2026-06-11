@@ -350,6 +350,16 @@ bool TournamentMgr::SetDungeon(uint32 id, uint8 slot, uint16 mapId, uint8 diffic
     if (!data || slot < 1 || slot > TOURNAMENT_DUNGEON_NUM)
         return false;
 
+    // the same dungeon may not fill two slots
+    if (TournamentDungeon const* existing = data->GetDungeonByMap(mapId, difficulty))
+        if (existing->slot != slot)
+            return false;
+
+    // runs of a redefined slot would mix timings of different dungeons
+    if (TournamentDungeon const* current = Trinity::Containers::MapGetValuePtr(data->dungeons, slot))
+        if (current->mapId != mapId || current->difficulty != difficulty)
+            VoidLiveRunsOfSlot(id, slot, "dungeon slot redefined");
+
     TournamentDungeon dungeon;
     dungeon.slot = slot;
     dungeon.mapId = mapId;
@@ -375,6 +385,8 @@ bool TournamentMgr::RemoveDungeon(uint32 id, uint8 slot)
     TournamentData* data = Trinity::Containers::MapGetValuePtr(_tournaments, id);
     if (!data || !data->dungeons.count(slot))
         return false;
+
+    VoidLiveRunsOfSlot(id, slot, "dungeon slot removed");
 
     CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_TOURNAMENT_DUNGEON);
     stmt->setUInt32(0, id);
@@ -436,6 +448,19 @@ void TournamentMgr::VoidLiveRunsOfTeam(uint32 teamId, std::string_view why)
     for (auto const& pair : _runsByInstance)
         if (pair.second.teamId == teamId)
             liveInstances.push_back(pair.first);
+
+    for (uint32 instanceId : liveInstances)
+        TerminateRun(instanceId, TOURNAMENT_RUN_VOID, why);
+}
+
+void TournamentMgr::VoidLiveRunsOfSlot(uint32 tournamentId, uint8 slot, std::string_view why)
+{
+    std::vector<uint32> liveInstances;
+    for (auto const& pair : _runsByInstance)
+        if (pair.second.dungeonSlot == slot)
+            if (TournamentTeam const* team = Trinity::Containers::MapGetValuePtr(_teams, pair.second.teamId))
+                if (team->tournamentId == tournamentId)
+                    liveInstances.push_back(pair.first);
 
     for (uint32 instanceId : liveInstances)
         TerminateRun(instanceId, TOURNAMENT_RUN_VOID, why);
@@ -867,6 +892,12 @@ bool TournamentMgr::SetRunVerdict(uint32 runId, TournamentRunState state, std::s
             return true;
         }
     }
+
+    // stored-run verdicts require an existing row, otherwise the event log would reference a run that never was
+    CharacterDatabasePreparedStatement* checkStmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_TOURNAMENT_RUN_BY_ID);
+    checkStmt->setUInt32(0, runId);
+    if (!CharacterDatabase.Query(checkStmt))
+        return false;
 
     CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_TOURNAMENT_RUN_VERDICT);
     stmt->setUInt8(0, state);

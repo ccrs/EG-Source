@@ -296,7 +296,7 @@ public:
 
         if (!sTournamentMgr->SetDungeon(tournamentId, slot, mapId, difficulty))
         {
-            handler->PSendSysMessage("Could not set dungeon slot %u (valid slots: 1-%u).", slot, TOURNAMENT_DUNGEON_NUM);
+            handler->PSendSysMessage("Could not set dungeon slot %u (valid slots: 1-%u, no duplicate dungeons).", slot, TOURNAMENT_DUNGEON_NUM);
             return false;
         }
 

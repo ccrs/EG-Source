@@ -386,6 +386,9 @@ bool InstanceScript::SetBossState(uint32 id, EncounterState state)
                 else
                     sTournamentMgr->RejectRun(instance->GetInstanceId(), "final boss killed before all encounters were cleared");
             }
+            // EG - PvE tournament: an encounter resetting while the run finalizes means a boss outlived the final one, reject
+            else if (state != IN_PROGRESS && sTournamentMgr->IsRunFinalizing(instance->GetInstanceId()))
+                sTournamentMgr->RejectRun(instance->GetInstanceId(), "an encounter was still in progress when the final boss died");
         }
 
         for (uint32 type = 0; type < MAX_DOOR_TYPES; ++type)

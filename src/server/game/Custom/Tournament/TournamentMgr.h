@@ -210,6 +210,7 @@ private:
     TournamentTeam const* MatchTeamCandidate(TournamentTeam const* team, std::vector<ObjectGuid::LowType> const& memberGuids) const;
     void RevealDungeonsOfTournament(TournamentData& data);
     void VoidLiveRunsOfTeam(uint32 teamId, std::string_view why);
+    void VoidLiveRunsOfSlot(uint32 tournamentId, uint8 slot, std::string_view why);
     void EraseTeam(uint32 teamId);
     bool TerminateRun(uint32 instanceId, TournamentRunState state, std::string_view why); // true if a live run was terminated
 

@@ -637,6 +637,7 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     PrepareStatement(CHAR_DEL_TOURNAMENT_MEMBER, "DELETE FROM tournament_team_member WHERE teamId = ? AND charGuid = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_DEL_TOURNAMENT_MEMBER_BY_TEAM, "DELETE FROM tournament_team_member WHERE teamId = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_SEL_TOURNAMENT_RUN_ALL, "SELECT id, teamId, dungeonSlot, mapId, instanceId, state, combatStart, bossFinish, durationMs, rejectReason FROM tournament_run", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_SEL_TOURNAMENT_RUN_BY_ID, "SELECT id FROM tournament_run WHERE id = ?", CONNECTION_SYNCH);
     PrepareStatement(CHAR_INS_TOURNAMENT_RUN, "INSERT INTO tournament_run (id, teamId, dungeonSlot, mapId, instanceId, state, created) VALUES (?, ?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
     PrepareStatement(CHAR_UPD_TOURNAMENT_RUN, "UPDATE tournament_run SET state = ?, combatStart = ?, bossFinish = ?, durationMs = ?, rejectReason = ?, verifiedBy = ? WHERE id = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_UPD_TOURNAMENT_RUN_VERDICT, "UPDATE tournament_run SET state = ?, rejectReason = ?, verifiedBy = ? WHERE id = ?", CONNECTION_ASYNC);
