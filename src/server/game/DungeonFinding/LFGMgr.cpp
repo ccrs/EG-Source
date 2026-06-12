@@ -1502,7 +1502,7 @@ void LFGMgr::TeleportPlayer(Player* player, bool out, bool fromOpcode /*= false*
     // EG - PvE tournament: contestants may not enter a tournament dungeon with equipped items above the cap
     if (Item const* violation = sTournamentMgr->GetContestantEntryViolation(player, dungeon->map, uint8(dungeon->difficulty)))
     {
-        ChatHandler(player->GetSession()).PSendSysMessage("Tournament: equipped item '%s' exceeds the allowed item level.", violation->GetTemplate()->Name1.c_str());
+        ChatHandler(player->GetSession()).PSendSysMessage("|cff00ccff[Tournament]|r Equipped item '%s' exceeds the allowed item level.", violation->GetTemplate()->Name1.c_str());
         player->GetSession()->SendLfgTeleportError(uint8(LFG_TELEPORTERROR_INVALID_LOCATION));
         return;
     }

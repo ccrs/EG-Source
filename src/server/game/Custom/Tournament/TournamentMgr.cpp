@@ -1,13 +1,17 @@
 #include "TournamentMgr.h"
+#include "Chat.h"
+#include "Common.h"
 #include "DatabaseEnv.h"
 #include "GameTime.h"
 #include "Item.h"
 #include "Log.h"
 #include "Map.h"
 #include "MapUtils.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
 #include "StringFormat.h"
 #include "Timer.h"
+#include "Util.h"
 #include <algorithm>
 #include <utility>
 
@@ -453,6 +457,23 @@ void TournamentMgr::VoidLiveRunsOfTeam(uint32 teamId, std::string_view why)
         TerminateRun(instanceId, TOURNAMENT_RUN_VOID, why);
 }
 
+std::string TournamentMgr::FormatDuration(uint32 durationMs)
+{
+    return Trinity::StringFormat("{}.{:03}", secsToTimeString(durationMs / IN_MILLISECONDS, TimeFormat::Numeric), durationMs % IN_MILLISECONDS);
+}
+
+void TournamentMgr::AnnounceToTeam(uint32 teamId, std::string_view message)
+{
+    TournamentTeam const* team = Trinity::Containers::MapGetValuePtr(_teams, teamId);
+    if (!team)
+        return;
+
+    std::string const text = Trinity::StringFormat("|cff00ccff[Tournament]|r {}", message);
+    for (TournamentMember const& member : team->members)
+        if (Player* player = ObjectAccessor::FindConnectedPlayer(ObjectGuid::Create<HighGuid::Player>(member.charGuid)))
+            ChatHandler(player->GetSession()).SendSysMessage(text.c_str());
+}
+
 void TournamentMgr::VoidLiveRunsOfSlot(uint32 tournamentId, uint8 slot, std::string_view why)
 {
     std::vector<uint32> liveInstances;
@@ -766,6 +787,7 @@ uint32 TournamentMgr::CreateRun(uint32 teamId, uint8 dungeonSlot, uint16 mapId, 
     uint32 const id = run.id;
     _runsByInstance[instanceId] = std::move(run);
     LogEvent(id, TOURNAMENT_EVENT_ENTER, "");
+    AnnounceToTeam(teamId, "Tournament run started! The timer begins when the first contestant enters combat.");
     return id;
 }
 
@@ -799,6 +821,7 @@ void TournamentMgr::StampCombatStart(TournamentRun& run)
     run.state = TOURNAMENT_RUN_ACTIVE;
     SaveRun(run);
     LogEvent(run.id, TOURNAMENT_EVENT_COMBAT_START, "");
+    AnnounceToTeam(run.teamId, "The timer has started!");
 }
 
 bool TournamentMgr::TerminateRun(uint32 instanceId, TournamentRunState state, std::string_view why)
@@ -829,6 +852,20 @@ bool TournamentMgr::TerminateRun(uint32 instanceId, TournamentRunState state, st
 
     SaveRun(run);
     LogEvent(run.id, eventType, why);
+
+    switch (state)
+    {
+        case TOURNAMENT_RUN_COMPLETED:
+            AnnounceToTeam(run.teamId, Trinity::StringFormat("Run completed in {}!", FormatDuration(run.durationMs)));
+            break;
+        case TOURNAMENT_RUN_REJECTED:
+            AnnounceToTeam(run.teamId, Trinity::StringFormat("Run rejected: {}", why));
+            break;
+        default:
+            AnnounceToTeam(run.teamId, Trinity::StringFormat("Run voided: {}", why));
+            break;
+    }
+
     _runsByInstance.erase(itr);
     return true;
 }

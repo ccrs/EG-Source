@@ -194,6 +194,8 @@ public:
     // per dungeon slot the fastest completed run wins 1 point, ties broken by summed duration
     void BuildStandings(uint32 tournamentId, std::vector<TournamentStanding>& standings) const;
 
+    static std::string FormatDuration(uint32 durationMs); // m:ss.mmm
+
 private:
     TournamentMgr() = default;
     ~TournamentMgr() = default;
@@ -211,6 +213,7 @@ private:
     void RevealDungeonsOfTournament(TournamentData& data);
     void VoidLiveRunsOfTeam(uint32 teamId, std::string_view why);
     void VoidLiveRunsOfSlot(uint32 tournamentId, uint8 slot, std::string_view why);
+    void AnnounceToTeam(uint32 teamId, std::string_view message);
     void EraseTeam(uint32 teamId);
     bool TerminateRun(uint32 instanceId, TournamentRunState state, std::string_view why); // true if a live run was terminated
 

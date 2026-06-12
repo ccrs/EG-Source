@@ -113,11 +113,6 @@ public:
         return Trinity::StringFormat("<unknown map {}>", mapId);
     }
 
-    static std::string FormatDuration(uint32 durationMs)
-    {
-        return Trinity::StringFormat("{}:{:02}.{:03}", durationMs / 60000, (durationMs % 60000) / 1000, durationMs % 1000);
-    }
-
     static bool ParseDifficulty(std::string_view text, uint8& difficulty)
     {
         if (StringEqualI(text, "normal"))
@@ -264,7 +259,7 @@ public:
             TournamentTeam const* team = sTournamentMgr->GetTeam(standing.teamId);
             handler->PSendSysMessage("%u. %s - %u point(s), %u/%u dungeons, total %s", ++rank,
                 team ? team->name.c_str() : "<deleted>", standing.points, standing.completedSlots,
-                TOURNAMENT_DUNGEON_NUM, FormatDuration(uint32(standing.totalTimeMs)).c_str());
+                TOURNAMENT_DUNGEON_NUM, TournamentMgr::FormatDuration(uint32(standing.totalTimeMs)).c_str());
         }
         return true;
     }
@@ -496,7 +491,7 @@ public:
                 std::string line = Trinity::StringFormat("Run {}: dungeon {} (map {}), {}", fields[0].GetUInt32(),
                     fields[2].GetUInt8(), fields[3].GetUInt16(), RunStateName(state));
                 if (state == TOURNAMENT_RUN_COMPLETED)
-                    line += Trinity::StringFormat(", time {}", FormatDuration(fields[8].GetUInt32()));
+                    line += Trinity::StringFormat(", time {}", TournamentMgr::FormatDuration(fields[8].GetUInt32()));
                 std::string reason = fields[9].GetString();
                 if (!reason.empty())
                     line += Trinity::StringFormat(", reason: {}", reason);
