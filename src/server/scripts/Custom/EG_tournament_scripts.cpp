@@ -46,7 +46,7 @@ public:
         }
 
         Group* group = player->GetGroup();
-        if (!group || !group->isLFGGroup() || group->GetMembersCount() != TOURNAMENT_TEAM_SIZE)
+        if (!group || group->GetMembersCount() != TOURNAMENT_TEAM_SIZE)
             return;
 
         std::vector<ObjectGuid::LowType> memberGuids;
