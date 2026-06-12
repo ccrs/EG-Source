@@ -178,6 +178,7 @@ public:
     // terminal transitions are keyed by instance id, no-op without a live run and invalidate fetched run pointers
     uint32 CreateRun(uint32 teamId, uint8 dungeonSlot, uint16 mapId, uint32 instanceId);
     TournamentRun const* GetRunByInstance(uint32 instanceId) const;
+    std::vector<TournamentRun> GetLiveRuns() const; // snapshot for staff overview
     void CompleteRun(uint32 instanceId); // all boss states DONE at end-boss
     void RejectRun(uint32 instanceId, std::string_view why); // gear/skip/swap violation
     void VoidRun(uint32 instanceId, std::string_view why); // no-fault termination

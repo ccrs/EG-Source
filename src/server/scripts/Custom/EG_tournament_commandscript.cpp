@@ -3,9 +3,11 @@
 #include "ChatCommand.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
+#include "GameTime.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "StringFormat.h"
+#include "Timer.h"
 #include "TournamentMgr.h"
 #include "Util.h"
 
@@ -44,6 +46,7 @@ public:
         static ChatCommandTable tournamentRunCommandTable =
         {
             { "list",   HandleRunList,   rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
+            { "live",   HandleRunLive,   rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
             { "reject", HandleRunReject, rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
             { "void",   HandleRunVoid,   rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
         };
@@ -467,6 +470,29 @@ public:
     }
 
     // ----- run level -----
+
+    static bool HandleRunLive(ChatHandler* handler)
+    {
+        std::vector<TournamentRun> const runs = sTournamentMgr->GetLiveRuns();
+        if (runs.empty())
+        {
+            handler->SendSysMessage("No live tournament runs.");
+            return true;
+        }
+
+        for (TournamentRun const& run : runs)
+        {
+            TournamentTeam const* team = sTournamentMgr->GetTeam(run.teamId);
+            std::string const elapsed = run.state == TOURNAMENT_RUN_ACTIVE
+                ? TournamentMgr::FormatDuration(getMSTimeDiff(run.combatStartMSTime, GameTime::GetGameTimeMS()))
+                : "not started";
+            handler->PSendSysMessage("Run %u: team '%s', dungeon %u (map %u, instance %u), %s, elapsed: %s", run.id,
+                team ? team->name.c_str() : "<deleted>", run.dungeonSlot, run.mapId, run.instanceId, RunStateName(run.state), elapsed.c_str());
+        }
+
+        handler->PSendSysMessage("%u live run(s).", uint32(runs.size()));
+        return true;
+    }
 
     static bool HandleRunList(ChatHandler* handler, uint32 teamId)
     {

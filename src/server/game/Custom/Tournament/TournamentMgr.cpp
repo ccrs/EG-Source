@@ -797,6 +797,19 @@ TournamentRun const* TournamentMgr::GetRunByInstance(uint32 instanceId) const
     return Trinity::Containers::MapGetValuePtr(_runsByInstance, instanceId);
 }
 
+std::vector<TournamentRun> TournamentMgr::GetLiveRuns() const
+{
+    std::shared_lock<std::shared_mutex> lock(_lock);
+
+    std::vector<TournamentRun> runs;
+    runs.reserve(_runsByInstance.size());
+    for (auto const& pair : _runsByInstance)
+        runs.push_back(pair.second);
+
+    std::sort(runs.begin(), runs.end(), [](TournamentRun const& a, TournamentRun const& b) { return a.id < b.id; });
+    return runs;
+}
+
 void TournamentMgr::FlagRunFinalizing(uint32 instanceId)
 {
     std::unique_lock<std::shared_mutex> lock(_lock);
