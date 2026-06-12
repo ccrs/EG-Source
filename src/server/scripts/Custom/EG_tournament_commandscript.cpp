@@ -52,6 +52,7 @@ public:
             { "list",   HandleRunList,   rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
             { "live",   HandleRunLive,   rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
             { "start",  HandleRunStart,  rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
+            { "accept", HandleRunAccept, rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
             { "reject", HandleRunReject, rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
             { "void",   HandleRunVoid,   rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
         };
@@ -625,6 +626,19 @@ public:
         }
 
         handler->PSendSysMessage("%u run(s) for team %u '%s'.", count, teamId, team->name.c_str());
+        return true;
+    }
+
+    static bool HandleRunAccept(ChatHandler* handler, uint32 runId)
+    {
+        ObjectGuid::LowType const staff = handler->GetPlayer() ? handler->GetPlayer()->GetGUID().GetCounter() : 0;
+        if (!sTournamentMgr->AcceptRun(runId, staff))
+        {
+            handler->PSendSysMessage("Could not accept run %u (must be a stored rejected run that reached the final boss).", runId);
+            return false;
+        }
+
+        handler->PSendSysMessage("Run %u accepted, the rejection was overruled.", runId);
         return true;
     }
 

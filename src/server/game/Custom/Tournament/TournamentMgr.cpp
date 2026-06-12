@@ -870,6 +870,12 @@ bool TournamentMgr::TerminateRun(uint32 instanceId, TournamentRunState state, st
             eventType = TOURNAMENT_EVENT_FINISH;
             break;
         case TOURNAMENT_RUN_REJECTED:
+            // a rejection at finalization reached the final boss, keep the result recoverable for a staff accept verdict
+            if (run.finalizing)
+            {
+                run.bossFinish = uint32(GameTime::GetGameTime());
+                run.durationMs = run.combatStartMSTime ? getMSTimeDiff(run.combatStartMSTime, GameTime::GetGameTimeMS()) : 0;
+            }
             run.rejectReason = why;
             eventType = TOURNAMENT_EVENT_REJECTED;
             break;
@@ -973,6 +979,48 @@ bool TournamentMgr::SetRunVerdict(uint32 runId, TournamentRunState state, std::s
     CharacterDatabase.Execute(stmt);
 
     LogEvent(runId, state == TOURNAMENT_RUN_VOID ? TOURNAMENT_EVENT_VOID : TOURNAMENT_EVENT_REJECTED, reason);
+    return true;
+}
+
+bool TournamentMgr::AcceptRun(uint32 runId, ObjectGuid::LowType staff)
+{
+    {
+        // a live run has no result to accept yet
+        std::shared_lock<std::shared_mutex> lock(_lock);
+        for (auto const& pair : _runsByInstance)
+            if (pair.second.id == runId)
+                return false;
+    }
+
+    CharacterDatabasePreparedStatement* checkStmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_TOURNAMENT_RUN_BY_ID);
+    checkStmt->setUInt32(0, runId);
+    PreparedQueryResult result = CharacterDatabase.Query(checkStmt);
+    if (!result)
+        return false;
+
+    Field* fields = result->Fetch();
+    uint32 const teamId = fields[1].GetUInt32();
+    TournamentRunState const state = TournamentRunState(fields[2].GetUInt8());
+    uint32 const bossFinish = fields[3].GetUInt32();
+    uint32 const durationMs = fields[4].GetUInt32();
+
+    // only rejections that reached the final boss carry a recoverable result
+    if (state != TOURNAMENT_RUN_REJECTED || !bossFinish || !durationMs)
+        return false;
+
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_TOURNAMENT_RUN_VERDICT);
+    stmt->setUInt8(0, TOURNAMENT_RUN_COMPLETED);
+    stmt->setString(1, "accepted by staff");
+    stmt->setUInt32(2, staff);
+    stmt->setUInt32(3, runId);
+    CharacterDatabase.Execute(stmt);
+
+    LogEvent(runId, TOURNAMENT_EVENT_FINISH, "rejection overruled, run accepted by staff");
+
+    {
+        std::shared_lock<std::shared_mutex> lock(_lock);
+        AnnounceToTeam(teamId, Trinity::StringFormat("Run accepted by the staff, time: {}!", FormatDuration(durationMs)));
+    }
     return true;
 }
 

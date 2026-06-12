@@ -190,6 +190,7 @@ public:
 
     // staff verdict on a stored run (rejected/void only; completion is engine-driven)
     bool SetRunVerdict(uint32 runId, TournamentRunState state, std::string_view reason, ObjectGuid::LowType staff);
+    bool AcceptRun(uint32 runId, ObjectGuid::LowType staff);
 
     // ----- scoring -----
     // per dungeon slot the fastest completed run wins 1 point, ties broken by summed duration

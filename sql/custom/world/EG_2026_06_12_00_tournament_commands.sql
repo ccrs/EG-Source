@@ -4,7 +4,7 @@ DELETE FROM `command` WHERE `name` IN ('tournament', 'tournament create', 'tourn
 'tournament team', 'tournament team create', 'tournament team delete', 'tournament team info', 'tournament team list',
 'tournament team disqualify', 'tournament team requalify', 'tournament team member', 'tournament team member add',
 'tournament team member remove', 'tournament run', 'tournament run list', 'tournament run live', 'tournament run start',
-'tournament run reject', 'tournament run void');
+'tournament run accept', 'tournament run reject', 'tournament run void');
 INSERT INTO `command` (`name`, `help`) VALUES
 ('tournament', 'Syntax: .tournament $subcommand\nType .tournament to see the list of possible subcommands.\nPvE dungeon tournament administration.'),
 ('tournament create', 'Syntax: .tournament create "$name" [normal|heroic]\nCreates a tournament in draft state (default difficulty: heroic, default item level cap: 213).'),
@@ -30,5 +30,6 @@ INSERT INTO `command` (`name`, `help`) VALUES
 ('tournament run list', 'Syntax: .tournament run list $teamId\nShows the stored run history of a team with states, times and reasons.'),
 ('tournament run live', 'Syntax: .tournament run live\nShows all runs currently in flight with their elapsed times.'),
 ('tournament run start', 'Syntax: .tournament run start $teamId\nManually starts a run for a team standing inside a fresh tournament dungeon. The instance may only contain registered members within the gear cap.'),
+('tournament run accept', 'Syntax: .tournament run accept $runId\nOverrules an automatic rejection: promotes a stored rejected run that reached the final boss back to completed with its recorded time.'),
 ('tournament run reject', 'Syntax: .tournament run reject $runId $reason\nRejects a run (rule violation). Works on live and stored runs.'),
 ('tournament run void', 'Syntax: .tournament run void $runId $reason\nVoids a run without fault. Works on live and stored runs.');
