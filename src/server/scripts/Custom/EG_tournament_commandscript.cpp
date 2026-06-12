@@ -5,6 +5,7 @@
 #include "DBCStores.h"
 #include "GameTime.h"
 #include "InstanceScript.h"
+#include "Item.h"
 #include "Map.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
