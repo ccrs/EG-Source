@@ -4,6 +4,9 @@
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
 #include "GameTime.h"
+#include "InstanceScript.h"
+#include "Map.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "StringFormat.h"
@@ -47,6 +50,7 @@ public:
         {
             { "list",   HandleRunList,   rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
             { "live",   HandleRunLive,   rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
+            { "start",  HandleRunStart,  rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
             { "reject", HandleRunReject, rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
             { "void",   HandleRunVoid,   rbac::RBAC_PERM_COMMAND_TOURNAMENT, Console::Yes },
         };
@@ -470,6 +474,100 @@ public:
     }
 
     // ----- run level -----
+
+    static bool HandleRunStart(ChatHandler* handler, uint32 teamId)
+    {
+        TournamentTeam const* team = sTournamentMgr->GetTeam(teamId);
+        if (!team)
+        {
+            handler->PSendSysMessage("Team %u does not exist.", teamId);
+            return false;
+        }
+
+        TournamentData const* tournament = sTournamentMgr->GetTournament(team->tournamentId);
+        if (!tournament || tournament->state != TOURNAMENT_STATE_RUNNING)
+        {
+            handler->PSendSysMessage("The tournament of team %u is not running.", teamId);
+            return false;
+        }
+
+        // locate the team: all online members inside a dungeon must share one instance
+        Map* map = nullptr;
+        for (TournamentMember const& member : team->members)
+            if (Player* player = ObjectAccessor::FindConnectedPlayer(ObjectGuid::Create<HighGuid::Player>(member.charGuid)))
+                if (player->GetMap() && player->GetMap()->IsDungeon())
+                {
+                    if (map && map != player->GetMap())
+                    {
+                        handler->SendSysMessage("Team members are spread across different instances.");
+                        return false;
+                    }
+                    map = player->GetMap();
+                }
+
+        if (!map)
+        {
+            handler->SendSysMessage("No team member is inside a dungeon.");
+            return false;
+        }
+
+        TournamentDungeon const* dungeon = tournament->GetDungeonByMap(uint16(map->GetId()), uint8(map->GetDifficulty()));
+        if (!dungeon || !dungeon->revealed)
+        {
+            handler->PSendSysMessage("Map %u (%s) is not part of the tournament dungeon selection.", map->GetId(), map->GetDifficulty() ? "heroic" : "normal");
+            return false;
+        }
+
+        if (sTournamentMgr->GetRunByInstance(map->GetInstanceId()))
+        {
+            handler->SendSysMessage("This instance already has a live run.");
+            return false;
+        }
+
+        InstanceScript const* script = map->ToInstanceMap()->GetInstanceScript();
+        if (!script)
+        {
+            handler->SendSysMessage("This instance has no instance script, it cannot be tracked.");
+            return false;
+        }
+
+        for (uint32 i = 0; i < script->GetEncounterCount(); ++i)
+            if (script->GetBossState(i) != NOT_STARTED)
+            {
+                handler->SendSysMessage("This instance is not fresh, the team must enter a new one.");
+                return false;
+            }
+
+        // every player inside must be a registered member, the present members must be within the gear cap
+        for (auto const& ref : map->GetPlayers())
+        {
+            Player* inside = ref.GetSource();
+            if (!inside || inside->IsGameMaster())
+                continue;
+
+            if (!team->GetMember(inside->GetGUID().GetCounter()))
+            {
+                handler->PSendSysMessage("Non-registered player '%s' is inside the instance.", inside->GetName().c_str());
+                return false;
+            }
+
+            if (Item const* violation = TournamentMgr::GetEquippedViolation(inside, tournament->ilvlCap))
+            {
+                handler->PSendSysMessage("'%s' has equipped item %u above the cap.", inside->GetName().c_str(), violation->GetEntry());
+                return false;
+            }
+        }
+
+        uint32 const runId = sTournamentMgr->CreateRun(team->id, dungeon->slot, uint16(map->GetId()), map->GetInstanceId());
+        if (!runId)
+        {
+            handler->PSendSysMessage("Could not start a run for team %u.", teamId);
+            return false;
+        }
+
+        handler->PSendSysMessage("Run %u manually started for team '%s' (map %u, instance %u).", runId, team->name.c_str(), map->GetId(), map->GetInstanceId());
+        return true;
+    }
 
     static bool HandleRunLive(ChatHandler* handler)
     {
