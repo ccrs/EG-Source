@@ -1,4 +1,6 @@
+#include "Chat.h"
 #include "Group.h"
+#include "InstanceScript.h"
 #include "Item.h"
 #include "Log.h"
 #include "Map.h"
@@ -55,6 +57,18 @@ public:
         TournamentTeam const* team = sTournamentMgr->MatchTeam(memberGuids);
         if (!team || team->tournamentId != tournament->id)
             return;
+
+        // a run may only bind to a fresh instance, a reused save restores already settled encounters
+        InstanceScript const* script = map->ToInstanceMap() ? map->ToInstanceMap()->GetInstanceScript() : nullptr;
+        if (!script)
+            return;
+
+        for (uint32 i = 0; i < script->GetEncounterCount(); ++i)
+            if (script->GetBossState(i) != NOT_STARTED)
+            {
+                ChatHandler(player->GetSession()).SendSysMessage("|cff00ccff[Tournament]|r This instance is not fresh, the run will not be tracked. Requeue into a new instance.");
+                return;
+            }
 
         uint32 const runId = sTournamentMgr->CreateRun(team->id, dungeon->slot, uint16(map->GetId()), map->GetInstanceId());
         if (!runId)
