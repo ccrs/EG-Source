@@ -641,6 +641,7 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     PrepareStatement(CHAR_INS_TOURNAMENT_RUN, "INSERT INTO tournament_run (id, teamId, dungeonSlot, mapId, instanceId, state, created) VALUES (?, ?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
     PrepareStatement(CHAR_UPD_TOURNAMENT_RUN, "UPDATE tournament_run SET state = ?, combatStart = ?, bossFinish = ?, durationMs = ?, rejectReason = ?, verifiedBy = ? WHERE id = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_UPD_TOURNAMENT_RUN_VERDICT, "UPDATE tournament_run SET state = ?, rejectReason = ?, verifiedBy = ? WHERE id = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_TOURNAMENT_RUN_ORPHANS, "UPDATE tournament_run SET state = ?, rejectReason = ? WHERE state IN (?, ?)", CONNECTION_ASYNC);
     PrepareStatement(CHAR_INS_TOURNAMENT_RUN_EVENT, "INSERT INTO tournament_run_event (runId, ts, type, detail) VALUES (?, ?, ?, ?)", CONNECTION_ASYNC);
 }
 

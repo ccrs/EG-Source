@@ -155,17 +155,33 @@ void TournamentMgr::LoadFromDB()
     }
 
     // runs: not held in memory, but advance the id counter past the highest stored run
+    uint32 orphanedRuns = 0;
     if (PreparedQueryResult result = CharacterDatabase.Query(CharacterDatabase.GetPreparedStatement(CHAR_SEL_TOURNAMENT_RUN_ALL)))
     {
         do
         {
             Field* fields = result->Fetch();
             _nextRunId = std::max(_nextRunId, fields[0].GetUInt32() + 1);
+
+            TournamentRunState const state = TournamentRunState(fields[5].GetUInt8());
+            if (state == TOURNAMENT_RUN_PENDING || state == TOURNAMENT_RUN_ACTIVE)
+                ++orphanedRuns;
         } while (result->NextRow());
     }
 
-    TC_LOG_INFO("server.loading", ">> Loaded {} tournament(s), {} team(s) in {} ms",
-        uint32(_tournaments.size()), uint32(_teams.size()), GetMSTimeDiffToNow(oldMSTime));
+    // a stored run can only be live within the uptime that created it, void any leftovers from a crash
+    if (orphanedRuns)
+    {
+        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_TOURNAMENT_RUN_ORPHANS);
+        stmt->setUInt8(0, TOURNAMENT_RUN_VOID);
+        stmt->setString(1, "server restart");
+        stmt->setUInt8(2, TOURNAMENT_RUN_PENDING);
+        stmt->setUInt8(3, TOURNAMENT_RUN_ACTIVE);
+        CharacterDatabase.Execute(stmt);
+    }
+
+    TC_LOG_INFO("server.loading", ">> Loaded {} tournament(s), {} team(s) in {} ms, voided {} orphaned run(s)",
+        uint32(_tournaments.size()), uint32(_teams.size()), GetMSTimeDiffToNow(oldMSTime), orphanedRuns);
 }
 
 TournamentData const* TournamentMgr::FindActiveTournament() const
