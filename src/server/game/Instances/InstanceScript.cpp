@@ -34,6 +34,7 @@
 #include "RBAC.h"
 #include "ScriptMgr.h"
 #include "ScriptReloadMgr.h"
+#include "StringFormat.h"
 #include "TournamentMgr.h"
 #include "World.h"
 #include "WorldSession.h"
@@ -384,11 +385,11 @@ bool InstanceScript::SetBossState(uint32 id, EncounterState state)
                 if (allEncountersDone)
                     sTournamentMgr->CompleteRun(instance->GetInstanceId());
                 else
-                    sTournamentMgr->RejectRun(instance->GetInstanceId(), "final boss killed before all encounters were cleared");
+                    sTournamentMgr->RejectRun(instance->GetInstanceId(), Trinity::StringFormat("final boss killed before all encounters were cleared ({})", GetEncounterStateNames()));
             }
             // EG - PvE tournament: an encounter resetting while the run finalizes means a boss outlived the final one, reject
             else if (state != IN_PROGRESS && sTournamentMgr->IsRunFinalizing(instance->GetInstanceId()))
-                sTournamentMgr->RejectRun(instance->GetInstanceId(), "an encounter was still in progress when the final boss died");
+                sTournamentMgr->RejectRun(instance->GetInstanceId(), Trinity::StringFormat("an encounter was still in progress when the final boss died ({})", GetEncounterStateNames()));
         }
 
         for (uint32 type = 0; type < MAX_DOOR_TYPES; ++type)
@@ -405,6 +406,19 @@ bool InstanceScript::SetBossState(uint32 id, EncounterState state)
         return true;
     }
     return false;
+}
+
+// EG - PvE tournament diagnostics
+std::string InstanceScript::GetEncounterStateNames() const
+{
+    std::string names;
+    for (uint32 i = 0; i < GetEncounterCount(); ++i)
+    {
+        if (i)
+            names += ", ";
+        names += Trinity::StringFormat("{}:{}", i, GetBossStateName(GetBossState(i)));
+    }
+    return names;
 }
 
 bool InstanceScript::_SkipCheckRequiredBosses(Player const* player /*= nullptr*/) const
@@ -801,7 +815,7 @@ void InstanceScript::UpdateEncounterState(EncounterCreditType type, uint32 credi
             if (allEncountersDone)
                 sTournamentMgr->CompleteRun(instance->GetInstanceId());
             else if (!anyInProgress)
-                sTournamentMgr->RejectRun(instance->GetInstanceId(), "final boss killed before all encounters were cleared");
+                sTournamentMgr->RejectRun(instance->GetInstanceId(), Trinity::StringFormat("final boss killed before all encounters were cleared ({})", GetEncounterStateNames()));
         }
 
         Map::PlayerList const& players = instance->GetPlayers();

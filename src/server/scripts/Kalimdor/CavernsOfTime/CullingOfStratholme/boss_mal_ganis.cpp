@@ -93,8 +93,9 @@ class boss_mal_ganis : public CreatureScript
                 }
             }
 
-            void JustEngagedWith(Unit* /*who*/) override
+            void JustEngagedWith(Unit* who) override
             {
+                BossAI::JustEngagedWith(who);
                 _defeated = false;
                 _hadYell30 = false;
                 _hadYell15 = false;
