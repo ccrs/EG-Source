@@ -253,7 +253,6 @@ enum AnachronosModels
 enum AnachronosCinematicData
 {
     DATA_PLAYER = 0,
-    DATA_TRIGGER,
     DATA_MERITHRA,
     DATA_CAELESTRASZ,
     DATA_ARYGOS,
@@ -274,7 +273,6 @@ struct npc_anachronos_the_ancient : public ScriptedAI
         _scheduler.CancelAll();
         _step = 0;
         _playerGUID.Clear();
-        _triggerGUID.Clear();
         _merithraGUID.Clear();
         _caelestraszGUID.Clear();
         _arygosGUID.Clear();
@@ -290,9 +288,6 @@ struct npc_anachronos_the_ancient : public ScriptedAI
         {
             case DATA_PLAYER:
                 _playerGUID = guid;
-                break;
-            case DATA_TRIGGER:
-                _triggerGUID = guid;
                 break;
             case DATA_MERITHRA:
                 _merithraGUID = guid;
@@ -579,8 +574,6 @@ private:
                 break;
             case 65:
                 me->SetVisible(false);
-                if (Creature* trigger = ObjectAccessor::GetCreature(*me, _triggerGUID))
-                    trigger->AI()->EnterEvadeMode();
                 break;
         }
 
@@ -598,8 +591,6 @@ private:
     void EndEvent()
     {
         _scheduler.CancelAll();
-        if (Creature* trigger = ObjectAccessor::GetCreature(*me, _triggerGUID))
-            trigger->AI()->EnterEvadeMode();
         me->DespawnOrUnsummon();
     }
 
@@ -607,7 +598,6 @@ private:
     uint8 _step = 0;
 
     ObjectGuid _playerGUID;
-    ObjectGuid _triggerGUID;
     ObjectGuid _merithraGUID;
     ObjectGuid _caelestraszGUID;
     ObjectGuid _arygosGUID;
@@ -960,7 +950,6 @@ struct go_crystalline_tear : public GameObjectAI
         if (CreatureAI* anachronosAI = anachronos->AI())
         {
             anachronosAI->SetGUID(player->GetGUID(), DATA_PLAYER);
-            anachronosAI->SetGUID(trigger->GetGUID(), DATA_TRIGGER);
             anachronosAI->SetGUID(merithra->GetGUID(), DATA_MERITHRA);
             anachronosAI->SetGUID(caelestrasz->GetGUID(), DATA_CAELESTRASZ);
             anachronosAI->SetGUID(arygos->GetGUID(), DATA_ARYGOS);
