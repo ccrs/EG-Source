@@ -669,7 +669,7 @@ void MotionMaster::MoveFollow(Unit* target, float dist, ChaseAngle angle, Moveme
     Add(new FollowMovementGenerator(target, dist, angle, run), slot);
 }
 
-void MotionMaster::MoveChase(Unit* target, Optional<ChaseRange> dist, Optional<ChaseAngle> angle, bool checkLostTarget/* = true*/)
+void MotionMaster::MoveChase(Unit* target, Optional<ChaseRange> dist, Optional<ChaseAngle> angle, bool checkLostTarget/* = true*/, bool forceAngle/* = false*/)
 {
     // Ignore movement request if target not exist
     if (!target || target == _owner)
@@ -680,6 +680,8 @@ void MotionMaster::MoveChase(Unit* target, Optional<ChaseRange> dist, Optional<C
     ChaseMovementGenerator* newMovement = new ChaseMovementGenerator(target, dist, angle);
     if (!checkLostTarget)
         newMovement->CheckLostTarget = false;
+    if (forceAngle)
+        newMovement->ForceAngle = true;
     Add(newMovement);
 }
 

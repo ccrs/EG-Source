@@ -44,6 +44,7 @@ class ChaseMovementGenerator : public MovementGenerator, public AbstractFollower
         void UnitSpeedChanged() override { _lastTargetPosition.reset(); }
 
         bool CheckLostTarget = true;
+        bool ForceAngle = false;
     private:
         static constexpr uint32 RANGE_CHECK_INTERVAL = 100; // time (ms) until we attempt to recalculate
 

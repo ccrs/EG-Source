@@ -449,6 +449,9 @@ bool ChaseMovementGenerator::_HasLostTarget(Unit* owner, Unit* target)
 
 bool ChaseMovementGenerator::_UseChaseAngle(Unit* owner, Unit* target)
 {
+    if (ForceAngle)
+        return true;
+
     if (!CheckLostTarget)
         return false;
 

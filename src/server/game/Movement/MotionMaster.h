@@ -164,8 +164,8 @@ class TC_GAME_API MotionMaster
         void MoveTargetedHome();
         void MoveRandom(float wanderDistance = 0.0f);
         void MoveFollow(Unit* target, float dist, ChaseAngle angle, MovementSlot slot = MOTION_SLOT_ACTIVE, Optional<bool> run = {});
-        void MoveChase(Unit* target, Optional<ChaseRange> dist = {}, Optional<ChaseAngle> angle = {}, bool checkLostTarget = true);
-        void MoveChase(Unit* target, float dist, float angle, bool checkLostTarget = true) { MoveChase(target, ChaseRange(dist), ChaseAngle(angle), checkLostTarget); }
+        void MoveChase(Unit* target, Optional<ChaseRange> dist = {}, Optional<ChaseAngle> angle = {}, bool checkLostTarget = true, bool forceAngle = false);
+        void MoveChase(Unit* target, float dist, float angle, bool checkLostTarget = true, bool forceAngle = false) { MoveChase(target, ChaseRange(dist), ChaseAngle(angle), checkLostTarget, forceAngle); }
         void MoveChase(Unit* target, float dist, bool checkLostTarget = true) { MoveChase(target, ChaseRange(dist), Optional<ChaseAngle>{}, checkLostTarget); }
         void MoveConfused();
         void MoveFleeing(Unit* enemy, uint32 time = 0);
