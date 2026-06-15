@@ -3290,7 +3290,8 @@ void SpellMgr::LoadSpellInfoCorrections()
         71848, // Toxic Wasteling Find Target
         36146, // Chains of Naberius
         33711, // Murmur's Touch
-        38794  // Murmur's Touch
+        38794, // Murmur's Touch
+        63713  // Dominate Mind
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->MaxAffectedTargets = 1;

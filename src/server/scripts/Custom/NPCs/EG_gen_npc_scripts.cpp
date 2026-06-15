@@ -18,6 +18,7 @@
 #include "SpellMgr.h"
 #include "StringFormat.h"
 #include "TemporarySummon.h"
+#include "ThreatManager.h"
 #include "Vehicle.h"
 
 enum TestDummyModes
@@ -1260,6 +1261,132 @@ private:
     bool _keeperDead;
 };
 
+enum TwilightShadowbladeMisc
+{
+    SPELL_BACKSTAB = 63754,
+    SPELL_FAN_OF_KNIVES = 63753,
+
+    EVENT_BACKSTAB = 1,
+    EVENT_BACKSTAB_REPEAT,
+    EVENT_FAN_OF_KNIVES,
+    EVENT_END_FIXATE
+};
+
+struct EG_npc_twilight_shadowblade : public ScriptedAI
+{
+    EG_npc_twilight_shadowblade(Creature* creature) : ScriptedAI(creature) { }
+
+    void Reset() override
+    {
+        _events.Reset();
+        _fixated = false;
+        _fixateTarget.Clear();
+        me->GetThreatManager().ClearFixate();
+    }
+
+    void JustEngagedWith(Unit* /*who*/) override
+    {
+        _events.ScheduleEvent(EVENT_BACKSTAB, 4s, 7s);
+        _events.ScheduleEvent(EVENT_FAN_OF_KNIVES, 10s, 16s);
+    }
+
+    void AttackStart(Unit* who) override
+    {
+        if (_fixated && who && who->GetGUID() == _fixateTarget)
+        {
+            if (me->Attack(who, true))
+                me->GetMotionMaster()->MoveChase(who, 0.f, float(M_PI), true, true);
+        }
+        else
+            ScriptedAI::AttackStart(who);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        if (_fixated && !me->GetThreatManager().GetFixateTarget())
+            EndFixate();
+
+        _events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        if (uint32 eventId = _events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case EVENT_BACKSTAB:
+                    if (!_fixated)
+                    {
+                        if (Unit* behindTarget = SelectTarget(SelectTargetMethod::Random, 0, [this](Unit* u)
+                        {
+                            return me->CanCreatureAttack(u) && me->IsWithinMeleeRange(u) && !u->HasInArc(float(M_PI), me);
+                        }))
+                            DoCast(behindTarget, SPELL_BACKSTAB);
+                        else if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 40.0f, true, false))
+                        {
+                            me->GetThreatManager().FixateTarget(target);
+                            _fixateTarget = target->GetGUID();
+                            _fixated = true;
+                            me->GetMotionMaster()->MoveChase(target, 0.f, float(M_PI), true, true);
+                            _events.ScheduleEvent(EVENT_END_FIXATE, 5s);
+                            _events.ScheduleEvent(EVENT_BACKSTAB_REPEAT, 1s);
+                        }
+                    }
+                    _events.ScheduleEvent(EVENT_BACKSTAB, 6s, 9s);
+                    break;
+                case EVENT_BACKSTAB_REPEAT:
+                    if (_fixated)
+                        _events.ScheduleEvent(EVENT_BACKSTAB_REPEAT, TryBackstab() ? 3s : 1s);
+                    break;
+                case EVENT_FAN_OF_KNIVES:
+                    DoCastAOE(SPELL_FAN_OF_KNIVES);
+                    _events.ScheduleEvent(EVENT_FAN_OF_KNIVES, 12s, 18s);
+                    break;
+                case EVENT_END_FIXATE:
+                    EndFixate();
+                    break;
+                default:
+                    break;
+            }
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+        }
+
+        DoMeleeAttackIfReady();
+    }
+
+private:
+    bool TryBackstab()
+    {
+        if (Unit* target = ObjectAccessor::GetUnit(*me, _fixateTarget))
+            if (target->IsAlive() && me->IsWithinMeleeRange(target) && !target->HasInArc(float(M_PI), me))
+            {
+                DoCast(target, SPELL_BACKSTAB);
+                return true;
+            }
+        return false;
+    }
+
+    void EndFixate()
+    {
+        me->GetThreatManager().ClearFixate();
+        _fixated = false;
+        _fixateTarget.Clear();
+        _events.CancelEvent(EVENT_END_FIXATE);
+        _events.CancelEvent(EVENT_BACKSTAB_REPEAT);
+        if (Unit* victim = me->GetVictim())
+            me->GetMotionMaster()->MoveChase(victim);
+    }
+
+    EventMap _events;
+    ObjectGuid _fixateTarget;
+    bool _fixated = false;
+};
+
 void AddSC_EG_gen_npc_scripts()
 {
     RegisterCreatureAI(EG_npc_damage_test_controller);
@@ -1271,4 +1398,5 @@ void AddSC_EG_gen_npc_scripts()
     RegisterCreatureAI(EG_npc_ulduar_tower_gauntlet_generator);
     RegisterCreatureAI(EG_npc_arachnopod_destroyer);
     RegisterCreatureAI(EG_npc_storm_tempered_keeper);
+    RegisterCreatureAI(EG_npc_twilight_shadowblade);
 }
