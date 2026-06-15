@@ -277,6 +277,7 @@ class instance_ulduar : public InstanceMapScript
                 _destroyedTowers = 0;
                 _stunned = 1;
                 _flIntroCompleted = false;
+                _flIntroStarted = false;
                 _flGauntletRadioFiredMask = 0;
             }
 
@@ -347,6 +348,10 @@ class instance_ulduar : public InstanceMapScript
                             DespawnLeviatanVehicle(creature);
                         else
                             LeviathanVehicleGUIDs.push_back(creature->GetGUID());
+                        break;
+                    case NPC_BRANN_BRONZEBEARD_INTRO:
+                        if (_flIntroCompleted || _activeTowers || GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
+                            creature->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                         break;
                     case NPC_KIRIN_TOR_BATTLE_MAGE:
                         if (creature->GetSpawnId() == ShieldChannelMageSpawnIdEast || creature->GetSpawnId() == ShieldChannelMageSpawnIdNorthEast)
@@ -896,6 +901,9 @@ class instance_ulduar : public InstanceMapScript
                         _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_1, 6500ms);
                         break;
                     case DATA_FL_INTRO_START:
+                        if (_flIntroStarted || _flIntroCompleted)
+                            break;
+                        _flIntroStarted = true;
                         _events.ScheduleEvent(EVENT_FL_INTRO_LINE_1, 1s);
                         break;
                     case DATA_FL_HARDMODE_CONFIRMED:
@@ -1535,6 +1543,7 @@ class instance_ulduar : public InstanceMapScript
             uint8 _stunned;
 
             bool _flIntroCompleted;
+            bool _flIntroStarted;
             ObjectGuid _flIntroPlayerGUID;
             ObjectGuid _flHardmodePlayerGUID;
             uint32 _flGauntletRadioFiredMask;
