@@ -110,6 +110,12 @@ struct boss_maexxna : public BossAI
         instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_WEB_WRAP);
     }
 
+    void JustDied(Unit* killer) override
+    {
+        BossAI::JustDied(killer);
+        instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_WEB_WRAP);
+    }
+
     void UpdateAI(uint32 diff) override
     {
         if (!UpdateVictim())
