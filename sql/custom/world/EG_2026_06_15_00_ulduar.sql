@@ -88,6 +88,7 @@ UPDATE `smart_scripts` SET `event_flags` = 0 WHERE `source_type` = 0 AND `entryO
 UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839 WHERE `entry` IN (33772, 33773);
 UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 33772;
 UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 33773;
+UPDATE `creature_template` SET `unit_class` = 2 WHERE `entry` IN (33772, 33773);
 
 SET @ENTRY := 33772;
 UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;

@@ -1362,10 +1362,10 @@ struct EG_npc_twilight_shadowblade : public ScriptedAI
 private:
     bool TryBackstab()
     {
-        if (Unit* target = ObjectAccessor::GetUnit(*me, _fixateTarget))
-            if (target->IsAlive() && me->IsWithinMeleeRange(target) && !target->HasInArc(float(M_PI), me))
+        if (Unit* victim = me->GetVictim())
+            if (me->IsWithinMeleeRange(victim) && !victim->HasInArc(float(M_PI), me))
             {
-                DoCast(target, SPELL_BACKSTAB);
+                DoCastVictim(SPELL_BACKSTAB);
                 return true;
             }
         return false;
