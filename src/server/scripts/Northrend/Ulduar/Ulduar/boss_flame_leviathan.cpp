@@ -2051,33 +2051,67 @@ class EG_spell_flame_leviathan_grab_crate_triggered : public SpellScript
     }
 };
 
+enum SalvagedVehicleSeating
+{
+    MAP_ULDUAR = 603,
+    NPC_SALVAGED_SIEGE_TURRET = 33067,
+    NPC_SALVAGED_DEMOLISHER_MECHANIC = 33167,
+    SEAT_DRIVER = 0,
+    SEAT_DEMOLISHER_MECHANIC_ON_BODY = 1,
+    SEAT_SIEGE_TURRET_ON_BODY = 7
+};
+
 class EG_spell_salvaged_vehicle_ride_gate : public SpellScript
 {
     PrepareSpellScript(EG_spell_salvaged_vehicle_ride_gate);
 
+    bool Load() override
+    {
+        Unit* caster = GetCaster();
+        return caster && caster->GetMapId() == MAP_ULDUAR;
+    }
+
     SpellCastResult CheckCast()
     {
+        Unit* caster = GetCaster();
         Unit* target = GetExplTargetUnit();
-        if (!target)
+        if (!caster || !target)
             return SPELL_FAILED_BAD_TARGETS;
-        Creature* vehicleCreature = target->ToCreature();
-        if (!vehicleCreature)
-            return SPELL_FAILED_BAD_TARGETS;
-        Vehicle* vehicle = vehicleCreature->GetVehicleKit();
+
+        Vehicle* vehicle = target->GetVehicleKit();
         if (!vehicle)
             return SPELL_FAILED_BAD_TARGETS;
 
-        for (auto const& kv : vehicle->Seats)
+        if (caster->GetVehicleBase() == target)
+            return SPELL_FAILED_DONT_REPORT;
+
+        if (!vehicle->GetPassenger(SEAT_DRIVER))
+            return SPELL_CAST_OK;
+
+        uint8 accessorySeat = 0;
+        uint32 accessoryEntry = 0;
+        switch (target->GetEntry())
         {
-            VehicleSeatEntry const* seatInfo = kv.second.SeatInfo;
-            if (!seatInfo)
-                continue;
-            if (!kv.second.IsEmpty())
-                continue;
-            if (seatInfo->Flags & (VEHICLE_SEAT_FLAG_CAN_CONTROL | VEHICLE_SEAT_FLAG_CAN_ATTACK))
+            case VEHICLE_SIEGE:
+                accessorySeat = SEAT_SIEGE_TURRET_ON_BODY;
+                accessoryEntry = NPC_SALVAGED_SIEGE_TURRET;
+                break;
+            case VEHICLE_DEMOLISHER:
+                accessorySeat = SEAT_DEMOLISHER_MECHANIC_ON_BODY;
+                accessoryEntry = NPC_SALVAGED_DEMOLISHER_MECHANIC;
+                break;
+            default:
                 return SPELL_CAST_OK;
         }
-        return SPELL_FAILED_NO_VALID_TARGETS;
+
+        if (Unit* accessoryUnit = vehicle->GetPassenger(accessorySeat))
+            if (Creature* accessory = accessoryUnit->ToCreature())
+                if (accessory->GetEntry() == accessoryEntry)
+                    if (Vehicle* accessoryKit = accessory->GetVehicleKit())
+                        if (!accessoryKit->GetPassenger(SEAT_DRIVER))
+                            accessory->HandleSpellClick(caster, SEAT_DRIVER);
+
+        return SPELL_FAILED_DONT_REPORT;
     }
 
     void Register() override
