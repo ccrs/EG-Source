@@ -135,6 +135,8 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 32958 AND `SourceId` = 0;
 
+UPDATE `creature_template` SET `mechanic_immune_mask` = 4784129 WHERE `entry` IN (32958, 33689);
+
 UPDATE `creature_template` SET `unit_class` = 4 WHERE `entry` IN (33824, 33831);
 UPDATE `creature_template` SET `unit_class` = 1 WHERE `entry` IN (33822, 33828, 33823, 33832);
 UPDATE `creature_template` SET `ManaModifier` = 8 WHERE `entry` IN (33772, 33773);
