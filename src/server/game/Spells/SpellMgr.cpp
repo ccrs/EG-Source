@@ -3290,8 +3290,7 @@ void SpellMgr::LoadSpellInfoCorrections()
         71848, // Toxic Wasteling Find Target
         36146, // Chains of Naberius
         33711, // Murmur's Touch
-        38794, // Murmur's Touch
-        63713  // Dominate Mind
+        38794  // Murmur's Touch
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->MaxAffectedTargets = 1;
@@ -5131,12 +5130,6 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->_GetEffect(EFFECT_0).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
     });
 
-    // Dominate Mind
-    ApplySpellFix({ 63713 }, [](SpellInfo* spellInfo)
-    {
-        spellInfo->MaxAffectedTargets = 1;
-    });
-
     // Freya's Ward
     ApplySpellFix({ 62907, 62947 }, [](SpellInfo* spellInfo)
     {
@@ -5169,6 +5162,14 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->AttributesEx |= SPELL_ATTR1_NO_THREAT;
         spellInfo->AttributesEx2 |= SPELL_ATTR2_CAN_TARGET_NOT_IN_LOS;
         spellInfo->_GetEffect(EFFECT_1).Effect = SPELL_EFFECT_NONE;
+    });
+
+    // Dominate Mind
+    ApplySpellFix({ 63713 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->MaxAffectedTargets = 1;
+        spellInfo->ManaCost = 0;
+        spellInfo->ManaCostPercentage = 0;
     });
 
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
