@@ -70,8 +70,8 @@ SET @ENTRY := 33818;
 UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
 DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
 INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
-(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 4000, 8000, 6000, 10000, 11, 63760, 0, 0, 0, 0, 0, 31, 40, 0, 1, 0, 0, 0, 0, 'Every 6 - 10 seconds (4 - 8s initially) (IC) - Self: Cast spell  Greater Heal (63760) on Lowest HP friendly unit in 40 yards including self'),
-(@ENTRY, 0, 1, 0, 0, 0, 100, 0, 12000, 18000, 12000, 18000, 11, 37978, 0, 0, 0, 0, 0, 31, 40, 0, 1, 0, 0, 0, 0, 'Every 12 - 18 seconds (12 - 18s initially) (IC) - Self: Cast spell  Renew (37978) on Lowest HP friendly unit in 40 yards including self'),
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 3000, 7000, 3000, 7000, 11, 63760, 0, 0, 0, 0, 0, 31, 40, 0, 1, 0, 0, 0, 0, 'Every 3 - 7 seconds (3 - 7s initially) (IC) - Self: Cast spell  Greater Heal (63760) on Lowest HP friendly unit in 40 yards including self'),
+(@ENTRY, 0, 1, 0, 0, 0, 100, 0, 5000, 10000, 10000, 18000, 11, 37978, 0, 0, 0, 0, 0, 31, 40, 0, 1, 0, 0, 0, 0, 'Every 10 - 18 seconds (5 - 10s initially) (IC) - Self: Cast spell  Renew (37978) on Lowest HP friendly unit in 40 yards including self'),
 (@ENTRY, 0, 2, 0, 0, 0, 100, 0, 15000, 25000, 15000, 25000, 11, 13704, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Every 15 - 25 seconds (IC) - Self: Cast spell  Psychic Scream (13704) on Self');
 
 
@@ -134,3 +134,7 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 32958 AND `SourceId` = 0;
+
+UPDATE `creature_template` SET `unit_class` = 4 WHERE `entry` IN (33824, 33831);
+UPDATE `creature_template` SET `unit_class` = 1 WHERE `entry` IN (33822, 33828, 33823, 33832);
+UPDATE `creature_template` SET `ManaModifier` = 8 WHERE `entry` IN (33772, 33773);
