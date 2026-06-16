@@ -5172,6 +5172,13 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->ManaCostPercentage = 0;
     });
 
+    // Twilight Shadowblade
+    ApplySpellFix({ 63753, 63754 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->ManaCost = 0;
+        spellInfo->ManaCostPercentage = 0;
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];
