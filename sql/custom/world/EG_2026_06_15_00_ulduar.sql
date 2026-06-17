@@ -141,7 +141,7 @@ UPDATE `creature_template` SET `unit_class` = 1 WHERE `entry` IN (33822, 33828, 
 UPDATE `creature_template` SET `ManaModifier` = 8 WHERE `entry` IN (33772, 33773);
 
 -- Clockwork Sapper (34193/34220)
-UPDATE `creature_template` SET `mechanic_immune_mask` = 550189887 WHERE `entry` IN (34193, 34220);
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (34193, 34220);
 UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 34193;
 UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 34220;
 
@@ -214,5 +214,19 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 33430 AND `SourceId` = 0;
 
 DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 13) AND (`SourceEntry` IN (63006));
-INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES
 (13, 7, 63006, 0, 0, 31, 0, 3, 33431, 0, 0, 'Aggregation Pheromones (63006) only buffs Forest Swarmer (33431)');
+
+-- Dark Rune Ravager (33755/33758)
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (33755, 33758);
+UPDATE `creature_template_addon` SET `auras` = '63616' WHERE `entry` IN (33755, 33758);
+UPDATE `creature_addon` SET `auras` = '63616' WHERE `guid` IN (137483, 137484);
+UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 33755;
+UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 33758;
+
+-- Dark Rune Thunderer (33754/33757)
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (33754, 33757);
+UPDATE `creature_template_addon` SET `auras` = '63610' WHERE `entry` IN (33754, 33757);
+UPDATE `creature_addon` SET `auras` = '63610' WHERE `guid` IN (137481, 137482);
+UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 33754;
+UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 33757;
