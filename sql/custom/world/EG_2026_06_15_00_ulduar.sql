@@ -230,3 +230,35 @@ UPDATE `creature_template_addon` SET `auras` = '63610' WHERE `entry` IN (33754, 
 UPDATE `creature_addon` SET `auras` = '63610' WHERE `guid` IN (137481, 137482);
 UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 33754;
 UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 33757;
+
+DELETE FROM `creature_template_movement` WHERE `CreatureId` IN (33378);
+INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`, `Chase`, `Random`) VALUES
+(33378, 1, 0, 1, 0, 0, 0);
+
+-- Guardian of Life (33528/33733)
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (33528, 33733);
+UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 33528;
+UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 33733;
+
+SET @ENTRY := 33528;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 3000, 6000, 8000, 12000, 11, 63226, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 8 - 12 seconds (3 - 6s initially) (IC) - Self: Cast spell  Poison Breath (63226) on Victim');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 33528 AND `SourceId` = 0;
+
+-- Ironroot Lasher (33526/33734)
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (33526, 33734);
+UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 33526;
+UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 33734;
+
+SET @ENTRY := 33526;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 3000, 6000, 6000, 10000, 11, 64072, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Every 6 - 10 seconds (3 - 6s initially) (IC) - Self: Cast spell  Thorn Swarm (64072) on Random hostile'),
+(@ENTRY, 0, 1, 0, 0, 0, 100, 0, 5000, 8000, 12000, 20000, 11, 63240, 0, 0, 0, 0, 0, 31, 40, 0, 1, 0, 0, 0, 0, 'Every 12 - 20 seconds (5 - 8s initially) (IC) - Self: Cast spell  Ironroot Thorns (63240) on Lowest HP friendly within 30 yards including self');
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 33526 AND `SourceId` = 0;

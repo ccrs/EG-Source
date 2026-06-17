@@ -412,6 +412,12 @@ class instance_ulduar : public InstanceMapScript
                         FreyaAchieveTriggerGUID = creature->GetGUID();
                         break;
 
+                    // Thorim
+                    case NPC_THUNDER_ORB:
+                        creature->SetCanFly(true);
+                        creature->SetDisableGravity(true);
+                        break;
+
                     // Mimiron
                     case NPC_LEVIATHAN_MKII:
                         MimironVehicleGUIDs[0] = creature->GetGUID();
