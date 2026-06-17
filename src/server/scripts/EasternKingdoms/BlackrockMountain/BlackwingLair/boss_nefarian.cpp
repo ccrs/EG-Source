@@ -244,11 +244,12 @@ struct boss_victor_nefarius : public BossAI
                         {
                             boneConstruct->SetVisible(true);
                             boneConstruct->RemoveAllGameObjects();
-                            boneConstruct->SetSpawnHealth();
                             boneConstruct->setDeathState(ALIVE);
+                            boneConstruct->SetSpawnHealth();
                             boneConstruct->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                            boneConstruct->RemoveUnitFlag2(UNIT_FLAG2_FEIGN_DEATH);
                             boneConstruct->SetStandState(UNIT_STAND_STATE_STAND);
-                            SetAggressiveStateAfter(1s, boneConstruct, true, me);
+                            SetAggressiveStateAfter(1s, boneConstruct);
                         }
                 }
                 instance->SetData(DATA_DRAKONID_BONES, 0);
