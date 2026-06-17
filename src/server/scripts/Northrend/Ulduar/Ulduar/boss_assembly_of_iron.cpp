@@ -30,6 +30,7 @@ EndScriptData */
 #include "ObjectAccessor.h"
 #include "ScriptedCreature.h"
 #include "ScriptMgr.h"
+#include "SpellAuraEffects.h"
 #include "SpellAuras.h"
 #include "SpellMgr.h"
 #include "SpellScript.h"
@@ -751,11 +752,13 @@ class spell_shield_of_runes : public SpellScriptLoader
         {
             PrepareAuraScript(spell_shield_of_runes_AuraScript);
 
-            void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+            void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
             {
+                if (aurEff->GetAmount() > 0)
+                    return;
+
                 if (Unit* caster = GetCaster())
-                    if (GetTargetApplication()->GetRemoveMode() != AURA_REMOVE_BY_EXPIRE)
-                        caster->CastSpell(caster, SPELL_SHIELD_OF_RUNES_BUFF, false);
+                    caster->CastSpell(caster, SPELL_SHIELD_OF_RUNES_BUFF, true);
             }
 
             void Register() override
