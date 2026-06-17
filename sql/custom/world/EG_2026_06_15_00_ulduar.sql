@@ -158,6 +158,8 @@ DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_energy_sap';
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (64740, 'EG_spell_energy_sap');
 
+UPDATE `creature_template` SET `flags_extra` = 8320 WHERE `entry` = 34223;
+
  -- Sapper Explosion smart ai
 SET @ENTRY := 34223;
 UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839 WHERE `entry` = @ENTRY;
@@ -167,7 +169,7 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 (@ENTRY, 0, 0, 0, 54, 0, 100, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just summoned - Self: Set react state to Passive'),
 (@ENTRY, 0, 1, 0, 25, 0, 100, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Disable combat based movement'),
 (@ENTRY, 0, 2, 0, 60, 0, 100, 1, 5500, 5500, 0, 0, 41, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Time = 5.5 seconds - Self: Despawn instantly'),
-(@ENTRY, 0, 3, 0, 60, 0, 100, 0, 1000, 1000, 0, 0, 11, 64875, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Time = 1 seconds - Self: Cast spell  Sapper Explosion (64875) on Self');
+(@ENTRY, 0, 3, 0, 60, 0, 100, 1, 500, 500, 0, 0, 11, 64875, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Time = 0.5 seconds - Self: Cast spell  Sapper Explosion (64875) on Self');
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 34223 AND `SourceId` = 0;
