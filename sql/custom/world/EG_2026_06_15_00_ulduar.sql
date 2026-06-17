@@ -139,3 +139,73 @@ UPDATE `creature_template` SET `mechanic_immune_mask` = 4784129 WHERE `entry` IN
 UPDATE `creature_template` SET `unit_class` = 4 WHERE `entry` IN (33824, 33831);
 UPDATE `creature_template` SET `unit_class` = 1 WHERE `entry` IN (33822, 33828, 33823, 33832);
 UPDATE `creature_template` SET `ManaModifier` = 8 WHERE `entry` IN (33772, 33773);
+
+-- Clockwork Sapper (34193/34220)
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189887 WHERE `entry` IN (34193, 34220);
+UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 34193;
+UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 34220;
+
+SET @ENTRY := 34193;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 5000, 9000, 10000, 15000, 11, 64740, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Every 10 - 15 seconds (5 - 9s initially) (IC) - Self: Cast spell  Energy Sap (64740) on Random hostile');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 34193 AND `SourceId` = 0;
+
+DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_energy_sap';
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(64740, 'EG_spell_energy_sap');
+
+ -- Sapper Explosion smart ai
+SET @ENTRY := 34223;
+UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839 WHERE `entry` = @ENTRY;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 54, 0, 100, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On just summoned - Self: Set react state to Passive'),
+(@ENTRY, 0, 1, 0, 25, 0, 100, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Disable combat based movement'),
+(@ENTRY, 0, 2, 0, 60, 0, 100, 1, 5500, 5500, 0, 0, 41, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Time = 5.5 seconds - Self: Despawn instantly'),
+(@ENTRY, 0, 3, 0, 60, 0, 100, 0, 1000, 1000, 0, 0, 11, 64875, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Time = 1 seconds - Self: Cast spell  Sapper Explosion (64875) on Self');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 34223 AND `SourceId` = 0;
+
+-- Boomer XP-500 (34192/34216)
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189887 WHERE `entry` IN (34192, 34216);
+UPDATE `creature_template_addon` SET `auras` = '63767' WHERE `entry` IN (34192, 34216);
+
+-- Trash (34191/34217)
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (34191, 34217);
+
+-- Forest Swarmer (33431/33731)
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (33431, 33731);
+
+SET @ENTRY := 33431;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 5000, 10000, 12000, 18000, 11, 63059, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Every 12 - 18 seconds (5 - 10s initially) (IC) - Self: Cast spell  Pollinate (63059) on Self');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 33431 AND `SourceId` = 0;
+
+DELETE FROM `conditions` WHERE (`SourceTypeOrReferenceId` = 13) AND (`SourceEntry` IN (63059));
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES
+(13, 7, 63059, 0, 0, 31, 0, 3, 33430, 0, 0, 'Potential target of the spell is creature, entry is Guardian Lasher (33430)');
+
+-- Guardian Lasher (33430/33732)
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (33430, 33732);
+UPDATE `creature_template_addon` SET `auras` = '63007' WHERE `entry` IN (33430, 33732);
+UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 33430;
+UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 33732;
+
+SET @ENTRY := 33430;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 1000, 3000, 6000, 9000, 11, 63047, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 6 - 9 seconds (1 - 3s initially) (IC) - Self: Cast spell  Guardian\'s Lash (63047) on Victim');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 33430 AND `SourceId` = 0;

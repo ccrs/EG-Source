@@ -447,6 +447,36 @@ class EG_spell_twilight_torment_trigger : public AuraScript
     }
 };
 
+enum EnergySap
+{
+    SPELL_SAPPER_EXPLOSION = 64873
+};
+
+// 64740 - Energy Sap
+class EG_spell_energy_sap : public AuraScript
+{
+    PrepareAuraScript(EG_spell_energy_sap);
+
+    bool Validate(SpellInfo const* /*spell*/) override
+    {
+        return ValidateSpellInfo({ SPELL_SAPPER_EXPLOSION });
+    }
+
+    void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+    {
+        AuraRemoveMode removeMode = GetTargetApplication()->GetRemoveMode();
+        if (removeMode != AURA_REMOVE_BY_EXPIRE && removeMode != AURA_REMOVE_BY_CANCEL)
+            return;
+
+        GetTarget()->CastSpell(nullptr, SPELL_SAPPER_EXPLOSION, CastSpellExtraArgs(aurEff).SetOriginalCaster(GetCasterGUID()));
+    }
+
+    void Register() override
+    {
+        AfterEffectRemove += AuraEffectRemoveFn(EG_spell_energy_sap::OnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
@@ -465,4 +495,5 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_twilight_torment_carrier);
     RegisterSpellScript(EG_spell_twilight_torment_phase);
     RegisterSpellScript(EG_spell_twilight_torment_trigger);
+    RegisterSpellScript(EG_spell_energy_sap);
 }
