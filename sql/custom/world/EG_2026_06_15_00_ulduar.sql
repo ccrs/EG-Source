@@ -231,14 +231,32 @@ UPDATE `creature_addon` SET `auras` = '63610' WHERE `guid` IN (137481, 137482);
 UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 33754;
 UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 33757;
 
+UPDATE `creature_template` SET `flags_extra` = 8896 WHERE `entry` = 33378;
 DELETE FROM `creature_template_movement` WHERE `CreatureId` IN (33378);
 INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`, `Chase`, `Random`) VALUES
 (33378, 1, 0, 1, 0, 0, 0);
+
+-- Nature's Blade (33527/33741)
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (33527, 33741);
+
+SET @ENTRY := 33527;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 2000, 4000, 5000, 8000, 11, 63247, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 5 - 8 seconds (2 - 4s initially) (IC) - Self: Cast spell  Living Tsunami (63247) on Victim');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 33527 AND `SourceId` = 0;
 
 -- Guardian of Life (33528/33733)
 UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (33528, 33733);
 UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 33528;
 UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 33733;
+
+DELETE FROM `creature_template_movement` WHERE `CreatureId` IN (33528, 33733);
+INSERT INTO `creature_template_movement` (`CreatureId`, `Ground`, `Swim`, `Flight`, `Rooted`, `Chase`, `Random`) VALUES
+(33528, 1, 1, 1, 0, 0, 0),
+(33733, 1, 1, 1, 0, 0, 0);
 
 SET @ENTRY := 33528;
 UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
@@ -259,6 +277,63 @@ UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `en
 DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
 INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
 (@ENTRY, 0, 0, 0, 0, 0, 100, 0, 3000, 6000, 6000, 10000, 11, 64072, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Every 6 - 10 seconds (3 - 6s initially) (IC) - Self: Cast spell  Thorn Swarm (64072) on Random hostile'),
-(@ENTRY, 0, 1, 0, 0, 0, 100, 0, 5000, 8000, 12000, 20000, 11, 63240, 0, 0, 0, 0, 0, 31, 40, 0, 1, 0, 0, 0, 0, 'Every 12 - 20 seconds (5 - 8s initially) (IC) - Self: Cast spell  Ironroot Thorns (63240) on Lowest HP friendly within 30 yards including self');
+(@ENTRY, 0, 1, 0, 0, 0, 100, 0, 5000, 8000, 12000, 20000, 11, 63240, 0, 0, 0, 0, 0, 31, 40, 0, 1, 0, 0, 0, 0, 'Every 12 - 20 seconds (5 - 8s initially) (IC) - Self: Cast spell  Ironroot Thorns (63240) on Lowest HP friendly within 40 yards including self');
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 33526 AND `SourceId` = 0;
+
+-- Mangrove Ent (33525/33735)
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (33525, 33735);
+UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 33525;
+UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 33735;
+
+SET @ENTRY := 33525;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 3000, 7000, 8000, 12000, 11, 63242, 0, 0, 0, 0, 0, 31, 40, 0, 1, 0, 0, 0, 0, 'Every 8 - 12 seconds (3 - 7s initially) (IC) - Self: Cast spell  Nourish (63242) on Lowest HP friendly within 40 yards including self'),
+(@ENTRY, 0, 1, 0, 0, 0, 100, 0, 5000, 9000, 12000, 18000, 11, 63272, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Every 12 - 18 seconds (5 - 9s initially) (IC) - Self: Cast spell  Hurricane (63272) on Random hostile'),
+(@ENTRY, 0, 2, 0, 0, 0, 100, 0, 15000, 20000, 25000, 35000, 11, 63241, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Every 25 - 35 seconds (15 - 20s initially) (IC) - Self: Cast spell  Tranquility (63241) on Self');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 33525 AND `SourceId` = 0;
+
+-- Corrupted Servitor (33354/33729)
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (33354, 33729);
+UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 33354;
+UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 33729;
+
+SET @ENTRY := 33354;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 4000, 7000, 12000, 18000, 11, 63169, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 12 - 18 seconds (4 - 7s initially) (IC) - Self: Cast spell  Petrify Joints (63169) on Victim'),
+(@ENTRY, 0, 1, 0, 0, 0, 100, 0, 6000, 10000, 10000, 15000, 11, 63149, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 'Every 10 - 15 seconds (6 - 10s initially) (IC) - Self: Cast spell  Violent Earth (63149) on Random hostile');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 33354 AND `SourceId` = 0;
+
+-- Misguided Nymph (33355/33737)
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (33355, 33737);
+UPDATE `creature_template` SET `unit_class` = 2 WHERE `entry` IN (33355, 33737);
+
+SET @ENTRY := 33355;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 1000, 3000, 4000, 7000, 11, 63111, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 4 - 7 seconds (1 - 3s initially) (IC) - Self: Cast spell  Frost Spear (63111) on Victim'),
+(@ENTRY, 0, 1, 0, 0, 0, 100, 0, 4000, 8000, 9000, 14000, 11, 63082, 0, 0, 0, 0, 0, 31, 40, 0, 1, 0, 0, 0, 0, 'Every 9 - 14 seconds (4 - 8s initially) (IC) - Self: Cast spell  Bind Life (63082) on Lowest HP friendly within 40 yards including self'),
+(@ENTRY, 0, 2, 0, 0, 0, 100, 0, 6000, 10000, 25000, 35000, 11, 63136, 0, 0, 0, 0, 0, 31, 40, 0, 1, 0, 0, 0, 0, 'Every 25 - 35 seconds (6 - 10s initially) (IC) - Self: Cast spell  Winter\'s Embrace (63136) on Lowest HP friendly within 40 yards including self');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 33355 AND `SourceId` = 0;
+
+DELETE FROM `spelldifficulty_dbc` WHERE `id` IN (64740, 63610, 64072, 63557, 63169, 63149, 63082, 63111, 63136);
+INSERT INTO `spelldifficulty_dbc` (`id`, `spellid0`, `spellid1`, `spellid2`, `spellid3`) VALUES
+(64740, 64740, 64876, 0, 0),
+(63610, 63610, 63674, 0, 0),
+(64072, 64072, 64073, 0, 0),
+(63169, 63169, 63549, 0, 0),
+(63149, 63149, 63547, 0, 0),
+(63082, 63082, 63559, 0, 0),
+(63111, 63111, 63562, 0, 0),
+(63136, 63136, 63564, 0, 0);
