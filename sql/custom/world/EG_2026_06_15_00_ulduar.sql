@@ -14,9 +14,9 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 33264 AND `SourceId` = 0;
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `Comment`) VALUES 
-(22, 3, 33264, 0, 0, 29, 0, 33109, 200, 0, 1, 'There is no creature Salvaged Demolisher (33109) within range 200 yards to Action invoker'),
-(22, 3, 33264, 0, 0, 29, 0, 33060, 200, 0, 1, 'There is no creature Salvaged Siege Engine (33060) within range 200 yards to Action invoker'),
-(22, 3, 33264, 0, 0, 29, 0, 33062, 200, 0, 1, 'There is no creature Salvaged Chopper (33062) within range 200 yards to Action invoker');
+(22, 3, 33264, 0, 0, 29, 1, 33109, 200, 0, 1, 'There is no creature Salvaged Demolisher (33109) within range 200 yards of the cannon (self)'),
+(22, 3, 33264, 0, 0, 29, 1, 33060, 200, 0, 1, 'There is no creature Salvaged Siege Engine (33060) within range 200 yards of the cannon (self)'),
+(22, 3, 33264, 0, 0, 29, 1, 33062, 200, 0, 1, 'There is no creature Salvaged Chopper (33062) within range 200 yards of the cannon (self)');
 
 -- Storm Tempered Keeper (33699/33700, 33722/33723)
 UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839 WHERE `entry` IN (33699, 33700, 33722, 33723);
@@ -327,7 +327,20 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 33355 AND `SourceId` = 0;
 
-DELETE FROM `spelldifficulty_dbc` WHERE `id` IN (64740, 63610, 64072, 63557, 63169, 63149, 63082, 63111, 63136);
+-- Champion of Hodir (34133/34139)
+UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839 WHERE `entry` IN (34133, 34139);
+
+SET @ENTRY := 34133;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 3000, 6000, 10000, 15000, 11, 64649, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 10 - 15 seconds (3 - 6s initially) (IC) - Self: Cast spell  Freezing Breath (64649) on Victim'),
+(@ENTRY, 0, 1, 0, 0, 0, 100, 0, 4000, 7000, 9000, 13000, 11, 64639, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Every 9 - 13 seconds (4 - 7s initially) (IC) - Self: Cast spell  Stomp (64639) on Self');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 34133 AND `SourceId` = 0;
+
+DELETE FROM `spelldifficulty_dbc` WHERE `id` IN (64740, 63610, 64072, 63557, 63169, 63149, 63082, 63111, 63136, 64639);
 INSERT INTO `spelldifficulty_dbc` (`id`, `spellid0`, `spellid1`, `spellid2`, `spellid3`) VALUES
 (64740, 64740, 64876, 0, 0),
 (63610, 63610, 63674, 0, 0),
@@ -336,4 +349,5 @@ INSERT INTO `spelldifficulty_dbc` (`id`, `spellid0`, `spellid1`, `spellid2`, `sp
 (63149, 63149, 63547, 0, 0),
 (63082, 63082, 63559, 0, 0),
 (63111, 63111, 63562, 0, 0),
-(63136, 63136, 63564, 0, 0);
+(63136, 63136, 63564, 0, 0),
+(64639, 64639, 64652, 0, 0);
