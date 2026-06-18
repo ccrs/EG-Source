@@ -30,6 +30,7 @@
 #include "SpellAuraEffects.h"
 #include "SpellMgr.h"
 #include "SpellScript.h"
+#include "TemporarySummon.h"
 #include "TypeContainerVisitor.h"
 #include <G3D/Vector3.h>
 
@@ -497,7 +498,7 @@ struct boss_thorim : public BossAI
         // Spawn Pre Phase Adds
         std::vector<Creature*> preAdds;
         for (ThorimSummonLocation const& s : PreAddLocations)
-            if (Creature* preAdd = me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s))
+            if (TempSummon* preAdd = me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s))
             {
                 ++_preAddCount;
                 preAdds.push_back(preAdd);
