@@ -15,7 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "ulduar.h"
 #include "AreaBoundary.h"
 #include "CellImpl.h"
 #include "Containers.h"
@@ -26,14 +26,14 @@
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
 #include "SpellMgr.h"
 #include "SpellScript.h"
 #include "TypeContainerVisitor.h"
-#include "ulduar.h"
 #include <G3D/Vector3.h>
 
-enum Spells
+enum ThorimSpells
 {
     // Thorim
     SPELL_SHEATH_OF_LIGHTNING                   = 62276,
@@ -87,14 +87,14 @@ enum Spells
     SPELL_STOMP                                 = 62411
 };
 
-enum Phases
+enum ThorimPhases
 {
     PHASE_NULL,
     PHASE_1,
     PHASE_2
 };
 
-enum Events
+enum ThorimEvents
 {
     // Thorim
     EVENT_SAY_AGGRO_2 = 1,
@@ -105,6 +105,7 @@ enum Events
     EVENT_SUMMON_ADDS,
     EVENT_BERSERK,
     EVENT_JUMPDOWN,
+    EVENT_SET_ARENA_BOUNDARY,
     EVENT_UNBALANCING_STRIKE,
     EVENT_CHAIN_LIGHTNING,
     EVENT_START_PERIODIC_CHARGE,
@@ -139,7 +140,7 @@ enum Events
     EVENT_BLIZZARD
 };
 
-enum Yells
+enum ThorimYells
 {
     // Thorim
     SAY_AGGRO_1                                 = 0,
@@ -169,7 +170,7 @@ enum Yells
     SAY_SIF_EVENT                               = 2
 };
 
-enum PreAddSpells
+enum ThorimPreAddSpells
 {
     SPELL_ACID_BREATH               = 62315,
     SPELL_SWEEP                     = 62316,
@@ -212,7 +213,7 @@ enum PreAddSpells
     SPELL_SHIELD_SMASH              = 62332,
 };
 
-enum TrashTypes
+enum ThorimTrashTypes
 {
     // Pre Phase Trash
     BEHEMOTH,
@@ -265,7 +266,15 @@ ThorimTrashInfo const StaticThorimTrashInfo[ThorimTrashCount] =
     { DARK_RUNE_ACOLYTE,    NPC_DARK_RUNE_ACOLYTE,     SPELL_RENEW,           SPELL_GREATER_HEAL, 0                       }
 };
 
-enum Actions
+enum ThorimTrashIndex
+{
+    TRASH_INDEX_CHAMPION = 6,
+    TRASH_INDEX_WARBRINGER,
+    TRASH_INDEX_EVOKER,
+    TRASH_INDEX_COMMONER
+};
+
+enum ThorimActions
 {
     ACTION_INCREASE_PREADDS_COUNT,
     ACTION_ACTIVATE_RUNIC_SMASH,
@@ -275,13 +284,13 @@ enum Actions
     ACTION_BERSERK
 };
 
-struct SummonLocation
+struct ThorimSummonLocation
 {
     Position pos;
     uint32 entry;
 };
 
-SummonLocation const PreAddLocations[] =
+ThorimSummonLocation const PreAddLocations[] =
 {
     { { 2149.68f, -263.477f, 419.679f, 3.120f }, NPC_JORMUNGAR_BEHEMOTH    },
     { { 2131.31f, -271.640f, 419.840f, 2.188f }, NPC_MERCENARY_CAPTAIN_A   },
@@ -291,7 +300,7 @@ SummonLocation const PreAddLocations[] =
     { { 2129.09f, -277.142f, 419.756f, 1.222f }, NPC_DARK_RUNE_ACOLYTE_PRE }
 };
 
-SummonLocation const ColossusAddLocations[] =
+ThorimSummonLocation const ColossusAddLocations[] =
 {
     { { 2218.38f, -297.50f, 412.18f, 1.030f }, NPC_IRON_RING_GUARD   },
     { { 2235.07f, -297.98f, 412.18f, 1.613f }, NPC_IRON_RING_GUARD   },
@@ -301,7 +310,7 @@ SummonLocation const ColossusAddLocations[] =
     { { 2227.47f, -345.37f, 412.18f, 1.566f }, NPC_DARK_RUNE_ACOLYTE }
 };
 
-SummonLocation const GiantAddLocations[] =
+ThorimSummonLocation const GiantAddLocations[] =
 {
     { { 2198.05f, -428.77f, 419.95f, 6.056f }, NPC_IRON_HONOR_GUARD  },
     { { 2220.31f, -436.22f, 412.26f, 1.064f }, NPC_IRON_HONOR_GUARD  },
@@ -312,7 +321,9 @@ SummonLocation const GiantAddLocations[] =
 
 Position const SifSpawnPosition = { 2148.301f, -297.8453f, 438.3308f, 2.687807f };
 
-enum Data
+Position const ThorimArenaLandPos = { 2134.8f, -263.056f, 419.983f };
+
+enum ThorimData
 {
     ACHIEVEMENT_DONT_STAND_IN_THE_LIGHTNING = 29712972,
     ACHIEVEMENT_SIFFED                      = 29772978,
@@ -320,7 +331,7 @@ enum Data
     DATA_CHARGED_PILLAR                     = 1
 };
 
-enum DisplayIds
+enum ThorimDisplayIds
 {
     THORIM_WEAPON_DISPLAY_ID                = 45900
 };
@@ -336,27 +347,27 @@ Position const LightningOrbPath[] =
     { 2202.208008f, -262.939270f, 412.168976f },
     { 2182.310059f, -263.233093f, 414.739410f }
 };
-std::size_t const LightningOrbPathSize = std::extent<decltype(LightningOrbPath)>::value;
+std::size_t const ThorimLightningOrbPathSize = std::extent<decltype(LightningOrbPath)>::value;
 
 // used for trash jump calculation
-Position const ArenaCenter = { 2134.77f, -262.307f };
+Position const ThorimArenaCenter = { 2134.77f, -262.307f };
 
 // used for lightning field calculation
-Position const LightningFieldCenter = { 2135.178f, -321.122f };
+Position const ThorimLightningFieldCenter = { 2135.178f, -321.122f };
 
-CircleBoundary const ArenaFloorCircle(ArenaCenter, 45.4);
-CircleBoundary const InvertedBalconyCircle(LightningFieldCenter, 32.0, true);
+CircleBoundary const ThorimArenaFloorCircle(ThorimArenaCenter, 45.4);
+CircleBoundary const ThorimInvertedBalconyCircle(ThorimLightningFieldCenter, 32.0, true);
 
-CreatureBoundary const ArenaBoundaries =
+CreatureBoundary const ThorimArenaBoundaries =
 {
-    &ArenaFloorCircle,
-    &InvertedBalconyCircle
+    &ThorimArenaFloorCircle,
+    &ThorimInvertedBalconyCircle
 };
 
-class HeightPositionCheck
+class ThorimHeightPositionCheck
 {
     public:
-        HeightPositionCheck(bool ret) : _ret(ret) { }
+        ThorimHeightPositionCheck(bool ret) : _ret(ret) { }
 
         bool operator()(Position const* pos) const
         {
@@ -368,7 +379,7 @@ class HeightPositionCheck
 
         static float const THORIM_BALCONY_Z_CHECK;
 };
-float const HeightPositionCheck::THORIM_BALCONY_Z_CHECK = 428.0f;
+float const ThorimHeightPositionCheck::THORIM_BALCONY_Z_CHECK = 428.0f;
 
 class RunicSmashExplosionEvent : public BasicEvent
 {
@@ -402,7 +413,7 @@ class TrashJumpEvent : public BasicEvent
                 case 1:
                     _owner->SetReactState(REACT_AGGRESSIVE);
                     _owner->AI()->DoZoneInCombat(_owner);
-                    _owner->AI()->SetBoundary(&ArenaBoundaries);
+                    _owner->AI()->SetBoundary(&ThorimArenaBoundaries);
                     return true;
                 default:
                     break;
@@ -453,10 +464,12 @@ struct boss_thorim : public BossAI
     void Initialize()
     {
         _killedCount = 0;
+        _preAddCount = 0;
         _waveType = 0;
         _hardMode = true;
         _orbSummoned = false;
         _dontStandInTheLightning = true;
+        _arenaBoundarySet = false;
     }
 
     void Reset() override
@@ -481,8 +494,9 @@ struct boss_thorim : public BossAI
                 miniBoss->Respawn(true);
 
         // Spawn Pre Phase Adds
-        for (SummonLocation const& s : PreAddLocations)
-            me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s);
+        for (ThorimSummonLocation const& s : PreAddLocations)
+            if (me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s))
+                ++_preAddCount;
 
         if (GameObject* lever = instance->GetGameObject(DATA_THORIM_LEVER))
             lever->SetFlag(GO_FLAG_NOT_SELECTABLE);
@@ -499,6 +513,9 @@ struct boss_thorim : public BossAI
 
     void EnterEvadeMode(EvadeReason /*why*/) override
     {
+        if (_encounterFinished)
+            return;
+
         summons.DespawnAll();
         _DespawnAtEvade();
     }
@@ -507,6 +524,9 @@ struct boss_thorim : public BossAI
     {
         if (id == DATA_CHARGED_PILLAR)
         {
+            if (Creature* prevPillar = ObjectAccessor::GetCreature(*me, _activePillarGUID))
+                prevPillar->RemoveAllAuras();
+
             _activePillarGUID = guid;
 
             if (Creature* pillar = ObjectAccessor::GetCreature(*me, _activePillarGUID))
@@ -605,7 +625,8 @@ struct boss_thorim : public BossAI
             return;
 
         ResetThreatList();
-        SetBoundary(&ArenaBoundaries);
+        SetBoundary(&ThorimArenaBoundaries);
+        _arenaBoundarySet = true;
     }
 
     void JustEngagedWith(Unit* who) override
@@ -651,7 +672,7 @@ struct boss_thorim : public BossAI
                 std::function<void(Movement::MoveSplineInit&)> initializer = [](Movement::MoveSplineInit& init)
                 {
                     Movement::PointsArray path;
-                    path.reserve(LightningOrbPathSize);
+                    path.reserve(ThorimLightningOrbPathSize);
                     std::transform(std::begin(LightningOrbPath), std::end(LightningOrbPath), std::back_inserter(path), [](Position const& pos)
                     {
                         return G3D::Vector3(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ());
@@ -681,7 +702,7 @@ struct boss_thorim : public BossAI
 
     void UpdateAI(uint32 diff) override
     {
-        if (!UpdateVictim())
+        if (!_encounterFinished && !UpdateVictim())
             return;
 
         events.Update(diff);
@@ -724,10 +745,19 @@ struct boss_thorim : public BossAI
                     me->SetReactState(REACT_AGGRESSIVE);
                     me->SetDisableGravity(false);
                     me->SetControlled(false, UNIT_STATE_ROOT);
-                    me->GetMotionMaster()->MoveJump(2134.8f, -263.056f, 419.983f, me->GetOrientation(), 30.0f, 20.0f);
+                    me->GetMotionMaster()->MoveJump(ThorimArenaLandPos, 30.0f, 20.0f);
+                    events.ScheduleEvent(EVENT_SET_ARENA_BOUNDARY, 3s);
                     events.ScheduleEvent(EVENT_START_PERIODIC_CHARGE, 2s, 0, PHASE_2);
                     events.ScheduleEvent(EVENT_UNBALANCING_STRIKE, 15s, 0, PHASE_2);
                     events.ScheduleEvent(EVENT_CHAIN_LIGHTNING, 20s, 0, PHASE_2);
+                    break;
+                case EVENT_SET_ARENA_BOUNDARY:
+                    if (!_arenaBoundarySet)
+                    {
+                        ResetThreatList();
+                        SetBoundary(&ThorimArenaBoundaries);
+                        _arenaBoundarySet = true;
+                    }
                     break;
                 case EVENT_UNBALANCING_STRIKE:
                     DoCastVictim(SPELL_UNBALANCING_STRIKE);
@@ -765,9 +795,9 @@ struct boss_thorim : public BossAI
                     me->GetCreatureListWithEntryInGrid(triggers, NPC_THORIM_EVENT_BUNNY, 100.0f);
                     triggers.remove_if([](Creature* bunny)
                     {
-                        if (HeightPositionCheck(false)(bunny))
+                        if (ThorimHeightPositionCheck(false)(bunny))
                             return true;
-                        return LightningFieldCenter.GetExactDist2dSq(bunny) > 1296.0f;
+                        return ThorimLightningFieldCenter.GetExactDist2dSq(bunny) > 1296.0f;
                     });
 
                     Milliseconds timer = 1s;
@@ -776,7 +806,7 @@ struct boss_thorim : public BossAI
 
                     triggers.remove_if([](Creature* bunny)
                     {
-                        return LightningFieldCenter.GetExactDist2dSq(bunny) < 576.0f;
+                        return ThorimLightningFieldCenter.GetExactDist2dSq(bunny) < 576.0f;
                     });
 
                     triggers.sort([](Creature* a, Creature* b)
@@ -814,7 +844,8 @@ struct boss_thorim : public BossAI
                 return;
         }
 
-        DoMeleeAttackIfReady();
+        if (!_encounterFinished)
+            DoMeleeAttackIfReady();
     }
 
     void DoAction(int32 action) override
@@ -825,6 +856,9 @@ struct boss_thorim : public BossAI
                 if (events.IsInPhase(PHASE_2))
                     return;
 
+                if (HasAlivePlayerInArena())
+                    return;
+
                 if (!_orbSummoned)
                 {
                     _orbSummoned = true;
@@ -832,7 +866,7 @@ struct boss_thorim : public BossAI
                 }
                 return;
             case ACTION_INCREASE_PREADDS_COUNT:
-                if (++_killedCount >= 6)
+                if (++_killedCount >= _preAddCount)
                 {
                     // Event starts
                     me->SetImmuneToPC(false);
@@ -849,9 +883,9 @@ struct boss_thorim : public BossAI
         me->GetCreatureListWithEntryInGrid(triggerList, NPC_THORIM_EVENT_BUNNY, 100.0f);
         triggerList.remove_if([](Creature* bunny)
         {
-            if (HeightPositionCheck(false)(bunny))
+            if (ThorimHeightPositionCheck(false)(bunny))
                 return true;
-            return ArenaCenter.GetExactDist2dSq(bunny) < 3025.0f;
+            return ThorimArenaCenter.GetExactDist2dSq(bunny) < 3025.0f;
         });
 
         if (triggerList.empty())
@@ -878,7 +912,7 @@ struct boss_thorim : public BossAI
                 GetTrashSpawnTriggers(triggers, urand(5, 6));
 
                 for (Creature* bunny : triggers)
-                    me->SummonCreature(StaticThorimTrashInfo[6 + 3].Entry, *bunny, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s);
+                    me->SummonCreature(StaticThorimTrashInfo[TRASH_INDEX_COMMONER].Entry, *bunny, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s);
 
                 ++_waveType;
                 break;
@@ -886,12 +920,12 @@ struct boss_thorim : public BossAI
             case 1:
                 if (urand(0, 1))
                 {
-                    // Dark Rune Champion or Dark Rune Evoker
+                    // Dark Rune Champion, Warbringer or Evoker
                     std::list<Creature*> triggers;
                     GetTrashSpawnTriggers(triggers, urand(2, 4));
 
                     for (Creature* bunny : triggers)
-                        me->SummonCreature(StaticThorimTrashInfo[6 + RAND(0, 2)].Entry, *bunny, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s);
+                        me->SummonCreature(StaticThorimTrashInfo[TRASH_INDEX_CHAMPION + RAND(0, 2)].Entry, *bunny, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s);
                 }
                 else
                 {
@@ -900,7 +934,7 @@ struct boss_thorim : public BossAI
                     GetTrashSpawnTriggers(triggers);
 
                     for (Creature* bunny : triggers)
-                        me->SummonCreature(StaticThorimTrashInfo[6 + 1].Entry, *bunny, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s);
+                        me->SummonCreature(StaticThorimTrashInfo[TRASH_INDEX_WARBRINGER].Entry, *bunny, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s);
                 }
                 --_waveType;
                 break;
@@ -937,18 +971,32 @@ struct boss_thorim : public BossAI
         else if (me->HealthBelowPctDamaged(1, damage))
         {
             damage = 0;
-            FinishEncounter();
+            if (events.IsInPhase(PHASE_2))
+                FinishEncounter();
         }
     }
 
 private:
+    bool HasAlivePlayerInArena() const
+    {
+        Map::PlayerList const& players = me->GetMap()->GetPlayers();
+        for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+            if (Player* player = itr->GetSource())
+                if (player->IsAlive() && !player->IsGameMaster() && ThorimHeightPositionCheck(false)(player) && ThorimArenaFloorCircle.IsWithinBoundary(player))
+                    return true;
+
+        return false;
+    }
+
     ObjectGuid _activePillarGUID;
     uint8 _killedCount;
+    uint8 _preAddCount;
     uint8 _waveType;
     bool _hardMode;
     bool _encounterFinished;
     bool _orbSummoned;
     bool _dontStandInTheLightning;
+    bool _arenaBoundarySet;
 };
 
 struct npc_thorim_trashAI : public ScriptedAI
@@ -1215,7 +1263,7 @@ struct npc_thorim_arena_phase : public npc_thorim_trashAI
             case DARK_RUNE_ACOLYTE:
             {
                 _isInArena = (_info->Entry == NPC_DARK_RUNE_ACOLYTE_PRE);
-                SetBoundary(&ArenaBoundaries, !_isInArena);
+                SetBoundary(&ThorimArenaBoundaries, !_isInArena);
                 break;
             }
             default:
@@ -1227,7 +1275,7 @@ struct npc_thorim_arena_phase : public npc_thorim_trashAI
     bool CanAIAttack(Unit const* who) const override
     {
         // don't try to attack players in balcony
-        if (_isInArena && HeightPositionCheck(true)(who))
+        if (_isInArena && ThorimHeightPositionCheck(true)(who))
             return false;
 
         return IsInBoundary(who);
@@ -1312,7 +1360,7 @@ struct npc_thorim_minibossAI : public ScriptedAI
     {
         _instance = creature->GetInstanceScript();
 
-        SetBoundary(&ArenaBoundaries, true);
+        SetBoundary(&ThorimArenaBoundaries, true);
     }
 
     bool CanAIAttack(Unit const* who) const final override
@@ -1368,7 +1416,7 @@ struct npc_runic_colossus : public npc_thorim_minibossAI
 
         // Spawn trashes
         _summons.DespawnAll();
-        for (SummonLocation const& s : ColossusAddLocations)
+        for (ThorimSummonLocation const& s : ColossusAddLocations)
             me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s);
     }
 
@@ -1478,7 +1526,7 @@ struct npc_ancient_rune_giant : public npc_thorim_minibossAI
 
         // Spawn trashes
         _summons.DespawnAll();
-        for (SummonLocation const& s : GiantAddLocations)
+        for (ThorimSummonLocation const& s : GiantAddLocations)
             me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s);
     }
 
@@ -1694,7 +1742,7 @@ class spell_thorim_charge_orb : public SpellScript
 
     void FilterTargets(std::list<WorldObject*>& targets)
     {
-        targets.remove_if(HeightPositionCheck(false));
+        targets.remove_if(ThorimHeightPositionCheck(false));
 
         if (targets.empty())
             return;
@@ -1772,7 +1820,7 @@ struct OutOfArenaCheck
 {
     bool operator()(Position const* who) const
     {
-        return !CreatureAI::IsInBounds(ArenaBoundaries, who);
+        return !CreatureAI::IsInBounds(ThorimArenaBoundaries, who);
     }
 };
 
@@ -1788,7 +1836,7 @@ class spell_thorim_stormhammer : public SpellScript
 
     void FilterTargets(std::list<WorldObject*>& targets)
     {
-        targets.remove_if([](WorldObject* target) -> bool { return HeightPositionCheck(true)(target) || OutOfArenaCheck()(target); });
+        targets.remove_if([](WorldObject* target) -> bool { return ThorimHeightPositionCheck(true)(target) || OutOfArenaCheck()(target); });
 
         if (targets.empty())
         {
@@ -1900,20 +1948,6 @@ class spell_thorim_runic_smash : public SpellScript
     }
 };
 
-class UpperOrbCheck
-{
-    public:
-        UpperOrbCheck() : _check(true) { }
-
-        bool operator() (Creature* target) const
-        {
-            return target->GetEntry() == NPC_THUNDER_ORB && _check(target);
-        }
-
-    private:
-        HeightPositionCheck const _check;
-};
-
 // 62184 - Activate Lightning Orb Periodic
 class spell_thorim_activate_lightning_orb_periodic : public AuraScript
 {
@@ -1926,11 +1960,9 @@ class spell_thorim_activate_lightning_orb_periodic : public AuraScript
         PreventDefaultAction();
 
         Unit* caster = GetCaster();
-        std::vector<Creature*> triggers;
-
-        UpperOrbCheck check;
-        Trinity::CreatureListSearcher<UpperOrbCheck> searcher(caster, triggers, check);
-        Cell::VisitGridObjects(caster, searcher, 100.f);
+        std::list<Creature*> triggers;
+        caster->GetCreatureListWithEntryInGrid(triggers, NPC_THUNDER_ORB, 100.0f);
+        triggers.remove_if(ThorimHeightPositionCheck(false));
 
         if (!triggers.empty())
         {
@@ -2028,7 +2060,7 @@ class condition_thorim_arena_leap : public ConditionScript
         }
 
     private:
-        HeightPositionCheck _check;
+        ThorimHeightPositionCheck _check;
 };
 
 void AddSC_boss_thorim()
