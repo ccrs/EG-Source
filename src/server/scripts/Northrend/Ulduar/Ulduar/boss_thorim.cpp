@@ -411,6 +411,7 @@ class TrashJumpEvent : public BasicEvent
                     _owner->m_Events.AddEvent(this, Milliseconds(eventTime) + 2s);
                     return false;
                 case 1:
+                    _owner->SetImmuneToPC(false);
                     _owner->SetReactState(REACT_AGGRESSIVE);
                     _owner->AI()->DoZoneInCombat(_owner);
                     _owner->AI()->SetBoundary(&ThorimArenaBoundaries);
@@ -494,9 +495,39 @@ struct boss_thorim : public BossAI
                 miniBoss->Respawn(true);
 
         // Spawn Pre Phase Adds
+        std::vector<Creature*> preAdds;
         for (ThorimSummonLocation const& s : PreAddLocations)
-            if (me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s))
+            if (Creature* preAdd = me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s))
+            {
                 ++_preAddCount;
+                preAdds.push_back(preAdd);
+            }
+
+        uint32 const ironFaction = 1693; // Jormungar Behemoth faction template (hostile to the mercenaries)
+        for (Creature* preAdd : preAdds)
+            if (preAdd->GetEntry() == NPC_DARK_RUNE_ACOLYTE_PRE)
+                preAdd->SetFaction(ironFaction);
+
+        for (Creature* preAdd : preAdds)
+        {
+            Creature* foe = nullptr;
+            float closestDist = 0.0f;
+            for (Creature* other : preAdds)
+            {
+                if (other == preAdd || !preAdd->IsValidAttackTarget(other))
+                    continue;
+
+                float dist = preAdd->GetExactDist(other);
+                if (!foe || dist < closestDist)
+                {
+                    foe = other;
+                    closestDist = dist;
+                }
+            }
+
+            if (foe)
+                preAdd->AI()->AttackStart(foe);
+        }
 
         if (GameObject* lever = instance->GetGameObject(DATA_THORIM_LEVER))
             lever->SetFlag(GO_FLAG_NOT_SELECTABLE);
@@ -688,8 +719,10 @@ struct boss_thorim : public BossAI
             case NPC_DARK_RUNE_EVOKER:
             case NPC_DARK_RUNE_COMMONER:
                 summon->SetReactState(REACT_PASSIVE);
+                summon->SetImmuneToPC(true);
                 summon->m_Events.AddEvent(new TrashJumpEvent(summon), summon->m_Events.CalculateTime(3s));
-                break;
+                summons.Summon(summon);
+                return;
             case NPC_SIF:
                 summon->SetReactState(REACT_PASSIVE);
                 break;
@@ -1804,15 +1837,38 @@ class spell_thorim_arena_leap : public SpellScript
         return GetCaster()->GetTypeId() == TYPEID_UNIT;
     }
 
-    void HandleScript(SpellEffIndex /*effIndex*/)
+    void HandleJump(SpellEffIndex effIndex)
     {
-        if (Position const* pos = GetHitDest())
-            GetCaster()->ToCreature()->SetHomePosition(*pos);
+        PreventHitDefaultEffect(effIndex);
+
+        Creature* caster = GetCaster()->ToCreature();
+
+        std::list<Creature*> bunnies;
+        caster->GetCreatureListWithEntryInGrid(bunnies, NPC_THORIM_EVENT_BUNNY, 60.0f);
+        bunnies.remove_if([](Creature* bunny) { return ThorimHeightPositionCheck(true)(bunny); });
+
+        Creature* floorBunny = nullptr;
+        float closestDistSq = 0.0f;
+        for (Creature* bunny : bunnies)
+        {
+            float distSq = caster->GetExactDist2dSq(bunny);
+            if (!floorBunny || distSq < closestDistSq)
+            {
+                floorBunny = bunny;
+                closestDistSq = distSq;
+            }
+        }
+
+        if (!floorBunny)
+            return;
+
+        caster->SetHomePosition(*floorBunny);
+        caster->GetMotionMaster()->MoveJump(*floorBunny, 30.0f, 20.0f);
     }
 
     void Register() override
     {
-        OnEffectLaunch += SpellEffectFn(spell_thorim_arena_leap::HandleScript, EFFECT_0, SPELL_EFFECT_JUMP_DEST);
+        OnEffectLaunch += SpellEffectFn(spell_thorim_arena_leap::HandleJump, EFFECT_0, SPELL_EFFECT_JUMP_DEST);
     }
 };
 
