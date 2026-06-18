@@ -322,7 +322,8 @@ struct boss_victor_nefarius : public BossAI
                                     nefarian->SetFarVisible(true);
                                     nefarian->SetCanFly(true);
                                     nefarian->SetDisableGravity(true);
-                                    nefarian->CastSpell(nullptr, SPELL_SHADOWFLAME_INITIAL);
+                                    nefarian->SetReactState(REACT_PASSIVE);
+                                    nefarian->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
                                     nefarian->SetHomePosition(NefarianLoc[1]);
                                     nefarian->GetMotionMaster()->MovePoint(1, NefarianLoc[1]);
                                 }
@@ -385,6 +386,7 @@ struct boss_nefarian : public BossAI
 
     void JustEngagedWith(Unit* /*who*/) override
     {
+        DoCastSelf(SPELL_SHADOWFLAME_INITIAL);
         events.ScheduleEvent(EVENT_SHADOWFLAME, 12s);
         events.ScheduleEvent(EVENT_FEAR, 25s, 35s);
         events.ScheduleEvent(EVENT_VEILOFSHADOW, 25s, 35s);
@@ -417,6 +419,8 @@ struct boss_nefarian : public BossAI
         {
             me->SetCanFly(false);
             me->SetDisableGravity(false);
+            me->SetReactState(REACT_AGGRESSIVE);
+            me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
             DoZoneInCombat();
             if (me->GetVictim())
                 AttackStart(me->GetVictim());
@@ -496,50 +500,50 @@ struct boss_nefarian : public BossAI
                 case EVENT_CLASSCALL:
                     if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
                         switch (target->GetClass())
-                    {
-                        case CLASS_MAGE:
-                            Talk(SAY_MAGE);
-                            DoCast(me, SPELL_MAGE);
-                            break;
-                        case CLASS_WARRIOR:
-                            Talk(SAY_WARRIOR);
-                            DoCast(me, SPELL_WARRIOR);
-                            break;
-                        case CLASS_DRUID:
-                            Talk(SAY_DRUID);
-                            DoCast(target, SPELL_DRUID);
-                            break;
-                        case CLASS_PRIEST:
-                            Talk(SAY_PRIEST);
-                            DoCast(me, SPELL_PRIEST);
-                            break;
-                        case CLASS_PALADIN:
-                            Talk(SAY_PALADIN);
-                            DoCast(me, SPELL_PALADIN);
-                            break;
-                        case CLASS_SHAMAN:
-                            Talk(SAY_SHAMAN);
-                            DoCast(me, SPELL_SHAMAN);
-                            break;
-                        case CLASS_WARLOCK:
-                            Talk(SAY_WARLOCK);
-                            DoCast(me, SPELL_WARLOCK);
-                            break;
-                        case CLASS_HUNTER:
-                            Talk(SAY_HUNTER);
-                            DoCast(me, SPELL_HUNTER);
-                            break;
-                        case CLASS_ROGUE:
-                            Talk(SAY_ROGUE);
-                            DoCast(me, SPELL_ROGUE);
-                            break;
-                        case CLASS_DEATH_KNIGHT:
-                            Talk(SAY_DEATH_KNIGHT);
-                            DoCast(me, SPELL_DEATH_KNIGHT);
-                            break;
-                        default:
-                            break;
-                    }
+                        {
+                            case CLASS_MAGE:
+                                Talk(SAY_MAGE);
+                                DoCast(me, SPELL_MAGE);
+                                break;
+                            case CLASS_WARRIOR:
+                                Talk(SAY_WARRIOR);
+                                DoCast(me, SPELL_WARRIOR);
+                                break;
+                            case CLASS_DRUID:
+                                Talk(SAY_DRUID);
+                                DoCast(target, SPELL_DRUID);
+                                break;
+                            case CLASS_PRIEST:
+                                Talk(SAY_PRIEST);
+                                DoCast(me, SPELL_PRIEST);
+                                break;
+                            case CLASS_PALADIN:
+                                Talk(SAY_PALADIN);
+                                DoCast(me, SPELL_PALADIN);
+                                break;
+                            case CLASS_SHAMAN:
+                                Talk(SAY_SHAMAN);
+                                DoCast(me, SPELL_SHAMAN);
+                                break;
+                            case CLASS_WARLOCK:
+                                Talk(SAY_WARLOCK);
+                                DoCast(me, SPELL_WARLOCK);
+                                break;
+                            case CLASS_HUNTER:
+                                Talk(SAY_HUNTER);
+                                DoCast(me, SPELL_HUNTER);
+                                break;
+                            case CLASS_ROGUE:
+                                Talk(SAY_ROGUE);
+                                DoCast(me, SPELL_ROGUE);
+                                break;
+                            case CLASS_DEATH_KNIGHT:
+                                Talk(SAY_DEATH_KNIGHT);
+                                DoCast(me, SPELL_DEATH_KNIGHT);
+                                break;
+                            default:
+                                break;
+                        }
                     events.ScheduleEvent(EVENT_CLASSCALL, 30s, 35s);
                     break;
             }
