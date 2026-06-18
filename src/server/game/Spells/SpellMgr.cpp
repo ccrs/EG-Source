@@ -3042,6 +3042,16 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->_GetEffect(EFFECT_0).BonusCoefficient = spellInfo->GetEffect(EFFECT_1).BonusCoefficient;
     });
 
+    // Frostfire Bolt
+    ApplySpellFix({
+        44614, // Rank 1
+        47610  // Rank 2
+        }, [](SpellInfo* spellInfo)
+    {
+        // DBC has no SP coefficient on the DoT effect
+        spellInfo->_GetEffect(EFFECT_2).BonusCoefficient = -1.0f;
+    });
+
     // Detect Undead
     ApplySpellFix({ 11389 }, [](SpellInfo* spellInfo)
     {
