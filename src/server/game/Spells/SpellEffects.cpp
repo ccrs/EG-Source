@@ -981,6 +981,9 @@ void Spell::CalculateJumpSpeeds(SpellEffectInfo const& spellEffectInfo, float di
     else
         height = Movement::gravity * durationSqr / 8;
 
+    // EG
+    height = std::min(height, std::max(dist, 0.5f));
+
     speedZ = std::sqrt(2 * Movement::gravity * height);
 }
 
