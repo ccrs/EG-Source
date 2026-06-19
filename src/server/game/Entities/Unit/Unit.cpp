@@ -8749,12 +8749,14 @@ void Unit::setDeathState(DeathState s)
             // EG - flag-based fall validation on death (avoid recalculation) + prevent motion re-init
             if (GetMotionMaster()->StopOnDeath())
             {
-                if (!HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED) && GetTypeId() == TYPEID_UNIT && needsToFall && !IsUnderWater())
+                float const floorZ = GetFloorZ();
+                float const fallTolerance = 0.1f;
+                if (!HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED) && GetTypeId() == TYPEID_UNIT && needsToFall && !IsUnderWater() && (GetPositionZ() - floorZ) > fallTolerance)
                 {
                     GetMotionMaster()->AddFlag(MOTIONMASTER_FLAG_STATIC_PREVENT_INITIALIZATION);
                     SetFall(true);
                     Movement::MoveSplineInit init(this);
-                    init.MoveTo(GetPositionX(), GetPositionY(), GetFloorZ(), false, true);
+                    init.MoveTo(GetPositionX(), GetPositionY(), floorZ, false, true);
                     init.SetFall();
                     init.Launch();
                 }
