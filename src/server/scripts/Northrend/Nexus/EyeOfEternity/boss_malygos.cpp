@@ -1223,7 +1223,9 @@ struct npc_melee_hover_disk : public VehicleAI
             me->GetMotionMaster()->Clear(MOTION_SLOT_ACTIVE);
             me->SetFaction(FACTION_FRIENDLY);
             me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-            me->GetMotionMaster()->MoveFall();
+            me->SetDisableGravity(false);
+            me->SetCanFly(false);
+            me->GetMotionMaster()->MoveFall(0, MalygosPositions[2].GetPositionZ());
         }
     }
 
@@ -1297,7 +1299,11 @@ struct npc_caster_hover_disk : public VehicleAI
                 unit->CastSpell(unit, SPELL_TELEPORT_VISUAL_ONLY);
         }
         else
-            me->GetMotionMaster()->MoveFall();
+        {
+            me->SetDisableGravity(false);
+            me->SetCanFly(false);
+            me->GetMotionMaster()->MoveFall(0, MalygosPositions[2].GetPositionZ());
+        }
     }
 
     void DoAction(int32 action) override
