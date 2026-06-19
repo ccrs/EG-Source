@@ -1009,10 +1009,13 @@ void MotionMaster::ResumeSplineChain(SplineChainResumeInfo const& info)
     Add(new SplineChainMovementGenerator(info));
 }
 
-void MotionMaster::MoveFall(uint32 id/* = 0*/)
+void MotionMaster::MoveFall(uint32 id/* = 0*/, Optional<float> groundZ /*= {}*/)
 {
     // Use larger distance for vmap height search than in most other cases
     float tz = _owner->GetMapHeight(_owner->GetPositionX(), _owner->GetPositionY(), _owner->GetPositionZ(), true, MAX_FALL_DISTANCE);
+
+    if (groundZ && tz < *groundZ)
+        tz = *groundZ;
     if (tz <= INVALID_HEIGHT)
     {
         TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::MoveFall: '{}', unable to retrieve a proper height at map Id: {} (X: {}, Y: {}, Z: {})",
