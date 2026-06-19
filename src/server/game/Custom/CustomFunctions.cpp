@@ -147,7 +147,7 @@ void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicl
                 bool const safePlacement = groundFound && (safePos.GetPositionZ() - waterOrGroundLevel) <= dropTolerance;
 
                 if (safePlacement)
-                    init.MoveTo(safePos.GetPositionX(), safePos.GetPositionY(), groundHeight + 0.5f, false);
+                    init.MoveTo(safePos.GetPositionX(), safePos.GetPositionY(), groundHeight + 0.25f, false);
                 else if (groundFound && serverDrivenFallEligible)
                 {
                     init.SetFall();
