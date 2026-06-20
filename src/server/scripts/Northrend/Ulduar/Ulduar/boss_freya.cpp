@@ -176,6 +176,13 @@ enum FreyaActions
     ACTION_ELDER_FREYA_KILLED                    = 1
 };
 
+enum FreyaTrioLasherType
+{
+    LASHER_TYPE_WATER_SPIRIT                     = 1,
+    LASHER_TYPE_STORM_LASHER                     = 2,
+    LASHER_TYPE_SNAPLASHER                       = 4
+};
+
 enum FreyaEvents
 {
     // Freya
@@ -334,30 +341,29 @@ struct boss_freya : public BossAI
             if (Elder[n] && Elder[n]->IsAlive())
             {
                 me->AddAura(SPELL_DRAINED_OF_POWER, Elder[n]);
-                Elder[n]->CastSpell(me, SPELL_IRONBRANCH_ESSENCE, true);
-                Elder[n]->RemoveLootMode(LOOT_MODE_DEFAULT); //! Why?
+                Elder[n]->RemoveLootMode(LOOT_MODE_DEFAULT); // banished elders drop no loot in hard mode
                 Elder[n]->AI()->AttackStart(who);
                 AddThreat(who, 250.0f, Elder[n]);
                 ++elderCount;
             }
         }
 
-        if (Elder[0] && Elder[0]->IsAlive())
+        if (Elder[0] && Elder[0]->IsAlive()) // Brightleaf - magic-damage essence + Sun Beam
         {
             Elder[0]->CastSpell(me, SPELL_BRIGHTLEAF_ESSENCE, true);
             events.ScheduleEvent(EVENT_UNSTABLE_ENERGY, 10s, 20s);
         }
 
-        if (Elder[1] && Elder[1]->IsAlive())
+        if (Elder[1] && Elder[1]->IsAlive()) // Ironbranch - allies' physical-damage essence + Iron Roots
         {
-            Elder[1]->CastSpell(me, SPELL_STONEBARK_ESSENCE, true);
-            events.ScheduleEvent(EVENT_GROUND_TREMOR, 10s, 20s);
+            Elder[1]->CastSpell(me, SPELL_IRONBRANCH_ESSENCE, true);
+            events.ScheduleEvent(EVENT_STRENGTHENED_IRON_ROOTS, 10s, 20s);
         }
 
-        if (Elder[2] && Elder[2]->IsAlive())
+        if (Elder[2] && Elder[2]->IsAlive()) // Stonebark - Freya's physical-damage essence + Ground Tremor
         {
-            Elder[2]->CastSpell(me, SPELL_IRONBRANCH_ESSENCE, true);
-            events.ScheduleEvent(EVENT_STRENGTHENED_IRON_ROOTS, 10s, 20s);
+            Elder[2]->CastSpell(me, SPELL_STONEBARK_ESSENCE, true);
+            events.ScheduleEvent(EVENT_GROUND_TREMOR, 10s, 20s);
         }
 
         if (elderCount == 0)
@@ -422,7 +428,7 @@ struct boss_freya : public BossAI
                     break;
                 case EVENT_WAVE:
                     SpawnWave();
-                    if (waveCount <= 6) // If set to 6 The Bombs appear during the Final Add wave
+                    if (waveCount < 6) // 6 add waves total; Nature Bombs begin right after the final wave
                         events.ScheduleEvent(EVENT_WAVE, FREYA_WAVE_TIME);
                     else
                         events.ScheduleEvent(EVENT_NATURE_BOMB, 10s, 20s);
@@ -482,7 +488,11 @@ struct boss_freya : public BossAI
                                 if (Elemental[n][i]->IsAlive())
                                     Elemental[n][i]->SetHealth(Elemental[n][i]->GetMaxHealth());
                                 else
-                                    Elemental[n][i]->Respawn();
+                                {
+                                    Elemental[n][i]->setDeathState(ALIVE);
+                                    Elemental[n][i]->SetHealth(Elemental[n][i]->GetMaxHealth());
+                                    DoZoneInCombat(Elemental[n][i]);
+                                }
                             }
                         }
                     }
@@ -536,7 +546,7 @@ struct boss_freya : public BossAI
             }
             if ((deforestation[5][0] - deforestation[0][0]) < 10000)     // Time check
             {
-                if (n == 14 && instance)                                 // Binary mask check - verification of lasher types
+                if (n == (LASHER_TYPE_WATER_SPIRIT + LASHER_TYPE_STORM_LASHER + LASHER_TYPE_SNAPLASHER) * 2 && instance) // two of each type
                 {
                     instance->DoCastSpellOnPlayers(SPELL_DEFORESTATION_CREDIT);
                 }
@@ -619,7 +629,6 @@ struct boss_freya : public BossAI
                 Elder->RemoveAllAuras();
                 Elder->AttackStop();
                 Elder->CombatStop(true);
-                EngagementOver();
                 Elder->AI()->DoAction(ACTION_ELDER_FREYA_KILLED);
             }
         }
@@ -640,12 +649,14 @@ struct boss_freya : public BossAI
                 break;
             case NPC_DETONATING_LASHER:
             case NPC_ANCIENT_CONSERVATOR:
-            default:
                 summons.Summon(summoned);
                 break;
+            default:
+                summons.Summon(summoned);
+                return;
         }
 
-        // Need to have it there, or summoned units would do nothing untill attacked
+        // Combat adds need to be sent at a target, or they idle until attacked.
         if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 250.0f, true))
         {
             summoned->AI()->AttackStart(target);
@@ -670,6 +681,16 @@ struct boss_freya : public BossAI
                 summons.Despawn(summoned);
                 break;
         }
+    }
+
+    void SetGUID(ObjectGuid const& guid, int32 id) override
+    {
+        for (uint8 wave = 0; wave < 2; ++wave)
+            for (uint8 pos = 0; pos < 3; ++pos)
+                if (ElementalGUID[pos][wave] == guid)
+                    checkElementalAlive[wave] = false;
+
+        LasherDead(uint32(id));
     }
 };
 
@@ -980,9 +1001,9 @@ struct npc_detonating_lasher : public ScriptedAI
 
         if (changeTargetTimer <= diff)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
+            // Detonating Lashers chase the furthest player, resetting aggro every few seconds
+            if (Unit* target = SelectTarget(SelectTargetMethod::MaxDistance, 0, 100.0f, true))
             {
-                // Switching to other target - modify aggro of new target by 20% from current target's aggro
                 AddThreat(target, GetThreat(me->GetVictim()) * 1.2f);
                 AttackStart(target);
             }
@@ -1004,11 +1025,6 @@ struct npc_ancient_water_spirit : public ScriptedAI
     npc_ancient_water_spirit(Creature* creature) : ScriptedAI(creature)
     {
         Initialize();
-        instance = me->GetInstanceScript();
-        if (Creature* freya = instance->GetCreature(DATA_FREYA))
-            waveCount = ENSURE_AI(boss_freya, freya->AI())->trioWaveCount;
-        else
-            waveCount = 0;
     }
 
     void Initialize()
@@ -1043,17 +1059,13 @@ struct npc_ancient_water_spirit : public ScriptedAI
 
     void JustDied(Unit* /*killer*/) override
     {
-        if (Creature* freya = instance->GetCreature(DATA_FREYA))
-        {
-            ENSURE_AI(boss_freya, freya->AI())->checkElementalAlive[waveCount] = false;
-            ENSURE_AI(boss_freya, freya->AI())->LasherDead(1);
-        }
+        if (InstanceScript* instance = me->GetInstanceScript())
+            if (Creature* freya = instance->GetCreature(DATA_FREYA))
+                freya->AI()->SetGUID(me->GetGUID(), LASHER_TYPE_WATER_SPIRIT);
     }
 
 private:
-    InstanceScript* instance;
     uint32 tidalWaveTimer;
-    uint8 waveCount;
 };
 
 struct npc_storm_lasher : public ScriptedAI
@@ -1061,11 +1073,6 @@ struct npc_storm_lasher : public ScriptedAI
     npc_storm_lasher(Creature* creature) : ScriptedAI(creature)
     {
         Initialize();
-        instance = me->GetInstanceScript();
-        if (Creature* freya = instance->GetCreature(DATA_FREYA))
-            waveCount = ENSURE_AI(boss_freya, freya->AI())->trioWaveCount;
-        else
-            waveCount = 0;
     }
 
     void Initialize()
@@ -1106,30 +1113,19 @@ struct npc_storm_lasher : public ScriptedAI
 
     void JustDied(Unit* /*killer*/) override
     {
-        if (Creature* freya = instance->GetCreature(DATA_FREYA))
-        {
-            ENSURE_AI(boss_freya, freya->AI())->checkElementalAlive[waveCount] = false;
-            ENSURE_AI(boss_freya, freya->AI())->LasherDead(2);
-        }
+        if (InstanceScript* instance = me->GetInstanceScript())
+            if (Creature* freya = instance->GetCreature(DATA_FREYA))
+                freya->AI()->SetGUID(me->GetGUID(), LASHER_TYPE_STORM_LASHER);
     }
 
 private:
-    InstanceScript* instance;
     uint32 lightningLashTimer;
     uint32 stormboltTimer;
-    uint8 waveCount;
 };
 
 struct npc_snaplasher : public ScriptedAI
 {
-    npc_snaplasher(Creature* creature) : ScriptedAI(creature)
-    {
-        instance = me->GetInstanceScript();
-        if (Creature* freya = instance->GetCreature(DATA_FREYA))
-            waveCount = ENSURE_AI(boss_freya, freya->AI())->trioWaveCount;
-        else
-            waveCount = 0;
-    }
+    npc_snaplasher(Creature* creature) : ScriptedAI(creature) { }
 
     void UpdateAI(uint32 /*diff*/) override
     {
@@ -1144,16 +1140,10 @@ struct npc_snaplasher : public ScriptedAI
 
     void JustDied(Unit* /*killer*/) override
     {
-        if (Creature* freya = instance->GetCreature(DATA_FREYA))
-        {
-            ENSURE_AI(boss_freya, freya->AI())->checkElementalAlive[waveCount] = false;
-            ENSURE_AI(boss_freya, freya->AI())->LasherDead(4);
-        }
+        if (InstanceScript* instance = me->GetInstanceScript())
+            if (Creature* freya = instance->GetCreature(DATA_FREYA))
+                freya->AI()->SetGUID(me->GetGUID(), LASHER_TYPE_SNAPLASHER);
     }
-
-private:
-    InstanceScript* instance;
-    uint8 waveCount;
 };
 
 struct npc_ancient_conservator : public ScriptedAI
@@ -1186,9 +1176,9 @@ struct npc_ancient_conservator : public ScriptedAI
         }
     }
 
-    void JustEngagedWith(Unit* who) override
+    void JustEngagedWith(Unit* /*who*/) override
     {
-        DoCast(who, SPELL_CONSERVATOR_GRIP, true);
+        DoCastSelf(SPELL_CONSERVATOR_GRIP, true);
     }
 
     void UpdateAI(uint32 diff) override
@@ -1306,14 +1296,10 @@ struct npc_nature_bomb : public ScriptedAI
     {
         if (bombTimer <= diff)
         {
-            if (GameObject* go = me->FindNearestGameObject(OBJECT_NATURE_BOMB, 1.0f))
-            {
-                DoCast(me, SPELL_NATURE_BOMB);
+            DoCast(me, SPELL_NATURE_BOMB);
+            if (GameObject* go = me->FindNearestGameObject(OBJECT_NATURE_BOMB, 5.0f))
                 me->RemoveGameObject(go, true);
-                me->RemoveFromWorld();
-            }
-
-            bombTimer = 10000;
+            me->DespawnOrUnsummon();
         }
         else
             bombTimer -= diff;
@@ -1330,7 +1316,6 @@ struct npc_unstable_sun_beam : public ScriptedAI
         SetCombatMovement(false);
 
         despawnTimer = urand(7000, 12000);
-        instance = me->GetInstanceScript();
         DoCast(me, SPELL_PHOTOSYNTHESIS);
         DoCast(me, SPELL_UNSTABLE_SUN_BEAM);
         me->SetReactState(REACT_PASSIVE);
@@ -1341,7 +1326,7 @@ struct npc_unstable_sun_beam : public ScriptedAI
         if (despawnTimer <= diff)
         {
             DoCastAOE(SPELL_UNSTABLE_ENERGY, true);
-            me->DisappearAndDie();
+            me->DespawnOrUnsummon();
         }
         else
             despawnTimer -= diff;
@@ -1361,7 +1346,6 @@ struct npc_unstable_sun_beam : public ScriptedAI
     }
 
 private:
-    InstanceScript* instance;
     uint32 despawnTimer;
 };
 
