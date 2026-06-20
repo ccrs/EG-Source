@@ -329,6 +329,8 @@ DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` 
 
 -- Champion of Hodir (34133/34139)
 UPDATE `creature_template` SET `mechanic_immune_mask` = 617299839 WHERE `entry` IN (34133, 34139);
+UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 34133;
+UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 34139;
 
 SET @ENTRY := 34133;
 UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
