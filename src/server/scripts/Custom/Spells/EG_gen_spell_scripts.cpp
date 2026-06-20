@@ -477,6 +477,50 @@ class EG_spell_energy_sap : public AuraScript
     }
 };
 
+enum HealthySporeSummonPeriodic
+{
+    SPELL_SPORE_SUMMON_NW = 62582,
+    SPELL_SPORE_SUMMON_NE = 62591,
+    SPELL_SPORE_SUMMON_SE = 62592,
+    SPELL_SPORE_SUMMON_SW = 62593
+};
+
+// 62566 - Healthy Spore Summon Periodic
+class EG_spell_freya_summon_healthy_spore : public AuraScript
+{
+    PrepareAuraScript(EG_spell_freya_summon_healthy_spore);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_SPORE_SUMMON_NW, SPELL_SPORE_SUMMON_NE, SPELL_SPORE_SUMMON_SE, SPELL_SPORE_SUMMON_SW });
+    }
+
+    void SummonSpores()
+    {
+        Unit* target = GetTarget();
+        target->CastSpell(target, SPELL_SPORE_SUMMON_NW, true);
+        target->CastSpell(target, SPELL_SPORE_SUMMON_NE, true);
+        target->CastSpell(target, SPELL_SPORE_SUMMON_SE, true);
+        target->CastSpell(target, SPELL_SPORE_SUMMON_SW, true);
+    }
+
+    void HandleApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        SummonSpores();
+    }
+
+    void HandlePeriodic(AuraEffect const* /*aurEff*/)
+    {
+        SummonSpores();
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(EG_spell_freya_summon_healthy_spore::HandleApply, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_freya_summon_healthy_spore::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
@@ -496,4 +540,5 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_twilight_torment_phase);
     RegisterSpellScript(EG_spell_twilight_torment_trigger);
     RegisterSpellScript(EG_spell_energy_sap);
+    RegisterSpellScript(EG_spell_freya_summon_healthy_spore);
 }

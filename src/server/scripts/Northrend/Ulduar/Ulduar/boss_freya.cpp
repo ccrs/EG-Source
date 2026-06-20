@@ -15,16 +15,18 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "ulduar.h"
+#include "Containers.h"
+#include "GameTime.h"
 #include "InstanceScript.h"
 #include "Map.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "SpellAuras.h"
 #include "SpellScript.h"
 #include "TemporarySummon.h"
-#include "ulduar.h"
 
 enum FreyaYells
 {
@@ -116,10 +118,6 @@ enum FreyaSpells
     SPELL_CONSERVATOR_GRIP                       = 62532,
     SPELL_NATURE_FURY                            = 62589,
     SPELL_SUMMON_PERIODIC                        = 62566,
-    SPELL_SPORE_SUMMON_NW                        = 62582, // Not used, triggered by SPELL_SUMMON_PERIODIC
-    SPELL_SPORE_SUMMON_NE                        = 62591,
-    SPELL_SPORE_SUMMON_SE                        = 62592,
-    SPELL_SPORE_SUMMON_SW                        = 62593,
 
     // Healthly Spore
     SPELL_HEALTHY_SPORE_VISUAL                   = 62538,
@@ -141,7 +139,7 @@ enum FreyaSpells
     SPELL_UNSTABLE_ENERGY                        = 62217,
     SPELL_PHOTOSYNTHESIS                         = 62209,
     SPELL_UNSTABLE_SUN_BEAM_TRIGGERED            = 62243,
-    SPELL_FREYA_UNSTABLE_SUNBEAM                 = 62450, // Or maybe 62866?
+    SPELL_FREYA_UNSTABLE_SUNBEAM                 = 62450,
 
     // Sun Beam
     SPELL_FREYA_UNSTABLE_ENERGY                  = 62451,
@@ -183,6 +181,22 @@ enum FreyaTrioLasherType
     LASHER_TYPE_SNAPLASHER                       = 4
 };
 
+constexpr std::size_t DEFORESTATION_TRIO_KILLS = 6;
+constexpr uint32 DEFORESTATION_WINDOW_MS = 10000;
+
+struct TrioDeath
+{
+    uint32 time;
+    uint32 type;
+};
+
+struct TrioWave
+{
+    GuidVector members;       // the three elementals summoned for this wave
+    bool defeated = false;    // all three killed within the window -> gone for good
+    bool reviveArmed = false; // 12s revive timer running for this wave
+};
+
 enum FreyaEvents
 {
     // Freya
@@ -208,12 +222,15 @@ enum FreyaEvents
     // Elder Brightleaf
     EVENT_SOLAR_FLARE                            = 15,
     EVENT_UNSTABLE_SUN_BEAM                      = 16,
-    EVENT_FLUX                                   = 17
+    EVENT_FLUX                                   = 17,
+
+    // Trio elemental revive windows (one per wave)
+    EVENT_TRIO_REVIVE_0                          = 18,
+    EVENT_TRIO_REVIVE_1                          = 19
 };
 
 enum FreyaMisc
 {
-    TIME_DIFFERENCE                             = 10000, // If difference between waveTime and WAVE_TIME is bigger then TIME_DIFFERENCE, schedule EVENT_WAVE in 10 seconds
     DATA_GETTING_BACK_TO_NATURE                 = 1,
     DATA_KNOCK_ON_WOOD                          = 2
 };
@@ -225,9 +242,6 @@ struct npc_iron_roots : public ScriptedAI
     npc_iron_roots(Creature* creature) : ScriptedAI(creature)
     {
         SetCombatMovement(false);
-
-        me->ApplySpellImmune(0, IMMUNITY_ID, 49560, true); // Death Grip
-        me->SetFaction(FACTION_MONSTER);
         me->SetReactState(REACT_PASSIVE);
     }
 
@@ -263,48 +277,23 @@ struct boss_freya : public BossAI
     {
         _encounterFinished = false;
         Initialize();
-        memset(elementalTimer, 0, sizeof(elementalTimer));
-        diffTimer = 0;
-        attunedToNature = 0;
     }
 
     void Initialize()
     {
         trioWaveCount = 0;
-        trioWaveController = 0;
         waveCount = 0;
         elderCount = 0;
 
-        for (uint8 i = 0; i < 3; ++i)
-            for (uint8 n = 0; n < 2; ++n)
-                ElementalGUID[i][n].Clear();
-        for (uint8 i = 0; i < 6; ++i)
-            for (uint8 n = 0; n < 2; ++n)
-                deforestation[i][n] = 0;
-        for (uint8 n = 0; n < 2; ++n)
+        for (TrioWave& wave : _trioWaves)
         {
-            checkElementalAlive[n] = true;
-            trioDefeated[n] = false;
+            wave.members.clear();
+            wave.defeated = false;
+            wave.reviveArmed = false;
         }
-        for (uint8 n = 0; n < 3; ++n)
-            random[n] = false;
+        _trioDeaths.clear();
+        _waveBag.clear();
     }
-
-    ObjectGuid ElementalGUID[3][2];
-
-    uint32 deforestation[6][2];
-    uint32 elementalTimer[2];
-    uint32 diffTimer;
-    uint8 trioWaveCount;
-    uint8 trioWaveController;
-    uint8 waveCount;
-    uint8 elderCount;
-    uint8 attunedToNature;
-
-    bool checkElementalAlive[2];
-    bool trioDefeated[2];
-    bool random[3];
-    bool _encounterFinished;
 
     void Reset() override
     {
@@ -375,6 +364,8 @@ struct boss_freya : public BossAI
         args.AddSpellMod(SPELLVALUE_AURA_STACK, 150);
         me->CastSpell(me, SPELL_ATTUNED_TO_NATURE, args);
 
+        me->CastSpell(me, SPELL_TOUCH_OF_EONAR, true); // permanent, unremovable self-heal aura
+
         events.ScheduleEvent(EVENT_WAVE, 10s);
         events.ScheduleEvent(EVENT_EONAR_GIFT, 25s);
         events.ScheduleEvent(EVENT_ENRAGE, 10min);
@@ -386,7 +377,9 @@ struct boss_freya : public BossAI
         switch (type)
         {
             case DATA_GETTING_BACK_TO_NATURE:
-                return attunedToNature;
+                if (Aura const* aura = me->GetAura(SPELL_ATTUNED_TO_NATURE))
+                    return aura->GetStackAmount();
+                return 0;
             case DATA_KNOCK_ON_WOOD:
                 return elderCount;
         }
@@ -428,7 +421,7 @@ struct boss_freya : public BossAI
                     break;
                 case EVENT_WAVE:
                     SpawnWave();
-                    if (waveCount < 6) // 6 add waves total; Nature Bombs begin right after the final wave
+                    if (waveCount < 6)
                         events.ScheduleEvent(EVENT_WAVE, FREYA_WAVE_TIME);
                     else
                         events.ScheduleEvent(EVENT_NATURE_BOMB, 10s, 20s);
@@ -449,148 +442,17 @@ struct boss_freya : public BossAI
                     DoCastAOE(SPELL_FREYA_GROUND_TREMOR);
                     events.ScheduleEvent(EVENT_GROUND_TREMOR, 25s, 28s);
                     break;
+                case EVENT_TRIO_REVIVE_0:
+                case EVENT_TRIO_REVIVE_1:
+                    ReviveTrio(uint8(eventId - EVENT_TRIO_REVIVE_0));
+                    break;
             }
 
             if (me->HasUnitState(UNIT_STATE_CASTING))
                 return;
         }
 
-        if (!me->HasAura(SPELL_TOUCH_OF_EONAR))
-            me->CastSpell(me, SPELL_TOUCH_OF_EONAR, true);
-
-        // For achievement check
-        if (Aura* aura = me->GetAura(SPELL_ATTUNED_TO_NATURE))
-            attunedToNature = aura->GetStackAmount();
-        else
-            attunedToNature = 0;
-
-        diffTimer += diff;                                               // For getting time difference for Deforestation achievement
-
-        // Elementals must be killed within 12 seconds of each other, or they will all revive and heal
-        Creature* Elemental[3][2];
-        for (uint8 i = 0; i < 2; ++i)
-        {
-            if (checkElementalAlive[i])
-                elementalTimer[i] = 0;
-            else
-            {
-                elementalTimer[i] += diff;
-                for (uint8 k = 0; k < 3; ++k)
-                    Elemental[k][i] = ObjectAccessor::GetCreature(*me, ElementalGUID[k][i]);
-                if (elementalTimer[i] > 12000)
-                {
-                    if (!trioDefeated[i]) // Do *NOT* merge this bool with bool few lines below!
-                    {
-                        if (Elemental[0][i] && Elemental[1][i] && Elemental[2][i])
-                        {
-                            for (uint8 n = 0; n < 3; ++n)
-                            {
-                                if (Elemental[n][i]->IsAlive())
-                                    Elemental[n][i]->SetHealth(Elemental[n][i]->GetMaxHealth());
-                                else
-                                {
-                                    Elemental[n][i]->setDeathState(ALIVE);
-                                    Elemental[n][i]->SetHealth(Elemental[n][i]->GetMaxHealth());
-                                    DoZoneInCombat(Elemental[n][i]);
-                                }
-                            }
-                        }
-                    }
-                    checkElementalAlive[i] = true;
-                }
-                else
-                {
-                    if (!trioDefeated[i])
-                    {
-                        if (Elemental[0][i] && Elemental[1][i] && Elemental[2][i])
-                        {
-                            if (Elemental[0][i]->isDead() && Elemental[1][i]->isDead() && Elemental[2][i]->isDead())
-                            {
-                                for (uint8 n = 0; n < 3; ++n)
-                                {
-                                    summons.Despawn(Elemental[n][i]);
-                                    Elemental[n][i]->DespawnOrUnsummon(5s);
-                                    trioDefeated[i] = true;
-                                    Elemental[n][i]->CastSpell(me, SPELL_REMOVE_10STACK, true);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         DoMeleeAttackIfReady();
-    }
-
-    // Check if all Trio NPCs are dead - achievement check
-    void LasherDead(uint32 type)                                         // Type must be in format of a binary mask
-    {
-        uint8 n = 0;
-
-        // Handling received data
-        for (uint8 i = 0; i < 5; ++i)                                    // We have created "instances" for keeping informations about last 6 death lashers - needed because of respawning
-        {
-            deforestation[i][0] = deforestation[(i + 1)][0];             // Time
-            deforestation[i][1] = deforestation[(i + 1)][1];             // Type
-        }
-        deforestation[5][0] = diffTimer;
-        deforestation[5][1] = type;
-
-        // Check for achievement completion
-        if (deforestation[0][1])                                         // Check for proper functionality of binary masks (overflow would not be problem)
-        {
-            for (uint8 i = 0; i < 6; ++i)                                // Count binary mask
-            {
-                n += deforestation[i][1];
-            }
-            if ((deforestation[5][0] - deforestation[0][0]) < 10000)     // Time check
-            {
-                if (n == (LASHER_TYPE_WATER_SPIRIT + LASHER_TYPE_STORM_LASHER + LASHER_TYPE_SNAPLASHER) * 2 && instance) // two of each type
-                {
-                    instance->DoCastSpellOnPlayers(SPELL_DEFORESTATION_CREDIT);
-                }
-            }
-        }
-    }
-
-    // Random order of spawning waves
-    int GetWaveId()
-    {
-        if (random[0] && random[1] && random[2])
-            for (uint8 n = 0; n < 3; ++n)
-                random[n] = false;
-
-        uint8 randomId = urand(0, 2);
-
-        while (random[randomId])
-            randomId = urand(0, 2);
-
-        random[randomId] = true;
-        return randomId;
-    }
-
-    void SpawnWave()
-    {
-        switch (GetWaveId())
-        {
-            case 0:
-                Talk(SAY_SUMMON_LASHERS);
-                for (uint8 n = 0; n < 10; ++n)
-                    DoCast(SPELL_SUMMON_LASHERS);
-                break;
-            case 1:
-                Talk(SAY_SUMMON_TRIO);
-                DoCast(SPELL_SUMMON_TRIO);
-                trioWaveCount++;
-                break;
-            case 2:
-                Talk(SAY_SUMMON_CONSERVATOR);
-                DoCast(SPELL_SUMMON_ANCIENT_CONSERVATOR);
-                break;
-        }
-        Talk(EMOTE_ALLIES_OF_NATURE);
-        waveCount++;
     }
 
     void JustDied(Unit* /*killer*/) override
@@ -601,7 +463,7 @@ struct boss_freya : public BossAI
         _encounterFinished = true;
 
         //! Freya's chest is dynamically spawned on death by different spells.
-        const uint32 summonSpell[2][4] =
+        uint32 const summonSpell[2][4] =
         {
                       /* 0Elder, 1Elder, 2Elder, 3Elder */
             /* 10N */    {62950, 62952, 62953, 62954},
@@ -625,12 +487,7 @@ struct boss_freya : public BossAI
         {
             Creature* Elder = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BRIGHTLEAF + n));
             if (Elder && Elder->IsAlive())
-            {
-                Elder->RemoveAllAuras();
-                Elder->AttackStop();
-                Elder->CombatStop(true);
                 Elder->AI()->DoAction(ACTION_ELDER_FREYA_KILLED);
-            }
         }
     }
 
@@ -641,11 +498,9 @@ struct boss_freya : public BossAI
             case NPC_SNAPLASHER:
             case NPC_ANCIENT_WATER_SPIRIT:
             case NPC_STORM_LASHER:
-                ElementalGUID[trioWaveController][trioWaveCount] = summoned->GetGUID();
+                if (trioWaveCount < _trioWaves.size())
+                    _trioWaves[trioWaveCount].members.push_back(summoned->GetGUID());
                 summons.Summon(summoned);
-                ++trioWaveController;
-                if (trioWaveController > 2)
-                    trioWaveController = 0;
                 break;
             case NPC_DETONATING_LASHER:
             case NPC_ANCIENT_CONSERVATOR:
@@ -656,7 +511,6 @@ struct boss_freya : public BossAI
                 return;
         }
 
-        // Combat adds need to be sent at a target, or they idle until attacked.
         if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 250.0f, true))
         {
             summoned->AI()->AttackStart(target);
@@ -685,13 +539,146 @@ struct boss_freya : public BossAI
 
     void SetGUID(ObjectGuid const& guid, int32 id) override
     {
-        for (uint8 wave = 0; wave < 2; ++wave)
-            for (uint8 pos = 0; pos < 3; ++pos)
-                if (ElementalGUID[pos][wave] == guid)
-                    checkElementalAlive[wave] = false;
-
         LasherDead(uint32(id));
+
+        int8 const wave = GetTrioWave(guid);
+        if (wave < 0 || _trioWaves[wave].defeated)
+            return;
+
+        if (IsTrioDead(wave))
+            DefeatTrio(wave);
+        else if (!_trioWaves[wave].reviveArmed)
+        {
+            _trioWaves[wave].reviveArmed = true;
+            events.ScheduleEvent(EVENT_TRIO_REVIVE_0 + wave, 12s);
+        }
     }
+
+private:
+    void LasherDead(uint32 type)
+    {
+        _trioDeaths.push_back({ GameTime::GetGameTimeMS(), type });
+        if (_trioDeaths.size() > DEFORESTATION_TRIO_KILLS)
+            _trioDeaths.erase(_trioDeaths.begin());
+
+        if (!instance || _trioDeaths.size() < DEFORESTATION_TRIO_KILLS)
+            return;
+
+        uint32 typeSum = 0;
+        for (TrioDeath const& death : _trioDeaths)
+            typeSum += death.type;
+
+        uint32 const allTypesTwice = (LASHER_TYPE_WATER_SPIRIT + LASHER_TYPE_STORM_LASHER + LASHER_TYPE_SNAPLASHER) * 2;
+        if (typeSum == allTypesTwice && (_trioDeaths.back().time - _trioDeaths.front().time) < DEFORESTATION_WINDOW_MS)
+            instance->DoCastSpellOnPlayers(SPELL_DEFORESTATION_CREDIT);
+    }
+
+    uint8 GetWaveId()
+    {
+        if (_waveBag.empty())
+        {
+            _waveBag = { 0, 1, 2 };
+            Trinity::Containers::RandomShuffle(_waveBag);
+        }
+
+        uint8 const id = _waveBag.back();
+        _waveBag.pop_back();
+        return id;
+    }
+
+    void SpawnWave()
+    {
+        switch (GetWaveId())
+        {
+            case 0:
+                Talk(SAY_SUMMON_LASHERS);
+                for (uint8 n = 0; n < 10; ++n)
+                    DoCast(SPELL_SUMMON_LASHERS);
+                break;
+            case 1:
+                Talk(SAY_SUMMON_TRIO);
+                DoCast(SPELL_SUMMON_TRIO);
+                trioWaveCount++;
+                break;
+            case 2:
+                Talk(SAY_SUMMON_CONSERVATOR);
+                DoCast(SPELL_SUMMON_ANCIENT_CONSERVATOR);
+                break;
+        }
+        Talk(EMOTE_ALLIES_OF_NATURE);
+        waveCount++;
+    }
+
+    int8 GetTrioWave(ObjectGuid const& guid) const
+    {
+        for (std::size_t wave = 0; wave < _trioWaves.size(); ++wave)
+        {
+            GuidVector const& members = _trioWaves[wave].members;
+            if (std::find(members.begin(), members.end(), guid) != members.end())
+                return int8(wave);
+        }
+        return -1;
+    }
+
+    bool IsTrioDead(uint8 wave) const
+    {
+        for (ObjectGuid const& guid : _trioWaves[wave].members)
+        {
+            Creature const* elemental = ObjectAccessor::GetCreature(*me, guid);
+            if (!elemental || elemental->IsAlive())
+                return false;
+        }
+        return true;
+    }
+
+    void DefeatTrio(uint8 wave)
+    {
+        _trioWaves[wave].defeated = true;
+        events.CancelEvent(EVENT_TRIO_REVIVE_0 + wave);
+        for (ObjectGuid const& guid : _trioWaves[wave].members)
+            if (Creature* elemental = ObjectAccessor::GetCreature(*me, guid))
+            {
+                elemental->CastSpell(me, SPELL_REMOVE_10STACK, true);
+                summons.Despawn(elemental);
+                elemental->DespawnOrUnsummon(5s);
+            }
+    }
+
+    void ReviveTrio(uint8 wave)
+    {
+        _trioWaves[wave].reviveArmed = false;
+        if (_trioWaves[wave].defeated)
+            return;
+
+        std::vector<Creature*> elementals;
+        for (ObjectGuid const& guid : _trioWaves[wave].members)
+        {
+            Creature* elemental = ObjectAccessor::GetCreature(*me, guid);
+            if (!elemental)
+                return;
+            elementals.push_back(elemental);
+        }
+
+        for (Creature* elemental : elementals)
+        {
+            if (elemental->IsAlive())
+                elemental->SetHealth(elemental->GetMaxHealth());
+            else
+            {
+                elemental->setDeathState(ALIVE);
+                elemental->SetHealth(elemental->GetMaxHealth());
+                DoZoneInCombat(elemental);
+            }
+        }
+    }
+
+    uint8 trioWaveCount;
+    uint8 waveCount;
+    uint8 elderCount;
+    bool _encounterFinished;
+    std::array<TrioWave, 2> _trioWaves; // the two trio waves: members + defeated/revive state
+    std::vector<uint8> _waveBag; // shuffled bag of remaining wave ids for the current cycle
+    std::vector<TrioDeath> _trioDeaths; // recent trio deaths (time + type) for the Deforestation achievement
 };
 
 struct boss_elder_brightleaf : public BossAI
@@ -750,7 +737,7 @@ struct boss_elder_brightleaf : public BossAI
                 case EVENT_SOLAR_FLARE:
                 {
                     uint8 stackAmount = 0;
-                    if (Aura* aura = me->GetAura(SPELL_FLUX_AURA))
+                    if (Aura const* aura = me->GetAura(SPELL_FLUX_AURA))
                         stackAmount = aura->GetStackAmount();
                     CastSpellExtraArgs args;
                     args.AddSpellMod(SPELLVALUE_MAX_TARGETS, stackAmount);
@@ -779,6 +766,9 @@ struct boss_elder_brightleaf : public BossAI
         switch (action)
         {
             case ACTION_ELDER_FREYA_KILLED:
+                me->RemoveAllAuras();
+                me->AttackStop();
+                me->CombatStop(true);
                 me->DespawnOrUnsummon(10s);
                 _JustDied();
                 break;
@@ -877,6 +867,9 @@ struct boss_elder_stonebark : public BossAI
         switch (action)
         {
             case ACTION_ELDER_FREYA_KILLED:
+                me->RemoveAllAuras();
+                me->AttackStop();
+                me->CombatStop(true);
                 me->DespawnOrUnsummon(10s);
                 _JustDied();
                 break;
@@ -960,6 +953,9 @@ struct boss_elder_ironbranch : public BossAI
         switch (action)
         {
             case ACTION_ELDER_FREYA_KILLED:
+                me->RemoveAllAuras();
+                me->AttackStop();
+                me->CombatStop(true);
                 me->DespawnOrUnsummon(10s);
                 _JustDied();
                 break;
@@ -1001,7 +997,6 @@ struct npc_detonating_lasher : public ScriptedAI
 
         if (changeTargetTimer <= diff)
         {
-            // Detonating Lashers chase the furthest player, resetting aggro every few seconds
             if (Unit* target = SelectTarget(SelectTargetMethod::MaxDistance, 0, 100.0f, true))
             {
                 AddThreat(target, GetThreat(me->GetVictim()) * 1.2f);
@@ -1156,24 +1151,12 @@ struct npc_ancient_conservator : public ScriptedAI
     void Initialize()
     {
         natureFuryTimer = 7500;
-        healthySporeTimer = 3500;
     }
 
     void Reset() override
     {
         Initialize();
-        SummonHealthySpores(2);
-    }
-
-    void SummonHealthySpores(uint8 sporesCount)
-    {
-        for (uint8 n = 0; n < sporesCount; ++n)
-        {
-            DoCast(SPELL_SUMMON_PERIODIC);
-            DoCast(SPELL_SPORE_SUMMON_NE);
-            DoCast(SPELL_SPORE_SUMMON_SE);
-            DoCast(SPELL_SPORE_SUMMON_SW);
-        }
+        DoCastSelf(SPELL_SUMMON_PERIODIC, true);
     }
 
     void JustEngagedWith(Unit* /*who*/) override
@@ -1185,14 +1168,6 @@ struct npc_ancient_conservator : public ScriptedAI
     {
         if (!UpdateVictim())
             return;
-
-        if (healthySporeTimer <= diff)
-        {
-            SummonHealthySpores(1);
-            healthySporeTimer = urand(15000, 17500);
-        }
-        else
-            healthySporeTimer -= diff;
 
         if (natureFuryTimer <= diff)
         {
@@ -1209,15 +1184,14 @@ struct npc_ancient_conservator : public ScriptedAI
 
 private:
     uint32 natureFuryTimer;
-    uint32 healthySporeTimer;
 };
 
 struct npc_sun_beam : public ScriptedAI
 {
-    npc_sun_beam(Creature* creature) : ScriptedAI(creature)
+    npc_sun_beam(Creature* creature) : ScriptedAI(creature) { }
+
+    void JustAppeared() override
     {
-        SetCombatMovement(false);
-        me->SetReactState(REACT_PASSIVE);
         DoCastAOE(SPELL_FREYA_UNSTABLE_ENERGY_VISUAL, true);
         DoCast(SPELL_FREYA_UNSTABLE_ENERGY);
     }
@@ -1227,14 +1201,14 @@ struct npc_healthy_spore : public ScriptedAI
 {
     npc_healthy_spore(Creature* creature) : ScriptedAI(creature)
     {
-        SetCombatMovement(false);
-        me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_NON_ATTACKABLE);
-        me->SetImmuneToPC(true);
-        me->SetReactState(REACT_PASSIVE);
+        lifeTimer = urand(22000, 30000);
+    }
+
+    void JustAppeared() override
+    {
         DoCast(me, SPELL_HEALTHY_SPORE_VISUAL);
         DoCast(me, SPELL_POTENT_PHEROMONES);
         DoCast(me, SPELL_GROW);
-        lifeTimer = urand(22000, 30000);
     }
 
     void UpdateAI(uint32 diff) override
@@ -1258,8 +1232,12 @@ struct npc_eonars_gift : public ScriptedAI
     npc_eonars_gift(Creature* creature) : ScriptedAI(creature)
     {
         SetCombatMovement(false);
-
+        me->SetReactState(REACT_PASSIVE);
         lifeBindersGiftTimer = 12000;
+    }
+
+    void JustAppeared() override
+    {
         DoCast(me, SPELL_GROW);
         DoCast(me, SPELL_PHEROMONES, true);
         DoCast(me, SPELL_EONAR_VISUAL, true);
@@ -1286,9 +1264,11 @@ struct npc_nature_bomb : public ScriptedAI
 {
     npc_nature_bomb(Creature* creature) : ScriptedAI(creature)
     {
-        SetCombatMovement(false);
-
         bombTimer = urand(8000, 10000);
+    }
+
+    void JustAppeared() override
+    {
         DoCast(SPELL_OBJECT_BOMB);
     }
 
@@ -1313,12 +1293,13 @@ struct npc_unstable_sun_beam : public ScriptedAI
 {
     npc_unstable_sun_beam(Creature* creature) : ScriptedAI(creature)
     {
-        SetCombatMovement(false);
-
         despawnTimer = urand(7000, 12000);
+    }
+
+    void JustAppeared() override
+    {
         DoCast(me, SPELL_PHOTOSYNTHESIS);
         DoCast(me, SPELL_UNSTABLE_SUN_BEAM);
-        me->SetReactState(REACT_PASSIVE);
     }
 
     void UpdateAI(uint32 diff) override
@@ -1397,11 +1378,11 @@ class spell_freya_iron_roots : public SpellScript
     void HandleSummon(SpellEffIndex effIndex)
     {
         PreventHitDefaultEffect(effIndex);
-        uint32 entry = uint32(GetEffectInfo().MiscValue);
+        uint32 const entry = uint32(GetEffectInfo().MiscValue);
 
-        Position pos = GetCaster()->GetPosition();
+        Position const pos = GetCaster()->GetPosition();
         // Not good at all, but this prevents having roots in a different position then player
-        if (Creature* Roots = GetCaster()->SummonCreature(entry, pos))
+        if (Creature const* Roots = GetCaster()->SummonCreature(entry, pos))
             GetCaster()->NearTeleportTo(Roots->GetPositionX(), Roots->GetPositionY(), Roots->GetPositionZ(), GetCaster()->GetOrientation());
     }
 
@@ -1424,35 +1405,35 @@ class achievement_getting_back_to_nature : public AchievementCriteriaScript
 
 class achievement_knock_on_wood : public AchievementCriteriaScript
 {
-   public:
-       achievement_knock_on_wood() : AchievementCriteriaScript("achievement_knock_on_wood") { }
+    public:
+        achievement_knock_on_wood() : AchievementCriteriaScript("achievement_knock_on_wood") { }
 
-       bool OnCheck(Player* /*player*/, Unit* target) override
-       {
-           return target && target->GetAI()->GetData(DATA_KNOCK_ON_WOOD) >= 1;
-       }
+        bool OnCheck(Player* /*player*/, Unit* target) override
+        {
+            return target && target->GetAI()->GetData(DATA_KNOCK_ON_WOOD) >= 1;
+        }
 };
 
 class achievement_knock_knock_on_wood : public AchievementCriteriaScript
 {
-   public:
-       achievement_knock_knock_on_wood() : AchievementCriteriaScript("achievement_knock_knock_on_wood") { }
+    public:
+        achievement_knock_knock_on_wood() : AchievementCriteriaScript("achievement_knock_knock_on_wood") { }
 
-       bool OnCheck(Player* /*player*/, Unit* target) override
-       {
-           return target && target->GetAI()->GetData(DATA_KNOCK_ON_WOOD) >= 2;
-       }
+        bool OnCheck(Player* /*player*/, Unit* target) override
+        {
+            return target && target->GetAI()->GetData(DATA_KNOCK_ON_WOOD) >= 2;
+        }
 };
 
 class achievement_knock_knock_knock_on_wood : public AchievementCriteriaScript
 {
-   public:
-       achievement_knock_knock_knock_on_wood() : AchievementCriteriaScript("achievement_knock_knock_knock_on_wood") { }
+    public:
+        achievement_knock_knock_knock_on_wood() : AchievementCriteriaScript("achievement_knock_knock_knock_on_wood") { }
 
-       bool OnCheck(Player* /*player*/, Unit* target) override
-       {
-           return target && target->GetAI()->GetData(DATA_KNOCK_ON_WOOD) == 3;
-       }
+        bool OnCheck(Player* /*player*/, Unit* target) override
+        {
+            return target && target->GetAI()->GetData(DATA_KNOCK_ON_WOOD) == 3;
+        }
 };
 
 void AddSC_boss_freya()

@@ -41,3 +41,10 @@ DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` 
 DELETE FROM `spelldifficulty_dbc` WHERE `id` = 64642;
 INSERT INTO `spelldifficulty_dbc` (`id`, `spellid0`, `spellid1`, `spellid2`, `spellid3`) VALUES
 (64642, 64642, 64653, 0, 0);
+
+-- Healthy Spore (33215)
+UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 192 WHERE `entry` = 33215;
+
+DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_freya_summon_healthy_spore';
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(62566, 'EG_spell_freya_summon_healthy_spore');
