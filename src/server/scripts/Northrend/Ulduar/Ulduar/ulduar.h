@@ -621,5 +621,6 @@ inline AI* GetUlduarAI(T* obj)
 }
 
 #define RegisterUlduarCreatureAI(ai_name) RegisterCreatureAIWithFactory(ai_name, GetUlduarAI)
+#define RegisterUlduarGameObjectAI(ai_name) RegisterGameObjectAIWithFactory(ai_name, GetUlduarAI)
 
 #endif
