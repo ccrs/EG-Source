@@ -3255,12 +3255,8 @@ void Map::DoRespawn(SpawnObjectType type, ObjectGuid::LowType spawnId, uint32 gr
             break;
         }
         case SPAWN_TYPE_GAMEOBJECT:
-        {
-            GameObject* obj = new GameObject();
-            if (!obj->LoadFromDB(spawnId, this, true))
-                delete obj;
+            GameObject::CreateGameObjectFromDB(spawnId, this);
             break;
-        }
         default:
             ABORT_MSG("Invalid spawn type %u (spawnid %u) on map %u", uint32(type), spawnId, GetId());
     }
@@ -3448,11 +3444,9 @@ bool Map::SpawnGroupSpawn(uint32 groupId, bool ignoreRespawn, bool force, std::v
             }
             case SPAWN_TYPE_GAMEOBJECT:
             {
-                GameObject* gameobject = new GameObject();
-                if (!gameobject->LoadFromDB(data->spawnId, this, true))
-                    delete gameobject;
-                else if (spawnedObjects)
-                    spawnedObjects->push_back(gameobject);
+                if (GameObject* gameobject = GameObject::CreateGameObjectFromDB(data->spawnId, this))
+                    if (spawnedObjects)
+                        spawnedObjects->push_back(gameobject);
                 break;
             }
             default:
