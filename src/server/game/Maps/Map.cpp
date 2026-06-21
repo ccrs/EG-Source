@@ -43,6 +43,7 @@
 #include "PoolMgr.h"
 #include "ScriptMgr.h"
 #include "Transport.h"
+#include "LocalTransport.h"
 #include "Vehicle.h"
 #include "VMapFactory.h"
 #include "VMapManager2.h"
@@ -251,6 +252,17 @@ void Map::LoadAllCells()
     for (uint32 cellX = 0; cellX < TOTAL_NUMBER_OF_CELLS_PER_MAP; cellX++)
         for (uint32 cellY = 0; cellY < TOTAL_NUMBER_OF_CELLS_PER_MAP; cellY++)
             LoadGrid((cellX + 0.5f - CENTER_GRID_CELL_ID) * SIZE_OF_GRID_CELL, (cellY + 0.5f - CENTER_GRID_CELL_ID) * SIZE_OF_GRID_CELL);
+}
+
+void Map::LoadLocalTransports()
+{
+    std::vector<ObjectGuid::LowType> const* spawns = sObjectMgr->GetLocalTransportsForMap(GetId(), GetSpawnMode());
+    if (!spawns)
+        return;
+
+    for (ObjectGuid::LowType spawnId : *spawns)
+        if (ShouldBeSpawnedOnGridLoad<GameObject>(spawnId))
+            LocalTransport::CreateLocalTransportFromDB(spawnId, this);
 }
 
 void Map::InitStateMachine()
@@ -1768,6 +1780,7 @@ void Map::UnloadAll()
         Transport* transport = *itr;
         ++itr;
 
+        transport->CleanupsBeforeDelete();
         RemoveFromMap<Transport>(transport, true);
     }
 
@@ -3636,7 +3649,10 @@ void Map::RemoveAllObjectsInRemoveList()
             {
                 GameObject* go = obj->ToGameObject();
                 if (Transport* transport = go->ToTransport())
+                {
+                    transport->CleanupsBeforeDelete();
                     RemoveFromMap(transport, true);
+                }
                 else
                     RemoveFromMap(go, true);
                 break;
@@ -4448,7 +4464,7 @@ Pet* Map::GetPet(ObjectGuid const& guid)
 
 Transport* Map::GetTransport(ObjectGuid const& guid)
 {
-    if (!guid.IsMOTransport())
+    if (!guid.IsAnyTypeGameObject())
         return nullptr;
 
     GameObject* go = GetGameObject(guid);

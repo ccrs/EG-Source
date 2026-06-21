@@ -2349,6 +2349,11 @@ CellObjectGuidsMap const* ObjectMgr::GetMapObjectGuids(uint16 mapid, uint8 spawn
     return Trinity::Containers::MapGetValuePtr(_mapObjectGuidsStore, MAKE_PAIR32(mapid, spawnMode));
 }
 
+std::vector<ObjectGuid::LowType> const* ObjectMgr::GetLocalTransportsForMap(uint16 mapid, uint8 spawnMode) const // EG
+{
+    return Trinity::Containers::MapGetValuePtr(_localTransportStore, MAKE_PAIR32(mapid, spawnMode));
+}
+
 void ObjectMgr::AddCreatureToGrid(ObjectGuid::LowType guid, CreatureData const* data)
 {
     uint8 mask = data->spawnMask;
@@ -2865,6 +2870,9 @@ void ObjectMgr::OnDeleteSpawnData(SpawnData const* data)
 
 void ObjectMgr::AddGameobjectToGrid(ObjectGuid::LowType guid, GameObjectData const* data)
 {
+    GameObjectTemplate const* goInfo = GetGameObjectTemplate(data->id);
+    bool isLocalTransport = goInfo && goInfo->type == GAMEOBJECT_TYPE_TRANSPORT;
+
     uint8 mask = data->spawnMask;
     for (uint8 i = 0; mask != 0; i++, mask >>= 1)
     {
@@ -2873,12 +2881,18 @@ void ObjectMgr::AddGameobjectToGrid(ObjectGuid::LowType guid, GameObjectData con
             CellCoord cellCoord = Trinity::ComputeCellCoord(data->spawnPoint.GetPositionX(), data->spawnPoint.GetPositionY());
             CellObjectGuids& cell_guids = _mapObjectGuidsStore[MAKE_PAIR32(data->mapId, i)][cellCoord.GetId()];
             cell_guids.gameobjects.insert(guid);
+
+            if (isLocalTransport) // EG
+                _localTransportStore[MAKE_PAIR32(data->mapId, i)].push_back(guid);
         }
     }
 }
 
 void ObjectMgr::RemoveGameobjectFromGrid(ObjectGuid::LowType guid, GameObjectData const* data)
 {
+    GameObjectTemplate const* goInfo = GetGameObjectTemplate(data->id); // EG
+    bool isLocalTransport = goInfo && goInfo->type == GAMEOBJECT_TYPE_TRANSPORT; // EG
+
     uint8 mask = data->spawnMask;
     for (uint8 i = 0; mask != 0; i++, mask >>= 1)
     {
@@ -2887,6 +2901,12 @@ void ObjectMgr::RemoveGameobjectFromGrid(ObjectGuid::LowType guid, GameObjectDat
             CellCoord cellCoord = Trinity::ComputeCellCoord(data->spawnPoint.GetPositionX(), data->spawnPoint.GetPositionY());
             CellObjectGuids& cell_guids = _mapObjectGuidsStore[MAKE_PAIR32(data->mapId, i)][cellCoord.GetId()];
             cell_guids.gameobjects.erase(guid);
+
+            if (isLocalTransport) // EG
+            {
+                std::vector<ObjectGuid::LowType>& localTransports = _localTransportStore[MAKE_PAIR32(data->mapId, i)];
+                localTransports.erase(std::remove(localTransports.begin(), localTransports.end(), guid), localTransports.end());
+            }
         }
     }
 }

@@ -19,6 +19,7 @@
 #include "Creature.h"
 #include "Log.h"
 #include "Map.h"
+#include "ObjectMgr.h"
 #include "Player.h"
 #include "Vehicle.h"
 #include <G3D/Quat.h>
@@ -26,6 +27,52 @@
 
 LocalTransport::LocalTransport() : Transport(), _needDoInitialRelocation(false)
 {
+}
+
+GameObject* LocalTransport::CreateLocalTransportFromDB(ObjectGuid::LowType spawnId, Map* map)
+{
+    GameObjectData const* data = sObjectMgr->GetGameObjectData(spawnId);
+    if (!data)
+    {
+        TC_LOG_ERROR("sql.sql", "LocalTransport (SpawnId: {}) not found in table `gameobject`, can't load.", spawnId);
+        return nullptr;
+    }
+
+    if (map->GetGameObjectBySpawnIdStore().count(spawnId))
+        return nullptr;
+
+    ObjectGuid::LowType guidLow = map->GenerateLowGuid<HighGuid::GameObject>();
+
+    LocalTransport* transport = new LocalTransport();
+    transport->m_spawnId = spawnId;
+
+    if (!transport->GameObject::Create(guidLow, data->id, map, data->phaseMask, data->spawnPoint, data->rotation, data->animprogress, data->goState, data->artKit, false))
+    {
+        delete transport;
+        return nullptr;
+    }
+
+    transport->SetNeedDoInitialRelocation(true);
+
+    if (!map->AddToMap<Transport>(transport))
+    {
+        delete transport;
+        return nullptr;
+    }
+
+    return transport;
+}
+
+void LocalTransport::BoardScriptedPassenger(WorldObject* passenger)
+{
+    AddPassenger(passenger);
+    if (passenger->GetTransport() != this)
+        return;
+
+    float x, y, z, o;
+    passenger->GetPosition(x, y, z, o);
+    CalculatePassengerOffset(x, y, z, &o);
+    passenger->m_movementInfo.transport.pos.Relocate(x, y, z, o);
 }
 
 void LocalTransport::Update(uint32 diff)
@@ -36,7 +83,7 @@ void LocalTransport::Update(uint32 diff)
     if (!IsInWorld())
         return;
 
-    if (!m_goValue.Transport.AnimationInfo)
+    if (!m_goValue.Transport.AnimationInfo || !m_goValue.Transport.AnimationInfo->TotalTime)
         return;
 
     if (_needDoInitialRelocation)
@@ -186,44 +233,5 @@ void LocalTransport::UpdatePassengerPositions()
         if (Unit* unit = passenger->ToUnit())
             if (Vehicle* vehicle = unit->GetVehicleKit())
                 vehicle->RelocatePassengers();
-    }
-}
-
-void LocalTransport::AddPassenger(WorldObject* passenger)
-{
-    if (!IsInWorld())
-        return;
-
-    if (_passengers.insert(passenger).second)
-    {
-        float x, y, z, o;
-        passenger->GetPosition(x, y, z, o);
-        CalculatePassengerOffset(x, y, z, &o);
-
-        passenger->SetTransport(this);
-        passenger->m_movementInfo.AddMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
-        passenger->m_movementInfo.transport.guid = GetGUID();
-        passenger->m_movementInfo.transport.pos.Relocate(x, y, z, o);
-
-        // keep the home anchored to the moving transport so passenger evade/leashing tracks it
-        if (Creature* creature = passenger->ToCreature())
-            creature->SetTransportHomePosition(creature->m_movementInfo.transport.pos);
-
-        TC_LOG_DEBUG("entities.transport", "Object {} boarded local transport {}.", passenger->GetName(), GetName());
-    }
-}
-
-void LocalTransport::RemovePassenger(WorldObject* passenger)
-{
-    if (_passengers.erase(passenger))
-    {
-        passenger->SetTransport(nullptr);
-        passenger->m_movementInfo.RemoveMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
-        passenger->m_movementInfo.transport.Reset();
-
-        if (Player* plr = passenger->ToPlayer())
-            plr->SetFallInformation(0, plr->GetPositionZ());
-
-        TC_LOG_DEBUG("entities.transport", "Object {} removed from local transport {}.", passenger->GetName(), GetName());
     }
 }

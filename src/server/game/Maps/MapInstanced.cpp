@@ -247,6 +247,8 @@ InstanceMap* MapInstanced::CreateInstance(uint32 InstanceId, InstanceSave* save,
     ptr.reset(map);
     map->SetWeakPtr(ptr);
 
+    map->LoadLocalTransports(); // EG
+
     sScriptMgr->OnCreateMap(map);
     return map;
 }
@@ -275,6 +277,8 @@ BattlegroundMap* MapInstanced::CreateBattleground(uint32 InstanceId, Battlegroun
     Trinity::unique_trackable_ptr<Map>& ptr = m_InstancedMaps[InstanceId];
     ptr.reset(map);
     map->SetWeakPtr(ptr);
+
+    map->LoadLocalTransports(); // EG
 
     sScriptMgr->OnCreateMap(map);
     return map;

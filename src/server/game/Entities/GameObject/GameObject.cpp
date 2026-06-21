@@ -114,6 +114,8 @@ GameObject::GameObject() : WorldObject(false), MapObject(),
     m_objectType |= TYPEMASK_GAMEOBJECT;
     m_objectTypeId = TYPEID_GAMEOBJECT;
 
+    m_isMapTransport = false;
+
     m_updateFlag = (UPDATEFLAG_LOWGUID | UPDATEFLAG_STATIONARY_POSITION | UPDATEFLAG_POSITION | UPDATEFLAG_ROTATION);
 
     m_valuesCount = GAMEOBJECT_END;
@@ -217,7 +219,7 @@ void GameObject::AddToWorld()
         bool toggledState = GetGoType() == GAMEOBJECT_TYPE_CHEST ? getLootState() == GO_READY : (GetGoState() == GO_STATE_READY || IsTransport());
         if (m_model)
         {
-            if (Transport* trans = ToTransport())
+            if (Transport* trans = ToTransport(); trans && GetGOInfo()->type == GAMEOBJECT_TYPE_MAP_OBJ_TRANSPORT)
                 trans->SetDelayedAddModelToMap();
             else
                 GetMap()->InsertGameObjectModel(*m_model);
@@ -1133,7 +1135,11 @@ bool GameObject::LoadFromDB(ObjectGuid::LowType spawnId, Map* map, bool addToMap
     }
 
     GameObjectTemplate const* goInfo = sObjectMgr->GetGameObjectTemplate(data->id);
-    GameObject* go = (goInfo && goInfo->type == GAMEOBJECT_TYPE_TRANSPORT) ? new LocalTransport() : new GameObject();
+
+    if (goInfo && goInfo->type == GAMEOBJECT_TYPE_TRANSPORT)
+        return LocalTransport::CreateLocalTransportFromDB(spawnId, map);
+
+    GameObject* go = new GameObject();
 
     if (!go->LoadFromDB(spawnId, map, addToMap))
     {

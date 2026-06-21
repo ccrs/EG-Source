@@ -25,13 +25,15 @@ class TC_GAME_API LocalTransport : public Transport
     public:
         LocalTransport();
 
+        static GameObject* CreateLocalTransportFromDB(ObjectGuid::LowType spawnId, Map* map);
+
         void Update(uint32 diff) override;
+        void DelayedUpdate(uint32 /*diff*/) override { }
         void RelocateToProgress(uint32 progress);
         void UpdatePosition(float x, float y, float z, float o) override;
         void UpdatePassengerPositions();
 
-        void AddPassenger(WorldObject* passenger) override;
-        void RemovePassenger(WorldObject* passenger) override;
+        void BoardScriptedPassenger(WorldObject* passenger);
 
         uint32 GetPathProgress() const { return GetGOValue()->Transport.PathProgress; }
         void SetPathProgress(uint32 val) { m_goValue.Transport.PathProgress = val; }

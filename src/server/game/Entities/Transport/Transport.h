@@ -40,7 +40,7 @@ class TC_GAME_API Transport : public GameObject, public TransportBase
         void CleanupsBeforeDelete(bool finalCleanup = true) override;
 
         void Update(uint32 diff) override;
-        void DelayedUpdate(uint32 diff);
+        virtual void DelayedUpdate(uint32 diff);
 
         void BuildUpdate(UpdateDataMapType& data_map) override;
 
