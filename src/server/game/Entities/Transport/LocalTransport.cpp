@@ -127,9 +127,12 @@ void LocalTransport::UpdatePosition(float x, float y, float z, float o)
 
 void LocalTransport::UpdatePassengerPositions()
 {
-    for (PassengerSet::iterator itr = _passengers.begin(); itr != _passengers.end(); ++itr)
+    PassengerSet const passengers = _passengers;
+    for (WorldObject* passenger : passengers)
     {
-        WorldObject* passenger = *itr;
+        if (_passengers.find(passenger) == _passengers.end())
+            continue;
+
         // transport teleported but passenger not yet (can happen for players)
         if (passenger->GetMap() != GetMap())
             continue;
