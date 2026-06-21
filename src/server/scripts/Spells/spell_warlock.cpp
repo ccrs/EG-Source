@@ -82,6 +82,7 @@ enum WarlockSpells
     SPELL_WARLOCK_GLYPH_OF_LIFE_TAP_TRIGGERED       = 63321,
     SPELL_WARLOCK_SEED_OF_CORRUPTION_DAMAGE_R1      = 27285,
     SPELL_WARLOCK_SEED_OF_CORRUPTION_GENERIC        = 32865,
+    SPELL_WARLOCK_SEED_OF_CORRUPTION_VISUAL         = 37826,
     SPELL_WARLOCK_SHADOW_TRANCE                     = 17941,
     SPELL_WARLOCK_SOUL_LEECH_HEAL                   = 30294,
     SPELL_WARLOCK_IMP_SOUL_LEECH_R1                 = 54117,
@@ -1028,7 +1029,7 @@ class spell_warl_seed_of_corruption_dummy : public AuraScript
 
     bool Validate(SpellInfo const* /*spellInfo*/) override
     {
-        return ValidateSpellInfo({ SPELL_WARLOCK_SEED_OF_CORRUPTION_DAMAGE_R1 });
+        return ValidateSpellInfo({ SPELL_WARLOCK_SEED_OF_CORRUPTION_DAMAGE_R1, SPELL_WARLOCK_SEED_OF_CORRUPTION_VISUAL });
     }
 
     void CalculateBuffer(AuraEffect const* aurEff, int32& amount, bool& /*canBeRecalculated*/)
@@ -1039,6 +1040,18 @@ class spell_warl_seed_of_corruption_dummy : public AuraScript
 
         // effect 1 scales with 14% of caster's SP (DBC data)
         amount = caster->SpellDamageBonusDone(GetUnitOwner(), GetSpellInfo(), amount, SPELL_DIRECT_DAMAGE, aurEff->GetSpellEffectInfo(), GetAura()->GetDonePct());
+    }
+
+    void Detonate(AuraEffect const* aurEff)
+    {
+        Unit* caster = GetCaster();
+        if (!caster)
+            return;
+
+        GetUnitOwner()->CastSpell(GetUnitOwner(), SPELL_WARLOCK_SEED_OF_CORRUPTION_VISUAL, aurEff);
+
+        uint32 spellId = sSpellMgr->GetSpellWithRank(SPELL_WARLOCK_SEED_OF_CORRUPTION_DAMAGE_R1, GetSpellInfo()->GetRank());
+        caster->CastSpell(GetUnitOwner(), spellId, aurEff);
     }
 
     void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
@@ -1057,18 +1070,19 @@ class spell_warl_seed_of_corruption_dummy : public AuraScript
         }
 
         Remove();
+        Detonate(aurEff);
+    }
 
-        Unit* caster = GetCaster();
-        if (!caster)
-            return;
-
-        uint32 spellId = sSpellMgr->GetSpellWithRank(SPELL_WARLOCK_SEED_OF_CORRUPTION_DAMAGE_R1, GetSpellInfo()->GetRank());
-        caster->CastSpell(eventInfo.GetActionTarget(), spellId, aurEff);
+    void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+    {
+        if (GetTargetApplication()->GetRemoveMode() == AURA_REMOVE_BY_DEATH)
+            Detonate(aurEff);
     }
 
     void Register() override
     {
         DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_warl_seed_of_corruption_dummy::CalculateBuffer, EFFECT_1, SPELL_AURA_DUMMY);
+        AfterEffectRemove += AuraEffectRemoveFn(spell_warl_seed_of_corruption_dummy::OnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL);
         OnEffectProc += AuraEffectProcFn(spell_warl_seed_of_corruption_dummy::HandleProc, EFFECT_1, SPELL_AURA_DUMMY);
     }
 };
