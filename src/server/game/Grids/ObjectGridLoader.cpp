@@ -121,8 +121,19 @@ void LoadHelper(CellGuidSet const& guid_set, CellCoord &cell, GridRefManager<T> 
 void ObjectGridLoader::Visit(GameObjectMapType &m)
 {
     CellCoord cellCoord = i_cell.GetCellCoord();
-    if (CellObjectGuids const* cell_guids = sObjectMgr->GetCellObjectGuids(i_map->GetId(), i_map->GetSpawnMode(), cellCoord.GetId()))
-        LoadHelper(cell_guids->gameobjects, cellCoord, m, i_gameObjects, i_map);
+    CellObjectGuids const* cell_guids = sObjectMgr->GetCellObjectGuids(i_map->GetId(), i_map->GetSpawnMode(), cellCoord.GetId());
+    if (!cell_guids)
+        return;
+
+    for (ObjectGuid::LowType const& guid : cell_guids->gameobjects)
+    {
+        // Don't spawn at all if there's a respawn timer
+        if (!i_map->ShouldBeSpawnedOnGridLoad<GameObject>(guid))
+            continue;
+
+        if (GameObject* obj = GameObject::CreateGameObjectFromDB(guid, i_map, false))
+            AddObjectHelper(cellCoord, m, i_gameObjects, i_map, obj);
+    }
 }
 
 void ObjectGridLoader::Visit(CreatureMapType &m)

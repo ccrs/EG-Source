@@ -28,7 +28,9 @@ class TC_GAME_API Transport : public GameObject, public TransportBase
 {
         friend Transport* TransportMgr::CreateTransport(uint32, ObjectGuid::LowType, Map*);
 
+    protected:
         Transport();
+
     public:
         typedef std::set<WorldObject*> PassengerSet;
 
@@ -42,8 +44,8 @@ class TC_GAME_API Transport : public GameObject, public TransportBase
 
         void BuildUpdate(UpdateDataMapType& data_map) override;
 
-        void AddPassenger(WorldObject* passenger);
-        void RemovePassenger(WorldObject* passenger);
+        virtual void AddPassenger(WorldObject* passenger);
+        virtual void RemovePassenger(WorldObject* passenger);
         PassengerSet const& GetPassengers() const { return _passengers; }
 
         Creature* CreateNPCPassenger(ObjectGuid::LowType guid, CreatureData const* data);
@@ -85,7 +87,7 @@ class TC_GAME_API Transport : public GameObject, public TransportBase
 
         KeyFrameVec const& GetKeyFrames() const { return _transportInfo->keyFrames; }
 
-        void UpdatePosition(float x, float y, float z, float o);
+        virtual void UpdatePosition(float x, float y, float z, float o);
 
         //! Needed when transport moves from inactive to active grid
         void LoadStaticPassengers();
@@ -126,7 +128,10 @@ class TC_GAME_API Transport : public GameObject, public TransportBase
         bool _triggeredArrivalEvent;
         bool _triggeredDepartureEvent;
 
+    protected:
         PassengerSet _passengers;
+
+    private:
         PassengerSet::iterator _passengerTeleportItr;
         PassengerSet _staticPassengers;
 

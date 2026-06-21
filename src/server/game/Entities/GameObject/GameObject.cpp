@@ -40,6 +40,7 @@
 #include "ScriptMgr.h"
 #include "SpellMgr.h"
 #include "Transport.h"
+#include "LocalTransport.h"
 #include "UpdateFieldFlags.h"
 #include "World.h"
 #include <G3D/Box.h>
@@ -495,40 +496,7 @@ void GameObject::Update(uint32 diff)
                     break;
                 }
                 case GAMEOBJECT_TYPE_TRANSPORT:
-                {
-                    if (!m_goValue.Transport.AnimationInfo)
-                        break;
-
-                    if (GetGoState() == GO_STATE_READY)
-                    {
-                        m_goValue.Transport.PathProgress += diff;
-                        /* TODO: Fix movement in unloaded grid - currently GO will just disappear
-                        uint32 timer = m_goValue.Transport.PathProgress % m_goValue.Transport.AnimationInfo->TotalTime;
-                        TransportAnimationEntry const* node = m_goValue.Transport.AnimationInfo->GetAnimNode(timer);
-                        if (node && m_goValue.Transport.CurrentSeg != node->TimeSeg)
-                        {
-                            m_goValue.Transport.CurrentSeg = node->TimeSeg;
-
-                            G3D::Quat rotation;
-                            if (TransportRotationEntry const* rot = m_goValue.Transport.AnimationInfo->GetAnimRotation(timer))
-                                rotation = G3D::Quat(rot->X, rot->Y, rot->Z, rot->W);
-
-                            G3D::Vector3 pos = rotation.toRotationMatrix()
-                                             * G3D::Matrix3::fromEulerAnglesZYX(GetOrientation(), 0.0f, 0.0f)
-                                             * G3D::Vector3(node->X, node->Y, node->Z);
-
-                            pos += G3D::Vector3(GetStationaryX(), GetStationaryY(), GetStationaryZ());
-
-                            G3D::Vector3 src(GetPositionX(), GetPositionY(), GetPositionZ());
-
-                            TC_LOG_DEBUG("misc", "Src: {} Dest: {}", src.toString(), pos.toString());
-
-                            GetMap()->GameObjectRelocation(this, pos.x, pos.y, pos.z, GetOrientation());
-                        }
-                        */
-                    }
                     break;
-                }
                 case GAMEOBJECT_TYPE_FISHINGNODE:
                 {
                     // fishing code (bobber ready)
@@ -1153,6 +1121,27 @@ bool GameObject::LoadFromDB(ObjectGuid::LowType spawnId, Map* map, bool addToMap
         return false;
 
     return true;
+}
+
+/*static*/ GameObject* GameObject::CreateGameObjectFromDB(ObjectGuid::LowType spawnId, Map* map, bool addToMap)
+{
+    GameObjectData const* data = sObjectMgr->GetGameObjectData(spawnId);
+    if (!data)
+    {
+        TC_LOG_ERROR("sql.sql", "Gameobject (SpawnId: {}) not found in table `gameobject`, can't load.", spawnId);
+        return nullptr;
+    }
+
+    GameObjectTemplate const* goInfo = sObjectMgr->GetGameObjectTemplate(data->id);
+    GameObject* go = (goInfo && goInfo->type == GAMEOBJECT_TYPE_TRANSPORT) ? new LocalTransport() : new GameObject();
+
+    if (!go->LoadFromDB(spawnId, map, addToMap))
+    {
+        delete go;
+        return nullptr;
+    }
+
+    return go;
 }
 
 /*static*/ bool GameObject::DeleteFromDB(ObjectGuid::LowType spawnId)
