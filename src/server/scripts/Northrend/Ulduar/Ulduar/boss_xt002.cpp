@@ -446,7 +446,7 @@ struct npc_xt002_heart : public NullCreatureAI
     }
 
 private:
-    InstanceScript * _instance;
+    InstanceScript* _instance;
 };
 
 struct npc_scrapbot : public ScriptedAI
@@ -457,7 +457,10 @@ struct npc_scrapbot : public ScriptedAI
     {
         me->SetReactState(REACT_PASSIVE);
         _scheduler.CancelAll();
+    }
 
+    void IsSummonedBy(WorldObject* /*summoner*/) override
+    {
         if (_instance->GetBossState(DATA_XT002) != IN_PROGRESS)
         {
             me->DespawnOrUnsummon();
@@ -513,7 +516,10 @@ struct npc_pummeller : public ScriptedAI
     {
         me->SetReactState(REACT_PASSIVE);
         _scheduler.CancelAll();
+    }
 
+    void IsSummonedBy(WorldObject* /*summoner*/) override
+    {
         if (_instance->GetBossState(DATA_XT002) != IN_PROGRESS)
         {
             me->DespawnOrUnsummon();
@@ -523,13 +529,13 @@ struct npc_pummeller : public ScriptedAI
         if (Creature* xt002 = _instance->GetCreature(DATA_XT002))
             xt002->AI()->JustSummoned(me);
 
+        SetAggressiveStateAfter(1s, me);
+    }
+
+    void JustEngagedWith(Unit* /*who*/) override
+    {
         _scheduler.
-            Schedule(1s, [this](TaskContext /*StartMove*/)
-            {
-                me->SetReactState(REACT_AGGRESSIVE);
-                DoZoneInCombat();
-            })
-            .Schedule(17s, [this](TaskContext trample)
+            Schedule(17s, [this](TaskContext trample)
             {
                 DoCastSelf(SPELL_TRAMPLE);
                 trample.Repeat(11s);
@@ -544,7 +550,6 @@ struct npc_pummeller : public ScriptedAI
                 DoCastVictim(SPELL_UPPERCUT);
                 upperCut.Repeat(14s);
             });
-
     }
 
     void UpdateAI(uint32 diff) override
@@ -569,15 +574,19 @@ struct npc_boombot : public ScriptedAI
 
     void Reset() override
     {
-        DoCastSelf(SPELL_321_BOOMBOT_AURA);
         me->SetReactState(REACT_PASSIVE);
         _scheduler.CancelAll();
+    }
 
+    void IsSummonedBy(WorldObject* /*summoner*/) override
+    {
         if (_instance->GetBossState(DATA_XT002) != IN_PROGRESS)
         {
             me->DespawnOrUnsummon();
             return;
         }
+
+        DoCastSelf(SPELL_321_BOOMBOT_AURA);
 
         // HACK/workaround:
         // these values aren't confirmed - lack of data - and the values in DB are incorrect
@@ -632,15 +641,22 @@ private:
 
 struct npc_life_spark : public ScriptedAI
 {
-    npc_life_spark(Creature* creature) : ScriptedAI(creature) { }
+    npc_life_spark(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript()) { }
 
     void Reset() override
     {
-        if (InstanceScript* instance = me->GetInstanceScript())
-            if (Creature* xt002 = instance->GetCreature(DATA_XT002))
-                xt002->AI()->JustSummoned(me);
-        DoCastSelf(SPELL_ARCANE_POWER_STATE);
         _scheduler.CancelAll();
+    }
+
+    void IsSummonedBy(WorldObject* /*summoner*/) override
+    {
+        if (Creature* xt002 = _instance->GetCreature(DATA_XT002))
+            xt002->AI()->JustSummoned(me);
+    }
+
+    void JustAppeared() override
+    {
+        DoCastSelf(SPELL_ARCANE_POWER_STATE);
     }
 
     void JustEngagedWith(Unit* /*who*/) override
@@ -668,6 +684,7 @@ struct npc_life_spark : public ScriptedAI
     }
 
 private:
+    InstanceScript* _instance;
     TaskScheduler _scheduler;
 };
 
