@@ -355,6 +355,9 @@ Position const MimironVehicleRelocation[] =
 Position const VX001SummonPos = { 2744.431f, 2569.385f, 364.3968f, 3.141593f };
 Position const ACUSummonPos   = { 2744.650f, 2569.460f, 380.0000f, 3.141593f };
 
+float const MKII_FACING_VX001_ACTIVATION = 3.686f; // MK-II orientation as it reveals the VX-001
+uint32 const MODEL_INVISIBLE = 11686;              // invisible display model
+
 static bool MimironIsEncounterFinished(Unit* who)
 {
     InstanceScript* instance = who->GetInstanceScript();
@@ -509,22 +512,34 @@ struct boss_mimiron : public BossAI
                         DoCast(mkii, SPELL_SEAT_7);
                         mkii->RemoveAurasDueToSpell(SPELL_FREEZE_ANIM);
                         mkii->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
+                        events.ScheduleEvent(EVENT_INTRO_3, 2s);
                     }
-                    events.ScheduleEvent(EVENT_INTRO_3, 2s);
+                    else
+                        events.Repeat(1s);
                     break;
                 case EVENT_INTRO_3:
                     if (Creature* mkii = me->GetVehicleCreatureBase())
                         mkii->AI()->DoAction(_fireFighter ? DO_HARDMODE_MKII : DO_START_MKII);
+                    else
+                        events.Repeat(1s);
                     break;
                 case EVENT_VX001_ACTIVATION_1:
                     if (Unit* mkii = me->GetVehicleBase())
-                        mkii->SetFacingTo(3.686f); // fix magic number
-                    events.ScheduleEvent(EVENT_VX001_ACTIVATION_2, 1s);
+                    {
+                        mkii->SetFacingTo(MKII_FACING_VX001_ACTIVATION);
+                        events.ScheduleEvent(EVENT_VX001_ACTIVATION_2, 1s);
+                    }
+                    else
+                        events.Repeat(1s);
                     break;
                 case EVENT_VX001_ACTIVATION_2:
                     if (Unit* mkii = me->GetVehicleBase())
+                    {
                         DoCast(mkii, SPELL_SEAT_6);
-                    events.ScheduleEvent(EVENT_VX001_ACTIVATION_3, 1s);
+                        events.ScheduleEvent(EVENT_VX001_ACTIVATION_3, 1s);
+                    }
+                    else
+                        events.Repeat(1s);
                     break;
                 case EVENT_VX001_ACTIVATION_3:
                     Talk(SAY_MKII_DEATH);
@@ -546,8 +561,12 @@ struct boss_mimiron : public BossAI
                     break;
                 case EVENT_VX001_ACTIVATION_6:
                     if (Unit* vx001 = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_VX_001)))
+                    {
                         DoCast(vx001, SPELL_SEAT_1);
-                    events.ScheduleEvent(EVENT_VX001_ACTIVATION_7, 3500ms);
+                        events.ScheduleEvent(EVENT_VX001_ACTIVATION_7, 3500ms);
+                    }
+                    else
+                        events.Repeat(1s);
                     break;
                 case EVENT_VX001_ACTIVATION_7:
                     Talk(SAY_VX001_ACTIVATE);
@@ -555,17 +574,27 @@ struct boss_mimiron : public BossAI
                     break;
                 case EVENT_VX001_ACTIVATION_8:
                     if (Unit* vx001 = me->GetVehicleBase())
+                    {
                         DoCast(vx001, SPELL_SEAT_2);
-                    events.ScheduleEvent(EVENT_VX001_ACTIVATION_9, 3s);
+                        events.ScheduleEvent(EVENT_VX001_ACTIVATION_9, 3s);
+                    }
+                    else
+                        events.Repeat(1s);
                     break;
                 case EVENT_VX001_ACTIVATION_9:
                     if (Creature* vx001 = me->GetVehicleCreatureBase())
                         vx001->AI()->DoAction(_fireFighter ? DO_HARDMODE_VX001 : DO_START_VX001);
+                    else
+                        events.Repeat(1s);
                     break;
                 case EVENT_AERIAL_ACTIVATION_1:
                     if (Unit* mkii = me->GetVehicleBase())
+                    {
                         DoCast(mkii, SPELL_SEAT_5);
-                    events.ScheduleEvent(EVENT_AERIAL_ACTIVATION_2, 2500ms);
+                        events.ScheduleEvent(EVENT_AERIAL_ACTIVATION_2, 2500ms);
+                    }
+                    else
+                        events.Repeat(1s);
                     break;
                 case EVENT_AERIAL_ACTIVATION_2:
                     Talk(SAY_VX001_DEATH);
@@ -577,8 +606,12 @@ struct boss_mimiron : public BossAI
                     break;
                 case EVENT_AERIAL_ACTIVATION_4:
                     if (Unit* aerial = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_AERIAL_COMMAND_UNIT)))
+                    {
                         me->CastSpell(aerial, SPELL_SEAT_1);
-                    events.ScheduleEvent(EVENT_AERIAL_ACTIVATION_5, 2s);
+                        events.ScheduleEvent(EVENT_AERIAL_ACTIVATION_5, 2s);
+                    }
+                    else
+                        events.Repeat(1s);
                     break;
                 case EVENT_AERIAL_ACTIVATION_5:
                     Talk(SAY_AERIAL_ACTIVATE);
@@ -586,54 +619,84 @@ struct boss_mimiron : public BossAI
                     break;
                 case EVENT_AERIAL_ACTIVATION_6:
                     if (Creature* acu = me->GetVehicleCreatureBase())
-                        acu->AI()->DoAction(_fireFighter? DO_HARDMODE_AERIAL : DO_START_AERIAL);
+                        acu->AI()->DoAction(_fireFighter ? DO_HARDMODE_AERIAL : DO_START_AERIAL);
+                    else
+                        events.Repeat(1s);
                     break;
                 case EVENT_VOL7RON_ACTIVATION_1:
                     if (Creature* mkii = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_LEVIATHAN_MK_II)))
+                    {
                         mkii->SetFacingTo(float(M_PI));
-                    events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_2, 1s);
+                        events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_2, 1s);
+                    }
+                    else
+                        events.Repeat(1s);
                     break;
                 case EVENT_VOL7RON_ACTIVATION_2:
-                    if (Creature* mkii = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_LEVIATHAN_MK_II)))
+                {
+                    Creature* mkii = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_LEVIATHAN_MK_II));
+                    Creature* vx001 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VX_001));
+                    if (!mkii || !vx001)
                     {
-                        if (Creature* vx001 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VX_001)))
-                        {
-                            vx001->RemoveAurasDueToSpell(SPELL_TORSO_DISABLED);
-                            vx001->CastSpell(mkii, SPELL_MOUNT_MKII);
-                        }
+                        events.Repeat(1s);
+                        break;
                     }
+                    vx001->RemoveAurasDueToSpell(SPELL_TORSO_DISABLED);
+                    vx001->CastSpell(mkii, SPELL_MOUNT_MKII);
                     events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_3, 4500ms);
                     break;
+                }
                 case EVENT_VOL7RON_ACTIVATION_3:
                     if (Creature* mkii = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_LEVIATHAN_MK_II)))
+                    {
                         mkii->GetMotionMaster()->MovePoint(WP_MKII_P4_POS_4, MimironVehicleRelocation[WP_MKII_P4_POS_4]);
-                    events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_4, 5s);
+                        events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_4, 5s);
+                    }
+                    else
+                        events.Repeat(1s);
                     break;
                 case EVENT_VOL7RON_ACTIVATION_4:
-                    if (Creature* vx001 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VX_001)))
+                {
+                    Creature* vx001 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VX_001));
+                    Creature* aerial = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_AERIAL_COMMAND_UNIT));
+                    if (!vx001 || !aerial)
                     {
-                        if (Creature* aerial = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_AERIAL_COMMAND_UNIT)))
-                        {
-                            aerial->CastSpell(vx001, SPELL_MOUNT_VX_001);
-                            aerial->CastSpell(aerial, SPELL_HALF_HEAL);
-                        }
+                        events.Repeat(1s);
+                        break;
                     }
+                    aerial->CastSpell(vx001, SPELL_MOUNT_VX_001);
+                    aerial->CastSpell(aerial, SPELL_HALF_HEAL);
                     events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_5, 4s);
                     break;
+                }
                 case EVENT_VOL7RON_ACTIVATION_5:
                     Talk(SAY_V07TRON_ACTIVATE);
                     events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_6, 3s);
                     break;
                 case EVENT_VOL7RON_ACTIVATION_6:
                     if (Creature* vx001 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VX_001)))
+                    {
                         DoCast(vx001, SPELL_SEAT_2);
-                    events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_7, 5s);
+                        events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_7, 5s);
+                    }
+                    else
+                        events.Repeat(1s);
                     break;
                 case EVENT_VOL7RON_ACTIVATION_7:
-                    for (uint8 data = DATA_LEVIATHAN_MK_II; data <= DATA_AERIAL_COMMAND_UNIT; ++data)
-                        if (Creature* mimironVehicle = ObjectAccessor::GetCreature(*me, instance->GetGuidData(data)))
-                            mimironVehicle->AI()->DoAction(DO_ASSEMBLED_COMBAT);
+                {
+                    Creature* mkii = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_LEVIATHAN_MK_II));
+                    Creature* vx001 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VX_001));
+                    Creature* aerial = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_AERIAL_COMMAND_UNIT));
+                    if (!mkii || !vx001 || !aerial)
+                    {
+                        events.Repeat(1s);
+                        break;
+                    }
+                    mkii->AI()->DoAction(DO_ASSEMBLED_COMBAT);
+                    vx001->AI()->DoAction(DO_ASSEMBLED_COMBAT);
+                    aerial->AI()->DoAction(DO_ASSEMBLED_COMBAT);
                     break;
+                }
                 case EVENT_OUTTRO_1:
                     me->RemoveAurasDueToSpell(SPELL_SLEEP_VISUAL_1);
                     DoCast(me, SPELL_SLEEP_VISUAL_2);
@@ -1039,7 +1102,10 @@ struct boss_vx_001 : public BossAI
             {
                 case EVENT_RAPID_BURST:
                     if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 120, true))
+                    {
+                        me->SetTarget(target->GetGUID()); // turret has no victim -> hold the target field so the active stance is kept
                         DoCast(target, SPELL_SUMMON_BURST_TARGET);
+                    }
                     events.RescheduleEvent(EVENT_RAPID_BURST, 3s, 0, PHASE_VX_001);
                     break;
                 case EVENT_ROCKET_STRIKE:
@@ -1054,7 +1120,10 @@ struct boss_vx_001 : public BossAI
                     break;
                 case EVENT_HAND_PULSE:
                     if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 120, true))
+                    {
+                        me->SetTarget(target->GetGUID()); // turret has no victim -> hold the target field so the active stance is kept
                         DoCast(target, RAND(SPELL_HAND_PULSE_LEFT, SPELL_HAND_PULSE_RIGHT));
+                    }
                     events.RescheduleEvent(EVENT_HAND_PULSE, 1500ms, 3s, 0, PHASE_VOL7RON);
                     break;
                 case EVENT_FROST_BOMB:
@@ -1512,7 +1581,10 @@ struct npc_mimiron_flames : public ScriptedAI
     void UpdateAI(uint32 diff) override
     {
         if (instance->GetBossState(DATA_MIMIRON) != IN_PROGRESS)
+        {
             me->DespawnOrUnsummon();
+            return;
+        }
 
         events.Update(diff);
 
@@ -1708,13 +1780,6 @@ class spell_mimiron_fire_search : public SpellScript
 {
     PrepareSpellScript(spell_mimiron_fire_search);
 
-public:
-    spell_mimiron_fire_search()
-    {
-        _noTarget = false;
-    }
-
-private:
     bool Validate(SpellInfo const* /*spell*/) override
     {
         return ValidateSpellInfo({ SPELL_WATER_SPRAY });
@@ -1764,8 +1829,7 @@ private:
         OnEffectHitTarget += SpellEffectFn(spell_mimiron_fire_search::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
     }
 
-private:
-    bool _noTarget;
+    bool _noTarget = false;
 };
 
 // 64444 - Magnetic Core Summon
@@ -1916,7 +1980,7 @@ class spell_mimiron_plasma_blast : public SpellScript
 
     void HandleScript(SpellEffIndex /*effIndex*/)
     {
-        if (Unit* caster = GetCaster()->GetVehicleKit()->GetPassenger(3))
+        if (Unit* caster = GetCaster()->GetVehicleKit()->GetPassenger(MKII_SEAT_CANNON))
             caster->CastSpell(GetHitUnit(), SPELL_PLASMA_BLAST);
     }
 
@@ -2027,7 +2091,7 @@ class spell_mimiron_rapid_burst : public AuraScript
 
     void Register() override
     {
-        AfterEffectRemove += AuraEffectApplyFn(spell_mimiron_rapid_burst::AfterRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
+        AfterEffectRemove += AuraEffectRemoveFn(spell_mimiron_rapid_burst::AfterRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
         OnEffectPeriodic += AuraEffectPeriodicFn(spell_mimiron_rapid_burst::HandleDummyTick, EFFECT_1, SPELL_AURA_PERIODIC_DUMMY);
     }
 };
@@ -2134,7 +2198,7 @@ class spell_mimiron_rocket_strike_target_select : public SpellScript
     {
         if (InstanceScript* instance = GetCaster()->GetInstanceScript())
             GetCaster()->CastSpell(GetHitUnit(), SPELL_SUMMON_ROCKET_STRIKE, instance->GetGuidData(DATA_VX_001));
-        GetCaster()->SetDisplayId(11686);
+        GetCaster()->SetDisplayId(MODEL_INVISIBLE);
     }
 
     void Register() override
