@@ -1278,6 +1278,8 @@ class TC_GAME_API ObjectMgr
 
         CellObjectGuidsMap const* GetMapObjectGuids(uint16 mapid, uint8 spawnMode);
 
+        std::vector<ObjectGuid::LowType> const* GetLocalTransportsForMap(uint16 mapid, uint8 spawnMode) const;
+
         /**
          * Gets temp summon data for all creatures of specified group.
          *
@@ -1665,6 +1667,7 @@ class TC_GAME_API ObjectMgr
         ItemSetNameContainer _itemSetNameStore;
 
         MapObjectGuids _mapObjectGuidsStore;
+        std::unordered_map<uint32 /*(mapid, spawnMode) pair*/, std::vector<ObjectGuid::LowType>> _localTransportStore; // EG
         CreatureDataContainer _creatureDataStore;
         CreatureTemplateContainer _creatureTemplateStore;
         CreatureModelContainer _creatureModelStore;

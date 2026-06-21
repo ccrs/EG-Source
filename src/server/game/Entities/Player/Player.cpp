@@ -19128,8 +19128,9 @@ void Player::SaveToDB(CharacterDatabaseTransaction trans, bool create /* = false
         stmt->setFloat(index++, finiteAlways(GetTransOffsetZ()));
         stmt->setFloat(index++, finiteAlways(GetTransOffsetO()));
         ObjectGuid::LowType transLowGUID = 0;
-        if (GetTransport())
-            transLowGUID = GetTransport()->GetGUID().GetCounter();
+        if (Transport* transport = GetTransport())
+            if (transport->GetGUID().IsMOTransport())
+                transLowGUID = transport->GetGUID().GetCounter();
         stmt->setUInt32(index++, transLowGUID);
 
         std::ostringstream ss;
@@ -19253,8 +19254,9 @@ void Player::SaveToDB(CharacterDatabaseTransaction trans, bool create /* = false
         stmt->setFloat(index++, finiteAlways(GetTransOffsetZ()));
         stmt->setFloat(index++, finiteAlways(GetTransOffsetO()));
         ObjectGuid::LowType transLowGUID = 0;
-        if (GetTransport())
-            transLowGUID = GetTransport()->GetGUID().GetCounter();
+        if (Transport* transport = GetTransport())
+            if (transport->GetGUID().IsMOTransport())
+                transLowGUID = transport->GetGUID().GetCounter();
         stmt->setUInt32(index++, transLowGUID);
 
         std::ostringstream ss;

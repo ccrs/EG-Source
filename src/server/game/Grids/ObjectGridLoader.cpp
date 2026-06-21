@@ -132,7 +132,10 @@ void ObjectGridLoader::Visit(GameObjectMapType &m)
             continue;
 
         if (GameObject* obj = GameObject::CreateGameObjectFromDB(guid, i_map, false))
-            AddObjectHelper(cellCoord, m, i_gameObjects, i_map, obj);
+        {
+            if (!obj->ToTransport())
+                AddObjectHelper(cellCoord, m, i_gameObjects, i_map, obj);
+        }
     }
 }
 
