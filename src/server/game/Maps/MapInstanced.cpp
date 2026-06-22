@@ -240,14 +240,15 @@ InstanceMap* MapInstanced::CreateInstance(uint32 InstanceId, InstanceSave* save,
     bool load_data = save != nullptr;
     map->CreateInstanceData(load_data);
 
+    // EG
+    map->LoadLocalTransports();
+
     if (sWorld->getBoolConfig(CONFIG_INSTANCEMAP_LOAD_GRIDS))
         map->LoadAllCells();
 
     Trinity::unique_trackable_ptr<Map>& ptr = m_InstancedMaps[InstanceId];
     ptr.reset(map);
     map->SetWeakPtr(ptr);
-
-    map->LoadLocalTransports(); // EG
 
     sScriptMgr->OnCreateMap(map);
     return map;
