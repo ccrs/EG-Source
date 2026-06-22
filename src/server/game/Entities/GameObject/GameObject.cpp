@@ -297,9 +297,12 @@ bool GameObject::Create(ObjectGuid::LowType guidlow, uint32 name_id, Map* map, u
     }
 
     if (goinfo->type == GAMEOBJECT_TYPE_TRANSPORT)
+    {
         m_updateFlag = (m_updateFlag | UPDATEFLAG_TRANSPORT) & ~UPDATEFLAG_POSITION;
-
-    Object::_Create(ObjectGuid::Create<HighGuid::GameObject>(goinfo->entry, guidlow));
+        Object::_Create(ObjectGuid::Create<HighGuid::Mo_Transport>(guidlow));
+    }
+    else
+        Object::_Create(ObjectGuid::Create<HighGuid::GameObject>(goinfo->entry, guidlow));
 
     m_goInfo = goinfo;
     m_goTemplateAddon = sObjectMgr->GetGameObjectTemplateAddon(name_id);
@@ -2751,6 +2754,8 @@ void GameObject::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player co
                             float timer = float(m_goValue.Transport.PathProgress % transportPeriod);
                             pathProgress = int16(timer / float(transportPeriod) * 65535.0f);
                         }
+                        if (pathProgress == 0 && IsTransportStopped())
+                            pathProgress = -1;
                         break;
                     }
                     default:

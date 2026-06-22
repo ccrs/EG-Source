@@ -179,6 +179,9 @@ class TC_GAME_API GameObject : public WorldObject, public GridObject<GameObject>
         GOState GetGoState() const { return GOState(GetByteValue(GAMEOBJECT_BYTES_1, 0)); }
         void SetGoState(GOState state);
         virtual uint32 GetTransportPeriod() const;
+        virtual uint32 GetTransportPathTimer() const { return GetGOValue()->Transport.PathProgress; }
+        // EG - a parked LocalTransport reports true so its GAMEOBJECT_DYNAMIC reports -1 (hold) at phase 0
+        virtual bool IsTransportStopped() const { return false; }
         uint8 GetGoArtKit() const { return GetByteValue(GAMEOBJECT_BYTES_1, 2); }
         void SetGoArtKit(uint8 artkit);
         uint8 GetGoAnimProgress() const { return GetByteValue(GAMEOBJECT_BYTES_1, 3); }
