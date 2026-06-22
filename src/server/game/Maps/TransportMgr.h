@@ -20,6 +20,7 @@
 
 #include "DBCStores.h"
 #include "ObjectGuid.h"
+#include <G3D/Quat.h>
 #include <memory>
 
 struct KeyFrame;
@@ -94,8 +95,8 @@ struct TC_GAME_API TransportAnimation
     TransportPathRotationContainer Rotations;
     uint32 TotalTime;
 
-    TransportAnimationEntry const* GetAnimNode(uint32 time) const;
-    TransportRotationEntry const* GetAnimRotation(uint32 time) const;
+    bool GetAnimNode(uint32 time, TransportAnimationEntry const*& curr, TransportAnimationEntry const*& next, float& percPos) const;
+    void GetAnimRotation(uint32 time, G3D::Quat& curr, G3D::Quat& next, float& percRot) const;
 };
 
 typedef std::map<uint32, TransportAnimation> TransportAnimationContainer;

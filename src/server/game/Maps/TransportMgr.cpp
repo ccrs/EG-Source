@@ -470,20 +470,73 @@ void TransportMgr::CreateInstanceTransports(Map* map)
         CreateTransport(*itr, 0, map);
 }
 
-TransportAnimationEntry const* TransportAnimation::GetAnimNode(uint32 time) const
+bool TransportAnimation::GetAnimNode(uint32 time, TransportAnimationEntry const*& curr, TransportAnimationEntry const*& next, float& percPos) const
 {
-    auto itr = Path.lower_bound(time);
-    if (itr != Path.end())
-        return itr->second;
+    if (Path.empty())
+        return false;
 
-    return nullptr;
+    TransportPathContainer::const_iterator itr = Path.upper_bound(time);
+    if (itr == Path.begin())
+    {
+        // time is before the first node
+        curr = itr->second;
+        next = curr;
+        percPos = 0.0f;
+        return true;
+    }
+
+    TransportPathContainer::const_iterator currItr = itr;
+    --currItr;
+    curr = currItr->second;
+
+    if (itr == Path.end())
+    {
+        // past the last node: hold position, no further segment to interpolate into
+        next = curr;
+        percPos = 0.0f;
+        return true;
+    }
+
+    next = itr->second;
+    percPos = next->TimeIndex > curr->TimeIndex ? float(time - curr->TimeIndex) / float(next->TimeIndex - curr->TimeIndex) : 0.0f;
+    return true;
 }
 
-TransportRotationEntry const* TransportAnimation::GetAnimRotation(uint32 time) const
+void TransportAnimation::GetAnimRotation(uint32 time, G3D::Quat& curr, G3D::Quat& next, float& percRot) const
 {
-    auto itr = Rotations.lower_bound(time);
-    if (itr != Rotations.end())
-        return itr->second;
+    if (Rotations.empty())
+    {
+        curr = G3D::Quat(0.0f, 0.0f, 0.0f, 1.0f);
+        next = G3D::Quat(0.0f, 0.0f, 0.0f, 1.0f);
+        percRot = 0.0f;
+        return;
+    }
 
-    return nullptr;
+    for (TransportPathRotationContainer::const_reverse_iterator itr = Rotations.rbegin(); itr != Rotations.rend(); ++itr)
+    {
+        if (time >= itr->first)
+        {
+            uint32 currSeg = itr->second->TimeIndex;
+            uint32 nextSeg;
+            curr = G3D::Quat(itr->second->X, itr->second->Y, itr->second->Z, itr->second->W);
+            if (itr != Rotations.rbegin())
+            {
+                TransportPathRotationContainer::const_reverse_iterator nextItr = itr;
+                --nextItr;
+                next = G3D::Quat(nextItr->second->X, nextItr->second->Y, nextItr->second->Z, nextItr->second->W);
+                nextSeg = nextItr->second->TimeIndex;
+            }
+            else
+            {
+                next = G3D::Quat(Rotations.begin()->second->X, Rotations.begin()->second->Y, Rotations.begin()->second->Z, Rotations.begin()->second->W);
+                nextSeg = TotalTime;
+            }
+            percRot = nextSeg > currSeg ? float(time - currSeg) / float(nextSeg - currSeg) : 0.0f;
+            return;
+        }
+    }
+
+    curr = G3D::Quat(0.0f, 0.0f, 0.0f, 1.0f);
+    next = G3D::Quat(0.0f, 0.0f, 0.0f, 1.0f);
+    percRot = 0.0f;
 }
