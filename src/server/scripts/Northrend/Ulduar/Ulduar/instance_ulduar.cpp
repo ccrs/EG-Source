@@ -21,6 +21,7 @@
 #include "GameObject.h"
 #include "InstanceScript.h"
 #include "Item.h"
+#include "LocalTransport.h"
 #include "Map.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
@@ -125,6 +126,13 @@ ObjectData const objectData[] =
 {
     { GO_MIMIRON_ELEVATOR,             DATA_MIMIRON_ELEVATOR     },
     { GO_MIMIRON_BUTTON,               DATA_MIMIRON_BUTTON       },
+    { GO_MIMIRON_TRAM,                 DATA_MIMIRON_TRAM                 },
+    { GO_MIMIRON_ACTIVATE_TRAM,        DATA_MIMIRON_ACTIVATE_TRAM        },
+    { GO_MIMIRON_TRAM_ROCKET_BOOSTER,  DATA_MIMIRON_TRAM_ROCKET_BOOSTER  },
+    { GO_MIMIRON_CALL_TRAM_CENTER,     DATA_MIMIRON_CALL_TRAM_CENTER     },
+    { GO_MIMIRON_CALL_TRAM_MIMIRON,    DATA_MIMIRON_CALL_TRAM_MIMIRON    },
+    { GO_DOODAD_UL_TRAIN_TURNAROUND01, DATA_MIMIRON_TRAM_TURNAROUND_1    },
+    { GO_DOODAD_UL_TRAIN_TURNAROUND02, DATA_MIMIRON_TRAM_TURNAROUND_2    },
     { GO_DOODAD_UL_UNIVERSEGLOBE01,    DATA_UNIVERSE_GLOBE       },
     { GO_DOODAD_UL_ULDUAR_TRAPDOOR_03, DATA_ALGALON_TRAPDOOR     },
     { GO_RAZOR_HARPOON_1,              GO_RAZOR_HARPOON_1        },
@@ -279,6 +287,7 @@ class instance_ulduar : public InstanceMapScript
                 _flIntroCompleted = false;
                 _flIntroStarted = false;
                 _flGauntletRadioFiredMask = 0;
+                _mimironTramUsed = false;
             }
 
             void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override
@@ -558,7 +567,14 @@ class instance_ulduar : public InstanceMapScript
                         HodirChestGUID = gameObject->GetGUID();
                         break;
                     case GO_MIMIRON_TRAM:
-                        MimironTramGUID = gameObject->GetGUID();
+                        if (GetBossState(DATA_MIMIRON) == DONE)
+                            _mimironTramUsed = true;
+                        break;
+                    case GO_MIMIRON_TRAM_ROCKET_BOOSTER:
+                    case GO_MIMIRON_ACTIVATE_TRAM:
+                        if (LocalTransport* tram = GetMimironTram())
+                            if (!gameObject->GetTransport())
+                                tram->BoardScriptedPassenger(gameObject);
                         break;
                     case GO_LEVIATHAN_GATE:
                         LeviathanGateGUID = gameObject->GetGUID();
@@ -922,6 +938,37 @@ class instance_ulduar : public InstanceMapScript
                         _events.ScheduleEvent(EVENT_FL_HARDMODE_BRANN_RESPOND, 40s);
                         _events.ScheduleEvent(EVENT_FL_INTRO_SHIELD_DOWN, 44s);
                         break;
+                    case DATA_CALL_TRAM:
+                        if (LocalTransport* tram = GetMimironTram())
+                        {
+                            // data 0 = call to center (depart Mimiron): only valid parked at Mimiron (ACTIVE, pauseAtTime)
+                            if (data == 0 && tram->GetGoState() == GO_STATE_ACTIVE && tram->GetPathProgress() == tram->GetPauseTime())
+                            {
+                                tram->SetGoState(GO_STATE_READY);
+                                if (GameObject* rocketBooster = GetGameObject(DATA_MIMIRON_TRAM_ROCKET_BOOSTER))
+                                    rocketBooster->SetGoState(GO_STATE_ACTIVE);
+                                if (GameObject* activateTramButton = GetGameObject(DATA_MIMIRON_ACTIVATE_TRAM))
+                                    activateTramButton->SetFlag(GO_FLAG_NOT_SELECTABLE);
+                                if (GameObject* callTramCenterButton = GetGameObject(DATA_MIMIRON_CALL_TRAM_CENTER))
+                                    callTramCenterButton->SetFlag(GO_FLAG_NOT_SELECTABLE);
+                                _events.ScheduleEvent(EVENT_TRAM_TO_CENTER_TURNAROUND, 30s);
+                                _events.ScheduleEvent(EVENT_TRAM_TO_CENTER_ENABLE_BUTTONS, 60s);
+                            }
+                            // data 1 = call to Mimiron (depart center): only valid parked at center (READY, progress 0)
+                            if (data == 1 && tram->GetGoState() == GO_STATE_READY && tram->GetPathProgress() == 0)
+                            {
+                                tram->SetGoState(GO_STATE_ACTIVE);
+                                if (GameObject* rocketBooster = GetGameObject(DATA_MIMIRON_TRAM_ROCKET_BOOSTER))
+                                    rocketBooster->SetGoState(GO_STATE_ACTIVE);
+                                if (GameObject* activateTramButton = GetGameObject(DATA_MIMIRON_ACTIVATE_TRAM))
+                                    activateTramButton->SetFlag(GO_FLAG_NOT_SELECTABLE);
+                                if (GameObject* callTramMimironButton = GetGameObject(DATA_MIMIRON_CALL_TRAM_MIMIRON))
+                                    callTramMimironButton->SetFlag(GO_FLAG_NOT_SELECTABLE);
+                                _events.ScheduleEvent(EVENT_TRAM_TO_MIMIRON_TURNAROUND, 33s);
+                                _events.ScheduleEvent(EVENT_TRAM_TO_MIMIRON_ENABLE_BUTTONS, 63s);
+                            }
+                        }
+                        break;
                     default:
                         break;
                 }
@@ -1021,6 +1068,8 @@ class instance_ulduar : public InstanceMapScript
                         return _activeTowers ? 1 : 0;
                     case DATA_DESTROYED_TOWERS:
                         return _destroyedTowers;
+                    case DATA_CALL_TRAM:
+                        return _mimironTramUsed ? 1 : 0;
                     default:
                         break;
                 }
@@ -1446,6 +1495,30 @@ class instance_ulduar : public InstanceMapScript
                             OutroFlameLeviathanBrannGUID.Clear();
                             OutroFlameLeviathanRhydianGUID.Clear();
                             break;
+                        case EVENT_TRAM_TO_CENTER_TURNAROUND:
+                            if (GameObject* turnaround1 = GetGameObject(DATA_MIMIRON_TRAM_TURNAROUND_1))
+                                turnaround1->UseDoorOrButton();
+                            if (GameObject* rocketBooster = GetGameObject(DATA_MIMIRON_TRAM_ROCKET_BOOSTER))
+                                rocketBooster->SetGoState(GO_STATE_READY);
+                            break;
+                        case EVENT_TRAM_TO_CENTER_ENABLE_BUTTONS:
+                            if (GameObject* activateTramButton = GetGameObject(DATA_MIMIRON_ACTIVATE_TRAM))
+                                activateTramButton->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
+                            if (GameObject* callTramMimironButton = GetGameObject(DATA_MIMIRON_CALL_TRAM_MIMIRON))
+                                callTramMimironButton->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
+                            break;
+                        case EVENT_TRAM_TO_MIMIRON_TURNAROUND:
+                            if (GameObject* turnaround2 = GetGameObject(DATA_MIMIRON_TRAM_TURNAROUND_2))
+                                turnaround2->UseDoorOrButton();
+                            if (GameObject* rocketBooster = GetGameObject(DATA_MIMIRON_TRAM_ROCKET_BOOSTER))
+                                rocketBooster->SetGoState(GO_STATE_READY);
+                            break;
+                        case EVENT_TRAM_TO_MIMIRON_ENABLE_BUTTONS:
+                            if (GameObject* activateTramButton = GetGameObject(DATA_MIMIRON_ACTIVATE_TRAM))
+                                activateTramButton->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
+                            if (GameObject* callTramCenterButton = GetGameObject(DATA_MIMIRON_CALL_TRAM_CENTER))
+                                callTramCenterButton->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
+                            break;
                     }
                 }
             }
@@ -1457,6 +1530,14 @@ class instance_ulduar : public InstanceMapScript
                 if (Vehicle* vehicle = vehicleCreature->GetVehicleKit())
                     vehicle->RemoveAllPassengers();
                 vehicleCreature->DespawnOrUnsummon(5min);
+            }
+
+            LocalTransport* GetMimironTram()
+            {
+                GameObject* mimironTram = GetGameObject(DATA_MIMIRON_TRAM);
+                if (!mimironTram || !mimironTram->ToTransport())
+                    return nullptr;
+                return static_cast<LocalTransport*>(mimironTram);
             }
 
             void FireGauntletRadioWarning(uint32 brannGroup, uint32 firedBit)
@@ -1522,7 +1603,6 @@ class instance_ulduar : public InstanceMapScript
             ObjectGuid CacheOfStormsHardmodeGUID;
             ObjectGuid HodirRareCacheGUID;
             ObjectGuid HodirChestGUID;
-            ObjectGuid MimironTramGUID;
             ObjectGuid BrainRoomDoorGUIDs[3];
             // Miscellaneous
             uint32 TeamInInstance;
@@ -1553,6 +1633,7 @@ class instance_ulduar : public InstanceMapScript
             ObjectGuid _flIntroPlayerGUID;
             ObjectGuid _flHardmodePlayerGUID;
             uint32 _flGauntletRadioFiredMask;
+            bool _mimironTramUsed;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override

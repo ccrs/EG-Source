@@ -48,3 +48,43 @@ UPDATE `creature_template` SET `unit_flags` = 33554432, `flags_extra` = 192 WHER
 DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_freya_summon_healthy_spore';
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (62566, 'EG_spell_freya_summon_healthy_spore');
+
+--
+UPDATE `gameobject` SET `position_x`=2307.000003, `position_y`=265.6011, `position_z`=424.287993, `orientation`=0, `rotation0`=0, `rotation1`=0, `rotation2`=0, `rotation3`=1 WHERE `guid`=35524 AND `id`=194904;
+UPDATE `gameobject` SET `position_x`=2306.87, `position_y`=274.237, `position_z`=424.288, `orientation`=1.52255, `rotation0`=0, `rotation1`=0, `rotation2`=0.689845, `rotation3`=0.723957 WHERE `guid`=45164 AND `id`=194437;
+
+UPDATE `gameobject_template_addon` SET `flags` = `flags` | 16 WHERE `entry` IN (194912, 194914);
+
+ -- Activate Tram smart ai
+SET @ENTRY := 194437;
+UPDATE `gameobject_template` SET `AIName` = 'SmartGameObjectAI' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 1 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 1, 0, 0, 11, 0, 100, 0, 0, 0, 0, 0, 22, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On respawn - Set event phase to phase 1'),
+(@ENTRY, 1, 1, 2, 64, 1, 100, 0, 0, 0, 0, 0, 34, 710, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On player opened gossip - Set instance data #710 to 1'),
+(@ENTRY, 1, 2, 0, 61, 0, 100, 0, 0, 0, 0, 0, 22, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On player opened gossip - Set event phase to phase 2'),
+(@ENTRY, 1, 3, 4, 64, 2, 100, 0, 0, 0, 0, 0, 34, 710, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On player opened gossip - Set instance data #710 to 0'),
+(@ENTRY, 1, 4, 0, 61, 0, 100, 0, 0, 0, 0, 0, 22, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On player opened gossip - Set event phase to phase 1');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 194437 AND `SourceId` = 1;
+
+ -- Call Tram smart ai
+SET @ENTRY := 194912;
+UPDATE `gameobject_template` SET `AIName` = 'SmartGameObjectAI' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 1 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 1, 0, 0, 64, 0, 100, 0, 0, 0, 0, 0, 34, 710, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On player opened gossip - Set instance data #710 to 1');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 194912 AND `SourceId` = 1;
+
+ -- Call Tram smart ai
+SET @ENTRY := 194914;
+UPDATE `gameobject_template` SET `AIName` = 'SmartGameObjectAI' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 1 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 1, 0, 0, 64, 0, 100, 0, 0, 0, 0, 0, 34, 710, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'On player opened gossip - Set instance data #710 to 0');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 194914 AND `SourceId` = 1;
