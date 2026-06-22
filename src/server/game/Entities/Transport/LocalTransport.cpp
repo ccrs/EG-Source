@@ -24,6 +24,7 @@
 #include "Vehicle.h"
 #include <G3D/Quat.h>
 #include <G3D/Vector3.h>
+#include <cmath>
 
 LocalTransport::LocalTransport() : Transport(), _needDoInitialRelocation(false)
 {
@@ -51,6 +52,13 @@ GameObject* LocalTransport::CreateLocalTransportFromDB(ObjectGuid::LowType spawn
         delete transport;
         return nullptr;
     }
+
+    GameObjectTemplate const* goInfo = transport->GetGOInfo();
+    transport->SetGoState(goInfo->transport.startOpen ? GO_STATE_ACTIVE : GO_STATE_READY);
+    if (goInfo->transport.startOpen && goInfo->transport.pause)
+        transport->SetPathProgress(goInfo->transport.pause);
+    else
+        transport->SetPathProgress(0);
 
     transport->SetNeedDoInitialRelocation(true);
 
@@ -131,34 +139,44 @@ void LocalTransport::Update(uint32 diff)
 
 void LocalTransport::RelocateToProgress(uint32 progress)
 {
-    if (!m_goValue.Transport.AnimationInfo || !m_goValue.Transport.AnimationInfo->TotalTime)
+    TransportAnimationEntry const* curr = nullptr;
+    TransportAnimationEntry const* next = nullptr;
+    float percPos = 0.0f;
+    if (!m_goValue.Transport.AnimationInfo || !m_goValue.Transport.AnimationInfo->GetAnimNode(progress, curr, next, percPos))
         return;
 
-    uint32 timer = progress % m_goValue.Transport.AnimationInfo->TotalTime;
+    // interpolate the path offset between the current and next animation node
+    G3D::Vector3 pos(curr->Pos.X, curr->Pos.Y, curr->Pos.Z);
+    pos += G3D::Vector3(percPos * (next->Pos.X - curr->Pos.X), percPos * (next->Pos.Y - curr->Pos.Y), percPos * (next->Pos.Z - curr->Pos.Z));
 
-    TransportAnimationEntry const* node = m_goValue.Transport.AnimationInfo->GetAnimNode(timer);
-    if (!node)
-        return;
+    // rotate the path by the gameobject's parent (spawn) rotation
+    float sign = GetFloatValue(GAMEOBJECT_PARENTROTATION + 2) >= 0.0f ? 1.0f : -1.0f;
+    float pathRotAngle = sign * 2.0f * std::acos(GetFloatValue(GAMEOBJECT_PARENTROTATION + 3));
+    float cs = std::cos(pathRotAngle);
+    float sn = std::sin(pathRotAngle);
+    float nx = pos.x * cs - pos.y * sn;
+    float ny = pos.x * sn + pos.y * cs;
+    pos.x = nx;
+    pos.y = ny;
 
-    if (m_goValue.Transport.CurrentSeg == node->TimeIndex)
-        return;
-    m_goValue.Transport.CurrentSeg = node->TimeIndex;
-
-    G3D::Quat rotation;
-    if (TransportRotationEntry const* rot = m_goValue.Transport.AnimationInfo->GetAnimRotation(timer))
-        rotation = G3D::Quat(rot->X, rot->Y, rot->Z, rot->W);
-
-    G3D::Vector3 pos = rotation.toRotationMatrix()
-                     * G3D::Matrix3::fromEulerAnglesZYX(GetStationaryO(), 0.0f, 0.0f)
-                     * G3D::Vector3(node->Pos.X, node->Pos.Y, node->Pos.Z);
-
+    // anchor to the stationary (spawn) position
     pos += G3D::Vector3(GetStationaryX(), GetStationaryY(), GetStationaryZ());
 
     // check if position is valid
     if (!Trinity::IsValidMapCoord(pos.x, pos.y, pos.z))
         return;
 
-    UpdatePosition(pos.x, pos.y, pos.z, GetStationaryO());
+    G3D::Quat currRot;
+    G3D::Quat nextRot;
+    float percRot = 0.0f;
+    m_goValue.Transport.AnimationInfo->GetAnimRotation(progress, currRot, nextRot, percRot);
+    float signCurr = currRot.z >= 0.0f ? 1.0f : -1.0f;
+    float oriRotAngleCurr = signCurr * 2.0f * std::acos(currRot.w);
+    float signNext = nextRot.z >= 0.0f ? 1.0f : -1.0f;
+    float oriRotAngleNext = signNext * 2.0f * std::acos(nextRot.w);
+    float oriRotAngle = oriRotAngleCurr + percRot * (oriRotAngleNext - oriRotAngleCurr);
+
+    UpdatePosition(pos.x, pos.y, pos.z, Position::NormalizeOrientation(GetStationaryO() + oriRotAngle));
 }
 
 void LocalTransport::UpdatePosition(float x, float y, float z, float o)
