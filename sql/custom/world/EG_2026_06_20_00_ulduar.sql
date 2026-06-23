@@ -90,3 +90,11 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 194914 AND `SourceId` = 1;
+
+--
+UPDATE `conditions` SET `ConditionValue1` = 10, `ConditionValue2` = 1, `ConditionValue3` = 0, `Comment` = 'Spark of Imagination teleport shown once Mimiron has been engaged' WHERE `SourceTypeOrReferenceId` = 15 AND `SourceGroup` = 10389 AND `SourceEntry` = 12;
+--
+UPDATE `creature_template` SET `unit_flags` = 0, `flags_extra` = 8192 WHERE `entry` = 34362;
+--
+UPDATE `creature_template` SET `ScriptName` = 'EG_npc_mimiron_bomb_bot' WHERE `entry` = 33836;
+UPDATE `creature_template` SET `mechanic_immune_mask` = 4784129 WHERE `entry` IN (33836, 34218);

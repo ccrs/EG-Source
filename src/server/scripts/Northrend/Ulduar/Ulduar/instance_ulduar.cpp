@@ -107,6 +107,9 @@ ObjectData const creatureData[] =
     { NPC_THORIM_CONTROLLER,        DATA_THORIM_CONTROLLER        },
     { NPC_COMPUTER,                 DATA_COMPUTER                 },
     { NPC_WORLD_TRIGGER_MIMIRON,    DATA_MIMIRON_WORLD_TRIGGER    },
+    { NPC_LEVIATHAN_MKII,           DATA_LEVIATHAN_MK_II          },
+    { NPC_VX_001,                   DATA_VX_001                   },
+    { NPC_AERIAL_COMMAND_UNIT,      DATA_AERIAL_COMMAND_UNIT      },
     { NPC_VOICE_OF_YOGG_SARON,      DATA_VOICE_OF_YOGG_SARON      },
     { NPC_SARA,                     DATA_SARA                     },
     { NPC_BRAIN_OF_YOGG_SARON,      DATA_BRAIN_OF_YOGG_SARON      },
@@ -292,6 +295,7 @@ class instance_ulduar : public InstanceMapScript
                 _flGauntletRadioFiredMask = 0;
                 _mimironTramUsed = false;
                 _tramProgress = 0;
+                _mimironEngaged = false;
             }
 
             void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override
@@ -429,17 +433,6 @@ class instance_ulduar : public InstanceMapScript
                     case NPC_THUNDER_ORB:
                         creature->SetCanFly(true);
                         creature->SetDisableGravity(true);
-                        break;
-
-                    // Mimiron
-                    case NPC_LEVIATHAN_MKII:
-                        MimironVehicleGUIDs[0] = creature->GetGUID();
-                        break;
-                    case NPC_VX_001:
-                        MimironVehicleGUIDs[1] = creature->GetGUID();
-                        break;
-                    case NPC_AERIAL_COMMAND_UNIT:
-                        MimironVehicleGUIDs[2] = creature->GetGUID();
                         break;
 
                     // Yogg-Saron
@@ -779,6 +772,8 @@ class instance_ulduar : public InstanceMapScript
                     case DATA_MIMIRON:
                         if (state == DONE)
                             instance->SummonCreature(NPC_MIMIRON_OBSERVATION_RING, ObservationRingKeepersPos[3]);
+                        else if (state == IN_PROGRESS)
+                            _mimironEngaged = true;
                         break;
                     case DATA_FREYA:
                         if (state == DONE)
@@ -1029,14 +1024,6 @@ class instance_ulduar : public InstanceMapScript
                     case DATA_STONEBARK:
                         return ElderGUIDs[2];
 
-                    // Mimiron
-                    case DATA_LEVIATHAN_MK_II:
-                        return MimironVehicleGUIDs[0];
-                    case DATA_VX_001:
-                        return MimironVehicleGUIDs[1];
-                    case DATA_AERIAL_COMMAND_UNIT:
-                        return MimironVehicleGUIDs[2];
-
                     // Yogg-Saron
                     case GO_BRAIN_ROOM_DOOR_1:
                         return BrainRoomDoorGUIDs[0];
@@ -1061,6 +1048,8 @@ class instance_ulduar : public InstanceMapScript
             {
                 switch (type)
                 {
+                    case DATA_MIMIRON:
+                        return _mimironEngaged ? 1 : 0;
                     case DATA_COLOSSUS:
                         return ColossusData;
                     case DATA_UNBROKEN:
@@ -1191,6 +1180,7 @@ class instance_ulduar : public InstanceMapScript
                 data << ' ' << uint32(_activeTowers ? 1 : 0);
                 data << ' ' << _destroyedTowers;
                 data << ' ' << uint32(_flIntroCompleted ? 1 : 0);
+                data << ' ' << uint32(_mimironEngaged ? 1 : 0);
             }
 
             void ReadSaveDataMore(std::istringstream& data) override
@@ -1238,6 +1228,10 @@ class instance_ulduar : public InstanceMapScript
                 uint32 introCompletedTemp = 0;
                 data >> introCompletedTemp;
                 _flIntroCompleted = introCompletedTemp != 0;
+
+                uint32 mimironEngagedTemp = 0;
+                data >> mimironEngagedTemp;
+                _mimironEngaged = mimironEngagedTemp != 0;
 
                 if (GetBossState(DATA_FLAME_LEVIATHAN) == NOT_STARTED)
                     ForceRespawnQueuedCreaturesByEntry({ NPC_SALVAGED_DEMOLISHER, NPC_SALVAGED_SIEGE_ENGINE, NPC_SALVAGED_CHOPPER });
@@ -1603,7 +1597,6 @@ class instance_ulduar : public InstanceMapScript
             ObjectGuid AssemblyGUIDs[3];
             ObjectGuid ElderGUIDs[3];
             ObjectGuid FreyaAchieveTriggerGUID;
-            ObjectGuid MimironVehicleGUIDs[3];
             ObjectGuid KeeperGUIDs[4];
             ObjectGuid OutroFlameLeviathanFlyingMachineGUID;
             ObjectGuid OutroFlameLeviathanBrannGUID;
@@ -1650,6 +1643,7 @@ class instance_ulduar : public InstanceMapScript
             uint32 _flGauntletRadioFiredMask;
             bool _mimironTramUsed;
             uint32 _tramProgress;
+            bool _mimironEngaged;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override

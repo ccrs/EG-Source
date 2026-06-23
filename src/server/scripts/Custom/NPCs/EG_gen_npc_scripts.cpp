@@ -1387,6 +1387,42 @@ private:
     bool _fixated = false;
 };
 
+enum BombBotMisc
+{
+    POINT_FALL = 1
+};
+
+struct EG_npc_mimiron_bomb_bot : public ScriptedAI
+{
+    EG_npc_mimiron_bomb_bot(Creature* creature) : ScriptedAI(creature) { }
+
+    void JustAppeared() override
+    {
+        if (me->GetPositionZ() - me->GetFloorZ() > 3.0f)
+        {
+            me->SetReactState(REACT_PASSIVE);
+            me->GetMotionMaster()->MoveFall(POINT_FALL);
+        }
+    }
+
+    void MovementInform(uint32 type, uint32 id) override
+    {
+        if (type != EFFECT_MOTION_TYPE || id != POINT_FALL)
+            return;
+
+        me->SetReactState(REACT_AGGRESSIVE);
+        DoZoneInCombat();
+    }
+
+    void UpdateAI(uint32 /*diff*/) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
 void AddSC_EG_gen_npc_scripts()
 {
     RegisterCreatureAI(EG_npc_damage_test_controller);
@@ -1399,4 +1435,5 @@ void AddSC_EG_gen_npc_scripts()
     RegisterCreatureAI(EG_npc_arachnopod_destroyer);
     RegisterCreatureAI(EG_npc_storm_tempered_keeper);
     RegisterCreatureAI(EG_npc_twilight_shadowblade);
+    RegisterCreatureAI(EG_npc_mimiron_bomb_bot);
 }

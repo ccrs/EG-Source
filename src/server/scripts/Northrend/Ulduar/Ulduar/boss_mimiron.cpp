@@ -173,6 +173,7 @@ enum MimironSpells
     SPELL_VEHICLE_DAMAGED                       = 63415,
     SPELL_EMERGENCY_MODE                        = 64582, // mkii, vx001, aerial, assault, junk
     SPELL_EMERGENCY_MODE_TURRET                 = 65101, // Cast by Leviathan MK II, only hits Leviathan MK II turret
+    SPELL_BERSERK                               = 64238, // Cast on the machines when the enrage timer expires
     SPELL_SELF_REPAIR                           = 64383,
     SPELL_MAGNETIC_CORE                         = 64436,
     SPELL_MAGNETIC_CORE_VISUAL                  = 64438,
@@ -190,7 +191,8 @@ enum MimironData
     DATA_NOT_SO_FRIENDLY_FIRE,
     DATA_FIREFIGHTER,
     DATA_WATERSPRAY,
-    DATA_MOVE_NEW
+    DATA_MOVE_NEW,
+    DATA_BERSERK
 };
 
 enum MimironEvents
@@ -276,7 +278,10 @@ enum MimironEvents
     EVENT_PROXIMITY_MINE_ARM,
     EVENT_PROXIMITY_MINE_DETONATION,
     EVENT_SEARCH_FLAMES,
-    EVENT_WATER_SPRAY
+    EVENT_WATER_SPRAY,
+
+    EVENT_CHECK_PLAYERS,
+    EVENT_BERSERK
 };
 
 enum MimironActions
@@ -325,6 +330,13 @@ enum MimironWaypoints
     WP_AERIAL_P4_POS
 };
 
+enum MimironAerialPoints
+{
+    POINT_AERIAL_CHASE = 1, // reposition near the ranged tank when it drifts out of range
+    POINT_AERIAL_GROUND, // pulled to the ground by Magnetic Core
+    POINT_AERIAL_AIR // ascend back into the air afterwards
+};
+
 enum MimironSeatIds : int8
 {
     MKII_SEAT_CANNON  = 3,
@@ -349,7 +361,7 @@ Position const MimironVehicleRelocation[] =
     { 2763.820f, 2568.870f, 364.3136f }, // WP_MKII_P4_POS_3
     { 2761.215f, 2568.875f, 364.0636f }, // WP_MKII_P4_POS_4
     { 2744.610f, 2569.380f, 364.3136f }, // WP_MKII_P4_POS_5
-    { 2744.62f,  2569.41f,  382.0f, 3.054326f }  // WP_AERIAL_P4_POS
+    { 2744.65f,  2569.46f,  381.34f   }  // WP_AERIAL_P4_POS
 };
 
 Position const VX001SummonPos = { 2744.431f, 2569.385f, 364.3968f, 3.141593f };
@@ -362,9 +374,9 @@ static bool MimironIsEncounterFinished(Unit* who)
 {
     InstanceScript* instance = who->GetInstanceScript();
 
-    Creature* mkii = ObjectAccessor::GetCreature(*who, instance->GetGuidData(DATA_LEVIATHAN_MK_II));
-    Creature* vx001 = ObjectAccessor::GetCreature(*who, instance->GetGuidData(DATA_VX_001));
-    Creature* aerial = ObjectAccessor::GetCreature(*who, instance->GetGuidData(DATA_AERIAL_COMMAND_UNIT));
+    Creature* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II);
+    Creature* vx001 = instance->GetCreature(DATA_VX_001);
+    Creature* aerial = instance->GetCreature(DATA_AERIAL_COMMAND_UNIT);
     if (!mkii || !vx001 || !aerial)
         return false;
 
@@ -385,12 +397,21 @@ static bool MimironIsEncounterFinished(Unit* who)
     return false;
 }
 
+static void MimironApplyBerserkIfActive(Creature* machine)
+{
+    if (InstanceScript* instance = machine->GetInstanceScript())
+        if (Creature* mimiron = instance->GetCreature(DATA_MIMIRON))
+            if (mimiron->AI()->GetData(DATA_BERSERK))
+                machine->CastSpell(machine, SPELL_BERSERK, true);
+}
+
 struct boss_mimiron : public BossAI
 {
     boss_mimiron(Creature* creature) : BossAI(creature, DATA_MIMIRON)
     {
         me->SetReactState(REACT_PASSIVE);
         _fireFighter = false;
+        _berserk = false;
     }
 
     void DoAction(int32 action) override
@@ -405,7 +426,7 @@ struct boss_mimiron : public BossAI
                 break;
             case DO_ACTIVATE_V0L7R0N_1:
                 Talk(SAY_AERIAL_DEATH);
-                if (Creature* mkii = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_LEVIATHAN_MK_II)))
+                if (Creature* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II))
                     mkii->GetMotionMaster()->MovePoint(WP_MKII_P4_POS_1, MimironVehicleRelocation[WP_MKII_P4_POS_1]);
                 break;
             case DO_ACTIVATE_V0L7R0N_2:
@@ -418,6 +439,13 @@ struct boss_mimiron : public BossAI
             default:
                 break;
         }
+    }
+
+    uint32 GetData(uint32 type) const override
+    {
+        if (type == DATA_BERSERK)
+            return _berserk ? 1 : 0;
+        return 0;
     }
 
     void JustEngagedWith(Unit* who) override
@@ -436,6 +464,8 @@ struct boss_mimiron : public BossAI
         if (_fireFighter)
             events.ScheduleEvent(EVENT_SUMMON_FLAMES, 3s);
         events.ScheduleEvent(EVENT_INTRO_1, 1500ms);
+        events.ScheduleEvent(EVENT_CHECK_PLAYERS, 5s);
+        events.ScheduleEvent(EVENT_BERSERK, _fireFighter ? RAID_MODE(8min, 10min) : 15min);
     }
 
     void JustDied(Unit* /*killer*/) override
@@ -457,7 +487,7 @@ struct boss_mimiron : public BossAI
         if (instance->GetBossState(DATA_MIMIRON) == DONE) // Mimiron will attempt to reset because he is not dead and will be set to friendly before despawning.
             return;
 
-        if (Creature* aerial = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_AERIAL_COMMAND_UNIT)))
+        if (Creature* aerial = instance->GetCreature(DATA_AERIAL_COMMAND_UNIT))
             aerial->AI()->EnterEvadeMode();
 
         _Reset();
@@ -477,9 +507,10 @@ struct boss_mimiron : public BossAI
         }
 
         _fireFighter = false;
+        _berserk = false;
         DoCast(me, SPELL_WELD);
 
-        if (Unit* mkii = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_LEVIATHAN_MK_II)))
+        if (Unit* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II))
             DoCast(mkii, SPELL_SEAT_3);
     }
 
@@ -560,7 +591,7 @@ struct boss_mimiron : public BossAI
                     events.ScheduleEvent(EVENT_VX001_ACTIVATION_6, 19s);
                     break;
                 case EVENT_VX001_ACTIVATION_6:
-                    if (Unit* vx001 = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_VX_001)))
+                    if (Unit* vx001 = instance->GetCreature(DATA_VX_001))
                     {
                         DoCast(vx001, SPELL_SEAT_1);
                         events.ScheduleEvent(EVENT_VX001_ACTIVATION_7, 3500ms);
@@ -605,7 +636,7 @@ struct boss_mimiron : public BossAI
                     events.ScheduleEvent(EVENT_AERIAL_ACTIVATION_4, 5s);
                     break;
                 case EVENT_AERIAL_ACTIVATION_4:
-                    if (Unit* aerial = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_AERIAL_COMMAND_UNIT)))
+                    if (Unit* aerial = instance->GetCreature(DATA_AERIAL_COMMAND_UNIT))
                     {
                         me->CastSpell(aerial, SPELL_SEAT_1);
                         events.ScheduleEvent(EVENT_AERIAL_ACTIVATION_5, 2s);
@@ -624,7 +655,7 @@ struct boss_mimiron : public BossAI
                         events.Repeat(1s);
                     break;
                 case EVENT_VOL7RON_ACTIVATION_1:
-                    if (Creature* mkii = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_LEVIATHAN_MK_II)))
+                    if (Creature* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II))
                     {
                         mkii->SetFacingTo(float(M_PI));
                         events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_2, 1s);
@@ -634,8 +665,8 @@ struct boss_mimiron : public BossAI
                     break;
                 case EVENT_VOL7RON_ACTIVATION_2:
                 {
-                    Creature* mkii = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_LEVIATHAN_MK_II));
-                    Creature* vx001 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VX_001));
+                    Creature* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II);
+                    Creature* vx001 = instance->GetCreature(DATA_VX_001);
                     if (!mkii || !vx001)
                     {
                         events.Repeat(1s);
@@ -647,7 +678,7 @@ struct boss_mimiron : public BossAI
                     break;
                 }
                 case EVENT_VOL7RON_ACTIVATION_3:
-                    if (Creature* mkii = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_LEVIATHAN_MK_II)))
+                    if (Creature* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II))
                     {
                         mkii->GetMotionMaster()->MovePoint(WP_MKII_P4_POS_4, MimironVehicleRelocation[WP_MKII_P4_POS_4]);
                         events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_4, 5s);
@@ -657,13 +688,14 @@ struct boss_mimiron : public BossAI
                     break;
                 case EVENT_VOL7RON_ACTIVATION_4:
                 {
-                    Creature* vx001 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VX_001));
-                    Creature* aerial = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_AERIAL_COMMAND_UNIT));
+                    Creature* vx001 = instance->GetCreature(DATA_VX_001);
+                    Creature* aerial = instance->GetCreature(DATA_AERIAL_COMMAND_UNIT);
                     if (!vx001 || !aerial)
                     {
                         events.Repeat(1s);
                         break;
                     }
+                    aerial->SetDisableGravity(false);
                     aerial->CastSpell(vx001, SPELL_MOUNT_VX_001);
                     aerial->CastSpell(aerial, SPELL_HALF_HEAL);
                     events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_5, 4s);
@@ -674,7 +706,7 @@ struct boss_mimiron : public BossAI
                     events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_6, 3s);
                     break;
                 case EVENT_VOL7RON_ACTIVATION_6:
-                    if (Creature* vx001 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VX_001)))
+                    if (Creature* vx001 = instance->GetCreature(DATA_VX_001))
                     {
                         DoCast(vx001, SPELL_SEAT_2);
                         events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_7, 5s);
@@ -684,9 +716,9 @@ struct boss_mimiron : public BossAI
                     break;
                 case EVENT_VOL7RON_ACTIVATION_7:
                 {
-                    Creature* mkii = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_LEVIATHAN_MK_II));
-                    Creature* vx001 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VX_001));
-                    Creature* aerial = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_AERIAL_COMMAND_UNIT));
+                    Creature* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II);
+                    Creature* vx001 = instance->GetCreature(DATA_VX_001);
+                    Creature* aerial = instance->GetCreature(DATA_AERIAL_COMMAND_UNIT);
                     if (!mkii || !vx001 || !aerial)
                     {
                         events.Repeat(1s);
@@ -720,6 +752,44 @@ struct boss_mimiron : public BossAI
                     me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                     me->DespawnOrUnsummon(1s); // sniffs say 6 sec after, but it doesnt matter.
                     break;
+                case EVENT_CHECK_PLAYERS:
+                    {
+                        Map::PlayerList const &playerList = me->GetMap()->GetPlayers();
+                        if (playerList.isEmpty())
+                        {
+                            EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
+                            return;
+                        }
+                        uint8 alive = 0;
+                        for (auto i = playerList.begin(); i != playerList.end(); ++i)
+                        {
+                            if (Player* player = i->GetSource())
+                            {
+                                if (player->IsAlive() && IsInBoundary(player))
+                                    ++alive;
+                            }
+                        }
+                        if (!alive)
+                            EnterEvadeMode();
+                        else
+                            events.ScheduleEvent(EVENT_CHECK_PLAYERS, 5s);
+                    }
+                    break;
+                case EVENT_BERSERK:
+                    if (!_berserk)
+                    {
+                        _berserk = true;
+                        Talk(SAY_BERSERK);
+                    }
+
+                    if (Creature* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II))
+                        mkii->CastSpell(mkii, SPELL_BERSERK, true);
+                    if (Creature* vx001 = instance->GetCreature(DATA_VX_001))
+                        vx001->CastSpell(vx001, SPELL_BERSERK, true);
+                    if (Creature* aerial = instance->GetCreature(DATA_AERIAL_COMMAND_UNIT))
+                        aerial->CastSpell(aerial, SPELL_BERSERK, true);
+                    events.Repeat(30s);
+                    break;
                 default:
                     break;
             }
@@ -731,6 +801,7 @@ struct boss_mimiron : public BossAI
 
 private:
     bool _fireFighter;
+    bool _berserk;
 };
 
 struct boss_leviathan_mk_ii : public BossAI
@@ -750,11 +821,12 @@ struct boss_leviathan_mk_ii : public BossAI
             damage = me->GetHealth() - 1; // Let creature fall to 1 hp, but do not let it die or damage itself with SetHealth().
             me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
             me->InterruptNonMeleeSpells(true);
-            DoCastSelf(SPELL_VEHICLE_DAMAGED, true);
             me->AttackStop();
             me->SetTarget(ObjectGuid::Empty);
             me->SetReactState(REACT_PASSIVE);
+
             me->RemoveAllAurasExceptType(SPELL_AURA_CONTROL_VEHICLE, SPELL_AURA_MOD_INCREASE_HEALTH_PERCENT);
+            DoCastSelf(SPELL_VEHICLE_DAMAGED, true);
 
             if (events.IsInPhase(PHASE_LEVIATHAN_MK_II))
             {
@@ -792,12 +864,14 @@ struct boss_leviathan_mk_ii : public BossAI
                 [[fallthrough]];
             case DO_START_MKII:
                 me->SetReactState(REACT_AGGRESSIVE);
+                DoZoneInCombat();
                 events.SetPhase(PHASE_LEVIATHAN_MK_II);
 
                 events.ScheduleEvent(EVENT_NAPALM_SHELL, 3s, 0, PHASE_LEVIATHAN_MK_II);
                 events.ScheduleEvent(EVENT_PLASMA_BLAST, 15s, 0, PHASE_LEVIATHAN_MK_II);
                 events.ScheduleEvent(EVENT_PROXIMITY_MINE, 5s);
                 events.ScheduleEvent(EVENT_SHOCK_BLAST, 18s);
+                MimironApplyBerserkIfActive(me);
                 break;
             case DO_ASSEMBLED_COMBAT:
                 me->SetStandState(UNIT_STAND_STATE_STAND);
@@ -807,6 +881,7 @@ struct boss_leviathan_mk_ii : public BossAI
                 events.SetPhase(PHASE_VOL7RON);
                 events.ScheduleEvent(EVENT_PROXIMITY_MINE, 15s);
                 events.ScheduleEvent(EVENT_SHOCK_BLAST, 45s);
+                MimironApplyBerserkIfActive(me);
                 break;
             default:
                 break;
@@ -975,7 +1050,6 @@ struct boss_vx_001 : public BossAI
     boss_vx_001(Creature* creature) : BossAI(creature, DATA_MIMIRON)
     {
         me->SetDisableGravity(true); // This is the unfold visual state of VX-001, it has to be set on create as it requires an objectupdate if set later.
-        me->SetEmoteState(EMOTE_STATE_SPECIAL_UNARMED); // This is a hack to force the yet to be unfolded visual state.
         me->SetReactState(REACT_PASSIVE);
         _fireFighter = false;
         me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
@@ -988,9 +1062,11 @@ struct boss_vx_001 : public BossAI
             damage = me->GetHealth() - 1; // Let creature fall to 1 hp, but do not let it die or damage itself with SetHealth().
             me->AttackStop();
             me->InterruptNonMeleeSpells(true);
-            DoCast(me, SPELL_VEHICLE_DAMAGED, true);
             me->SetTarget(ObjectGuid::Empty);
+            me->SetEmoteState(EMOTE_STATE_NONE);
+
             me->RemoveAllAurasExceptType(SPELL_AURA_CONTROL_VEHICLE, SPELL_AURA_MOD_INCREASE_HEALTH_PERCENT);
+            DoCast(me, SPELL_VEHICLE_DAMAGED, true);
 
             if (events.IsInPhase(PHASE_VX_001))
             {
@@ -1031,14 +1107,16 @@ struct boss_vx_001 : public BossAI
                 me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
                 me->SetImmuneToPC(false);
                 me->RemoveAurasDueToSpell(SPELL_FREEZE_ANIM);
-                me->SetEmoteState(EMOTE_ONESHOT_NONE); // Remove emotestate.
-                //me->SetHover(true); // Blizzard handles hover animation like this it seems.
+                me->SetStandState(UNIT_STAND_STATE_STAND);
+                me->SetEmoteState(EMOTE_STATE_STAND);
+                me->SetAnimTier(AnimTier::Hover);
                 DoCast(me, SPELL_HEAT_WAVE_AURA);
 
                 events.SetPhase(PHASE_VX_001);
                 events.ScheduleEvent(EVENT_ROCKET_STRIKE, 20s);
                 events.ScheduleEvent(EVENT_SPINNING_UP, 30s, 35s);
                 events.ScheduleEvent(EVENT_RAPID_BURST, 500ms, 0, PHASE_VX_001);
+                MimironApplyBerserkIfActive(me);
                 break;
             case DO_ASSEMBLED_COMBAT:
                 me->SetStandState(UNIT_STAND_STATE_STAND);
@@ -1050,6 +1128,7 @@ struct boss_vx_001 : public BossAI
                 events.ScheduleEvent(EVENT_HAND_PULSE, 500ms, 0, PHASE_VOL7RON);
                 if (_fireFighter)
                     events.ScheduleEvent(EVENT_FROST_BOMB, 1s);
+                MimironApplyBerserkIfActive(me);
                 break;
             default:
                 break;
@@ -1088,24 +1167,13 @@ struct boss_vx_001 : public BossAI
 
         events.Update(diff);
 
-        // Handle rotation during SPELL_SPINNING_UP, SPELL_P3WX2_LASER_BARRAGE, SPELL_RAPID_BURST, and SPELL_HAND_PULSE_LEFT/RIGHT
-        /*if (me->HasUnitState(UNIT_STATE_CASTING))
-        {
-            if (Creature* channelTarget = ObjectAccessor::GetCreature(*me, me->GetChannelObjectGuid()))
-                me->SetFacingToObject(channelTarget);
-            return;
-        }*/
-
         while (uint32 eventId = events.ExecuteEvent())
         {
             switch (eventId)
             {
                 case EVENT_RAPID_BURST:
                     if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 120, true))
-                    {
-                        me->SetTarget(target->GetGUID()); // turret has no victim -> hold the target field so the active stance is kept
                         DoCast(target, SPELL_SUMMON_BURST_TARGET);
-                    }
                     events.RescheduleEvent(EVENT_RAPID_BURST, 3s, 0, PHASE_VX_001);
                     break;
                 case EVENT_ROCKET_STRIKE:
@@ -1120,10 +1188,7 @@ struct boss_vx_001 : public BossAI
                     break;
                 case EVENT_HAND_PULSE:
                     if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 120, true))
-                    {
-                        me->SetTarget(target->GetGUID()); // turret has no victim -> hold the target field so the active stance is kept
                         DoCast(target, RAND(SPELL_HAND_PULSE_LEFT, SPELL_HAND_PULSE_RIGHT));
-                    }
                     events.RescheduleEvent(EVENT_HAND_PULSE, 1500ms, 3s, 0, PHASE_VOL7RON);
                     break;
                 case EVENT_FROST_BOMB:
@@ -1131,7 +1196,27 @@ struct boss_vx_001 : public BossAI
                     events.RescheduleEvent(EVENT_FROST_BOMB, 45s);
                     break;
                 case EVENT_SPINNING_UP:
-                    DoCastAOE(SPELL_SPINNING_UP);
+                    if (DoCastAOE(SPELL_SPINNING_UP) == SpellCastResult::SPELL_CAST_OK)
+                    {
+                        if (events.IsInPhase(PHASE_VOL7RON))
+                            if (Creature* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II))
+                            {
+                                mkii->SetReactState(REACT_PASSIVE);
+                                mkii->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
+                                mkii->SetTarget(ObjectGuid::Empty);
+                                DoAddEvent(14s, new Trinity::Helpers::Events::GenericEvent(mkii, [](WorldObject* owner)
+                                {
+                                    Creature* mkii = owner->ToCreature();
+                                    if (mkii->IsAlive() && !mkii->HasAura(SPELL_VEHICLE_DAMAGED) && !mkii->HasAura(SPELL_SELF_REPAIR))
+                                    {
+                                        mkii->SetReactState(REACT_AGGRESSIVE);
+                                        if (mkii->GetVictim() && mkii->IsAIEnabled())
+                                            mkii->AI()->AttackStart(mkii->GetVictim());
+                                    }
+                                    return true;
+                                }));
+                            }
+                    }
                     events.DelayEvents(14s);
                     events.RescheduleEvent(EVENT_SPINNING_UP, 55s, 65s);
                     break;
@@ -1158,6 +1243,7 @@ struct boss_aerial_command_unit : public BossAI
     {
         me->SetReactState(REACT_PASSIVE);
         me->SetDisableGravity(true);
+        me->SetHoverHeight(15.0f);
         fireFigther = false;
         moving = false;
         magneticPull = false;
@@ -1173,15 +1259,21 @@ struct boss_aerial_command_unit : public BossAI
             me->AttackStop();
             me->InterruptNonMeleeSpells(true);
             me->SetTarget(ObjectGuid::Empty);
-            me->SetDisableGravity(true);
             me->SetAnimTier(AnimTier::Ground);
 
+            me->RemoveAllAurasExceptType(SPELL_AURA_CONTROL_VEHICLE, SPELL_AURA_MOD_INCREASE_HEALTH_PERCENT);
             DoCastSelf(SPELL_VEHICLE_DAMAGED, true);
 
             if (events.IsInPhase(PHASE_AERIAL_COMMAND_UNIT))
             {
                 me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
-                me->GetMotionMaster()->MovePoint(WP_AERIAL_P4_POS, MimironVehicleRelocation[WP_AERIAL_P4_POS]);
+                me->SetDisableGravity(true);
+                DoAddEvent(1s, new Trinity::Helpers::Events::GenericEvent(me, [](WorldObject* owner)
+                {
+                    Creature* ownerCre = owner->ToCreature();
+                    ownerCre->GetMotionMaster()->MovePoint(WP_AERIAL_P4_POS, MimironVehicleRelocation[WP_AERIAL_P4_POS], true, ACUSummonPos.GetOrientation());
+                    return true;
+                }));
             }
             else if (events.IsInPhase(PHASE_VOL7RON))
             {
@@ -1208,8 +1300,6 @@ struct boss_aerial_command_unit : public BossAI
                 events.ScheduleEvent(EVENT_SUMMON_FIRE_BOTS, 1s, 0, PHASE_AERIAL_COMMAND_UNIT);
                 [[fallthrough]];
             case DO_START_AERIAL:
-                me->SetDisableGravity(false);
-                me->SetHover(true);
                 me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
                 me->SetImmuneToPC(false);
                 me->SetReactState(REACT_AGGRESSIVE);
@@ -1220,28 +1310,27 @@ struct boss_aerial_command_unit : public BossAI
                 events.ScheduleEvent(EVENT_SUMMON_JUNK_BOT, 5s, 0, PHASE_AERIAL_COMMAND_UNIT);
                 events.ScheduleEvent(EVENT_SUMMON_ASSAULT_BOT, 9s, 0, PHASE_AERIAL_COMMAND_UNIT);
                 events.ScheduleEvent(EVENT_SUMMON_BOMB_BOT, 9s, 0, PHASE_AERIAL_COMMAND_UNIT);
+                MimironApplyBerserkIfActive(me);
                 break;
             case DO_DISABLE_AERIAL:
-            {
                 me->CastStop();
                 me->InterruptNonMeleeSpells(true);
+                me->AttackStop();
                 me->SetTarget(ObjectGuid::Empty);
                 me->SetReactState(REACT_PASSIVE);
-                me->AttackStop();
-                Position ground = me->GetPosition();
-                ground.m_positionZ = 1.0f + me->GetMap()->GetHeight(ground.GetPositionX(), ground.GetPositionY(), ground.GetPositionZ());
                 me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
-                me->GetMotionMaster()->MovePoint(2, ground);
+                me->SetDisableGravity(false);
+                me->GetMotionMaster()->MoveFall(POINT_AERIAL_GROUND, 1.0f + me->GetFloorZ());
                 events.DelayEvents(23s);
                 break;
-            }
             case DO_ENABLE_AERIAL:
                 if (magneticPull)
                 {
                     Position air = me->GetPosition();
                     air.m_positionZ = ACUSummonPos.GetPositionZ();
                     me->GetMotionMaster()->MoveIdle();
-                    me->GetMotionMaster()->MovePoint(3, air);
+                    me->SetDisableGravity(true);
+                    me->GetMotionMaster()->MovePoint(POINT_AERIAL_AIR, air);
                 }
                 break;
             case DO_ASSEMBLED_COMBAT:
@@ -1249,6 +1338,7 @@ struct boss_aerial_command_unit : public BossAI
                 me->SetReactState(REACT_AGGRESSIVE);
                 me->SetStandState(UNIT_STAND_STATE_STAND);
                 events.SetPhase(PHASE_VOL7RON);
+                MimironApplyBerserkIfActive(me);
                 break;
             default:
                 break;
@@ -1284,31 +1374,31 @@ struct boss_aerial_command_unit : public BossAI
     {
         if (type == POINT_MOTION_TYPE && point == WP_AERIAL_P4_POS)
         {
-            me->SetFacingTo(MimironVehicleRelocation[WP_AERIAL_P4_POS].GetOrientation());
             me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
             DoCastSelf(SPELL_CLEAR_ALL_DEBUFFS);
 
             if (Creature* mimiron = instance->GetCreature(DATA_MIMIRON))
                 mimiron->AI()->DoAction(DO_ACTIVATE_V0L7R0N_1);
         }
-        else if (type == POINT_MOTION_TYPE && point == 1)
+        else if (type == POINT_MOTION_TYPE && point == POINT_AERIAL_CHASE)
         {
             if (me->GetVictim() && me->GetDistance(me->GetVictim()) > 30.0f)
             {
                 Position pos = me->GetVictim()->GetNearPosition(10.0f, 0.0f);
                 pos.m_positionZ = ACUSummonPos.GetPositionZ();
-                me->GetMotionMaster()->MovePoint(1, pos);
+                me->GetMotionMaster()->MovePoint(POINT_AERIAL_CHASE, pos);
             }
             else
                 moving = false;
         }
-        else if (type == POINT_MOTION_TYPE && point == 2)
+        else if (type == EFFECT_MOTION_TYPE && point == POINT_AERIAL_GROUND)
             me->GetMotionMaster()->MoveRotate(0, 15 * IN_MILLISECONDS, urand(0, 1) ? ROTATE_DIRECTION_LEFT : ROTATE_DIRECTION_RIGHT);
-        else if (type == POINT_MOTION_TYPE && point == 3)
+        else if (type == POINT_MOTION_TYPE && point == POINT_AERIAL_AIR)
         {
             me->SetReactState(REACT_AGGRESSIVE);
             if (me->GetVictim())
                 me->SetTarget(me->GetVictim()->GetGUID());
+            moving = false;
         }
     }
 
@@ -1322,7 +1412,7 @@ struct boss_aerial_command_unit : public BossAI
             moving = true;
             Position pos = me->GetVictim()->GetNearPosition(10.0f, 0.0f);
             pos.m_positionZ = ACUSummonPos.GetPositionZ();
-            me->GetMotionMaster()->MovePoint(1, pos);
+            me->GetMotionMaster()->MovePoint(POINT_AERIAL_CHASE, pos);
         }
 
         events.Update(diff);
@@ -1649,6 +1739,12 @@ struct npc_mimiron_proximity_mine : public ScriptedAI
     {
     }
 
+    void JustAppeared() override
+    {
+        me->SetReactState(REACT_PASSIVE);
+        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
+    }
+
     void Reset() override
     {
         events.ScheduleEvent(EVENT_PROXIMITY_MINE_ARM, 1500ms);
@@ -1721,7 +1817,7 @@ class spell_mimiron_bomb_bot : public SpellScript
     {
         if (GetHitPlayer())
             if (InstanceScript* instance = GetCaster()->GetInstanceScript())
-                if (Creature* mkii = ObjectAccessor::GetCreature(*GetCaster(), instance->GetGuidData(DATA_LEVIATHAN_MK_II)))
+                if (Creature* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II))
                     mkii->AI()->SetData(DATA_SETUP_BOMB, 0);
     }
 
@@ -1837,18 +1933,19 @@ class spell_mimiron_magnetic_core_summon : public SpellScript
 {
     PrepareSpellScript(spell_mimiron_magnetic_core_summon);
 
-    void ModDest(SpellDestination& dest)
+    SpellCastResult CheckCast()
     {
-        Unit* caster = GetCaster();
-        Position pos = caster->GetPosition();
-        float z = caster->GetMap()->GetHeight(pos);
-        pos.m_positionZ = z;
-        dest.Relocate(pos);
+        if (InstanceScript* instance = GetCaster()->GetInstanceScript())
+            if (Creature* aerial = instance->GetCreature(DATA_AERIAL_COMMAND_UNIT))
+                if (GetCaster()->IsInRange2d(aerial->GetPositionX(), aerial->GetPositionY(), 0.0f, 8.0f))
+                    return SPELL_CAST_OK;
+
+        return SPELL_FAILED_OUT_OF_RANGE;
     }
 
     void Register() override
     {
-        OnDestinationTargetSelect += SpellDestinationTargetSelectFn(spell_mimiron_magnetic_core_summon::ModDest, EFFECT_0, TARGET_DEST_NEARBY_ENTRY);
+        OnCheckCast += SpellCheckCastFn(spell_mimiron_magnetic_core_summon::CheckCast);
     }
 };
 
@@ -1859,7 +1956,12 @@ class spell_mimiron_magnetic_core : public SpellScript
 
     void FilterTargets(std::list<WorldObject*>& targets)
     {
-        targets.remove_if([](WorldObject* obj) { return obj->IsUnit() && (obj->ToUnit()->GetVehicleBase() || obj->ToUnit()->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE)); });
+        targets.clear();
+
+        if (InstanceScript* instance = GetCaster()->GetInstanceScript())
+            if (WorldObject* aerial = instance->GetCreature(DATA_AERIAL_COMMAND_UNIT))
+                if (GetCaster()->IsInRange2d(aerial->GetPositionX(), aerial->GetPositionY(), 0.0f, 8.0f))
+                    targets.push_back(aerial);
     }
 
     void Register() override
@@ -1999,7 +2101,7 @@ class spell_mimiron_proximity_explosion : public SpellScript
     {
         if (GetHitPlayer())
             if (InstanceScript* instance = GetCaster()->GetInstanceScript())
-                if (Creature* mkII = ObjectAccessor::GetCreature(*GetCaster(), instance->GetGuidData(DATA_LEVIATHAN_MK_II)))
+                if (Creature* mkII = instance->GetCreature(DATA_LEVIATHAN_MK_II))
                     mkII->AI()->SetData(DATA_SETUP_MINE, 0);
     }
 
@@ -2151,7 +2253,7 @@ class spell_mimiron_rocket_strike_damage : public SpellScript
     {
         if (GetHitPlayer())
             if (InstanceScript* instance = GetCaster()->GetInstanceScript())
-                if (Creature* mkii = ObjectAccessor::GetCreature(*GetCaster(), instance->GetGuidData(DATA_LEVIATHAN_MK_II)))
+                if (Creature* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II))
                     mkii->AI()->SetData(DATA_SETUP_ROCKET, 0);
     }
 
