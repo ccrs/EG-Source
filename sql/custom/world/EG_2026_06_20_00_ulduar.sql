@@ -98,3 +98,7 @@ UPDATE `creature_template` SET `unit_flags` = 0, `flags_extra` = 8192 WHERE `ent
 --
 UPDATE `creature_template` SET `ScriptName` = 'EG_npc_mimiron_bomb_bot' WHERE `entry` = 33836;
 UPDATE `creature_template` SET `mechanic_immune_mask` = 4784129 WHERE `entry` IN (33836, 34218);
+--
+UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (33344, 33888);
+UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 33344;
+UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 33888;

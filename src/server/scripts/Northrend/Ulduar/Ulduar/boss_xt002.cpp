@@ -527,9 +527,10 @@ struct npc_pummeller : public ScriptedAI
         }
 
         if (Creature* xt002 = _instance->GetCreature(DATA_XT002))
+        {
             xt002->AI()->JustSummoned(me);
-
-        SetAggressiveStateAfter(1s, me);
+            SetAggressiveStateAfter(1s, me, true, xt002, StartCombatArgs().SetDistance(300.f));
+        }
     }
 
     void JustEngagedWith(Unit* /*who*/) override
