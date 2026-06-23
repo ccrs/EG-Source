@@ -61,10 +61,6 @@ static DoorData const doorData[] =
     { GO_MIMIRON_DOOR_2,                DATA_MIMIRON,           DOOR_TYPE_ROOM },
     { GO_MIMIRON_DOOR_3,                DATA_MIMIRON,           DOOR_TYPE_ROOM },
     { GO_THORIM_ENCOUNTER_DOOR,         DATA_THORIM,            DOOR_TYPE_ROOM },
-    { GO_ANCIENT_GATE_OF_THE_KEEPERS,   DATA_HODIR,             DOOR_TYPE_PASSAGE },
-    { GO_ANCIENT_GATE_OF_THE_KEEPERS,   DATA_MIMIRON,           DOOR_TYPE_PASSAGE },
-    { GO_ANCIENT_GATE_OF_THE_KEEPERS,   DATA_THORIM,            DOOR_TYPE_PASSAGE },
-    { GO_ANCIENT_GATE_OF_THE_KEEPERS,   DATA_FREYA,             DOOR_TYPE_PASSAGE },
     { GO_VEZAX_DOOR,                    DATA_VEZAX,             DOOR_TYPE_PASSAGE },
     { GO_YOGG_SARON_DOOR,               DATA_YOGG_SARON,        DOOR_TYPE_ROOM },
     { GO_DOODAD_UL_SIGILDOOR_03,        DATA_ALGALON,           DOOR_TYPE_ROOM },
@@ -532,8 +528,9 @@ class instance_ulduar : public InstanceMapScript
 
                 switch (gameObject->GetEntry())
                 {
-                    case GO_KOLOGARN_DOOR:
+                    case GO_ANCIENT_GATE_OF_THE_KEEPERS:
                         HandleGameObject(ObjectGuid::Empty, false, gameObject);
+                        gameObject->SetFlag(GO_FLAG_NOT_SELECTABLE);
                         break;
                     case GO_KOLOGARN_CHEST_HERO:
                     case GO_KOLOGARN_CHEST:
