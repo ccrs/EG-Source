@@ -1034,9 +1034,7 @@ struct EG_npc_arachnopod_destroyer : public ScriptedAI
 
     void EnterEvadeMode(EvadeReason why) override
     {
-        if (me->GetFaction() == FACTION_ESCORTEE_N_NEUTRAL_ACTIVE)
-            _EnterEvadeMode();
-        else
+        if (me->GetFaction() != FACTION_ESCORTEE_N_NEUTRAL_ACTIVE)
             ScriptedAI::EnterEvadeMode(why);
     }
 

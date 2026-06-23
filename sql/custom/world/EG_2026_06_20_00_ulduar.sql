@@ -102,3 +102,7 @@ UPDATE `creature_template` SET `mechanic_immune_mask` = 4784129 WHERE `entry` IN
 UPDATE `creature_template` SET `mechanic_immune_mask` = 550189951 WHERE `entry` IN (33344, 33888);
 UPDATE `creature_template` SET `DamageModifier` = 13 WHERE `entry` = 33344;
 UPDATE `creature_template` SET `DamageModifier` = 22 WHERE `entry` = 33888;
+--
+DELETE FROM `spell_script_names` WHERE `ScriptName` = 'EG_spell_arachnopod_damaged';
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(64770, 'EG_spell_arachnopod_damaged');

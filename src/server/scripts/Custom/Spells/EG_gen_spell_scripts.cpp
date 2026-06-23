@@ -521,6 +521,24 @@ class EG_spell_freya_summon_healthy_spore : public AuraScript
     }
 };
 
+// 64770 - Damaged
+class EG_spell_arachnopod_damaged : public AuraScript
+{
+    PrepareAuraScript(EG_spell_arachnopod_damaged);
+
+    void PeriodicTick(AuraEffect const* /*aurEff*/)
+    {
+        PreventDefaultAction();
+        if (Unit* owner = GetUnitOwner())
+            Unit::Kill(owner, owner, false);
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_arachnopod_damaged::PeriodicTick, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
@@ -541,4 +559,5 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_twilight_torment_trigger);
     RegisterSpellScript(EG_spell_energy_sap);
     RegisterSpellScript(EG_spell_freya_summon_healthy_spore);
+    RegisterSpellScript(EG_spell_arachnopod_damaged);
 }
