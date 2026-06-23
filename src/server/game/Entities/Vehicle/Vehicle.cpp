@@ -875,7 +875,7 @@ bool VehicleJoinEvent::Execute(uint64, uint32)
     if (veSeat->HasFlag(VEHICLE_SEAT_FLAG_PASSENGER_NOT_SELECTABLE))
         Passenger->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
 
-    float o = veSeatAddon ? veSeatAddon->SeatOrientationOffset : (std::isfinite(veSeat->PassengerYaw) ? veSeat->PassengerYaw : 0.f);
+    float o = Vehicle::GetSeatOrientationOffset(veSeat, veSeatAddon);
     float x = veSeat->AttachmentOffset.X;
     float y = veSeat->AttachmentOffset.Y;
     float z = veSeat->AttachmentOffset.Z;

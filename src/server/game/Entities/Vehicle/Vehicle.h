@@ -62,6 +62,9 @@ class TC_GAME_API Vehicle : public TransportBase
         bool IsVehicleInUse() const;
         bool IsControllableVehicle() const;
 
+        float GetSeatOrientationOffsetForPassenger(Unit const* passenger) const; // EG
+        static float GetSeatOrientationOffset(VehicleSeatEntry const* seatInfo, VehicleSeatAddon const* seatAddon); // EG
+
         SeatMap Seats;                                      ///< The collection of all seats on the vehicle. Including vacant ones.
 
         VehicleSeatEntry const* GetSeatForPassenger(Unit const* passenger) const;
