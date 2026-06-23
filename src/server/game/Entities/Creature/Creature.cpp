@@ -3267,6 +3267,11 @@ void Creature::ReacquireSpellFocusTarget()
             if (WorldObject const* objTarget = ObjectAccessor::GetWorldObject(*this, _spellFocusInfo.Target))
                 SetFacingToObject(objTarget, false, EVENT_SPELL_FOCUS);
         }
+        else if (Unit* vehicleBase = GetVehicleBase())
+        {
+            float const seatOffset = GetVehicle()->GetSeatOrientationOffsetForPassenger(this);
+            SetFacingTo(Position::NormalizeOrientation(vehicleBase->GetOrientation() + seatOffset), false, EVENT_SPELL_FOCUS);
+        }
         else if (_spellFocusInfo.Orientation.has_value())
             SetFacingTo(_spellFocusInfo.Orientation.value(), false, EVENT_SPELL_FOCUS);
     }

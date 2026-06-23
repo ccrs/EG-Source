@@ -252,6 +252,22 @@ void Unit::InterruptSpellsCastedOnMe(bool killDelayed, bool interruptFriendlySpe
     }
 }
 
+/*static*/ float Vehicle::GetSeatOrientationOffset(VehicleSeatEntry const* seatInfo, VehicleSeatAddon const* seatAddon)
+{
+    if (seatAddon)
+        return seatAddon->SeatOrientationOffset;
+
+    if (seatInfo && std::isfinite(seatInfo->PassengerYaw))
+        return seatInfo->PassengerYaw;
+
+    return 0.0f;
+}
+
+float Vehicle::GetSeatOrientationOffsetForPassenger(Unit const* passenger) const
+{
+    return GetSeatOrientationOffset(GetSeatForPassenger(passenger), GetSeatAddonForSeatOfPassenger(passenger));
+}
+
 bool Vehicle::NormalizePassengerMovementInfo(Unit const* passenger, MovementInfo& movementInfo) const
 {
     SeatMap::const_iterator seat = Seats.end();
@@ -281,7 +297,7 @@ bool Vehicle::NormalizePassengerMovementInfo(Unit const* passenger, MovementInfo
     float localX = seatInfo->AttachmentOffset.X;
     float localY = seatInfo->AttachmentOffset.Y;
     float localZ = seatInfo->AttachmentOffset.Z;
-    float localO = seatAddon ? seatAddon->SeatOrientationOffset : (std::isfinite(seatInfo->PassengerYaw) ? seatInfo->PassengerYaw : 0.0f);
+    float localO = GetSeatOrientationOffset(seatInfo, seatAddon);
 
     // For turning seats, preserve only the passenger's local orientation.
     // Never preserve client-sent local x/y/z.
