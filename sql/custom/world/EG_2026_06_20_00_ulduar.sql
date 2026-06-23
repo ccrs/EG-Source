@@ -50,6 +50,8 @@ INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (62566, 'EG_spell_freya_summon_healthy_spore');
 
 --
+UPDATE `gameobject_template` SET `Data3` = 21393, `Data4` = 21394 WHERE `entry` = 194675;
+
 UPDATE `gameobject` SET `position_x`=2307.000003, `position_y`=265.6011, `position_z`=424.287993, `orientation`=0, `rotation0`=0, `rotation1`=0, `rotation2`=0, `rotation3`=1 WHERE `guid`=35524 AND `id`=194904;
 UPDATE `gameobject` SET `position_x`=2306.87, `position_y`=274.237, `position_z`=424.288, `orientation`=1.52255, `rotation0`=0, `rotation1`=0, `rotation2`=0.689845, `rotation3`=0.723957 WHERE `guid`=45164 AND `id`=194437;
 
