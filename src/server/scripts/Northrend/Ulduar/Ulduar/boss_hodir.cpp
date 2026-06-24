@@ -152,7 +152,9 @@ enum HodirEvents
     EVENT_EPILOGUE_2,
     EVENT_EPILOGUE_3,
     EVENT_EPILOGUE_4,
-    EVENT_EPILOGUE_5
+    EVENT_EPILOGUE_5,
+
+    EVENT_CHECK_PLAYERS,
 };
 
 enum HodirCreatures
@@ -251,6 +253,7 @@ struct boss_hodir : public BossAI
         events.ScheduleEvent(EVENT_FROZEN_BLOWS, 60s, 65s);
         events.ScheduleEvent(EVENT_FLASH_FREEZE, 45s, 60s);
         events.ScheduleEvent(EVENT_BERSERK, 8min);
+        events.ScheduleEvent(EVENT_CHECK_PLAYERS, 5s);
 
         std::vector<Creature*> coolestFriends;
         GetCreatureListWithOptionsInGrid(coolestFriends, me, 100.0f, { .StringId = "HodirCoolestFriend" });
@@ -448,7 +451,23 @@ struct boss_hodir : public BossAI
                 case EVENT_BERSERK:
                     DoCastSelf(SPELL_BERSERK);
                     break;
+                case EVENT_CHECK_PLAYERS:
+                {
+                    Map::PlayerList const& playerList = me->GetMap()->GetPlayers();
+                    uint8 alive = 0;
+                    for (auto i = playerList.begin(); i != playerList.end(); ++i)
+                        if (Player* player = i->GetSource())
+                            if (player->IsAlive() && IsInBoundary(player))
+                                ++alive;
 
+                    if (!alive)
+                    {
+                        EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
+                        return;
+                    }
+                    events.ScheduleEvent(EVENT_CHECK_PLAYERS, 5s);
+                    break;
+                }
                 case EVENT_FLASH_FREEZE_FINISHED_1:
                     if (Creature* trigger = GetClosestCreatureWithEntry(me, NPC_INVISIBLE_STALKER, 100.0f))
                         trigger->CastSpell(trigger, SPELL_FLASH_FREEZE_VISUAL);
