@@ -1421,6 +1421,106 @@ struct EG_npc_mimiron_bomb_bot : public ScriptedAI
     }
 };
 
+enum FocusedEyeBeamMisc
+{
+    DATA_KOLOGARN = 5,
+    DATA_EYEBEAM_TARGET = 1,
+    ACTION_RETARGET_EYEBEAM = 2,
+};
+
+// 33632, 33802 - Focused Eyebeam (left + right)
+struct EG_npc_kologarn_focused_eyebeam : public ScriptedAI
+{
+    EG_npc_kologarn_focused_eyebeam(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript()), _checkTimer(0) { }
+
+    void IsSummonedBy(WorldObject* /*summoner*/) override
+    {
+        me->SetReactState(REACT_PASSIVE);
+        ChaseSharedTarget();
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (_checkTimer <= diff)
+        {
+            ChaseSharedTarget();
+            _checkTimer = 1000;
+        }
+        else
+            _checkTimer -= diff;
+    }
+
+private:
+    void ChaseSharedTarget()
+    {
+        Creature* kologarn = _instance ? _instance->GetCreature(DATA_KOLOGARN) : nullptr;
+        if (!kologarn || !kologarn->IsAIEnabled())
+            return;
+
+        Unit* target = ObjectAccessor::GetUnit(*me, kologarn->AI()->GetGUID(DATA_EYEBEAM_TARGET));
+        if (!target || !target->IsAlive())
+        {
+            kologarn->AI()->DoAction(ACTION_RETARGET_EYEBEAM);
+            target = ObjectAccessor::GetUnit(*me, kologarn->AI()->GetGUID(DATA_EYEBEAM_TARGET));
+        }
+
+        if (target && me->GetVictim() != target)
+            me->GetMotionMaster()->MoveChase(target, 0.f, false);
+    }
+
+    InstanceScript* _instance;
+    uint32 _checkTimer;
+};
+
+enum KologarnArmMisc
+{
+    SPELL_ARM_DEAD_DAMAGE = 63629,
+    SPELL_FALLING_RUBBLE = 63821,
+    SPELL_SUMMON_RUBBLE = 63633,
+    NPC_LEFT_ARM = 32933,
+    NPC_RUBBLE_STALKER = 33809,
+    ACTION_LEFT_ARM_DIED = 3,
+    ACTION_RIGHT_ARM_DIED = 4,
+};
+
+// 32933, 32934 - Left / Right Arm
+struct EG_npc_kologarn_arm : public ScriptedAI
+{
+    EG_npc_kologarn_arm(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript())
+    {
+        me->SetReactState(REACT_PASSIVE);
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        Creature* kologarn = _instance ? _instance->GetCreature(DATA_KOLOGARN) : nullptr;
+        if (kologarn)
+        {
+            me->CastSpell(kologarn, SPELL_ARM_DEAD_DAMAGE, true);
+            kologarn->AI()->DoAction(me->GetEntry() == NPC_LEFT_ARM ? ACTION_LEFT_ARM_DIED : ACTION_RIGHT_ARM_DIED);
+
+            bool const wantLeftSide = me->GetEntry() == NPC_LEFT_ARM;
+            std::list<Creature*> stalkers;
+            kologarn->GetCreatureListWithEntryInGrid(stalkers, NPC_RUBBLE_STALKER, 20.0f);
+            for (Creature* stalker : stalkers)
+            {
+                bool const onLeftSide = kologarn->GetRelativeAngle(stalker) < float(M_PI); // [0, PI) is Kologarn's left
+                if (onLeftSide == wantLeftSide)
+                {
+                    stalker->CastSpell(stalker, SPELL_FALLING_RUBBLE, true);
+                    stalker->CastSpell(stalker, SPELL_SUMMON_RUBBLE, true);
+                    break;
+                }
+            }
+        }
+
+        me->DespawnOrUnsummon();
+    }
+
+private:
+    InstanceScript* _instance;
+};
+
 void AddSC_EG_gen_npc_scripts()
 {
     RegisterCreatureAI(EG_npc_damage_test_controller);
@@ -1434,4 +1534,6 @@ void AddSC_EG_gen_npc_scripts()
     RegisterCreatureAI(EG_npc_storm_tempered_keeper);
     RegisterCreatureAI(EG_npc_twilight_shadowblade);
     RegisterCreatureAI(EG_npc_mimiron_bomb_bot);
+    RegisterCreatureAI(EG_npc_kologarn_focused_eyebeam);
+    RegisterCreatureAI(EG_npc_kologarn_arm);
 }

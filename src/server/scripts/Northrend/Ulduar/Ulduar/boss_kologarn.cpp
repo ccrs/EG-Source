@@ -15,16 +15,16 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "ulduar.h"
 #include "InstanceScript.h"
 #include "Map.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
 #include "SpellScript.h"
-#include "ulduar.h"
 #include "Vehicle.h"
 
 /* ScriptData
@@ -34,7 +34,7 @@ SDComment: @todo Achievements
 SDCategory: Ulduar
 EndScriptData */
 
-enum Spells
+enum KologarnSpells
 {
     SPELL_ARM_DEAD_DAMAGE               = 63629,
     SPELL_TWO_ARM_SMASH                 = 63356,
@@ -50,6 +50,8 @@ enum Spells
     SPELL_ARM_ENTER_VISUAL              = 64753,
 
     SPELL_SUMMON_FOCUSED_EYEBEAM        = 63342,
+    SPELL_SUMMON_FOCUSED_EYEBEAM_LEFT   = 63343,
+    SPELL_SUMMON_FOCUSED_EYEBEAM_RIGHT  = 63701,
     SPELL_FOCUSED_EYEBEAM_PERIODIC      = 63347,
     SPELL_FOCUSED_EYEBEAM_VISUAL        = 63369,
     SPELL_FOCUSED_EYEBEAM_VISUAL_LEFT   = 63676,
@@ -63,13 +65,13 @@ enum Spells
     SPELL_BERSERK                       = 47008  // guess
 };
 
-enum NPCs
+enum KologarnNPCs
 {
     NPC_RUBBLE_STALKER                  = 33809,
     NPC_ARM_SWEEP_STALKER               = 33661
 };
 
-enum Events
+enum KologarnEvents
 {
     EVENT_NONE = 0,
     EVENT_INSTALL_ACCESSORIES,
@@ -84,7 +86,7 @@ enum Events
     EVENT_ENRAGE,
 };
 
-enum Yells
+enum KologarnYells
 {
     SAY_AGGRO                               = 0,
     SAY_SLAY                                = 1,
@@ -97,6 +99,18 @@ enum Yells
     EMOTE_STONE_GRIP                        = 8
 };
 
+enum KologarnMisc
+{
+    DATA_EYEBEAM_TARGET = 1,
+    ACTION_RETARGET_EYEBEAM,
+    ACTION_LEFT_ARM_DIED,
+    ACTION_RIGHT_ARM_DIED
+};
+
+float const EyebeamSpawnDistanceMin = 5.0f;
+float const EyebeamSpawnDistanceMax = 20.0f;
+float const EyebeamSpawnFrontalArc  = float(M_PI) / 3.0f; // +/-60 degrees off the home facing
+
 class boss_kologarn : public CreatureScript
 {
     public:
@@ -104,8 +118,7 @@ class boss_kologarn : public CreatureScript
 
         struct boss_kologarnAI : public BossAI
         {
-            boss_kologarnAI(Creature* creature) : BossAI(creature, DATA_KOLOGARN),
-                left(false), right(false)
+            boss_kologarnAI(Creature* creature) : BossAI(creature, DATA_KOLOGARN), _left(false), _right(false)
             {
                 me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                 me->SetControlled(true, UNIT_STATE_ROOT);
@@ -113,9 +126,6 @@ class boss_kologarn : public CreatureScript
                 DoCast(SPELL_KOLOGARN_REDUCE_PARRY);
                 SetCombatMovement(false);
             }
-
-            bool left, right;
-            ObjectGuid eyebeamTarget;
 
             void JustEngagedWith(Unit* who) override
             {
@@ -140,14 +150,60 @@ class boss_kologarn : public CreatureScript
             {
                 _Reset();
                 me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-                eyebeamTarget.Clear();
+                _eyebeamTarget.Clear();
+                me->SetFacingTo(me->GetHomePosition().GetOrientation(), true);
+            }
+
+            ObjectGuid GetGUID(int32 type) const override
+            {
+                if (type == DATA_EYEBEAM_TARGET)
+                    return _eyebeamTarget;
+                return ObjectGuid::Empty;
+            }
+
+            void DoAction(int32 action) override
+            {
+                switch (action)
+                {
+                    case ACTION_RETARGET_EYEBEAM:
+                        if (Unit* current = ObjectAccessor::GetUnit(*me, _eyebeamTarget))
+                            if (current->IsAlive())
+                                return;
+
+                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true, false))
+                            _eyebeamTarget = target->GetGUID();
+                        else
+                            _eyebeamTarget.Clear();
+                        break;
+                    case ACTION_LEFT_ARM_DIED:
+                        _left = false;
+                        Talk(SAY_LEFT_ARM_GONE);
+                        events.ScheduleEvent(EVENT_RESPAWN_LEFT_ARM, 40s);
+                        OnArmDestroyed();
+                        break;
+                    case ACTION_RIGHT_ARM_DIED:
+                        _right = false;
+                        Talk(SAY_RIGHT_ARM_GONE);
+                        events.ScheduleEvent(EVENT_RESPAWN_RIGHT_ARM, 40s);
+                        OnArmDestroyed();
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            // Common boss-side bookkeeping when either arm is destroyed (notified by EG_npc_kologarn_arm).
+            void OnArmDestroyed()
+            {
+                if (!_left && !_right)
+                    events.ScheduleEvent(EVENT_STONE_SHOUT, 5s);
+                instance->DoStartTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, CRITERIA_DISARMED);
             }
 
             void JustDied(Unit* /*killer*/) override
             {
                 Talk(SAY_DEATH);
                 DoCast(SPELL_KOLOGARN_PACIFY);
-                me->GetMotionMaster()->MoveTargetedHome();
                 me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                 me->SetCorpseDelay(604800); // Prevent corpse from despawning.
                 _JustDied();
@@ -161,56 +217,15 @@ class boss_kologarn : public CreatureScript
 
             void PassengerBoarded(Unit* who, int8 /*seatId*/, bool apply) override
             {
-                bool isEncounterInProgress = instance->GetBossState(DATA_KOLOGARN) == IN_PROGRESS;
-                if (who->GetEntry() == NPC_LEFT_ARM)
-                {
-                    left = apply;
-                    if (!apply && isEncounterInProgress)
-                    {
-                        Talk(SAY_LEFT_ARM_GONE);
-                        events.ScheduleEvent(EVENT_RESPAWN_LEFT_ARM, 40s);
-                    }
-                }
-
-                else if (who->GetEntry() == NPC_RIGHT_ARM)
-                {
-                    right = apply;
-                    if (!apply && isEncounterInProgress)
-                    {
-                        Talk(SAY_RIGHT_ARM_GONE);
-                        events.ScheduleEvent(EVENT_RESPAWN_RIGHT_ARM, 40s);
-                    }
-                }
-
-                if (!isEncounterInProgress)
+                if (!apply)
                     return;
 
-                if (!apply)
-                {
-                    who->CastSpell(me, SPELL_ARM_DEAD_DAMAGE, true);
 
-                    if (Creature* rubbleStalker = who->FindNearestCreature(NPC_RUBBLE_STALKER, 70.0f))
-                    {
-                        rubbleStalker->CastSpell(rubbleStalker, SPELL_FALLING_RUBBLE, true);
-                        rubbleStalker->CastSpell(rubbleStalker, SPELL_SUMMON_RUBBLE, true);
-                        who->ToCreature()->DespawnOrUnsummon();
-                    }
-
-                    if (!right && !left)
-                        events.ScheduleEvent(EVENT_STONE_SHOUT, 5s);
-
-                    instance->DoStartTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, CRITERIA_DISARMED);
-                }
-                else
-                {
-                    events.CancelEvent(EVENT_STONE_SHOUT);
-                    DoZoneInCombat(who->ToCreature());
-                }
             }
 
             void JustSummoned(Creature* summon) override
             {
-                BossAI::JustSummoned(summon);
+                summons.Summon(summon);
                 switch (summon->GetEntry())
                 {
                     case NPC_FOCUSED_EYEBEAM:
@@ -220,25 +235,26 @@ class boss_kologarn : public CreatureScript
                         summon->CastSpell(me, SPELL_FOCUSED_EYEBEAM_VISUAL_RIGHT, true);
                         break;
                     case NPC_RUBBLE:
-                        summons.Summon(summon);
-                        [[fallthrough]];
+                        if (me->IsEngaged())
+                            DoZoneInCombat(summon);
+                        return;
                     default:
+                        BossAI::JustSummoned(summon);
+                        if (summon->GetEntry() == NPC_LEFT_ARM)
+                            _left = true;
+                        else if (summon->GetEntry() == NPC_RIGHT_ARM)
+                            _right = true;
+                        else
+                            return;
+
+                        if (me->IsEngaged())
+                            events.CancelEvent(EVENT_STONE_SHOUT);
                         return;
                 }
 
                 summon->CastSpell(summon, SPELL_FOCUSED_EYEBEAM_PERIODIC, true);
                 summon->CastSpell(summon, SPELL_FOCUSED_EYEBEAM_VISUAL, true);
                 summon->SetReactState(REACT_PASSIVE);
-
-                // Victim gets 67351
-                if (!eyebeamTarget.IsEmpty())
-                {
-                    if (Unit* target = ObjectAccessor::GetUnit(*summon, eyebeamTarget))
-                    {
-                        summon->Attack(target, false);
-                        summon->GetMotionMaster()->MoveChase(target);
-                    }
-                }
             }
 
             void UpdateAI(uint32 diff) override
@@ -261,14 +277,14 @@ class boss_kologarn : public CreatureScript
                             events.ScheduleEvent(EVENT_MELEE_CHECK, 1s);
                             break;
                         case EVENT_SWEEP:
-                            if (left)
+                            if (_left)
                                 DoCast(me->FindNearestCreature(NPC_ARM_SWEEP_STALKER, 500.0f, true), SPELL_ARM_SWEEP, true);
                             events.ScheduleEvent(EVENT_SWEEP, 25s);
                             break;
                         case EVENT_SMASH:
-                            if (left && right)
+                            if (_left && _right)
                                 DoCastVictim(SPELL_TWO_ARM_SMASH);
-                            else if (left || right)
+                            else if (_left || _right)
                                 DoCastVictim(SPELL_ONE_ARM_SMASH);
                             events.ScheduleEvent(EVENT_SMASH, 15s);
                             break;
@@ -293,7 +309,7 @@ class boss_kologarn : public CreatureScript
                         }
                         case EVENT_STONE_GRIP:
                         {
-                            if (right)
+                            if (_right)
                             {
                                 DoCast(SPELL_STONE_GRIP);
                                 Talk(SAY_GRAB_PLAYER);
@@ -303,9 +319,9 @@ class boss_kologarn : public CreatureScript
                             break;
                         }
                         case EVENT_FOCUSED_EYEBEAM:
-                            if (Unit* eyebeamTargetUnit = SelectTarget(SelectTargetMethod::MaxDistance, 0, 0, true))
+                            if (Unit* eyebeamTargetUnit = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                             {
-                                eyebeamTarget = eyebeamTargetUnit->GetGUID();
+                                _eyebeamTarget = eyebeamTargetUnit->GetGUID();
                                 DoCast(me, SPELL_SUMMON_FOCUSED_EYEBEAM, true);
                             }
                             events.ScheduleEvent(EVENT_FOCUSED_EYEBEAM, 15s, 35s);
@@ -318,6 +334,9 @@ class boss_kologarn : public CreatureScript
 
                 DoMeleeAttackIfReady();
             }
+        private:
+            bool _left, _right;
+            ObjectGuid _eyebeamTarget;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -657,7 +676,18 @@ class spell_kologarn_summon_focused_eyebeam : public SpellScriptLoader
             void HandleForceCast(SpellEffIndex effIndex)
             {
                 PreventHitDefaultEffect(effIndex);
-                GetCaster()->CastSpell(GetCaster(), GetEffectInfo().TriggerSpell, true);
+
+                Unit* caster = GetCaster();
+                if (!_hasDest)
+                {
+                    Creature* kologarn = caster->ToCreature();
+                    float const facing = kologarn ? kologarn->GetHomePosition().GetOrientation() : caster->GetOrientation();
+                    float const angle = (facing - caster->GetOrientation()) + frand(-EyebeamSpawnFrontalArc, EyebeamSpawnFrontalArc);
+                    _dest = caster->GetFirstCollisionPosition(frand(EyebeamSpawnDistanceMin, EyebeamSpawnDistanceMax), angle);
+                    _hasDest = true;
+                }
+
+                caster->CastSpell(CastSpellTargetArg(_dest), GetEffectInfo().TriggerSpell, true);
             }
 
             void Register() override
@@ -665,12 +695,32 @@ class spell_kologarn_summon_focused_eyebeam : public SpellScriptLoader
                 OnEffectHitTarget += SpellEffectFn(spell_kologarn_summon_focused_eyebeam_SpellScript::HandleForceCast, EFFECT_0, SPELL_EFFECT_FORCE_CAST);
                 OnEffectHitTarget += SpellEffectFn(spell_kologarn_summon_focused_eyebeam_SpellScript::HandleForceCast, EFFECT_1, SPELL_EFFECT_FORCE_CAST);
             }
+
+            bool _hasDest = false;
+            Position _dest;
         };
 
         SpellScript* GetSpellScript() const override
         {
             return new spell_kologarn_summon_focused_eyebeam_SpellScript();
         }
+};
+
+// 63343, 63701 - Focused Eyebeam Summon (left + right)
+class EG_spell_kologarn_focused_eyebeam_spawn : public SpellScript
+{
+    PrepareSpellScript(EG_spell_kologarn_focused_eyebeam_spawn);
+
+    void OverrideSpawn(SpellDestination& dest)
+    {
+        if (WorldLocation const* shared = GetExplTargetDest())
+            dest.Relocate(*shared);
+    }
+
+    void Register() override
+    {
+        OnDestinationTargetSelect += SpellDestinationTargetSelectFn(EG_spell_kologarn_focused_eyebeam_spawn::OverrideSpawn, EFFECT_0, m_scriptSpellId == SPELL_SUMMON_FOCUSED_EYEBEAM_LEFT ? TARGET_DEST_CASTER_LEFT : TARGET_DEST_CASTER_RIGHT);
+    }
 };
 
 void AddSC_boss_kologarn()
@@ -684,4 +734,5 @@ void AddSC_boss_kologarn()
     new spell_ulduar_stone_grip();
     new spell_kologarn_stone_shout();
     new spell_kologarn_summon_focused_eyebeam();
+    RegisterSpellScript(EG_spell_kologarn_focused_eyebeam_spawn);
 }
