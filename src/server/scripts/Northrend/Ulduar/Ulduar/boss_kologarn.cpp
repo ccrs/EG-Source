@@ -215,40 +215,35 @@ class boss_kologarn : public CreatureScript
                     Talk(SAY_SLAY);
             }
 
-            void PassengerBoarded(Unit* who, int8 /*seatId*/, bool apply) override
-            {
-                if (!apply)
-                    return;
-
-
-            }
-
             void JustSummoned(Creature* summon) override
             {
-                summons.Summon(summon);
                 switch (summon->GetEntry())
                 {
                     case NPC_FOCUSED_EYEBEAM:
+                        summons.Summon(summon);
                         summon->CastSpell(me, SPELL_FOCUSED_EYEBEAM_VISUAL_LEFT, true);
                         break;
                     case NPC_FOCUSED_EYEBEAM_RIGHT:
+                        summons.Summon(summon);
                         summon->CastSpell(me, SPELL_FOCUSED_EYEBEAM_VISUAL_RIGHT, true);
                         break;
                     case NPC_RUBBLE:
                         if (me->IsEngaged())
                             DoZoneInCombat(summon);
                         return;
-                    default:
+                    case NPC_LEFT_ARM:
+                    case NPC_RIGHT_ARM:
                         BossAI::JustSummoned(summon);
                         if (summon->GetEntry() == NPC_LEFT_ARM)
                             _left = true;
                         else if (summon->GetEntry() == NPC_RIGHT_ARM)
                             _right = true;
-                        else
-                            return;
 
                         if (me->IsEngaged())
                             events.CancelEvent(EVENT_STONE_SHOUT);
+                        return;
+                    default:
+                        BossAI::JustSummoned(summon);
                         return;
                 }
 

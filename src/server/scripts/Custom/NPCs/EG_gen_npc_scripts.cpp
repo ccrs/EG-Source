@@ -1,3 +1,4 @@
+#include "ChaseMovementGenerator.h"
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "CommonHelpers.h"
@@ -1464,7 +1465,16 @@ private:
             target = ObjectAccessor::GetUnit(*me, kologarn->AI()->GetGUID(DATA_EYEBEAM_TARGET));
         }
 
-        if (target && me->GetVictim() != target)
+        if (MovementGenerator const* base = me->GetMotionMaster()->GetMovementGenerator([](MovementGenerator const* movegen) -> bool
+        {
+            return movegen->GetMovementGeneratorType() == CHASE_MOTION_TYPE;
+        }))
+        {
+            ChaseMovementGenerator const* chase = static_cast<ChaseMovementGenerator const*>(base);
+            if (chase->GetTarget() != target)
+                me->GetMotionMaster()->MoveChase(target, 0.f, false);
+        }
+        else
             me->GetMotionMaster()->MoveChase(target, 0.f, false);
     }
 
