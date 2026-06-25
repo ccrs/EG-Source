@@ -765,7 +765,7 @@ struct boss_mimiron : public BossAI
                         {
                             if (Player* player = i->GetSource())
                             {
-                                if (player->IsAlive() && IsInBoundary(player))
+                                if (!player->IsGameMaster() && player->IsAlive() && IsInBoundary(player))
                                     ++alive;
                             }
                         }

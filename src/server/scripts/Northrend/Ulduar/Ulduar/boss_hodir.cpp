@@ -457,7 +457,7 @@ struct boss_hodir : public BossAI
                     uint8 alive = 0;
                     for (auto i = playerList.begin(); i != playerList.end(); ++i)
                         if (Player* player = i->GetSource())
-                            if (player->IsAlive() && IsInBoundary(player))
+                            if (!player->IsGameMaster() && player->IsAlive() && IsInBoundary(player))
                                 ++alive;
 
                     if (!alive)
