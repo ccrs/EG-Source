@@ -1111,7 +1111,7 @@ struct npc_thorim_trashAI : public ScriptedAI
         static Unit* GetUnitWithMostMissingHp(SpellInfo const* spellInfo, Unit* caster)
         {
             // use positive range, it's a healing spell
-            float const range = spellInfo->GetMaxRange(true);
+            float const range = std::min(spellInfo->GetMaxRange(true), 80.0f);
             uint32 const heal = GetTotalHeal(spellInfo, caster);
 
             Unit* target = nullptr;
