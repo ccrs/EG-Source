@@ -107,8 +107,8 @@ enum KologarnMisc
     ACTION_RIGHT_ARM_DIED
 };
 
-float const EyebeamSpawnDistanceMin = 5.0f;
-float const EyebeamSpawnDistanceMax = 20.0f;
+float const EyebeamSpawnDistanceMin = 10.0f;
+float const EyebeamSpawnDistanceMax = 30.0f;
 float const EyebeamSpawnFrontalArc  = float(M_PI) / 3.0f; // +/-60 degrees off the home facing
 
 class boss_kologarn : public CreatureScript
@@ -160,6 +160,8 @@ class boss_kologarn : public CreatureScript
                     return _eyebeamTarget;
                 return ObjectGuid::Empty;
             }
+
+            Position const& GetEyebeamSpawnPos() const { return _eyebeamSpawnPos; }
 
             void DoAction(int32 action) override
             {
@@ -317,6 +319,8 @@ class boss_kologarn : public CreatureScript
                             if (Unit* eyebeamTargetUnit = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                             {
                                 _eyebeamTarget = eyebeamTargetUnit->GetGUID();
+                                float const angle = (me->GetHomePosition().GetOrientation() - me->GetOrientation()) + frand(-EyebeamSpawnFrontalArc, EyebeamSpawnFrontalArc);
+                                _eyebeamSpawnPos = me->GetFirstCollisionPosition(frand(EyebeamSpawnDistanceMin, EyebeamSpawnDistanceMax), angle);
                                 DoCast(me, SPELL_SUMMON_FOCUSED_EYEBEAM, true);
                             }
                             events.ScheduleEvent(EVENT_FOCUSED_EYEBEAM, 15s, 35s);
@@ -332,6 +336,7 @@ class boss_kologarn : public CreatureScript
         private:
             bool _left, _right;
             ObjectGuid _eyebeamTarget;
+            Position _eyebeamSpawnPos;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -672,17 +677,11 @@ class spell_kologarn_summon_focused_eyebeam : public SpellScriptLoader
             {
                 PreventHitDefaultEffect(effIndex);
 
-                Unit* caster = GetCaster();
-                if (!_hasDest)
-                {
-                    Creature* kologarn = caster->ToCreature();
-                    float const facing = kologarn ? kologarn->GetHomePosition().GetOrientation() : caster->GetOrientation();
-                    float const angle = (facing - caster->GetOrientation()) + frand(-EyebeamSpawnFrontalArc, EyebeamSpawnFrontalArc);
-                    _dest = caster->GetFirstCollisionPosition(frand(EyebeamSpawnDistanceMin, EyebeamSpawnDistanceMax), angle);
-                    _hasDest = true;
-                }
+                if (_summoned[effIndex])
+                    return;
+                _summoned[effIndex] = true;
 
-                caster->CastSpell(CastSpellTargetArg(_dest), GetEffectInfo().TriggerSpell, true);
+                GetCaster()->CastSpell(GetCaster(), GetEffectInfo().TriggerSpell, true);
             }
 
             void Register() override
@@ -691,8 +690,7 @@ class spell_kologarn_summon_focused_eyebeam : public SpellScriptLoader
                 OnEffectHitTarget += SpellEffectFn(spell_kologarn_summon_focused_eyebeam_SpellScript::HandleForceCast, EFFECT_1, SPELL_EFFECT_FORCE_CAST);
             }
 
-            bool _hasDest = false;
-            Position _dest;
+            bool _summoned[MAX_SPELL_EFFECTS] = { };
         };
 
         SpellScript* GetSpellScript() const override
@@ -708,8 +706,9 @@ class EG_spell_kologarn_focused_eyebeam_spawn : public SpellScript
 
     void OverrideSpawn(SpellDestination& dest)
     {
-        if (WorldLocation const* shared = GetExplTargetDest())
-            dest.Relocate(*shared);
+        if (Creature* caster = GetCaster()->ToCreature())
+            if (boss_kologarn::boss_kologarnAI* ai = CAST_AI(boss_kologarn::boss_kologarnAI, caster->AI()))
+                dest.Relocate(ai->GetEyebeamSpawnPos());
     }
 
     void Register() override
