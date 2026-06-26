@@ -54,6 +54,7 @@ static DoorData const doorData[] =
     { GO_XT_002_DOOR,                   DATA_XT002,             DOOR_TYPE_ROOM },
     { GO_IRON_COUNCIL_DOOR,             DATA_ASSEMBLY_OF_IRON,  DOOR_TYPE_ROOM },
     { GO_ARCHIVUM_DOOR,                 DATA_ASSEMBLY_OF_IRON,  DOOR_TYPE_PASSAGE },
+    { GO_KOLOGARN_DOOR,                 DATA_KOLOGARN,          DOOR_TYPE_ROOM },
     { GO_HODIR_ENTRANCE,                DATA_HODIR,             DOOR_TYPE_ROOM },
     { GO_HODIR_DOOR,                    DATA_HODIR,             DOOR_TYPE_PASSAGE },
     { GO_HODIR_ICE_DOOR,                DATA_HODIR,             DOOR_TYPE_PASSAGE },
