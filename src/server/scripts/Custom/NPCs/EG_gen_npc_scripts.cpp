@@ -5,6 +5,7 @@
 #include "Containers.h"
 #include "GameObject.h"
 #include "GameObjectData.h"
+#include "InstanceScript.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "PassiveAI.h"
