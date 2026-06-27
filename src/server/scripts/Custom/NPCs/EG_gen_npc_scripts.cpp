@@ -1495,12 +1495,9 @@ enum KologarnArmMisc
 };
 
 // 32933, 32934 - Left / Right Arm
-struct EG_npc_kologarn_arm : public ScriptedAI
+struct EG_npc_kologarn_arm : public PassiveAI
 {
-    EG_npc_kologarn_arm(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript())
-    {
-        me->SetReactState(REACT_PASSIVE);
-    }
+    EG_npc_kologarn_arm(Creature* creature) : PassiveAI(creature), _instance(creature->GetInstanceScript()) { }
 
     void JustDied(Unit* /*killer*/) override
     {
