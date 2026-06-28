@@ -495,6 +495,8 @@ struct boss_thorim : public BossAI
             if (Creature* miniBoss = ObjectAccessor::GetCreature(*me, instance->GetGuidData(i)))
                 miniBoss->Respawn(true);
 
+        instance->SetData(DATA_THORIM_PREADD_SUMMONS, 0);
+
         // Spawn Pre Phase Adds
         std::vector<Creature*> preAdds;
         for (ThorimSummonLocation const& s : PreAddLocations)
@@ -502,6 +504,7 @@ struct boss_thorim : public BossAI
             {
                 ++_preAddCount;
                 preAdds.push_back(preAdd);
+                instance->SetGuidData(DATA_THORIM_PREADD_SUMMONS, preAdd->GetGUID());
             }
 
         uint32 const ironFaction = 1693; // Jormungar Behemoth faction template (hostile to the mercenaries)
@@ -1448,10 +1451,11 @@ struct npc_runic_colossus : public npc_thorim_minibossAI
         // close the Runic Door
         _instance->HandleGameObject(_instance->GetGuidData(DATA_RUNIC_DOOR), false);
 
-        // Spawn trashes
         _summons.DespawnAll();
+        _instance->SetData(DATA_THORIM_COLOSSUS_SUMMONS, 0);
         for (ThorimSummonLocation const& s : ColossusAddLocations)
-            me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s);
+            if (Creature* add = me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s))
+                _instance->SetGuidData(DATA_THORIM_COLOSSUS_SUMMONS, add->GetGUID());
     }
 
     void MoveInLineOfSight(Unit* /*who*/) override
@@ -1558,10 +1562,11 @@ struct npc_ancient_rune_giant : public npc_thorim_minibossAI
         // close the Stone Door
         _instance->HandleGameObject(_instance->GetGuidData(DATA_STONE_DOOR), false);
 
-        // Spawn trashes
         _summons.DespawnAll();
+        _instance->SetData(DATA_THORIM_GIANT_SUMMONS, 0);
         for (ThorimSummonLocation const& s : GiantAddLocations)
-            me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s);
+            if (Creature* add = me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s))
+                _instance->SetGuidData(DATA_THORIM_GIANT_SUMMONS, add->GetGUID());
     }
 
     void JustEngagedWith(Unit* /*who*/) override

@@ -900,6 +900,15 @@ class instance_ulduar : public InstanceMapScript
                     case DATA_UNBROKEN:
                         Unbroken = data != 0;
                         break;
+                    case DATA_THORIM_PREADD_SUMMONS:
+                        DespawnThorimSummons(ThorimPreAddGUIDs);
+                        break;
+                    case DATA_THORIM_COLOSSUS_SUMMONS:
+                        DespawnThorimSummons(ThorimColossusAddGUIDs);
+                        break;
+                    case DATA_THORIM_GIANT_SUMMONS:
+                        DespawnThorimSummons(ThorimGiantAddGUIDs);
+                        break;
                     case DATA_ILLUSION:
                         illusion = data;
                         break;
@@ -989,6 +998,15 @@ class instance_ulduar : public InstanceMapScript
                         break;
                     case DATA_FL_HARDMODE_PLAYER:
                         _flHardmodePlayerGUID = data;
+                        break;
+                    case DATA_THORIM_PREADD_SUMMONS:
+                        ThorimPreAddGUIDs.push_back(data);
+                        break;
+                    case DATA_THORIM_COLOSSUS_SUMMONS:
+                        ThorimColossusAddGUIDs.push_back(data);
+                        break;
+                    case DATA_THORIM_GIANT_SUMMONS:
+                        ThorimGiantAddGUIDs.push_back(data);
                         break;
                     default:
                         break;
@@ -1587,10 +1605,21 @@ class instance_ulduar : public InstanceMapScript
                     InstanceScript::AddDoor(door, add);
             }
 
+            void DespawnThorimSummons(GuidVector& summons)
+            {
+                for (ObjectGuid const& guid : summons)
+                    if (Creature* summon = instance->GetCreature(guid))
+                        summon->DespawnOrUnsummon();
+                summons.clear();
+            }
+
         private:
             // Creatures
             GuidVector LeviathanVehicleGUIDs;
             GuidVector KirinTorMageGUIDs;
+            GuidVector ThorimPreAddGUIDs;
+            GuidVector ThorimColossusAddGUIDs;
+            GuidVector ThorimGiantAddGUIDs;
             ObjectGuid XTToyPileGUIDs[4];
             ObjectGuid AssemblyGUIDs[3];
             ObjectGuid ElderGUIDs[3];
