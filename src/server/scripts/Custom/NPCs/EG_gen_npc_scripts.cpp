@@ -1,6 +1,7 @@
 #include "ChaseMovementGenerator.h"
 #include "Creature.h"
 #include "CreatureAI.h"
+#include "Common.h"
 #include "CommonHelpers.h"
 #include "Containers.h"
 #include "GameObject.h"
@@ -178,7 +179,7 @@ struct EG_npc_damage_test_dummy : public NullCreatureAI
 
     void DamageTaken(Unit* attacker, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
     {
-        if (!_attemptCountdown && _attemptTimer)
+        if (!_attemptCountdown && _attemptTimer && attacker)
         {
             ObjectGuid const who = attacker->GetCharmerOrOwnerOrOwnGUID();
             if (!who.IsPlayer())
@@ -312,7 +313,8 @@ struct EG_npc_damage_test_controller : public NullCreatureAI
         for (int8 i = 0; i < NUM_DUMMY; ++i)
         {
             me->GetClosePoint(x, y, z, 1.0f, 0.0f, float((i + 1) * M_PI_2));
-            _Dummy[i] = me->SummonCreature(me->GetEntry(), x, y, z + 2.0f, me->GetOrientation())->GetGUID();
+            if (Creature* summon = me->SummonCreature(me->GetEntry(), x, y, z + 2.0f, me->GetOrientation()))
+                _Dummy[i] = summon->GetGUID();
         }
         Reset();
     }
@@ -545,11 +547,12 @@ enum EvolvingEctoplasm
 
 struct EG_npc_evolving_ectoplasm : public ScriptedAI
 {
-    EG_npc_evolving_ectoplasm(Creature* creature) : ScriptedAI(creature) { }
+    EG_npc_evolving_ectoplasm(Creature* creature) : ScriptedAI(creature), _color(0) { }
 
     void Reset() override
     {
         _scheduler.CancelAll();
+        _color = 0;
         DoCastSelf(EvolvingEctoplasm::SPELL_IMMUNITY_FROST);
         DoCastSelf(EvolvingEctoplasm::SPELL_TRANSFORM_BLUE);
     }
