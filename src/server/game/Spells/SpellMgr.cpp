@@ -5192,6 +5192,20 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->ManaCostPercentage = 0;
     });
 
+    // Lightning Bolt (Haiphoon, Air)
+    ApplySpellFix({ 61374 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).BasePoints = 2684;
+        spellInfo->_GetEffect(EFFECT_0).DieSides = 582;
+    });
+
+    // Water Bolt (Haiphoon, Water)
+    ApplySpellFix({ 61375 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).BasePoints = 2982;
+        spellInfo->_GetEffect(EFFECT_0).DieSides = 550;
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];
