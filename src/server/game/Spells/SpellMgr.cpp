@@ -5206,6 +5206,13 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->_GetEffect(EFFECT_0).DieSides = 550;
     });
 
+    // Colossal Strike
+    ApplySpellFix({ 50978 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_2).BasePoints = 9425;
+        spellInfo->_GetEffect(EFFECT_2).DieSides = 1580;
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];
