@@ -1333,8 +1333,10 @@ void AuraEffect::HandleShapeshiftBoosts(Unit* target, bool apply) const
             // Use the new aura to see on what stance the target will be
             uint64 newStance = newAura ? (UI64LIT(1) << (newAura->GetMiscValue() - 1)) : 0;
 
-            // When switching between warrior stances, preserve auras that are tied to at least one warrior stance (e.g. Sweeping Strikes).
-            bool preserveAura = isWarriorStanceSwitch && (itr->second->GetBase()->GetSpellInfo()->Stances & warriorStanceMask);
+            // When switching between warrior stances, preserve active auras that are tied to at least one warrior stance (e.g. Sweeping Strikes).
+            // Passive stance talents (e.g. Improved Berserker Stance) must not be preserved - they are re-applied per stance by HandleShapeshiftBoosts.
+            bool preserveAura = isWarriorStanceSwitch && !itr->second->GetBase()->IsPassive()
+                && (itr->second->GetBase()->GetSpellInfo()->Stances & warriorStanceMask);
 
             // If the stances are not compatible with the spell, remove it
             if (!preserveAura && itr->second->GetBase()->IsRemovedOnShapeLost(target) && !(itr->second->GetBase()->GetSpellInfo()->Stances & newStance))
