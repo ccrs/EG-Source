@@ -1102,6 +1102,8 @@ enum StormTemperedKeeperMisc
 
     DATA_SPHERE_GUID = 1,
 
+    ACTION_SPHERE_LOCKOUT = 1,
+
     EVENT_FORKED_LIGHTNING = 1,
     EVENT_SUMMON_SPHERE,
     EVENT_CHECK_KEEPER,
@@ -1118,6 +1120,7 @@ struct EG_npc_storm_tempered_keeper : public ScriptedAI
         _otherKeeper.Clear();
         _chargedSphere.Clear();
         _keeperDead = false;
+        _sphereLockout.Reset(0);
         me->RemoveAurasDueToSpell(SPELL_VENGEFUL_SURGE);
         me->RemoveAurasDueToSpell(SPELL_SEPARATION_ANXIETY);
     }
@@ -1167,6 +1170,12 @@ struct EG_npc_storm_tempered_keeper : public ScriptedAI
             _chargedSphere = guid;
     }
 
+    void DoAction(int32 action) override
+    {
+        if (action == ACTION_SPHERE_LOCKOUT)
+            _sphereLockout.Reset(10 * IN_MILLISECONDS);
+    }
+
     void JustEngagedWith(Unit* who) override
     {
         if (Creature* othKeeper = me->FindNearestCreature(me->GetEntry() == NPC_KEEPER_1 ? NPC_KEEPER_2 : NPC_KEEPER_1, 100.0f, true))
@@ -1193,7 +1202,7 @@ struct EG_npc_storm_tempered_keeper : public ScriptedAI
     {
         if (who->GetEntry() == NPC_CHARGED_SPHERE && who->GetGUID() == _chargedSphere)
         {
-            if (who->GetDistance(me) <= 2.5f)
+            if (who->GetDistance(me) <= 1.5f)
             {
                 who->CastSpell(me, SPELL_SUPERCHARGED, true);
                 who->KillSelf();
@@ -1210,6 +1219,7 @@ struct EG_npc_storm_tempered_keeper : public ScriptedAI
             return;
 
         _events.Update(diff);
+        _sphereLockout.Update(diff);
 
         if (me->HasUnitState(UNIT_STATE_CASTING))
             return;
@@ -1223,11 +1233,15 @@ struct EG_npc_storm_tempered_keeper : public ScriptedAI
                     _events.ScheduleEvent(EVENT_FORKED_LIGHTNING, 10s, 15s);
                     break;
                 case EVENT_SUMMON_SPHERE:
-                    if (!_keeperDead)
+                    if (!_keeperDead && _sphereLockout.Passed())
                         if (Creature* othKeeper = ObjectAccessor::GetCreature(*me, _otherKeeper))
                             if (!othKeeper->HasAura(SPELL_SUPERCHARGED))
+                            {
                                 DoCast(SPELL_SUMMON_SPHERE);
-                    _events.ScheduleEvent(EVENT_SUMMON_SPHERE, 20s, 35s);
+                                _sphereLockout.Reset(10 * IN_MILLISECONDS);
+                                othKeeper->AI()->DoAction(ACTION_SPHERE_LOCKOUT);
+                            }
+                    _events.ScheduleEvent(EVENT_SUMMON_SPHERE, 30s, 1min);
                     break;
                 case EVENT_CHECK_KEEPER:
                     if (Creature* othKeeper = ObjectAccessor::GetCreature(*me, _otherKeeper))
@@ -1259,6 +1273,7 @@ private:
     ObjectGuid _otherKeeper;
     ObjectGuid _chargedSphere;
     bool _keeperDead;
+    CountdownTimer _sphereLockout;
 };
 
 enum TwilightShadowbladeMisc
