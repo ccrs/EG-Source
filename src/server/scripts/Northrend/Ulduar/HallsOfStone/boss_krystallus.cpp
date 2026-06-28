@@ -47,19 +47,14 @@ enum KrystallusEvents
     EVENT_BOULDER_TOSS       = 1,
     EVENT_GROUND_SPIKE,
     EVENT_GROUND_SLAM,
-    EVENT_STOMP
+    EVENT_STOMP,
+    EVENT_SHATTER
 };
 
 // 27977 - Krystallus
 struct boss_krystallus : public BossAI
 {
-    boss_krystallus(Creature* creature) : BossAI(creature, DATA_KRYSTALLUS), _shatterTimer(0) { }
-
-    void Reset() override
-    {
-        _Reset();
-        _shatterTimer.Reset(0);
-    }
+    boss_krystallus(Creature* creature) : BossAI(creature, DATA_KRYSTALLUS) { }
 
     void JustEngagedWith(Unit* who) override
     {
@@ -76,12 +71,7 @@ struct boss_krystallus : public BossAI
     void OnSpellCast(SpellInfo const* spell) override
     {
         if (spell->Id == sSpellMgr->GetSpellIdForDifficulty(SPELL_GROUND_SLAM, me))
-            _shatterTimer.Reset(11s);
-        else if (spell->Id == sSpellMgr->GetSpellIdForDifficulty(SPELL_SHATTER, me))
-        {
-            Talk(SAY_SHATTER);
-            events.ScheduleEvent(EVENT_GROUND_SLAM, 15s, 18s);
-        }
+            events.ScheduleEvent(EVENT_SHATTER, 12s);
     }
 
     void KilledUnit(Unit* victim) override
@@ -106,17 +96,6 @@ struct boss_krystallus : public BossAI
         if (me->HasUnitState(UNIT_STATE_CASTING))
             return;
 
-        if (!_shatterTimer.Passed())
-        {
-            _shatterTimer.Update(diff);
-            if (_shatterTimer.Passed())
-            {
-                me->InterruptNonMeleeSpells(true);
-                DoCastSelf(SPELL_SHATTER);
-                return;
-            }
-        }
-
         while (uint32 eventId = events.ExecuteEvent())
         {
             switch (eventId)
@@ -133,10 +112,15 @@ struct boss_krystallus : public BossAI
                     break;
                 case EVENT_GROUND_SLAM:
                     DoCastSelf(SPELL_GROUND_SLAM);
+                    events.Repeat(28s, 31s);
                     break;
                 case EVENT_STOMP:
                     DoCastSelf(SPELL_STOMP);
                     events.Repeat(20s, 29s);
+                    break;
+                case EVENT_SHATTER:
+                    Talk(SAY_SHATTER);
+                    DoCastSelf(SPELL_SHATTER);
                     break;
                 default:
                     break;
@@ -148,9 +132,6 @@ struct boss_krystallus : public BossAI
 
         DoMeleeAttackIfReady();
     }
-
-private:
-    TimeTracker _shatterTimer;
 };
 
 // 50810, 61546 - Shatter
