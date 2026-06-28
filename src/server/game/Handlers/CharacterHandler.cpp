@@ -1549,6 +1549,9 @@ void WorldSession::HandleEquipmentSetUse(WorldPacket& recvData)
 {
     TC_LOG_DEBUG("network", "CMSG_EQUIPMENT_SET_USE");
 
+    // EG: applying an equipment set in combat is a single weapon swap.
+    bool const weaponSwapAllowed = _player->GetWeaponChangeTimer() == 0;
+
     for (uint32 i = 0; i < EQUIPMENT_SLOT_END; ++i)
     {
         ObjectGuid itemGuid;
@@ -1595,6 +1598,10 @@ void WorldSession::HandleEquipmentSetUse(WorldPacket& recvData)
 
         if (item->GetPos() == dstpos)
             continue;
+
+        // EG: drop the cooldown armed by an earlier weapon of this same set so the remaining weapon(s) pass CanEquipItem within one swap
+        if (weaponSwapAllowed)
+            _player->setWeaponChangeTimer(0);
 
         if (_player->CanEquipItem(i, dstpos, item, true) != EQUIP_ERR_OK)
             continue;

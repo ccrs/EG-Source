@@ -1448,6 +1448,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void RegenerateHealth();
         void setRegenTimerCount(uint32 time) {m_regenTimerCount = time;}
         void setWeaponChangeTimer(uint32 time) {m_weaponChangeTimer = time;}
+        uint32 GetWeaponChangeTimer() const { return m_weaponChangeTimer; }
 
         uint32 GetMoney() const { return GetUInt32Value(PLAYER_FIELD_COINAGE); }
         bool ModifyMoney(int32 amount, bool sendError = true);
