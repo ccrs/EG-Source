@@ -1478,10 +1478,16 @@ private:
             return;
 
         Unit* target = ObjectAccessor::GetUnit(*me, kologarn->AI()->GetGUID(DATA_EYEBEAM_TARGET));
-        if (!target || !target->IsAlive())
+        if (!target || !target->IsAlive() || target->GetVehicle())
         {
             kologarn->AI()->DoAction(ACTION_RETARGET_EYEBEAM);
             target = ObjectAccessor::GetUnit(*me, kologarn->AI()->GetGUID(DATA_EYEBEAM_TARGET));
+        }
+
+        if (!target)
+        {
+            me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
+            return;
         }
 
         if (MovementGenerator const* base = me->GetMotionMaster()->GetMovementGenerator([](MovementGenerator const* movegen) -> bool

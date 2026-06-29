@@ -163,16 +163,24 @@ class boss_kologarn : public CreatureScript
 
             Position const& GetEyebeamSpawnPos() const { return _eyebeamSpawnPos; }
 
+            Unit* SelectEyebeamTarget()
+            {
+                return SelectTarget(SelectTargetMethod::Random, 0, [this](Unit* unit)
+                {
+                    return DefaultTargetSelector(me, 0.0f, true, false, 0)(unit) && !unit->GetVehicle();
+                });
+            }
+
             void DoAction(int32 action) override
             {
                 switch (action)
                 {
                     case ACTION_RETARGET_EYEBEAM:
                         if (Unit* current = ObjectAccessor::GetUnit(*me, _eyebeamTarget))
-                            if (current->IsAlive())
+                            if (current->IsAlive() && !current->GetVehicle())
                                 return;
 
-                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true, false))
+                        if (Unit* target = SelectEyebeamTarget())
                             _eyebeamTarget = target->GetGUID();
                         else
                             _eyebeamTarget.Clear();
@@ -316,7 +324,7 @@ class boss_kologarn : public CreatureScript
                             break;
                         }
                         case EVENT_FOCUSED_EYEBEAM:
-                            if (Unit* eyebeamTargetUnit = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
+                            if (Unit* eyebeamTargetUnit = SelectEyebeamTarget())
                             {
                                 _eyebeamTarget = eyebeamTargetUnit->GetGUID();
                                 float const angle = (me->GetHomePosition().GetOrientation() - me->GetOrientation()) + frand(-EyebeamSpawnFrontalArc, EyebeamSpawnFrontalArc);

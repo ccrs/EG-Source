@@ -1823,7 +1823,7 @@ class spell_nexus_lord_align_disk_aggro : public SpellScript
                         disk->GetBase()->GetMotionMaster()->MoveChase(victim, 0.f, 0.f, false);
                 }
                 else
-                    disk->GetBase()->GetMotionMaster()->Clear(MOTION_SLOT_ACTIVE);
+                    disk->GetBase()->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
             }
     }
 
