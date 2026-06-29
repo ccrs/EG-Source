@@ -12346,7 +12346,7 @@ uint32 Unit::GetModelForForm(ShapeshiftForm form, uint32 spellId) const
                 break;
             case FORM_CAT:
                 if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_VISUALS, CustomFlags::CUSTOM_FLAG_VISUALS_DRUID_ACTIVE))
-                    return 28866;
+                    return 9956;
                 // Based on Hair color
                 if (GetRace() == RACE_NIGHTELF)
                 {
