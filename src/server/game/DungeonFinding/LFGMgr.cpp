@@ -1480,9 +1480,11 @@ void LFGMgr::TeleportPlayer(Player* player, bool out, bool fromOpcode /*= false*
     {
         // A same-map TeleportTo() is a near teleport and will not switch the player to a fresh instance copy.
         // Leave the old completed instance first, then ProcessPendingTeleportIns() will teleport back in after the worldport finishes.
+        // Capture the instance being left before TeleportToBGEntryPoint removes the player from it.
+        uint32 const oldInstanceId = player->GetInstanceId();
         if (player->TeleportToBGEntryPoint())
         {
-            PendingTeleportInStore[player->GetGUID()] = PendingTeleportInData{ GameTime::GetGameTime() + LFG_TIME_PENDING_TELEPORT_IN, previousDungeonId };
+            PendingTeleportInStore[player->GetGUID()] = PendingTeleportInData{ GameTime::GetGameTime() + LFG_TIME_PENDING_TELEPORT_IN, previousDungeonId, oldInstanceId };
             TC_LOG_DEBUG("lfg.teleport", "Player {} queued for deferred LFG teleport in to map {} after leaving old instance", player->GetName(), uint32(dungeon->map));
             return;
         }

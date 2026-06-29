@@ -669,7 +669,7 @@ uint8 lfg::LFGQueue::CountGuidsInCompatibleKey(std::string const& key)
     return uint8(std::count(key.begin(), key.end(), '|') + 1);
 }
 
-lfg::LFGMgr::LfgBindCleanupResult lfg::LFGMgr::TryClearOldLfgGroupBind(Group* group, uint32 lfgDungeonId)
+lfg::LFGMgr::LfgBindCleanupResult lfg::LFGMgr::TryClearOldLfgGroupBind(Group* group, uint32 lfgDungeonId, uint32 oldInstanceId)
 {
     if (!group || !group->isLFGGroup() || !lfgDungeonId)
         return LfgBindCleanupResult::NoBind;
@@ -704,6 +704,10 @@ lfg::LFGMgr::LfgBindCleanupResult lfg::LFGMgr::TryClearOldLfgGroupBind(Group* gr
     if (!bind || !bind->save)
         return LfgBindCleanupResult::NoBind;
 
+    // Only clear the exact copy the player left - a faster member may already have rebound the group to a fresh one.
+    if (oldInstanceId && bind->save->GetInstanceId() != oldInstanceId)
+        return LfgBindCleanupResult::NoBind;
+
     // Permanent binds are authoritative locks and must not be bypassed by LFG requeue.
     if (bind->perm)
     {
@@ -721,22 +725,10 @@ lfg::LFGMgr::LfgBindCleanupResult lfg::LFGMgr::TryClearOldLfgGroupBind(Group* gr
     }
 
     uint32 const instanceId = bind->save->GetInstanceId();
-    if (Map* boundMap = sMapMgr->FindMap(dungeon->map, instanceId))
-    {
-        if (boundMap->HavePlayers())
-        {
-            TC_LOG_DEBUG("lfg.teleport", "LFG requeue: waiting before clearing old group bind group={} map={} difficulty={} instance={} because players are still inside",
-                group->GetGUID().ToString(), dungeon->map, uint32(difficulty), instanceId);
-            return LfgBindCleanupResult::Wait;
-        }
 
-        if (boundMap->IsDungeon() && !static_cast<InstanceMap*>(boundMap)->Reset(INSTANCE_RESET_ALL))
-        {
-            TC_LOG_DEBUG("lfg.teleport", "LFG requeue: not clearing old group bind group={} map={} difficulty={} instance={} because reset failed",
-                group->GetGUID().ToString(), dungeon->map, uint32(difficulty), instanceId);
-            return LfgBindCleanupResult::Failed;
-        }
-    }
+    if (Map* boundMap = sMapMgr->FindMap(dungeon->map, instanceId))
+        if (boundMap->IsDungeon())
+            static_cast<InstanceMap*>(boundMap)->Reset(INSTANCE_RESET_RESPAWN_DELAY);
 
     group->UnbindInstance(dungeon->map, uint8(difficulty), false);
 
@@ -753,6 +745,7 @@ void lfg::LFGMgr::ProcessPendingTeleportIns(time_t currTime)
         ObjectGuid guid = itr->first;
         time_t expireTime = itr->second.ExpireTime;
         uint32 previousDungeonId = itr->second.PreviousDungeonId;
+        uint32 oldInstanceId = itr->second.OldInstanceId;
 
         Player* player = ObjectAccessor::FindConnectedPlayer(guid);
         if (!player)
@@ -803,31 +796,7 @@ void lfg::LFGMgr::ProcessPendingTeleportIns(time_t currTime)
         }
 
         if (previousDungeonId)
-        {
-            LfgBindCleanupResult const cleanupResult = TryClearOldLfgGroupBind(group, previousDungeonId);
-            switch (cleanupResult)
-            {
-                case LfgBindCleanupResult::Wait:
-                    if (currTime >= expireTime)
-                    {
-                        TC_LOG_DEBUG("lfg.teleport", "Deferred LFG teleport for player {} expired while waiting for old instance bind cleanup", player->GetName());
-                        player->GetSession()->SendLfgTeleportError(uint8(LFG_TELEPORTERROR_INVALID_LOCATION));
-                        itr = PendingTeleportInStore.erase(itr);
-                    }
-                    else
-                        ++itr;
-                    continue;
-                case LfgBindCleanupResult::Failed:
-                    TC_LOG_DEBUG("lfg.teleport", "Deferred LFG teleport for player {} failed because old instance bind cleanup failed", player->GetName());
-                    player->GetSession()->SendLfgTeleportError(uint8(LFG_TELEPORTERROR_INVALID_LOCATION));
-                    itr = PendingTeleportInStore.erase(itr);
-                    continue;
-                case LfgBindCleanupResult::NoBind:
-                case LfgBindCleanupResult::Cleared:
-                case LfgBindCleanupResult::Protected:
-                    break;
-            }
-        }
+            TryClearOldLfgGroupBind(group, previousDungeonId, oldInstanceId);
 
         itr = PendingTeleportInStore.erase(itr);
         TeleportPlayer(player, false, false, true, previousDungeonId);

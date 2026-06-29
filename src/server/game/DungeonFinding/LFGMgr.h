@@ -451,12 +451,10 @@ class TC_GAME_API LFGMgr
         {
             NoBind,
             Cleared,
-            Protected,
-            Wait,
-            Failed
+            Protected
         };
 
-        LfgBindCleanupResult TryClearOldLfgGroupBind(Group* group, uint32 lfgDungeonId);
+        LfgBindCleanupResult TryClearOldLfgGroupBind(Group* group, uint32 lfgDungeonId, uint32 oldInstanceId);
         void ProcessPendingTeleportIns(time_t currTime);
 
         // Proposals
@@ -492,6 +490,7 @@ class TC_GAME_API LFGMgr
         {
             time_t ExpireTime = 0;
             uint32 PreviousDungeonId = 0;
+            uint32 OldInstanceId = 0;
         };
 
         std::map<ObjectGuid, PendingTeleportInData> PendingTeleportInStore;
