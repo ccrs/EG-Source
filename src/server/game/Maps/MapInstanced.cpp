@@ -20,6 +20,7 @@
 #include "DBCStores.h"
 #include "Group.h"
 #include "InstanceSaveMgr.h"
+#include "InstanceScript.h"
 #include "Log.h"
 #include "MapManager.h"
 #include "MMapFactory.h"
@@ -199,7 +200,14 @@ Map* MapInstanced::CreateInstanceForPlayer(uint32 mapId, Player* player, uint32 
             //Seems it is now possible, but I do not know if it should be allowed
             //ASSERT(!FindInstanceMap(NewInstanceId));
             map = FindInstanceMap(newInstanceId);
-            if (!map)
+            // EG - diagnose recurring missing-boss incidents: a freshly generated id must never resolve to a live map
+            if (map)
+            {
+                InstanceScript const* script = map->IsDungeon() ? static_cast<InstanceMap*>(map)->GetInstanceScript() : nullptr;
+                TC_LOG_WARN("maps", "CreateInstanceForPlayer: freshly generated instance id {} for map {} already has a live map (difficulty {}, requested {}, players {}, encounters: {}), reusing it for player {}",
+                    newInstanceId, GetId(), uint32(map->GetSpawnMode()), uint32(diff), map->GetPlayersCountExceptGMs(), script ? script->GetEncounterStateNames() : "no script", player->GetName());
+            }
+            else
                 map = CreateInstance(newInstanceId, nullptr, diff, player->GetTeamId());
         }
     }
