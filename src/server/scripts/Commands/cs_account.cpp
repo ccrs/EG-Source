@@ -409,7 +409,7 @@ public:
                 session->GetRemoteAddress().c_str(),
                 playerMapId,
                 playerZoneId,
-                session->Expansion(),
+                session->GetExpansion(),
                 int32(session->GetSecurity()));
 
             ++sessionsMatchCount;
