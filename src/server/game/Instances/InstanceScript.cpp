@@ -488,8 +488,17 @@ void InstanceScript::WriteSaveDataHeaders(std::ostringstream& data)
 
 void InstanceScript::WriteSaveDataBossStates(std::ostringstream& data)
 {
+    uint32 bossId = 0;
     for (BossInfo const& bossInfo : bosses)
+    {
+        // EG - diagnose recurring missing-boss incidents: a persisted TO_BE_DECIDED makes every future load skip the boss
+        if (bossInfo.state == TO_BE_DECIDED)
+            TC_LOG_WARN("maps", "InstanceScript::WriteSaveDataBossStates: persisting uninitialized state for boss {} of map {} instance {}",
+                bossId, instance->GetId(), instance->GetInstanceId());
+
         data << uint32(bossInfo.state) << ' ';
+        ++bossId;
+    }
 }
 
 void InstanceScript::HandleGameObject(ObjectGuid guid, bool open, GameObject* go /*= nullptr*/)
