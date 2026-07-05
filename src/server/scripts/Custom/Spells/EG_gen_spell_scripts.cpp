@@ -539,6 +539,23 @@ class EG_spell_arachnopod_damaged : public AuraScript
     }
 };
 
+// 62221 - Unstable Sun Beam
+class EG_spell_brightleaf_unstable_sun_beam_forced : public SpellScript
+{
+    PrepareSpellScript(EG_spell_brightleaf_unstable_sun_beam_forced);
+
+    void SetDest()
+    {
+        WorldLocation dest(GetCaster()->GetMapId(), GetCaster()->GetPosition());
+        SetExplTargetDest(dest);
+    }
+
+    void Register() override
+    {
+        BeforeCast += SpellCastFn(EG_spell_brightleaf_unstable_sun_beam_forced::SetDest);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
@@ -560,4 +577,5 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_energy_sap);
     RegisterSpellScript(EG_spell_freya_summon_healthy_spore);
     RegisterSpellScript(EG_spell_arachnopod_damaged);
+    RegisterSpellScript(EG_spell_brightleaf_unstable_sun_beam_forced);
 }
