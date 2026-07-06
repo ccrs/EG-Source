@@ -235,7 +235,8 @@ enum FreyaMisc
     DATA_KNOCK_ON_WOOD                          = 2
 };
 
-constexpr Seconds FREYA_WAVE_TIME = 60s; // Normal wave is one minute
+constexpr Seconds FREYA_WAVE_TIME_MIN = 30s;
+constexpr Seconds FREYA_WAVE_TIME_MAX = 60s;
 
 struct npc_iron_roots : public ScriptedAI
 {
@@ -284,6 +285,7 @@ struct boss_freya : public BossAI
         trioWaveCount = 0;
         waveCount = 0;
         elderCount = 0;
+        _natureBombsUnlocked = false;
 
         for (TrioWave& wave : _trioWaves)
         {
@@ -394,6 +396,12 @@ struct boss_freya : public BossAI
 
         events.Update(diff);
 
+        if (!_natureBombsUnlocked && waveCount >= 6 && !me->HasAura(SPELL_ATTUNED_TO_NATURE))
+        {
+            _natureBombsUnlocked = true;
+            events.ScheduleEvent(EVENT_NATURE_BOMB, 5s);
+        }
+
         if (me->HasUnitState(UNIT_STATE_CASTING))
             return;
 
@@ -422,9 +430,7 @@ struct boss_freya : public BossAI
                 case EVENT_WAVE:
                     SpawnWave();
                     if (waveCount < 6)
-                        events.ScheduleEvent(EVENT_WAVE, FREYA_WAVE_TIME);
-                    else
-                        events.ScheduleEvent(EVENT_NATURE_BOMB, 10s, 20s);
+                        events.ScheduleEvent(EVENT_WAVE, FREYA_WAVE_TIME_MIN, FREYA_WAVE_TIME_MAX);
                     break;
                 case EVENT_EONAR_GIFT:
                     Talk(EMOTE_LIFEBINDERS_GIFT);
@@ -676,6 +682,7 @@ private:
     uint8 waveCount;
     uint8 elderCount;
     bool _encounterFinished;
+    bool _natureBombsUnlocked;
     std::array<TrioWave, 2> _trioWaves; // the two trio waves: members + defeated/revive state
     std::vector<uint8> _waveBag; // shuffled bag of remaining wave ids for the current cycle
     std::vector<TrioDeath> _trioDeaths; // recent trio deaths (time + type) for the Deforestation achievement
