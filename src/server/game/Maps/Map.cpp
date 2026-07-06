@@ -4159,7 +4159,31 @@ void InstanceMap::PermBindAllPlayers()
     InstanceSave* save = sInstanceSaveMgr->GetInstanceSave(GetInstanceId());
     if (!save)
     {
-        TC_LOG_ERROR("maps", "Cannot bind players to instance map (Name: {}, Entry: {}, Difficulty: {}, ID: {}) because no instance save is available!", GetMapName(), GetId(), static_cast<uint32>(GetDifficultyID()), GetInstanceId());
+        Map* selfLookup = sMapMgr->FindMap(GetId(), GetInstanceId());
+        uint32 groupBoundInstanceId = 0;
+        for (MapRefManager::iterator itr = m_mapRefManager.begin(); itr != m_mapRefManager.end(); ++itr)
+        {
+            Player* player = itr->GetSource();
+            if (player->IsGameMaster())
+                continue;
+
+            if (Group* group = player->GetGroup())
+                if (InstanceGroupBind* bind = group->GetBoundInstance(this))
+                    if (bind->save)
+                        groupBoundInstanceId = bind->save->GetInstanceId();
+
+            break;
+        }
+
+        InstanceScript const* script = GetInstanceScript();
+        TC_LOG_ERROR("maps", "Cannot bind players to instance map (Name: {}, Entry: {}, Difficulty: {}, ID: {}) because no instance save is available! "
+            "[players: {}, self-lookup: {}, group-bound-instance: {}, save-under-group-bind: {}, encounters: {}]",
+            GetMapName(), GetId(), static_cast<uint32>(GetDifficultyID()), GetInstanceId(),
+            GetPlayersCountExceptGMs(),
+            selfLookup == this ? "self" : (selfLookup ? "other-map" : "null"),
+            groupBoundInstanceId,
+            groupBoundInstanceId ? (sInstanceSaveMgr->GetInstanceSave(groupBoundInstanceId) ? "present" : "missing") : "n/a",
+            script ? script->GetEncounterStateNames() : "no-script");
         return;
     }
 
