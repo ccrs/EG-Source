@@ -513,10 +513,10 @@ public:
             return false;
         }
 
-        TournamentDungeon const* dungeon = tournament->GetDungeonByMap(uint16(map->GetId()), uint8(map->GetDifficulty()));
+        TournamentDungeon const* dungeon = tournament->GetDungeonByMap(uint16(map->GetId()), uint8(map->GetDifficultyID()));
         if (!dungeon || !dungeon->revealed)
         {
-            handler->PSendSysMessage("Map %u (%s) is not part of the tournament dungeon selection.", map->GetId(), map->GetDifficulty() ? "heroic" : "normal");
+            handler->PSendSysMessage("Map %u (%s) is not part of the tournament dungeon selection.", map->GetId(), map->GetDifficultyID() ? "heroic" : "normal");
             return false;
         }
 

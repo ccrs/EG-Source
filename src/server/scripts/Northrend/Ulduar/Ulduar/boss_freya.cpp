@@ -476,7 +476,7 @@ struct boss_freya : public BossAI
             /* 25N */    {62955, 62956, 62957, 62958}
         };
 
-        me->CastSpell(nullptr, summonSpell[me->GetMap()->GetDifficulty()][elderCount], true);
+        me->CastSpell(nullptr, summonSpell[me->GetMap()->GetDifficultyID()][elderCount], true);
 
         Talk(SAY_DEATH);
 

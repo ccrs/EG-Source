@@ -24,7 +24,7 @@ public:
         if (!tournament || tournament->state != TOURNAMENT_STATE_RUNNING)
             return;
 
-        TournamentDungeon const* dungeon = tournament->GetDungeonByMap(uint16(map->GetId()), uint8(map->GetDifficulty()));
+        TournamentDungeon const* dungeon = tournament->GetDungeonByMap(uint16(map->GetId()), uint8(map->GetDifficultyID()));
         if (!dungeon || !dungeon->revealed)
             return;
 
