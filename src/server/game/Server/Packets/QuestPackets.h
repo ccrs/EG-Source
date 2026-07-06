@@ -247,6 +247,29 @@ namespace WorldPackets
             std::string_view CompletionText;
         };
 
+        class QuestGiverRequestReward final : public ClientPacket
+        {
+        public:
+            explicit QuestGiverRequestReward(WorldPacket&& packet) : ClientPacket(CMSG_QUESTGIVER_REQUEST_REWARD, std::move(packet)) { }
+
+            void Read() override;
+
+            ObjectGuid QuestGiverGUID;
+            int32 QuestID = 0;
+        };
+
+        class QuestGiverQueryQuest final : public ClientPacket
+        {
+        public:
+            explicit QuestGiverQueryQuest(WorldPacket&& packet) : ClientPacket(CMSG_QUESTGIVER_QUERY_QUEST, std::move(packet)) { }
+
+            void Read() override;
+
+            ObjectGuid QuestGiverGUID;
+            int32 QuestID = 0;
+            bool RespondToGiver = false;
+        };
+
         class QuestGiverOfferRewardMessage final : public ServerPacket
         {
         public:
