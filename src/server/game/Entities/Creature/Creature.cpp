@@ -801,6 +801,28 @@ void Creature::Update(uint32 diff)
                     _spellFocusInfo.Delay -= diff;
             }
 
+            if (GetVehicle())
+            {
+                Spell const* channeledSpell = GetCurrentSpell(CURRENT_CHANNELED_SPELL);
+                if (channeledSpell && channeledSpell->GetSpellInfo()->HasAttribute(SPELL_ATTR1_CHANNEL_TRACK_TARGET))
+                {
+                    _spellFocusInfo.Delay = 0;
+                    if (_passengerChannelFacingTimer <= diff)
+                    {
+                        _passengerChannelFacingTimer = 1000;
+                        if (WorldObject const* aim = ObjectAccessor::GetWorldObject(*this, GetChannelObjectGuid()))
+                            if (aim != this)
+                                SetFacingToObject(aim, true, EVENT_SPELL_FOCUS);
+                    }
+                    else
+                        _passengerChannelFacingTimer -= diff;
+                }
+                else
+                    _passengerChannelFacingTimer = 0;
+            }
+            else
+                _passengerChannelFacingTimer = 0;
+
             // periodic check to see if the creature has passed an evade boundary
             if (IsAIEnabled() && !IsInEvadeMode() && IsEngaged())
             {
@@ -3258,19 +3280,26 @@ void Creature::ReacquireSpellFocusTarget()
         return;
     }
 
+    if (GetVehicle() && !_spellFocusInfo.Target.IsEmpty())
+    {
+        Unit const* victim = GetVictim();
+        if (!victim || _spellFocusInfo.Target != victim->GetGUID())
+            _spellFocusInfo.Target.Clear();
+    }
+
     SetGuidValue(UNIT_FIELD_TARGET, _spellFocusInfo.Target);
 
     if (!HasUnitFlag2(UNIT_FLAG2_CANNOT_TURN))
     {
-        if (!_spellFocusInfo.Target.IsEmpty())
+        if (Unit* vehicleBase = GetVehicleBase())
+        {
+            float const seatOffset = GetVehicle()->GetSeatOrientationOffsetForPassenger(this);
+            SetFacingTo(Position::NormalizeOrientation(vehicleBase->GetOrientation() + seatOffset), true, EVENT_SPELL_FOCUS);
+        }
+        else if (!_spellFocusInfo.Target.IsEmpty())
         {
             if (WorldObject const* objTarget = ObjectAccessor::GetWorldObject(*this, _spellFocusInfo.Target))
                 SetFacingToObject(objTarget, false, EVENT_SPELL_FOCUS);
-        }
-        else if (Unit* vehicleBase = GetVehicleBase())
-        {
-            float const seatOffset = GetVehicle()->GetSeatOrientationOffsetForPassenger(this);
-            SetFacingTo(Position::NormalizeOrientation(vehicleBase->GetOrientation() + seatOffset), false, EVENT_SPELL_FOCUS);
         }
         else if (_spellFocusInfo.Orientation.has_value())
             SetFacingTo(_spellFocusInfo.Orientation.value(), false, EVENT_SPELL_FOCUS);

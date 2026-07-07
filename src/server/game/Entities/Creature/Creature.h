@@ -477,6 +477,8 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
             Optional<float> Orientation = { }; // the creature's "real" orientation while casting
         } _spellFocusInfo;
 
+        uint32 _passengerChannelFacingTimer = 0; // EG - per-tick facing cadence for a vehicle passenger channeling a track-target spell
+
         time_t _lastDamagedTime; // Part of Evade mechanics
         CreatureTextRepeatGroup m_textRepeat;
 
