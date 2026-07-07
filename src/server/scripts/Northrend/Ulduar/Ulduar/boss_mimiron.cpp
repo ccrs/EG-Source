@@ -1071,8 +1071,11 @@ struct boss_vx_001 : public BossAI
             if (events.IsInPhase(PHASE_VX_001))
             {
                 me->CastStop();
-                me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE); // | UNIT_FLAG_UNINTERACTIBLE);
-                DoCast(me, SPELL_HALF_HEAL); // has no effect, wat
+                me->DoNotReacquireSpellFocusTarget();
+                me->SetTarget(ObjectGuid::Empty);
+                me->SetFacingTo(me->GetHomePosition().GetOrientation());
+                me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
+                DoCast(me, SPELL_HALF_HEAL, true); // has no effect, wat
                 DoCast(me, SPELL_TORSO_DISABLED);
                 if (Creature* mimiron = instance->GetCreature(DATA_MIMIRON))
                     mimiron->AI()->DoAction(DO_ACTIVATE_AERIAL);
@@ -1167,6 +1170,9 @@ struct boss_vx_001 : public BossAI
 
         events.Update(diff);
 
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
         while (uint32 eventId = events.ExecuteEvent())
         {
             switch (eventId)
@@ -1189,7 +1195,7 @@ struct boss_vx_001 : public BossAI
                 case EVENT_HAND_PULSE:
                     if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 120, true))
                         DoCast(target, RAND(SPELL_HAND_PULSE_LEFT, SPELL_HAND_PULSE_RIGHT));
-                    events.RescheduleEvent(EVENT_HAND_PULSE, 1500ms, 3s, 0, PHASE_VOL7RON);
+                    events.RescheduleEvent(EVENT_HAND_PULSE, 3s, 0, PHASE_VOL7RON);
                     break;
                 case EVENT_FROST_BOMB:
                     DoCastAOE(SPELL_SCRIPT_EFFECT_FROST_BOMB);
@@ -1198,6 +1204,7 @@ struct boss_vx_001 : public BossAI
                 case EVENT_SPINNING_UP:
                     if (DoCastAOE(SPELL_SPINNING_UP) == SpellCastResult::SPELL_CAST_OK)
                     {
+                        events.DelayEvents(14s);
                         if (events.IsInPhase(PHASE_VOL7RON))
                             if (Creature* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II))
                             {
@@ -1217,7 +1224,6 @@ struct boss_vx_001 : public BossAI
                                 }));
                             }
                     }
-                    events.DelayEvents(14s);
                     events.RescheduleEvent(EVENT_SPINNING_UP, 55s, 65s);
                     break;
                 case EVENT_FLAME_SUPPRESSANT_VX:
