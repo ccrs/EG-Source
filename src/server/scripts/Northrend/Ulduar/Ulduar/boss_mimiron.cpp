@@ -454,7 +454,7 @@ struct boss_mimiron : public BossAI
             return;
 
         BossAI::JustEngagedWith(who);
-        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
         me->RemoveAurasDueToSpell(SPELL_WELD);
         DoCast(me->GetVehicleBase(), SPELL_SEAT_6);
 
@@ -491,7 +491,7 @@ struct boss_mimiron : public BossAI
             aerial->AI()->EnterEvadeMode();
 
         _Reset();
-        me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+        me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
 
         if (GameObject* elevator = instance->GetGameObject(DATA_MIMIRON_ELEVATOR))
             elevator->SetGoState(GO_STATE_ACTIVE);
@@ -542,7 +542,7 @@ struct boss_mimiron : public BossAI
                     {
                         DoCast(mkii, SPELL_SEAT_7);
                         mkii->RemoveAurasDueToSpell(SPELL_FREEZE_ANIM);
-                        mkii->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
+                        mkii->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
                         events.ScheduleEvent(EVENT_INTRO_3, 2s);
                     }
                     else
@@ -749,7 +749,7 @@ struct boss_mimiron : public BossAI
                     break;
                 case EVENT_OUTTRO_3:
                     DoCast(me, SPELL_TELEPORT_VISUAL);
-                    me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                    me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
                     me->DespawnOrUnsummon(1s); // sniffs say 6 sec after, but it doesnt matter.
                     break;
                 case EVENT_CHECK_PLAYERS:
@@ -819,7 +819,9 @@ struct boss_leviathan_mk_ii : public BossAI
         if (damage >= me->GetHealth())
         {
             damage = me->GetHealth() - 1; // Let creature fall to 1 hp, but do not let it die or damage itself with SetHealth().
-            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+            if (me->GetStandState() == UNIT_STAND_STATE_DEAD)
+                return;
+            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
             me->InterruptNonMeleeSpells(true);
             me->AttackStop();
             me->SetTarget(ObjectGuid::Empty);
@@ -875,7 +877,7 @@ struct boss_leviathan_mk_ii : public BossAI
                 break;
             case DO_ASSEMBLED_COMBAT:
                 me->SetStandState(UNIT_STAND_STATE_STAND);
-                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
+                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
                 me->SetReactState(REACT_AGGRESSIVE);
 
                 events.SetPhase(PHASE_VOL7RON);
@@ -925,7 +927,7 @@ struct boss_leviathan_mk_ii : public BossAI
         switch (point)
         {
             case WP_MKII_P1_IDLE:
-                me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
                 DoCast(me, SPELL_HALF_HEAL);
 
                 if (Creature* mimiron = instance->GetCreature(DATA_MIMIRON))
@@ -952,7 +954,7 @@ struct boss_leviathan_mk_ii : public BossAI
     void Reset() override
     {
         _Reset();
-        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
+        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
         me->SetReactState(REACT_PASSIVE);
         _fireFighter = false;
         _setupMine = true;
@@ -1049,10 +1051,10 @@ struct boss_vx_001 : public BossAI
 {
     boss_vx_001(Creature* creature) : BossAI(creature, DATA_MIMIRON)
     {
-        me->SetDisableGravity(true); // This is the unfold visual state of VX-001, it has to be set on create as it requires an objectupdate if set later.
+        me->SetDisableGravity(true, false);
         me->SetReactState(REACT_PASSIVE);
         _fireFighter = false;
-        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+        me->SetImmuneToPC(true);
     }
 
     void DamageTaken(Unit* who, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
@@ -1060,10 +1062,12 @@ struct boss_vx_001 : public BossAI
         if (damage >= me->GetHealth())
         {
             damage = me->GetHealth() - 1; // Let creature fall to 1 hp, but do not let it die or damage itself with SetHealth().
+            if (me->GetStandState() == UNIT_STAND_STATE_DEAD)
+                return;
+            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
             me->AttackStop();
             me->InterruptNonMeleeSpells(true);
             me->SetTarget(ObjectGuid::Empty);
-            me->SetEmoteState(EMOTE_STATE_NONE);
 
             me->RemoveAllAurasExceptType(SPELL_AURA_CONTROL_VEHICLE, SPELL_AURA_MOD_INCREASE_HEALTH_PERCENT);
             DoCast(me, SPELL_VEHICLE_DAMAGED, true);
@@ -1074,7 +1078,6 @@ struct boss_vx_001 : public BossAI
                 me->DoNotReacquireSpellFocusTarget();
                 me->SetTarget(ObjectGuid::Empty);
                 me->SetFacingTo(me->GetHomePosition().GetOrientation());
-                me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
                 DoCast(me, SPELL_HALF_HEAL, true); // has no effect, wat
                 DoCast(me, SPELL_TORSO_DISABLED);
                 if (Creature* mimiron = instance->GetCreature(DATA_MIMIRON))
@@ -1083,7 +1086,6 @@ struct boss_vx_001 : public BossAI
             else if (events.IsInPhase(PHASE_VOL7RON))
             {
                 me->SetStandState(UNIT_STAND_STATE_DEAD);
-                me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
 
                 Unit* ref = who ? who : me;
                 if (MimironIsEncounterFinished(ref))
@@ -1107,11 +1109,11 @@ struct boss_vx_001 : public BossAI
                 events.ScheduleEvent(EVENT_FLAME_SUPPRESSANT_VX, 6s);
                 [[fallthrough]];
             case DO_START_VX001:
-                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
+                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
                 me->SetImmuneToPC(false);
                 me->RemoveAurasDueToSpell(SPELL_FREEZE_ANIM);
                 me->SetStandState(UNIT_STAND_STATE_STAND);
-                me->SetEmoteState(EMOTE_STATE_STAND);
+                me->SetHover(true, false);
                 me->SetAnimTier(AnimTier::Hover);
                 DoCast(me, SPELL_HEAT_WAVE_AURA);
 
@@ -1123,7 +1125,9 @@ struct boss_vx_001 : public BossAI
                 break;
             case DO_ASSEMBLED_COMBAT:
                 me->SetStandState(UNIT_STAND_STATE_STAND);
-                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
+                me->SetHover(true, false);
+                me->SetAnimTier(AnimTier::Hover);
+                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
 
                 events.SetPhase(PHASE_VOL7RON);
                 events.ScheduleEvent(EVENT_ROCKET_STRIKE, 20s);
@@ -1214,7 +1218,7 @@ struct boss_vx_001 : public BossAI
                                 DoAddEvent(14s, new Trinity::Helpers::Events::GenericEvent(mkii, [](WorldObject* owner)
                                 {
                                     Creature* mkii = owner->ToCreature();
-                                    if (mkii->IsAlive() && !mkii->HasAura(SPELL_VEHICLE_DAMAGED) && !mkii->HasAura(SPELL_SELF_REPAIR))
+                                    if (mkii->IsAlive() && mkii->GetStandState() != UNIT_STAND_STATE_DEAD)
                                     {
                                         mkii->SetReactState(REACT_AGGRESSIVE);
                                         if (mkii->GetVictim() && mkii->IsAIEnabled())
@@ -1260,7 +1264,10 @@ struct boss_aerial_command_unit : public BossAI
         if (damage >= me->GetHealth())
         {
             damage = me->GetHealth() - 1; // Let creature fall to 1 hp, but do not let it die or damage itself with SetHealth().
+            if (me->GetStandState() == UNIT_STAND_STATE_DEAD)
+                return;
             magneticPull = false;
+            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
             me->SetReactState(REACT_PASSIVE);
             me->AttackStop();
             me->InterruptNonMeleeSpells(true);
@@ -1272,6 +1279,7 @@ struct boss_aerial_command_unit : public BossAI
 
             if (events.IsInPhase(PHASE_AERIAL_COMMAND_UNIT))
             {
+                me->CombatStop(true);
                 me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
                 me->SetDisableGravity(true);
                 DoAddEvent(1s, new Trinity::Helpers::Events::GenericEvent(me, [](WorldObject* owner)
@@ -1306,7 +1314,7 @@ struct boss_aerial_command_unit : public BossAI
                 events.ScheduleEvent(EVENT_SUMMON_FIRE_BOTS, 1s, 0, PHASE_AERIAL_COMMAND_UNIT);
                 [[fallthrough]];
             case DO_START_AERIAL:
-                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
+                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
                 me->SetImmuneToPC(false);
                 me->SetReactState(REACT_AGGRESSIVE);
                 me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
@@ -1340,10 +1348,12 @@ struct boss_aerial_command_unit : public BossAI
                 }
                 break;
             case DO_ASSEMBLED_COMBAT:
-                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
+                events.SetPhase(PHASE_VOL7RON);
+                me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
                 me->SetReactState(REACT_AGGRESSIVE);
                 me->SetStandState(UNIT_STAND_STATE_STAND);
-                events.SetPhase(PHASE_VOL7RON);
+                me->SetImmuneToAll(false);
+                DoZoneInCombat();
                 MimironApplyBerserkIfActive(me);
                 break;
             default:
@@ -1380,7 +1390,7 @@ struct boss_aerial_command_unit : public BossAI
     {
         if (type == POINT_MOTION_TYPE && point == WP_AERIAL_P4_POS)
         {
-            me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
             DoCastSelf(SPELL_CLEAR_ALL_DEBUFFS);
 
             if (Creature* mimiron = instance->GetCreature(DATA_MIMIRON))
@@ -2063,6 +2073,11 @@ class spell_mimiron_p3wx2_laser_barrage : public SpellScript
     void OnHit(SpellEffIndex /*effIndex*/)
     {
         GetCaster()->SetChannelObjectGuid(GetHitUnit()->GetGUID());
+        if (Creature* creatureCaster = GetCaster()->ToCreature())
+        {
+            creatureCaster->ReleaseSpellFocus(nullptr, false);
+            creatureCaster->SetSpellFocus(GetSpell(), GetHitUnit());
+        }
     }
 
     void Register() override
@@ -2342,7 +2357,14 @@ class spell_mimiron_spinning_up : public SpellScript
     void OnHit(SpellEffIndex /*effIndex*/)
     {
         if (GetHitUnit() != GetCaster())
+        {
             GetCaster()->SetChannelObjectGuid(GetHitUnit()->GetGUID());
+            if (Creature* creatureCaster = GetCaster()->ToCreature())
+            {
+                creatureCaster->ReleaseSpellFocus(nullptr, false);
+                creatureCaster->SetSpellFocus(GetSpell(), GetHitUnit());
+            }
+        }
     }
 
     void Register() override
