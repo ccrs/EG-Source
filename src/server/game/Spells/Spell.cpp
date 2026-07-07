@@ -3484,7 +3484,11 @@ void Spell::_cast(bool skipCheck)
     if (Creature* creatureCaster = m_caster->ToCreature())
         if (!creatureCaster->GetTarget().IsEmpty() && !creatureCaster->HasUnitFlag(UNIT_FLAG_POSSESSED))
             if (WorldObject const* target = ObjectAccessor::GetUnit(*creatureCaster, creatureCaster->GetTarget()))
+            {
                 creatureCaster->SetInFront(target);
+                if (creatureCaster->GetVehicle() && creatureCaster->HasSpellFocus(this))
+                    creatureCaster->SetFacingToObject(target);
+            }
 
     SelectSpellTargets();
 
