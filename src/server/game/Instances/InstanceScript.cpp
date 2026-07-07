@@ -34,6 +34,7 @@
 #include "RBAC.h"
 #include "ScriptMgr.h"
 #include "ScriptReloadMgr.h"
+#include "StringFormat.h"
 #include "World.h"
 #include "WorldSession.h"
 #include <cstdarg>
@@ -384,6 +385,19 @@ bool InstanceScript::SetBossState(uint32 id, EncounterState state)
         return true;
     }
     return false;
+}
+
+// EG - PvE tournament diagnostics
+std::string InstanceScript::GetEncounterStateNames() const
+{
+    std::string names;
+    for (uint32 i = 0; i < GetEncounterCount(); ++i)
+    {
+        if (i)
+            names += ", ";
+        names += Trinity::StringFormat("{}:{}", i, GetBossStateName(GetBossState(i)));
+    }
+    return names;
 }
 
 bool InstanceScript::_SkipCheckRequiredBosses(Player const* player /*= nullptr*/) const
