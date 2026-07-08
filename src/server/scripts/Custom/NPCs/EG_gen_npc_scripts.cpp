@@ -1276,7 +1276,7 @@ private:
     ObjectGuid _otherKeeper;
     ObjectGuid _chargedSphere;
     bool _keeperDead;
-    CountdownTimer _sphereLockout;
+    TimeTracker _sphereLockout;
 };
 
 enum TwilightShadowbladeMisc

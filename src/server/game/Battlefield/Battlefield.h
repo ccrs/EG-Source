@@ -111,7 +111,7 @@ public:
     // enum TeamId
     TeamId GetAttackingTeamId() const;
     // Battle timer
-    uint32 GetTimer() const { return _timer.GetTimer(); }
+    uint32 GetTimer() const { return uint32(_timer.GetExpiry().count()); }
     // Closest available graveyard WorldSafeLocsEntry for Player's TeamId
     WorldSafeLocsEntry const* GetClosestGraveyardLocation(Player* player) const;
     Creature* GetCreature(ObjectGuid guid);
@@ -125,7 +125,7 @@ protected:
     bool _enabled;
     bool _active;
     PvPTeamId _controllingTeam;
-    CountdownTimer _timer;
+    TimeTracker _timer;
 
 private:
     // constant information
@@ -135,7 +135,7 @@ private:
 
     BattlefieldGraveyardContainer _graveyards;
     uint32 _resurrectionBaseTimer;
-    CountdownTimer _resurrectionTimer;
+    TimeTracker _resurrectionTimer;
 };
 
 #endif

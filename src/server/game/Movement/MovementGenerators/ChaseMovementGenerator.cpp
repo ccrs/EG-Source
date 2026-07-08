@@ -182,8 +182,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
 
     // Decoupled from range-check timer: sync facing every tick when settled so slight owner displacement still updates server orientation.
     bool syncFacingOrientation = !owner->HasUnitState(UNIT_STATE_CHASE_MOVE);
-    if (!_relocationCooldown.Passed())
-        _relocationCooldown.Update(diff);
+    _relocationCooldown.Update(diff);
     _rangeCheckTimer.Update(diff);
     if (_rangeCheckTimer.Passed())
     {
@@ -217,8 +216,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
         Position const currentTargetPosition = target->GetPosition();
         bool const targetPositionChanged = !_lastTargetPosition || !currentTargetPosition.IsInDist(_lastTargetPosition.value(), 0.01f);
         bool const chaseAngleModeChanged = useChaseAngle != _useChaseAngle;
-        bool const relocationCooldownActive = _relocationCooldown.GetExpiry() != 0s;
-        bool const relocationCooldownExpired = relocationCooldownActive && _relocationCooldown.Passed();
+        bool const relocationCooldownExpired = _relocationCooldown.Expired();
 
         // Reconsider movement if:
         // - the target moved,
@@ -256,7 +254,7 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
                 // - angle correction,
                 // - repathing while already moving.
                 bool const shouldThrottleRelocation = closeRangeRelocation && !angleMismatch && !alreadyMoving;
-                if (shouldThrottleRelocation && relocationCooldownActive && !_relocationCooldown.Passed())
+                if (shouldThrottleRelocation && !_relocationCooldown.Passed())
                 {
                     owner->SetInFront(target);
                     BroadcastFacingIfNeeded(owner, target, _lastBroadcastedFacingAngle);

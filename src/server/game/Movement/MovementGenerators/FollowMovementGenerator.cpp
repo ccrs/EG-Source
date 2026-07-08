@@ -134,8 +134,7 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
         return true;
     }
 
-    if (!_relocationCooldown.Passed())
-        _relocationCooldown.Update(diff);
+    _relocationCooldown.Update(diff);
 
     _checkTimer.Update(diff);
     if (_checkTimer.Passed())
@@ -174,14 +173,13 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
         bool const angleOkayStrict = _angle.IsAngleOkay(curAngle);
         bool const angleNeedsCorrection = !angleOkayStrict;
         bool const distanceNeedsCorrection = !PositionOkay(owner, target, acceptableRange);
-        bool const relocationCooldownActive = _relocationCooldown.GetExpiry() != 0s;
 
         /*
          * Close angle-only correction can still be throttled to reduce jitter,
          * but it must not be considered "done" unless the strict angle is valid.
          */
         bool const closeAngleOnlyCorrection = !distanceNeedsCorrection && angleNeedsCorrection;
-        if (closeAngleOnlyCorrection && relocationCooldownActive && !_relocationCooldown.Passed())
+        if (closeAngleOnlyCorrection && !_relocationCooldown.Passed())
             return true;
 
         /*
@@ -191,7 +189,7 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
          * - distance is outside accepted follow range,
          * - or a previously-blocked close relocation cooldown expired.
          */
-        if (!_lastTargetPosition || !currentTargetPosition.IsInDist(_lastTargetPosition.value(), 0.5f) || angleNeedsCorrection || distanceNeedsCorrection || (relocationCooldownActive && _relocationCooldown.Passed()))
+        if (!_lastTargetPosition || !currentTargetPosition.IsInDist(_lastTargetPosition.value(), 0.5f) || angleNeedsCorrection || distanceNeedsCorrection || _relocationCooldown.Expired())
         {
             if (distanceNeedsCorrection || angleNeedsCorrection || owner->HasUnitState(UNIT_STATE_FOLLOW_MOVE))
             {

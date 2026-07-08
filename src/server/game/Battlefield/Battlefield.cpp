@@ -94,7 +94,7 @@ void Battlefield::SendAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid sou
 {
     WorldPackets::Battleground::AreaSpiritHealerTime areaSpiritHealerTime;
     areaSpiritHealerTime.HealerGuid = source;
-    areaSpiritHealerTime.TimeLeft = _resurrectionTimer.GetTimer();
+    areaSpiritHealerTime.TimeLeft = uint32(_resurrectionTimer.GetExpiry().count());
     player->SendDirectMessage(areaSpiritHealerTime.Write());
 }
 
