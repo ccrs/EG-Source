@@ -115,8 +115,8 @@ private:
 struct TimeTracker
 {
 public:
-    TimeTracker(int32 expiry = 0) : _expiryTime(expiry) { }
-    TimeTracker(Milliseconds expiry) : _expiryTime(expiry) { }
+    TimeTracker(int32 expiry = 0) : TimeTracker(Milliseconds(expiry)) { }
+    TimeTracker(Milliseconds expiry) : _expiryTime(expiry > 0ms ? expiry : 0ms), _armed(expiry > 0ms) { }
 
     void Update(int32 diff)
     {
@@ -125,12 +125,25 @@ public:
 
     void Update(Milliseconds diff)
     {
-        _expiryTime -= diff;
+        if (_expiryTime <= diff)
+            _expiryTime = 0ms;
+        else
+            _expiryTime -= diff;
     }
 
     bool Passed() const
     {
-        return _expiryTime <= 0s;
+        return _expiryTime == 0ms;
+    }
+
+    bool IsArmed() const
+    {
+        return _armed;
+    }
+
+    bool Expired() const
+    {
+        return _armed && _expiryTime == 0ms;
     }
 
     void Reset(int32 expiry)
@@ -140,7 +153,8 @@ public:
 
     void Reset(Milliseconds expiry)
     {
-        _expiryTime = expiry;
+        _expiryTime = expiry > 0ms ? expiry : 0ms;
+        _armed = expiry > 0ms;
     }
 
     Milliseconds GetExpiry() const
@@ -150,6 +164,7 @@ public:
 
 private:
     Milliseconds _expiryTime;
+    bool _armed;
 };
 
 struct PeriodicTimer

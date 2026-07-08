@@ -36,7 +36,53 @@ TEST_CASE("TimeTracker: Check if time passed")
 
     tracker.Update(500 /*ms*/);
     REQUIRE(tracker.Passed());
-    REQUIRE(tracker.GetExpiry() == -500ms);
+    REQUIRE(tracker.GetExpiry() == 0s);
+}
+
+TEST_CASE("TimeTracker: Expiry never drops below zero")
+{
+    TimeTracker tracker(1000 /*ms*/);
+    tracker.Update(1500 /*ms*/);
+    REQUIRE(tracker.Passed());
+    REQUIRE(tracker.GetExpiry() == 0s);
+
+    tracker.Reset(-500 /*ms*/);
+    REQUIRE(tracker.Passed());
+    REQUIRE(tracker.GetExpiry() == 0s);
+
+    TimeTracker negativeTracker(-1000 /*ms*/);
+    REQUIRE(negativeTracker.Passed());
+    REQUIRE(negativeTracker.GetExpiry() == 0s);
+}
+
+TEST_CASE("TimeTracker: Armed state")
+{
+    TimeTracker idleTracker;
+    REQUIRE_FALSE(idleTracker.IsArmed());
+    REQUIRE(idleTracker.Passed());
+    REQUIRE_FALSE(idleTracker.Expired());
+
+    TimeTracker tracker(1000 /*ms*/);
+    REQUIRE(tracker.IsArmed());
+    REQUIRE_FALSE(tracker.Expired());
+
+    tracker.Update(1500 /*ms*/);
+    REQUIRE(tracker.IsArmed());
+    REQUIRE(tracker.Passed());
+    REQUIRE(tracker.Expired());
+
+    tracker.Reset(500 /*ms*/);
+    REQUIRE(tracker.IsArmed());
+    REQUIRE_FALSE(tracker.Expired());
+
+    tracker.Reset(0 /*ms*/);
+    REQUIRE_FALSE(tracker.IsArmed());
+    REQUIRE(tracker.Passed());
+    REQUIRE_FALSE(tracker.Expired());
+
+    tracker.Reset(-500 /*ms*/);
+    REQUIRE_FALSE(tracker.IsArmed());
+    REQUIRE_FALSE(tracker.Expired());
 }
 
 TEST_CASE("TimeTracker: Reset timer")
