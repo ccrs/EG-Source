@@ -217,6 +217,8 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
         bool const targetPositionChanged = !_lastTargetPosition || !currentTargetPosition.IsInDist(_lastTargetPosition.value(), 0.01f);
         bool const chaseAngleModeChanged = useChaseAngle != _useChaseAngle;
         bool const relocationCooldownExpired = _relocationCooldown.Expired();
+        if (relocationCooldownExpired)
+            _relocationCooldown.Reset(0s);
 
         // Reconsider movement if:
         // - the target moved,
