@@ -723,6 +723,13 @@ bool Vehicle::NormalizePassengerMovementInfo(Unit const* passenger, MovementInfo
     float localX = seatInfo->AttachmentOffset.X;
     float localY = seatInfo->AttachmentOffset.Y;
     float localZ = seatInfo->AttachmentOffset.Z;
+    // EG - sniff-derived seat position override (see VehicleSeatAddon::AttachmentOffset)
+    if (seatAddon && seatAddon->AttachmentOffset)
+    {
+        localX = seatAddon->AttachmentOffset->GetPositionX();
+        localY = seatAddon->AttachmentOffset->GetPositionY();
+        localZ = seatAddon->AttachmentOffset->GetPositionZ();
+    }
     float localO = GetSeatOrientationOffset(seatInfo, seatAddon);
 
     // For turning seats, preserve only the passenger's local orientation.

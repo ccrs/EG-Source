@@ -20,6 +20,8 @@
 
 #include "Define.h"
 #include "Duration.h"
+#include "Optional.h"
+#include "Position.h"
 #include <vector>
 #include <map>
 
@@ -87,6 +89,8 @@ struct VehicleSeatAddon
     float ExitParameterZ = 0.f;
     float ExitParameterO = 0.f;
     VehicleExitParameters ExitParameter = VehicleExitParameters::VehicleExitParamNone;
+    // EG - sniff-derived seat position override
+    Optional<Position> AttachmentOffset;
 };
 
 struct VehicleSeat
