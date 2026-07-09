@@ -879,6 +879,13 @@ bool VehicleJoinEvent::Execute(uint64, uint32)
     float x = veSeat->AttachmentOffset.X;
     float y = veSeat->AttachmentOffset.Y;
     float z = veSeat->AttachmentOffset.Z;
+    // EG - sniff-derived seat position override (see VehicleSeatAddon::AttachmentOffset)
+    if (veSeatAddon && veSeatAddon->AttachmentOffset)
+    {
+        x = veSeatAddon->AttachmentOffset->GetPositionX();
+        y = veSeatAddon->AttachmentOffset->GetPositionY();
+        z = veSeatAddon->AttachmentOffset->GetPositionZ();
+    }
 
     Passenger->AddUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
     Passenger->m_movementInfo.transport.pos.Relocate(x, y, z, o);

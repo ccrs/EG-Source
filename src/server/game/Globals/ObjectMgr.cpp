@@ -3726,8 +3726,8 @@ void ObjectMgr::LoadVehicleSeatAddon()
 
     uint32 count = 0;
 
-    //                                                0            1                  2             3             4             5             6
-    QueryResult result = WorldDatabase.Query("SELECT `SeatEntry`, `SeatOrientation`, `ExitParamX`, `ExitParamY`, `ExitParamZ`, `ExitParamO`, `ExitParamValue` FROM `vehicle_seat_addon`");
+    //                                                0            1                  2             3             4             5             6                 7                8                9
+    QueryResult result = WorldDatabase.Query("SELECT `SeatEntry`, `SeatOrientation`, `ExitParamX`, `ExitParamY`, `ExitParamZ`, `ExitParamO`, `ExitParamValue`, `AttachOffsetX`, `AttachOffsetY`, `AttachOffsetZ` FROM `vehicle_seat_addon`");
 
     if (!result)
     {
@@ -3766,7 +3766,11 @@ void ObjectMgr::LoadVehicleSeatAddon()
             continue;
         }
 
-        _vehicleSeatAddonStore[seatID] = VehicleSeatAddon(orientation, exitX, exitY, exitZ, exitO, exitParam);
+        VehicleSeatAddon& addon = _vehicleSeatAddonStore[seatID];
+        addon = VehicleSeatAddon(orientation, exitX, exitY, exitZ, exitO, exitParam);
+        // EG - optional sniff-derived seat position override
+        if (!fields[7].IsNull() && !fields[8].IsNull() && !fields[9].IsNull())
+            addon.AttachmentOffset.emplace(fields[7].GetFloat(), fields[8].GetFloat(), fields[9].GetFloat());
 
         ++count;
     } while (result->NextRow());
