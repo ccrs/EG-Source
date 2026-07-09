@@ -69,7 +69,6 @@ enum FreyaSpells
     SPELL_FISTS_OF_STONE                         = 62344,
     SPELL_GROUND_TREMOR                          = 62325,
     SPELL_PETRIFIED_BARK                         = 62337,
-    SPELL_PETRIFIED_BARK_DMG                     = 62379,
 
     // Ironbranch
     SPELL_IMPALE                                 = 62310,
@@ -816,21 +815,6 @@ struct boss_elder_stonebark : public BossAI
         BossAI::JustEngagedWith(who);
         if (!me->HasAura(SPELL_DRAINED_OF_POWER))
             Talk(SAY_ELDER_AGGRO);
-    }
-
-    void DamageTaken(Unit* who, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
-    {
-        if (!who || who == me)
-            return;
-
-        ///HACK: should be handled by proc
-        if (me->HasAura(SPELL_PETRIFIED_BARK))
-        {
-            CastSpellExtraArgs args(TRIGGERED_FULL_MASK);
-            args.AddSpellBP0(damage);
-            who->CastSpell(who, SPELL_PETRIFIED_BARK_DMG, args);
-            damage = 0;
-        }
     }
 
     void UpdateAI(uint32 diff) override

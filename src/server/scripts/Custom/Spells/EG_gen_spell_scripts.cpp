@@ -556,6 +556,43 @@ class EG_spell_brightleaf_unstable_sun_beam_forced : public SpellScript
     }
 };
 
+enum PetrifiedBarkSpells
+{
+    SPELL_PETRIFIED_BARK_DAMAGE = 62379
+};
+
+// 62337, 62933 - Petrified Bark (Elder Stonebark)
+class EG_spell_stonebark_petrified_bark : public AuraScript
+{
+    PrepareAuraScript(EG_spell_stonebark_petrified_bark);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_PETRIFIED_BARK_DAMAGE });
+    }
+
+    void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
+    {
+        PreventDefaultAction();
+        DamageInfo* damageInfo = eventInfo.GetDamageInfo();
+        if (!damageInfo || !damageInfo->GetDamage())
+            return;
+
+        Unit* attacker = eventInfo.GetActor();
+        if (!attacker)
+            return;
+
+        CastSpellExtraArgs args(aurEff, GetTarget()->GetGUID());
+        args.AddSpellBP0(int32(damageInfo->GetDamage()));
+        attacker->CastSpell(attacker, SPELL_PETRIFIED_BARK_DAMAGE, args);
+    }
+
+    void Register() override
+    {
+        OnEffectProc += AuraEffectProcFn(EG_spell_stonebark_petrified_bark::HandleProc, EFFECT_0, SPELL_AURA_DUMMY);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
@@ -578,4 +615,5 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_freya_summon_healthy_spore);
     RegisterSpellScript(EG_spell_arachnopod_damaged);
     RegisterSpellScript(EG_spell_brightleaf_unstable_sun_beam_forced);
+    RegisterSpellScript(EG_spell_stonebark_petrified_bark);
 }
