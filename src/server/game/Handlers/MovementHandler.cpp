@@ -246,19 +246,6 @@ void WorldSession::HandleMoveWorldportAck()
     player->ResetMap();
     player->SetMap(newMap);
 
-    // EG - proper resurrection sequence for dead teleporting players
-    // Resurrect before AddPlayerToMap so SendInitSelf sends alive state; dead state would fire "has died" on the client.
-    if (!player->IsAlive())
-    {
-        if (player->GetTeleportOptions() & TELE_REVIVE_AT_TELEPORT)
-            player->ResurrectPlayer(0.5f);
-        else if (mEntry->IsDungeon() && player->GetCorpseLocation().GetMapId() == mEntry->ID)
-        {
-            player->ResurrectPlayer(0.5f);
-            player->SpawnCorpseBones();
-        }
-    }
-
     player->SendInitialPacketsBeforeAddToMap();
     if (!player->GetMap()->AddPlayerToMap(player))
     {
@@ -309,6 +296,19 @@ void WorldSession::HandleMoveWorldportAck()
 
         // stop flight
         player->FinishTaxiFlight();
+    }
+
+    if (!player->IsAlive() && player->GetTeleportOptions() & TELE_REVIVE_AT_TELEPORT)
+        player->ResurrectPlayer(0.5f);
+
+    // resurrect character at enter into instance where his corpse exist after add to map
+    if (mEntry->IsDungeon() && !player->IsAlive())
+    {
+        if (player->GetCorpseLocation().GetMapId() == mEntry->ID)
+        {
+            player->ResurrectPlayer(0.5f);
+            player->SpawnCorpseBones();
+        }
     }
 
     bool mountAllowed = false;
