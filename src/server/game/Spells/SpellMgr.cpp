@@ -5214,9 +5214,24 @@ void SpellMgr::LoadSpellInfoCorrections()
     });
 
     // Unstable Sun Beam Summon
-    ApplySpellFix({ 62207 }, [](SpellInfo* spellInfo)
+    ApplySpellFix({ 62207, 62921 }, [](SpellInfo* spellInfo)
     {
         spellInfo->MaxAffectedTargets = 1;
+        spellInfo->AttributesEx3 |= SPELL_ATTR3_ONLY_TARGET_PLAYERS;
+    });
+
+    // Unstable Sun Beam
+    ApplySpellFix({ 62450 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->MaxAffectedTargets = 1;
+        spellInfo->AttributesEx3 |= SPELL_ATTR3_ONLY_TARGET_PLAYERS;
+    });
+
+    // Unstable Sun Beam
+    ApplySpellFix({ 62868 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->MaxAffectedTargets = 3;
+        spellInfo->AttributesEx3 |= SPELL_ATTR3_ONLY_TARGET_PLAYERS;
     });
 
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)

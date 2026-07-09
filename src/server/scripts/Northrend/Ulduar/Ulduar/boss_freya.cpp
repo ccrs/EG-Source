@@ -25,6 +25,7 @@
 #include "ScriptedCreature.h"
 #include "ScriptMgr.h"
 #include "SpellAuras.h"
+#include "SpellMgr.h"
 #include "SpellScript.h"
 #include "TemporarySummon.h"
 
@@ -81,7 +82,7 @@ enum FreyaSpells
     SPELL_FLUX_PLUS                              = 62251,
     SPELL_FLUX_MINUS                             = 62252,
     SPELL_SOLAR_FLARE                            = 62240,
-    SPELL_UNSTABLE_SUN_BEAM_SUMMON               = 62207, // Trigger 62221
+    SPELL_UNSTABLE_SUN_BEAM_SUMMON               = 62207, // Forces 62221 on the affected targets
 
     // Stack Removing of Attuned to Nature
     SPELL_REMOVE_25STACK                         = 62521,
@@ -138,7 +139,7 @@ enum FreyaSpells
     SPELL_UNSTABLE_ENERGY                        = 62217,
     SPELL_PHOTOSYNTHESIS                         = 62209,
     SPELL_UNSTABLE_SUN_BEAM_TRIGGERED            = 62243,
-    SPELL_FREYA_UNSTABLE_SUNBEAM                 = 62450,
+    SPELL_FREYA_UNSTABLE_SUNBEAM                 = 62450, // Forces 62449 (summon at each target's position)
 
     // Sun Beam
     SPELL_FREYA_UNSTABLE_ENERGY                  = 62451,
@@ -422,8 +423,7 @@ struct boss_freya : public BossAI
                     events.ScheduleEvent(EVENT_NATURE_BOMB, 10s, 12s);
                     break;
                 case EVENT_UNSTABLE_ENERGY:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
-                        DoCast(target, SPELL_FREYA_UNSTABLE_SUNBEAM, true);
+                    DoCastAOE(SPELL_FREYA_UNSTABLE_SUNBEAM, true);
                     events.ScheduleEvent(EVENT_UNSTABLE_ENERGY, 15s, 20s);
                     break;
                 case EVENT_WAVE:
@@ -1310,7 +1310,7 @@ struct npc_unstable_sun_beam : public ScriptedAI
         if (!unitTarget)
             return;
 
-        if (spellInfo->Id == SPELL_UNSTABLE_ENERGY)
+        if (spellInfo->Id == sSpellMgr->GetSpellIdForDifficulty(SPELL_UNSTABLE_ENERGY, me))
         {
             unitTarget->RemoveAurasDueToSpell(SPELL_UNSTABLE_SUN_BEAM);
             unitTarget->RemoveAurasDueToSpell(SPELL_UNSTABLE_SUN_BEAM_TRIGGERED);
