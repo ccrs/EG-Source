@@ -284,7 +284,18 @@ class npc_iron_construct : public CreatureScript
 
             void JustAppeared() override
             {
-                EnterDormantState();
+                me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
+                me->SetImmuneToPC(true);
+                me->SetControlled(true, UNIT_STATE_ROOT);
+                me->SetControlled(true, UNIT_STATE_STUNNED);
+                me->SetReactState(REACT_PASSIVE);
+                me->ApplySpellImmune(0, IMMUNITY_ID, SPELL_HEAT, true);
+                DoCastSelf(SPELL_FREEZE_ANIM, true);
+            }
+
+            void EnterEvadeMode(EvadeReason /*why*/) override
+            {
+                me->DespawnOrUnsummon(0s, 1s);
             }
 
             void DoAction(int32 action) override
@@ -297,6 +308,7 @@ class npc_iron_construct : public CreatureScript
                         me->SetControlled(false, UNIT_STATE_ROOT);
                         me->SetControlled(false, UNIT_STATE_STUNNED);
                         me->SetReactState(REACT_AGGRESSIVE);
+                        me->ApplySpellImmune(0, IMMUNITY_ID, SPELL_HEAT, false);
                         me->RemoveAurasDueToSpell(SPELL_FREEZE_ANIM);
                         if (Creature* ignis = _instance->GetCreature(DATA_IGNIS))
                             if (Unit* victim = ignis->GetVictim())
@@ -347,16 +359,6 @@ class npc_iron_construct : public CreatureScript
             }
 
         private:
-            void EnterDormantState()
-            {
-                me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
-                me->SetImmuneToPC(true);
-                me->SetControlled(true, UNIT_STATE_ROOT);
-                me->SetControlled(true, UNIT_STATE_STUNNED);
-                me->SetReactState(REACT_PASSIVE);
-                DoCastSelf(SPELL_FREEZE_ANIM, true);
-            }
-
             InstanceScript* _instance;
         };
 
@@ -394,6 +396,10 @@ class npc_scorch_ground : public CreatureScript
                 {
                     if (who->GetEntry() == NPC_IRON_CONSTRUCT)
                     {
+                        if (Creature* construct = who->ToCreature())
+                            if (construct->HasReactState(REACT_PASSIVE))
+                                return;
+
                         if (!who->HasAura(SPELL_HEAT) && !who->HasAura(SPELL_MOLTEN))
                         {
                             _constructGUID = who->GetGUID();
