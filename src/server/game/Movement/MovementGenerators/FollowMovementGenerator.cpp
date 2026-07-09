@@ -182,6 +182,10 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
         if (closeAngleOnlyCorrection && !_relocationCooldown.Passed())
             return true;
 
+        bool const relocationCooldownExpired = _relocationCooldown.Expired();
+        if (relocationCooldownExpired)
+            _relocationCooldown.Reset(0s);
+
         /*
          * Reconsider movement if:
          * - target moved,
@@ -189,7 +193,7 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
          * - distance is outside accepted follow range,
          * - or a previously-blocked close relocation cooldown expired.
          */
-        if (!_lastTargetPosition || !currentTargetPosition.IsInDist(_lastTargetPosition.value(), 0.5f) || angleNeedsCorrection || distanceNeedsCorrection || _relocationCooldown.Expired())
+        if (!_lastTargetPosition || !currentTargetPosition.IsInDist(_lastTargetPosition.value(), 0.5f) || angleNeedsCorrection || distanceNeedsCorrection || relocationCooldownExpired)
         {
             if (distanceNeedsCorrection || angleNeedsCorrection || owner->HasUnitState(UNIT_STATE_FOLLOW_MOVE))
             {
