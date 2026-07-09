@@ -834,13 +834,6 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder const& holder)
         }
     }
 
-    // Resurrect before AddPlayerToMap so SendInitSelf sends alive state (same ordering as HandleMoveWorldportAck).
-    if (!pCurrChar->IsAlive() && pCurrChar->HasAtLoginFlag(AT_LOGIN_RESURRECT))
-    {
-        pCurrChar->SpawnCorpseBones(false);  // triggerSave=false: AT_LOGIN_RESURRECT already guards crash recovery
-        pCurrChar->ResurrectPlayer(0.5f);
-    }
-
     if (!pCurrChar->GetMap()->AddPlayerToMap(pCurrChar))
     {
         AreaTriggerTeleport const* at = sObjectMgr->GetGoBackTrigger(pCurrChar->GetMapId());
