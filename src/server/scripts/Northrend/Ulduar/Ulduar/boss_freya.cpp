@@ -261,8 +261,8 @@ struct npc_iron_roots : public ScriptedAI
     {
         if (Player* target = ObjectAccessor::GetPlayer(*me, summonerGUID))
         {
-            target->RemoveAurasDueToSpell(SPELL_ROOTS_IRONBRANCH);
-            target->RemoveAurasDueToSpell(SPELL_ROOTS_FREYA);
+            target->RemoveAurasDueToSpell(sSpellMgr->GetSpellIdForDifficulty(SPELL_ROOTS_IRONBRANCH, me));
+            target->RemoveAurasDueToSpell(sSpellMgr->GetSpellIdForDifficulty(SPELL_ROOTS_FREYA, me));
         }
 
         me->DespawnOrUnsummon();
@@ -1118,7 +1118,7 @@ struct npc_snaplasher : public ScriptedAI
         if (!UpdateVictim())
             return;
 
-        if (!me->HasAura(SPELL_BARK_AURA))
+        if (!me->HasAura(sSpellMgr->GetSpellIdForDifficulty(SPELL_BARK_AURA, me)))
             DoCast(SPELL_HARDENED_BARK);
 
         DoMeleeAttackIfReady();

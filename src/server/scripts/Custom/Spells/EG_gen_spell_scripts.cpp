@@ -452,7 +452,7 @@ enum EnergySap
     SPELL_SAPPER_EXPLOSION = 64873
 };
 
-// 64740 - Energy Sap
+// 64740, 64876 - Energy Sap
 class EG_spell_energy_sap : public AuraScript
 {
     PrepareAuraScript(EG_spell_energy_sap);
