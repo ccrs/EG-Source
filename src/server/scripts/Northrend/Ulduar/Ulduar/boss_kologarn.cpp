@@ -237,10 +237,6 @@ class boss_kologarn : public CreatureScript
                         summons.Summon(summon);
                         summon->CastSpell(me, SPELL_FOCUSED_EYEBEAM_VISUAL_RIGHT, true);
                         break;
-                    case NPC_RUBBLE:
-                        if (me->IsEngaged())
-                            DoZoneInCombat(summon);
-                        return;
                     case NPC_LEFT_ARM:
                     case NPC_RIGHT_ARM:
                         BossAI::JustSummoned(summon);
