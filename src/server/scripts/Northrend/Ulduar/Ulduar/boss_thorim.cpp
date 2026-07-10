@@ -628,7 +628,7 @@ struct boss_thorim : public BossAI
         me->RemoveAllAttackers();
         me->AttackStop();
         me->SetFaction(FACTION_FRIENDLY);
-        me->SetUnitFlag(UNIT_FLAG_RENAME);
+        me->SetUnitFlag(UNIT_FLAG_EVADING_HOME);
 
         if (Creature* controller = instance->GetCreature(DATA_THORIM_CONTROLLER))
             controller->RemoveAllAuras();

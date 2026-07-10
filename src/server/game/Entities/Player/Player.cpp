@@ -8590,7 +8590,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
 
         WorldPackets::Loot::LootResponse packet;
         packet.Owner = guid;
-        packet.AcquireReason = GetLootTypeForClient(loot->loot_type); // EG - unlike upstream, never send the client-unsupported raw INSIGNIA/FISHINGHOLE/FISHING_JUNK values
+        packet.AcquireReason = GetLootTypeForClient(loot->loot_type);
         lootViewToSend.BuildLootResponse(packet);
         SendDirectMessage(packet.Write());
 
