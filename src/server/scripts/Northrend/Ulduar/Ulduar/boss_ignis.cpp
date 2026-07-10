@@ -377,66 +377,17 @@ class npc_scorch_ground : public CreatureScript
         {
             npc_scorch_groundAI(Creature* creature) : ScriptedAI(creature)
             {
-                Initialize();
                 me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_PACIFIED);
                 me->SetControlled(true, UNIT_STATE_ROOT);
                 creature->SetDisplayId(16925); //model 2 in db cannot overwrite wdb fields
             }
 
-            void Initialize()
-            {
-                _heat = false;
-                _constructGUID.Clear();
-                _heatTimer = 0;
-            }
-
-            void MoveInLineOfSight(Unit* who) override
-            {
-                if (!_heat)
-                {
-                    if (who->GetEntry() == NPC_IRON_CONSTRUCT)
-                    {
-                        if (Creature* construct = who->ToCreature())
-                            if (construct->HasReactState(REACT_PASSIVE))
-                                return;
-
-                        if (!who->HasAura(SPELL_HEAT) && !who->HasAura(SPELL_MOLTEN))
-                        {
-                            _constructGUID = who->GetGUID();
-                            _heat = true;
-                        }
-                    }
-                }
-            }
-
             void Reset() override
             {
-                Initialize();
                 DoCast(me, SPELL_GROUND);
             }
 
-            void UpdateAI(uint32 uiDiff) override
-            {
-                if (_heat)
-                {
-                    if (_heatTimer <= uiDiff)
-                    {
-                        Creature* construct = ObjectAccessor::GetCreature(*me, _constructGUID);
-                        if (construct && !construct->HasAura(SPELL_MOLTEN))
-                        {
-                            me->AddAura(SPELL_HEAT, construct);
-                            _heatTimer = 1000;
-                        }
-                    }
-                    else
-                        _heatTimer -= uiDiff;
-                }
-            }
-
-        private:
-            ObjectGuid _constructGUID;
-            uint32 _heatTimer;
-            bool _heat;
+            void UpdateAI(uint32 /*diff*/) override { }
         };
 
         CreatureAI* GetAI(Creature* creature) const override
