@@ -401,6 +401,12 @@ NotNormalLootItemList* Loot::FillNonQuestNonFFAConditionalLoot(Player* player, b
 
 void Loot::NotifyItemRemoved(uint8 lootIndex)
 {
+    if (lootIndex >= items.size())
+    {
+        NotifyQuestItemRemoved(lootIndex - items.size());
+        return;
+    }
+
     std::vector<ObjectGuid> snapshot;
     snapshot.reserve(PlayersLooting.size());
 
@@ -415,7 +421,10 @@ void Loot::NotifyItemRemoved(uint8 lootIndex)
     for (ObjectGuid const& guid : snapshot)
     {
         if (Player* player = ObjectAccessor::FindPlayer(guid))
-            player->SendNotifyLootItemRemoved(lootIndex);
+        {
+            if (Optional<uint8> viewSlot = player->GetLootViewSlot(this, lootIndex))
+                player->SendNotifyLootItemRemoved(*viewSlot);
+        }
         else
             toErase.push_back(guid);
     }
@@ -505,7 +514,8 @@ void Loot::NotifyQuestItemRemoved(uint8 questIndex)
                 }
 
                 if (j < pql.size())
-                    player->SendNotifyLootItemRemoved(items.size() + j);
+                    if (Optional<uint8> viewSlot = player->GetLootViewSlot(this, items.size() + j))
+                        player->SendNotifyLootItemRemoved(*viewSlot);
             }
         }
         else

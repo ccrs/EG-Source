@@ -2333,6 +2333,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         std::unordered_map<uint8/*lootIndex*/, LootReference> StoredLootView;
         std::vector<LootReference> StoredLoot;
         Loot* GetLootFromAOELoot(ObjectGuid lootGUID) const;
+        Optional<uint8> GetLootViewSlot(Loot const* loot, uint8 itemIndex) const;
 
         void NotifyMasqueradeRaceDirty() { _masqueradeRaceDirty = true; }
         bool IsMasqueradingRace() const { return _masqueradeRace != 0; }

@@ -620,6 +620,6 @@ void WorldSession::HandleLootMasterGiveOpcode(WorldPacket& recvData)
         loot->NotifyQuestItemRemoved(qitem->index);
     }
     else
-        loot->NotifyItemRemoved(slotid);
+        loot->NotifyItemRemoved(actualSlot);
     --loot->unlootedCount;
 }

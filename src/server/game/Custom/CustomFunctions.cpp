@@ -453,6 +453,15 @@ Loot* Player::GetLootFromAOELoot(ObjectGuid lootGUID) const
     return nullptr;
 }
 
+Optional<uint8> Player::GetLootViewSlot(Loot const* loot, uint8 itemIndex) const
+{
+    for (auto const& [viewSlot, reference] : StoredLootView)
+        if (reference.RelatedLoot == loot && reference.ItemIndex == itemIndex)
+            return viewSlot;
+
+    return {};
+}
+
 uint32 Player::GetOriginalDisplayId() const
 {
     PlayerInfo const* info = sObjectMgr->GetPlayerInfo(GetRace(), GetClass());
