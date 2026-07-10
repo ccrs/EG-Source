@@ -1918,6 +1918,13 @@ class spell_vehicle_throw_passenger : public SpellScriptLoader
         class spell_vehicle_throw_passenger_SpellScript : public SpellScript
         {
             PrepareSpellScript(spell_vehicle_throw_passenger_SpellScript);
+
+            void RestoreDest(SpellDestination& dest)
+            {
+                if (WorldLocation const* aimed = GetExplTargetDest())
+                    dest.Relocate(*aimed);
+            }
+
             void HandleScript(SpellEffIndex /*effIndex*/)
             {
                 Spell* baseSpell = GetSpell();
@@ -1964,6 +1971,7 @@ class spell_vehicle_throw_passenger : public SpellScriptLoader
             void Register() override
             {
                 OnEffectHitTarget += SpellEffectFn(spell_vehicle_throw_passenger_SpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_DUMMY);
+                OnDestinationTargetSelect += SpellDestinationTargetSelectFn(spell_vehicle_throw_passenger_SpellScript::RestoreDest, EFFECT_0, TARGET_DEST_TRAJ);
             }
         };
 
