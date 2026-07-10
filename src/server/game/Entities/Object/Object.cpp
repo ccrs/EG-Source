@@ -3482,7 +3482,7 @@ void WorldObject::DestroyForNearbyPlayers()
             if (unit->GetCharmerGUID() == player->GetGUID()) /// @todo this is for puppet
                 continue;
 
-            DestroyForPlayer(player, unit->IsDuringRemoveFromWorld() && unit->isDead()); // at remove from world (destroy) show kill animation
+            DestroyForPlayer(player, unit->GetTypeId() != TYPEID_PLAYER && unit->IsDuringRemoveFromWorld() && unit->isDead());
         }
         else
             DestroyForPlayer(player);
