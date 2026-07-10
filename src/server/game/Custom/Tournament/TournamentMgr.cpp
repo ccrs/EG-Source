@@ -653,6 +653,11 @@ TournamentTeam const* TournamentMgr::MatchTeamCandidate(TournamentTeam const* te
     if (!team || team->status != TOURNAMENT_TEAM_ACTIVE)
         return nullptr;
 
+    // identical rosters may exist across tournaments, only the team of a running tournament is a contestant
+    TournamentData const* tournament = Trinity::Containers::MapGetValuePtr(_tournaments, team->tournamentId);
+    if (!tournament || tournament->state != TOURNAMENT_STATE_RUNNING)
+        return nullptr;
+
     if (team->members.size() != memberGuids.size() || !team->HasRoleComposition())
         return nullptr;
 

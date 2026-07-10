@@ -158,7 +158,7 @@ public:
     bool RequalifyTeam(uint32 teamId);
 
     // ----- contestant signalling (LFG) -----
-    // the eligible team (active, 1/1/3) whose member set exactly matches the given guids, or nullptr
+    // the eligible team (active, 1/1/3, of a running tournament) whose member set exactly matches the given guids, or nullptr
     TournamentTeam const* MatchTeam(std::vector<ObjectGuid::LowType> const& memberGuids) const;
 
     // ----- gear enforcement -----
