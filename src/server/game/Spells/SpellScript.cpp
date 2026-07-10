@@ -276,6 +276,9 @@ bool SpellScript::TargetHook::CheckEffect(SpellInfo const* spellEntry, uint8 eff
         case TARGET_SELECT_CATEGORY_CONE: // AREA
         case TARGET_SELECT_CATEGORY_AREA: // AREA
             return area;
+        case TARGET_SELECT_CATEGORY_TRAJ: // DEST
+            // EG - Spell::SelectImplicitTrajTargets invokes the destination hook for these
+            return dest;
         case TARGET_SELECT_CATEGORY_DEFAULT:
             switch (targetInfo.GetObjectType())
             {
