@@ -384,14 +384,14 @@ static bool MimironIsEncounterFinished(Unit* who)
         vx001->GetStandState() == UNIT_STAND_STATE_DEAD &&
         aerial->GetStandState() == UNIT_STAND_STATE_DEAD)
     {
+        if (Creature* mimiron = instance->GetCreature(DATA_MIMIRON))
+            mimiron->AI()->JustDied(who);
         Unit::Kill(who, mkii);
         Unit::Kill(who, vx001);
         Unit::Kill(who, aerial);
         mkii->DespawnOrUnsummon(120s);
         vx001->DespawnOrUnsummon(120s);
         aerial->DespawnOrUnsummon(120s);
-        if (Creature* mimiron = instance->GetCreature(DATA_MIMIRON))
-            mimiron->AI()->JustDied(who);
         return true;
     }
     return false;
@@ -466,6 +466,14 @@ struct boss_mimiron : public BossAI
         events.ScheduleEvent(EVENT_INTRO_1, 1500ms);
         events.ScheduleEvent(EVENT_CHECK_PLAYERS, 5s);
         events.ScheduleEvent(EVENT_BERSERK, _fireFighter ? RAID_MODE(8min, 10min) : 15min);
+    }
+
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        if (instance->GetBossState(DATA_MIMIRON) == DONE)
+            return;
+
+        CreatureAI::EnterEvadeMode(why);
     }
 
     void JustDied(Unit* /*killer*/) override
@@ -741,10 +749,10 @@ struct boss_mimiron : public BossAI
                     {
                         if (Creature* computer = instance->GetCreature(DATA_COMPUTER))
                             computer->AI()->DoAction(DO_DEACTIVATE_COMPUTER);
-                        me->SummonGameObject(RAID_MODE(GO_CACHE_OF_INNOVATION_FIREFIGHTER, GO_CACHE_OF_INNOVATION_FIREFIGHTER_HERO), 2744.040f, 2569.352f, 364.3135f, 3.124123f, QuaternionData(0.f, 0.f, 0.9999619f, 0.008734641f), 420_days);
+                        me->SummonGameObject(RAID_MODE(GO_CACHE_OF_INNOVATION_FIREFIGHTER, GO_CACHE_OF_INNOVATION_FIREFIGHTER_HERO), 2744.040f, 2569.352f, 364.3135f, 3.124123f, QuaternionData(0.f, 0.f, 0.9999619f, 0.008734641f), 420_days, GO_SUMMON_TIMED_DESPAWN);
                     }
                     else
-                        me->SummonGameObject(RAID_MODE(GO_CACHE_OF_INNOVATION, GO_CACHE_OF_INNOVATION_HERO), 2744.040f, 2569.352f, 364.3135f, 3.124123f, QuaternionData(0.f, 0.f, 0.9999619f, 0.008734641f), 420_days);
+                        me->SummonGameObject(RAID_MODE(GO_CACHE_OF_INNOVATION, GO_CACHE_OF_INNOVATION_HERO), 2744.040f, 2569.352f, 364.3135f, 3.124123f, QuaternionData(0.f, 0.f, 0.9999619f, 0.008734641f), 420_days, GO_SUMMON_TIMED_DESPAWN);
                     events.ScheduleEvent(EVENT_OUTTRO_3, 11s);
                     break;
                 case EVENT_OUTTRO_3:
