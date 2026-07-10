@@ -15060,25 +15060,35 @@ void Player::RewardQuest(Quest const* quest, uint32 reward, Object* questGiver, 
     // cast spells after mark quest complete (some spells have quest completed state requirements in spell_area data)
     if (quest->GetRewSpell() > 0)
     {
-        SpellInfo const* spellInfo = ASSERT_NOTNULL(sSpellMgr->GetSpellInfo(quest->GetRewSpell()));
-        if (questGiver->IsUnit() && !spellInfo->HasEffect(SPELL_EFFECT_LEARN_SPELL) && !spellInfo->HasEffect(SPELL_EFFECT_CREATE_ITEM) && !spellInfo->IsSelfCast())
+        if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(quest->GetRewSpell()))
         {
-            if (Creature* creature = GetMap()->GetCreature(questGiver->GetGUID()))
-                creature->CastSpell(this, quest->GetRewSpell(), true);
+            if (questGiver->IsUnit() && !spellInfo->HasEffect(SPELL_EFFECT_LEARN_SPELL) && !spellInfo->HasEffect(SPELL_EFFECT_CREATE_ITEM) && !spellInfo->IsSelfCast())
+            {
+                if (Creature* creature = GetMap()->GetCreature(questGiver->GetGUID()))
+                    creature->CastSpell(this, quest->GetRewSpell(), true);
+            }
+            else
+                CastSpell(this, quest->GetRewSpell(), true);
         }
         else
-            CastSpell(this, quest->GetRewSpell(), true);
+            TC_LOG_ERROR("entities.player.quest", "Player::RewardQuest: Player '{}' ({}) rewarded quest {} with `RewardSpell` = {} but the spell does not exist.",
+                GetName(), GetGUID().ToString(), quest_id, quest->GetRewSpell());
     }
     else if (quest->GetRewDisplaySpell() > 0)
     {
-        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(quest->GetRewDisplaySpell());
-        if (questGiver->IsUnit() && !spellInfo->HasEffect(SPELL_EFFECT_LEARN_SPELL) && !spellInfo->HasEffect(SPELL_EFFECT_CREATE_ITEM) && !spellInfo->IsSelfCast())
+        if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(quest->GetRewDisplaySpell()))
         {
-            if (Creature* creature = GetMap()->GetCreature(questGiver->GetGUID()))
-                creature->CastSpell(this, quest->GetRewDisplaySpell(), true);
+            if (questGiver->IsUnit() && !spellInfo->HasEffect(SPELL_EFFECT_LEARN_SPELL) && !spellInfo->HasEffect(SPELL_EFFECT_CREATE_ITEM) && !spellInfo->IsSelfCast())
+            {
+                if (Creature* creature = GetMap()->GetCreature(questGiver->GetGUID()))
+                    creature->CastSpell(this, quest->GetRewDisplaySpell(), true);
+            }
+            else
+                CastSpell(this, quest->GetRewDisplaySpell(), true);
         }
         else
-            CastSpell(this, quest->GetRewDisplaySpell(), true);
+            TC_LOG_ERROR("entities.player.quest", "Player::RewardQuest: Player '{}' ({}) rewarded quest {} with `RewardDisplaySpell` = {} but the spell does not exist.",
+                GetName(), GetGUID().ToString(), quest_id, quest->GetRewDisplaySpell());
     }
 
     if (quest->GetZoneOrSort() > 0)
