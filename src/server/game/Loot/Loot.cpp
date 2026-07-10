@@ -21,6 +21,7 @@
 #include "ItemTemplate.h"
 #include "Log.h"
 #include "LootMgr.h"
+#include "LootPackets.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Player.h"
@@ -45,7 +46,7 @@ LootItem::LootItem(LootStoreItem const& li)
 
     needs_quest = li.needs_quest;
 
-    randomSuffix = GenerateEnchSuffixFactor(itemid);
+    randomPropertySeed = GenerateEnchSuffixFactor(itemid);
     randomPropertyId = GenerateItemRandomPropertyId(itemid);
     count = 0;
     is_looted = false;
@@ -671,37 +672,28 @@ bool Loot::hasOverThresholdItem() const
     return false;
 }
 
-ByteBuffer& operator<<(ByteBuffer& b, LootItem const& li)
+static void FillLootItemData(WorldPackets::Loot::LootItemData& lootItem, uint8 lootListId, LootItem const& li, LootSlotType slot_type)
 {
-    b << uint32(li.itemid);
-    b << uint32(li.count);                                  // nr of items of this type
-    b << uint32(ASSERT_NOTNULL(sObjectMgr->GetItemTemplate(li.itemid))->GetDisplayId());
-    b << uint32(li.randomSuffix);
-    b << uint32(li.randomPropertyId);
-    //b << uint8(0);                                        // slot type - will send after this function call
-    return b;
+    lootItem.LootListID = lootListId;
+    lootItem.UIType = slot_type;
+    lootItem.ItemID = li.itemid;
+    lootItem.Quantity = li.count;
+    lootItem.ItemDisplayInfoID = ASSERT_NOTNULL(sObjectMgr->GetItemTemplate(li.itemid))->GetDisplayId();
+    lootItem.RandomPropertiesSeed = li.randomPropertySeed;
+    lootItem.RandomPropertiesID = li.randomPropertyId;
 }
 
-ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv)
+// EG - AOE loot: build SMSG_LOOT_RESPONSE from the view's processed list (possibly spanning multiple loots), using sequential loot list ids
+void LootView::BuildLootResponse(WorldPackets::Loot::LootResponse& packet) const
 {
-    if (lv.permission == NONE_PERMISSION)
-    {
-        b << uint32(0); // gold
-        b << uint8(0); // item count
-        return b;
-    }
+    if (permission == NONE_PERMISSION)
+        return;
 
-    b << lv.gold; // gold
-    b << uint8(lv.processedList.size()); // item count
+    packet.Coins = gold;
 
     uint8 itemResultCounter = 0;
-    for (LootProcessResult const& currentLoot : lv.processedList) {
-        b << itemResultCounter++;
-        b << *currentLoot.Item;
-        b << currentLoot.ItemSlotType;
-    }
-
-    return b;
+    for (LootProcessResult const& currentLoot : processedList)
+        FillLootItemData(packet.Items.emplace_back(), itemResultCounter++, *currentLoot.Item, LootSlotType(currentLoot.ItemSlotType));
 }
 
 std::vector<LootProcessResult> LootView::Process(Loot* relatedLoot)

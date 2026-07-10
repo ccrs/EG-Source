@@ -33,6 +33,14 @@ class Player;
 struct Loot;
 struct LootStoreItem;
 
+namespace WorldPackets
+{
+    namespace Loot
+    {
+        class LootResponse;
+    }
+}
+
 enum RollType
 {
     ROLL_PASS         = 0,
@@ -96,6 +104,21 @@ enum LootType : uint8
     LOOT_FISHING_JUNK           = 22                        // unsupported by client, sending LOOT_FISHING instead
 };
 
+constexpr LootType GetLootTypeForClient(LootType lootType)
+{
+    switch (lootType)
+    {
+        case LOOT_INSIGNIA:
+            return LOOT_SKINNING;
+        case LOOT_FISHINGHOLE:
+        case LOOT_FISHING_JUNK:
+            return LOOT_FISHING;
+        default:
+            break;
+    }
+    return lootType;
+}
+
 enum LootError : uint8
 {
     LOOT_ERROR_DIDNT_KILL               = 0,    // You don't have permission to loot that corpse.
@@ -127,7 +150,7 @@ struct TC_GAME_API LootItem
 {
     uint32  itemid;
     uint32  itemIndex;
-    uint32  randomSuffix;
+    uint32  randomPropertySeed;
     int32   randomPropertyId;
     ConditionContainer conditions;                          // additional loot condition
     GuidSet allowedGUIDs;
@@ -146,7 +169,7 @@ struct TC_GAME_API LootItem
     explicit LootItem(LootStoreItem const& li);
 
     // Empty constructor for creating an empty LootItem to be filled in with DB data
-    LootItem() : itemid(0), itemIndex(0), randomSuffix(0), randomPropertyId(0), count(0), is_looted(false), is_blocked(false),
+    LootItem() : itemid(0), itemIndex(0), randomPropertySeed(0), randomPropertyId(0), count(0), is_looted(false), is_blocked(false),
                  freeforall(false), is_underthreshold(false), is_counted(false), needs_quest(false), follow_loot_rules(false)
                  { };
 
@@ -199,15 +222,9 @@ class LootValidatorRefManager : public RefManager<Loot, LootValidatorRef>
 };
 
 //=====================================================
-struct LootView;
-
-ByteBuffer& operator<<(ByteBuffer& b, LootItem const& li);
-ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv);
 
 struct TC_GAME_API Loot
 {
-    friend ByteBuffer& operator<<(ByteBuffer& b, LootView const& lv);
-
     NotNormalLootItemMap const& GetPlayerQuestItems() const { return PlayerQuestItems; }
     NotNormalLootItemMap const& GetPlayerFFAItems() const { return PlayerFFAItems; }
     NotNormalLootItemMap const& GetPlayerNonQuestNonFFAConditionalItems() const { return PlayerNonQuestNonFFAConditionalItems; }
@@ -297,6 +314,9 @@ struct LootView
 
     std::vector<LootProcessResult> Process(Loot* relatedLoot);
     void Store(std::vector<LootProcessResult> lootResult);
+
+    // Builds data for SMSG_LOOT_RESPONSE from the processed list, using sequential loot list ids
+    void BuildLootResponse(WorldPackets::Loot::LootResponse& packet) const;
 };
 
 struct TC_GAME_API LootReference
