@@ -46,7 +46,7 @@ enum AssemblySpells
     // Steelbreaker
     SPELL_HIGH_VOLTAGE                           = 61890,
     SPELL_FUSION_PUNCH                           = 61903,
-    SPELL_STATIC_DISRUPTION                      = 44008,
+    SPELL_STATIC_DISRUPTION                      = 61911,
     SPELL_OVERWHELMING_POWER                     = 64637,
     SPELL_ELECTRICAL_CHARGE                      = 61902,
 

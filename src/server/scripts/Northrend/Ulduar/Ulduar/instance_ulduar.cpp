@@ -573,7 +573,7 @@ class instance_ulduar : public InstanceMapScript
                         break;
                     case GO_LEVIATHAN_GATE:
                         LeviathanGateGUID = gameObject->GetGUID();
-                        if (GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
+                        if (GetBossState(DATA_FLAME_LEVIATHAN) == DONE || ColossusData >= 2)
                             gameObject->SetGoState(GO_STATE_DESTROYED);
                         break;
                     case GO_LEVIATHAN_PROTECTIVE_BUBBLE:

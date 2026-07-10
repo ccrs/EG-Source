@@ -15,15 +15,10 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
- * Comment: there is missing code on triggers,
- *          brann bronzebeard needs correct gossip info.
- *          requires more work involving area triggers.
- *          if reached brann speaks through his radio..
- */
 
 #include "ulduar.h"
 #include "CellImpl.h"
+#include "ChaseMovementGenerator.h"
 #include "CombatAI.h"
 #include "CommonHelpers.h"
 #include "Containers.h"
@@ -62,6 +57,9 @@ enum FlameLeviathanSpells
     SPELL_ELECTROSHOCK             = 62522,
     SPELL_NAPALM                   = 63666,
     SPELL_INVIS_AND_STEALTH_DETECT = 18950, // Passive
+    SPELL_FLAME_VENTS_TRIGGER      = 63847,
+    SPELL_HOOKSHOT                 = 62323,
+    SPELL_HOOKSHOT_AURA            = 62336,
     //TOWER Additional SPELLS
     SPELL_THORIM_S_HAMMER          = 62911, // Tower of Storms
     SPELL_MIMIRON_S_INFERNO        = 62909, // Tower of Flames
@@ -152,7 +150,6 @@ enum FlameLeviathanMisc
 {
     DATA_SHUTOUT               = 29112912, // 2911, 2912 are achievement IDs
     DATA_ORBIT_ACHIEVEMENTS    = 1,
-    VEHICLE_SPAWNS             = 5,
     FREYA_SPAWNS               = 4,
     HODIR_SPAWNS               = 2,
     POINT_ENGAGE               = 1
@@ -187,74 +184,8 @@ enum FlameLeviathanMiscellanousData
     FOUR_SEATS                = 4,
 };
 
-Position const FlameLeviathanCenter = { 354.8771f, -12.90240f, 409.803650f, 0.0f };
-Position const FlameLeviathanInfernoStart = { 390.93f, -13.91f, 409.81f, 0.0f };
-
-Position const FlameLeviathanPosSiege[VEHICLE_SPAWNS] =
-{
-    // 10 + 25 man
-    { -784.75f, -33.76f, 429.93f, 5.096f },
-    { -814.59f, -64.54f, 429.93f, 5.969f },
-    // 25 man
-    { -813.70f, -86.89f, 430.16f, 6.091f },
-    { -756.95f, -27.94f, 429.93f, 5.079f },
-    { -720.13f, -14.51f, 429.93f, 4.852f },
-};
-
-Position const FlameLeviathanWipePosSiege[VEHICLE_SPAWNS] =
-{
-    // 10 + 25 wipe
-    { 118.78f, -46.77f, 409.89f, 3.142f },
-    { 119.46f, -28.86f, 409.89f, 3.142f },
-    // 25 wipe
-    { 137.94f, -21.31f, 409.89f, 3.142f },
-    { 102.39f, -37.99f, 409.89f, 3.107f },
-    { 137.71f, -51.49f, 409.89f, 3.142f },
-};
-
-Position const FlameLeviathanPosChopper[VEHICLE_SPAWNS] =
-{
-    // 10 + 25 man
-    { -717.833f, -106.567f, 430.024f, 0.122f },
-    { -718.451f, -118.248f, 430.27f, 0.052f },
-    // 25 man
-    { -718.307f, -124.422f, 430.159f, 0.175f },
-    { -718.763f, -100.746f, 429.925f, 0.175f },
-    { -718.451f, -112.609f, 430.232f, 0.175f },
-};
-
-Position const FlameLeviathanWipePosChopper[VEHICLE_SPAWNS] =
-{
-    // 10 + 25 wipe
-    { 117.806f, -3.199f, 409.887f, 2.95f },
-    { 116.92f, 8.422f, 409.887f, 3.054f },
-    // 25 wipe
-    { 117.756f, 2.44f, 409.887f, 3.002f },
-    { 118.004f, -9.371f, 409.887f, 2.9f },
-    { 117.340f, 14.301f, 409.893f, 3.107f },
-};
-
-Position const FlameLeviathanPosDemolisher[VEHICLE_SPAWNS] =
-{
-    // 10 + 25 man
-    { -766.703f, -225.0334f, 430.5032f, 1.71f },
-    { -729.545f, -186.269f, 430.1279f, 1.902f },
-    // 25 man
-    { -719.747f, -165.846f, 430.1348f, 1.955f },
-    { -746.234f, -211.748f, 431.755f, 1.833f },
-    { -793.69f, -240.575f, 430.9807f, 1.641f },
-};
-
-Position const FlameLeviathanWipePosDemolisher[VEHICLE_SPAWNS] =
-{
-    // 10 + 25 wipe
-    { 122.504f, 42.992f, 409.887f, 3.176f },
-    { 121.949f, 29.139f, 410.452f, 3.107f },
-    // 25 wipe
-    { 135.71f, 36.256f, 409.887f, 3.142f },
-    { 109.035f, 35.022f, 409.887f, 3.142f },
-    { 135.356f, 24.88f, 409.887f, 3.177f },
-};
+Position const FlameLeviathanCenter = { 354.8771f, -12.90240f, 409.803650f, 3.14f };
+Position const FlameLeviathanInfernoStart = { 390.93f, -13.91f, 409.81f, 3.14f };
 
 Position const FlameLeviathanFreyaBeacons[FREYA_SPAWNS] =
 {
@@ -302,6 +233,17 @@ class boss_flame_leviathan : public CreatureScript
 
                 me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_STUNNED);
                 me->SetReactState(REACT_PASSIVE);
+            }
+
+            void JustAppeared() override
+            {
+                if (me->IsAlive() && instance->GetData(DATA_COLOSSUS) >= 2 && instance->GetBossState(DATA_FLAME_LEVIATHAN) != DONE)
+                {
+                    me->SetHomePosition(FlameLeviathanCenter);
+                    me->NearTeleportTo(FlameLeviathanCenter);
+                    me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_STUNNED);
+                    me->SetReactState(REACT_AGGRESSIVE);
+                }
             }
 
             void Reset() override
@@ -601,6 +543,19 @@ class boss_flame_leviathan : public CreatureScript
                         _pursueTarget = target->GetGUID();
                         AttackStart(unitTarget);
                         me->GetThreatManager().FixateTarget(unitTarget);
+
+                        if (MovementGenerator const* base = me->GetMotionMaster()->GetMovementGenerator([](MovementGenerator const* movegen) -> bool
+                        {
+                            return movegen->GetMovementGeneratorType() == CHASE_MOTION_TYPE;
+                        }))
+                        {
+                            ChaseMovementGenerator const* chase = static_cast<ChaseMovementGenerator const*>(base);
+                            if (chase->GetTarget() != unitTarget)
+                                me->GetMotionMaster()->MoveChase(unitTarget);
+                        }
+                        else
+                            me->GetMotionMaster()->MoveChase(unitTarget);
+
                         if (unitTarget->GetVehicleKit())
                             for (auto itr = unitTarget->GetVehicleKit()->Seats.begin(); itr != unitTarget->GetVehicleKit()->Seats.end(); ++itr)
                             {
@@ -783,6 +738,10 @@ class boss_flame_leviathan_defense_cannon : public CreatureScript
                 if (!UpdateVictim())
                     return;
 
+                if (Unit* base = me->GetVehicleBase())
+                    if (base->HasAura(SPELL_SYSTEMS_SHUTDOWN))
+                        return;
+
                 if (NapalmTimer <= diff)
                 {
                     if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
@@ -922,11 +881,17 @@ class npc_mechanolift : public CreatureScript
             static void FireDrop(Unit* mechanolift, ObjectGuid containerGuid, Position const& landing)
             {
                 Unit* caster = mechanolift;
-                if (Creature* container = ObjectAccessor::GetCreature(*mechanolift, containerGuid))
+                Creature* container = ObjectAccessor::GetCreature(*mechanolift, containerGuid);
+                if (container)
                     caster = container;
                 caster->CastSpell(landing, SPELL_DUSTY_EXPLOSION, true);
                 caster->CastSpell(caster, SPELL_DUST_CLOUD_IMPACT, true);
                 caster->CastSpell(landing, SPELL_SPAWN_PYRITE, true);
+
+                if (container)
+                    container->DespawnOrUnsummon(2s);
+                if (Creature* lift = mechanolift->ToCreature())
+                    lift->DespawnOrUnsummon(2s);
             }
 
             ObjectGuid _containerGuid;
@@ -1735,9 +1700,11 @@ class spell_load_into_catapult : public SpellScriptLoader
 // 62705 - Auto-repair
 class spell_auto_repair : public SpellScriptLoader
 {
-    enum Spells
+    enum Misc
     {
         SPELL_AUTO_REPAIR = 62705,
+        NPC_EARTHEN_STONESHAPER = 33620,
+        BROADCAST_TEXT_AUTO_REPAIR = 33538, // "Automatic repair sequence initiated."
     };
 
     public:
@@ -1776,7 +1743,13 @@ class spell_auto_repair : public SpellScriptLoader
                 if (!driver)
                     return;
 
-                driver->TextEmote(EMOTE_REPAIR, driver, true);
+                for (auto const& seatPair : vehicle->Seats)
+                    if (Unit* passenger = ObjectAccessor::GetUnit(*GetHitUnit(), seatPair.second.Passenger.Guid))
+                        if (passenger->GetEntry() == NPC_EARTHEN_STONESHAPER)
+                        {
+                            passenger->TextEmote(BROADCAST_TEXT_AUTO_REPAIR, driver, true);
+                            break;
+                        }
 
                 InstanceScript* instance = driver->GetInstanceScript();
                 if (!instance)
@@ -2024,15 +1997,17 @@ class EG_spell_flame_leviathan_mimirons_inferno : public SpellScript
     }
 };
 
-// 62479 Grab Crate - Main
+// 62479 Grab Crate - Main (Salvaged Demolisher mechanic seat)
 // -- Effect 0 - SPELL_EFFECT_DUMMY - 62480
 // -- Effect 1 - SPELL_EFFECT_SCRIPT_EFFECT - 62480
 // -- Effect 2 - 62482
 // 62480 Grenades
 // 62482 Grab Crate - Triggered
+// 67372 Grab Pyrite (Salvaged Chopper)
+// -- Effect 2 - 67387
 // 67387 Grab Crate
 // -- Effect 0 - SPELL_EFFECT_SCRIPT_EFFECT - 63827
-// 63827 Ride Vehicle
+// 63827 Ride Vehicle (rear seat)
 class EG_spell_flame_leviathan_grab_crate_triggered : public SpellScript
 {
     PrepareSpellScript(EG_spell_flame_leviathan_grab_crate_triggered);
@@ -2040,9 +2015,27 @@ class EG_spell_flame_leviathan_grab_crate_triggered : public SpellScript
     void HandleDummy(SpellEffIndex effIndex)
     {
         PreventHitEffect(effIndex);
-        if (Unit* caster = GetCaster())
-            if (Vehicle* vehicle = caster->GetVehicle())
-                GetHitUnit()->CastSpell(vehicle->GetBase(), GetSpellInfo()->GetEffect(effIndex).CalcValue(), true);
+        Unit* caster = GetCaster();
+        if (!caster)
+            return;
+
+        if (Vehicle* vehicle = caster->GetVehicle())
+        {
+            // Demolisher: the mechanic seat pod grabs the canister for its parent vehicle
+            GetHitUnit()->CastSpell(vehicle->GetBase(), GetSpellInfo()->GetEffect(effIndex).CalcValue(), true);
+        }
+        else if (Vehicle* vehicleKit = caster->GetVehicleKit())
+        {
+            // Chopper: the canister is loaded into the rear seat and can be ferried around
+            if (Unit* passenger = vehicleKit->GetPassenger(1))
+            {
+                // Never eject a player riding the rear seat to make room
+                if (passenger->GetTypeId() == TYPEID_PLAYER)
+                    return;
+                passenger->ExitVehicle();
+            }
+            GetHitUnit()->CastSpell(caster, GetSpellInfo()->GetEffect(effIndex).CalcValue(), true);
+        }
     }
 
     void Register() override
