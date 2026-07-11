@@ -235,8 +235,8 @@ enum FreyaMisc
     DATA_KNOCK_ON_WOOD                          = 2
 };
 
-constexpr Seconds FREYA_WAVE_TIME_MIN = 30s;
-constexpr Seconds FREYA_WAVE_TIME_MAX = 60s;
+constexpr Seconds FREYA_WAVE_TIME = 60s;
+constexpr Seconds FREYA_WAVE_KILL_FOLLOWUP = 10s;
 
 struct npc_iron_roots : public ScriptedAI
 {
@@ -429,7 +429,7 @@ struct boss_freya : public BossAI
                 case EVENT_WAVE:
                     SpawnWave();
                     if (waveCount < 6)
-                        events.ScheduleEvent(EVENT_WAVE, FREYA_WAVE_TIME_MIN, FREYA_WAVE_TIME_MAX);
+                        events.RescheduleEvent(EVENT_WAVE, FREYA_WAVE_TIME);
                     break;
                 case EVENT_EONAR_GIFT:
                     Talk(EMOTE_LIFEBINDERS_GIFT);
@@ -533,11 +533,13 @@ struct boss_freya : public BossAI
                 summoned->CastSpell(who, SPELL_DETONATE, true);
                 summoned->DespawnOrUnsummon(5s);
                 summons.Despawn(summoned);
+                TryAccelerateNextWave();
                 break;
             case NPC_ANCIENT_CONSERVATOR:
                 summoned->CastSpell(me, SPELL_REMOVE_25STACK, true);
                 summoned->DespawnOrUnsummon(5s);
                 summons.Despawn(summoned);
+                TryAccelerateNextWave();
                 break;
         }
     }
@@ -614,6 +616,31 @@ private:
         waveCount++;
     }
 
+    bool AnyWaveSummonAlive() const
+    {
+        for (ObjectGuid const& guid : summons)
+            if (Creature const* summon = ObjectAccessor::GetCreature(*me, guid))
+                if (summon->IsAlive())
+                    switch (summon->GetEntry())
+                    {
+                        case NPC_DETONATING_LASHER:
+                        case NPC_ANCIENT_CONSERVATOR:
+                        case NPC_SNAPLASHER:
+                        case NPC_ANCIENT_WATER_SPIRIT:
+                        case NPC_STORM_LASHER:
+                            return true;
+                        default:
+                            break;
+                    }
+        return false;
+    }
+
+    void TryAccelerateNextWave()
+    {
+        if (waveCount < 6 && !AnyWaveSummonAlive() && events.GetTimeUntilEvent(EVENT_WAVE) > FREYA_WAVE_KILL_FOLLOWUP)
+            events.RescheduleEvent(EVENT_WAVE, FREYA_WAVE_KILL_FOLLOWUP);
+    }
+
     int8 GetTrioWave(ObjectGuid const& guid) const
     {
         for (std::size_t wave = 0; wave < _trioWaves.size(); ++wave)
@@ -647,6 +674,8 @@ private:
                 summons.Despawn(elemental);
                 elemental->DespawnOrUnsummon(5s);
             }
+
+        TryAccelerateNextWave();
     }
 
     void ReviveTrio(uint8 wave)
