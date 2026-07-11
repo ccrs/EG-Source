@@ -333,16 +333,16 @@ class boss_flame_leviathan : public CreatureScript
                         me->SetLootMode(LOOT_MODE_DEFAULT);
                         break;
                     case 1:
-                        me->SetLootMode(LOOT_MODE_DEFAULT | LOOT_MODE_HARD_MODE_1);
+                        me->SetLootMode(LOOT_MODE_HARD_MODE_1);
                         break;
                     case 2:
-                        me->SetLootMode(LOOT_MODE_DEFAULT | LOOT_MODE_HARD_MODE_1 | LOOT_MODE_HARD_MODE_2);
+                        me->SetLootMode(LOOT_MODE_HARD_MODE_2);
                         break;
                     case 3:
-                        me->SetLootMode(LOOT_MODE_DEFAULT | LOOT_MODE_HARD_MODE_1 | LOOT_MODE_HARD_MODE_2 | LOOT_MODE_HARD_MODE_3);
+                        me->SetLootMode(LOOT_MODE_HARD_MODE_3);
                         break;
                     case 4:
-                        me->SetLootMode(LOOT_MODE_DEFAULT | LOOT_MODE_HARD_MODE_1 | LOOT_MODE_HARD_MODE_2 | LOOT_MODE_HARD_MODE_3 | LOOT_MODE_HARD_MODE_4);
+                        me->SetLootMode(LOOT_MODE_HARD_MODE_4);
                         break;
                     default:
                         break;
