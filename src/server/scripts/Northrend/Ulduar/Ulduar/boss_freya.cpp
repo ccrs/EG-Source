@@ -374,6 +374,18 @@ struct boss_freya : public BossAI
         events.ScheduleEvent(EVENT_SUNBEAM, 5s, 15s);
     }
 
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        if (_encounterFinished)
+            return;
+
+        for (uint8 n = 0; n < 3; ++n)
+            if (Creature* elder = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BRIGHTLEAF + n)))
+                if (elder->IsAlive())
+                    elder->DespawnOrUnsummon(0s, 1s);
+        BossAI::EnterEvadeMode(why);
+    }
+
     uint32 GetData(uint32 type) const override
     {
         switch (type)
