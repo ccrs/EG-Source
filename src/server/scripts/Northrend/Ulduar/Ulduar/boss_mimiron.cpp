@@ -778,7 +778,7 @@ struct boss_mimiron : public BossAI
                             }
                         }
                         if (!alive)
-                            EnterEvadeMode();
+                            EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
                         else
                             events.ScheduleEvent(EVENT_CHECK_PLAYERS, 5s);
                     }
