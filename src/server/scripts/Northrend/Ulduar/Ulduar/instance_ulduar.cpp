@@ -545,6 +545,10 @@ class instance_ulduar : public InstanceMapScript
                     case GO_THORIM_DARK_IRON_PORTCULLIS:
                         ThorimDarkIronPortcullisGUID = gameObject->GetGUID();
                         break;
+                    case GO_THORIM_LEVER:
+                        if (GetBossState(DATA_THORIM) != IN_PROGRESS)
+                            gameObject->SetFlag(GO_FLAG_NOT_SELECTABLE);
+                        break;
                     case GO_CACHE_OF_STORMS_10:
                     case GO_CACHE_OF_STORMS_25:
                         CacheOfStormsGUID = gameObject->GetGUID();
@@ -903,12 +907,6 @@ class instance_ulduar : public InstanceMapScript
                     case DATA_THORIM_PREADD_SUMMONS:
                         DespawnThorimSummons(ThorimPreAddGUIDs);
                         break;
-                    case DATA_THORIM_COLOSSUS_SUMMONS:
-                        DespawnThorimSummons(ThorimColossusAddGUIDs);
-                        break;
-                    case DATA_THORIM_GIANT_SUMMONS:
-                        DespawnThorimSummons(ThorimGiantAddGUIDs);
-                        break;
                     case DATA_ILLUSION:
                         illusion = data;
                         break;
@@ -1001,12 +999,6 @@ class instance_ulduar : public InstanceMapScript
                         break;
                     case DATA_THORIM_PREADD_SUMMONS:
                         ThorimPreAddGUIDs.push_back(data);
-                        break;
-                    case DATA_THORIM_COLOSSUS_SUMMONS:
-                        ThorimColossusAddGUIDs.push_back(data);
-                        break;
-                    case DATA_THORIM_GIANT_SUMMONS:
-                        ThorimGiantAddGUIDs.push_back(data);
                         break;
                     default:
                         break;
@@ -1618,8 +1610,6 @@ class instance_ulduar : public InstanceMapScript
             GuidVector LeviathanVehicleGUIDs;
             GuidVector KirinTorMageGUIDs;
             GuidVector ThorimPreAddGUIDs;
-            GuidVector ThorimColossusAddGUIDs;
-            GuidVector ThorimGiantAddGUIDs;
             ObjectGuid XTToyPileGUIDs[4];
             ObjectGuid AssemblyGUIDs[3];
             ObjectGuid ElderGUIDs[3];

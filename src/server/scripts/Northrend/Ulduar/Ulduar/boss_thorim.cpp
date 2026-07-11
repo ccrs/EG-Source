@@ -279,7 +279,6 @@ enum ThorimActions
 {
     ACTION_INCREASE_PREADDS_COUNT,
     ACTION_ACTIVATE_RUNIC_SMASH,
-    ACTION_ACTIVATE_ADDS,
     ACTION_PILLAR_CHARGED,
     ACTION_START_HARD_MODE,
     ACTION_BERSERK
@@ -299,25 +298,6 @@ ThorimSummonLocation const PreAddLocations[] =
     { { 2123.32f, -254.770f, 419.840f, 6.170f }, NPC_MERCENARY_SOLDIER_A   },
     { { 2120.10f, -258.990f, 419.840f, 6.250f }, NPC_MERCENARY_SOLDIER_A   },
     { { 2129.09f, -277.142f, 419.756f, 1.222f }, NPC_DARK_RUNE_ACOLYTE_PRE }
-};
-
-ThorimSummonLocation const ColossusAddLocations[] =
-{
-    { { 2218.38f, -297.50f, 412.18f, 1.030f }, NPC_IRON_RING_GUARD   },
-    { { 2235.07f, -297.98f, 412.18f, 1.613f }, NPC_IRON_RING_GUARD   },
-    { { 2235.26f, -338.34f, 412.18f, 1.589f }, NPC_IRON_RING_GUARD   },
-    { { 2217.69f, -337.39f, 412.18f, 1.241f }, NPC_IRON_RING_GUARD   },
-    { { 2227.58f, -308.30f, 412.18f, 1.591f }, NPC_DARK_RUNE_ACOLYTE },
-    { { 2227.47f, -345.37f, 412.18f, 1.566f }, NPC_DARK_RUNE_ACOLYTE }
-};
-
-ThorimSummonLocation const GiantAddLocations[] =
-{
-    { { 2198.05f, -428.77f, 419.95f, 6.056f }, NPC_IRON_HONOR_GUARD  },
-    { { 2220.31f, -436.22f, 412.26f, 1.064f }, NPC_IRON_HONOR_GUARD  },
-    { { 2158.88f, -441.73f, 438.25f, 0.127f }, NPC_IRON_HONOR_GUARD  },
-    { { 2198.29f, -436.92f, 419.95f, 0.261f }, NPC_DARK_RUNE_ACOLYTE },
-    { { 2230.93f, -434.27f, 412.26f, 1.931f }, NPC_DARK_RUNE_ACOLYTE }
 };
 
 Position const SifSpawnPosition = { 2148.301f, -297.8453f, 438.3308f, 2.687807f };
@@ -490,11 +470,6 @@ struct boss_thorim : public BossAI
 
         events.SetPhase(PHASE_NULL);
 
-        // Respawn Mini Bosses
-        for (uint8 i = DATA_RUNIC_COLOSSUS; i <= DATA_RUNE_GIANT; ++i)
-            if (Creature* miniBoss = ObjectAccessor::GetCreature(*me, instance->GetGuidData(i)))
-                miniBoss->Respawn(true);
-
         instance->SetData(DATA_THORIM_PREADD_SUMMONS, 0);
 
         // Spawn Pre Phase Adds
@@ -550,6 +525,10 @@ struct boss_thorim : public BossAI
     {
         if (_encounterFinished)
             return;
+
+        me->GetMap()->SpawnGroupDespawn(SPAWN_GROUP_THORIM_GAUNTLET, true);
+        instance->HandleGameObject(instance->GetGuidData(DATA_RUNIC_DOOR), false);
+        instance->HandleGameObject(instance->GetGuidData(DATA_STONE_DOOR), false);
 
         summons.DespawnAll();
         _DespawnAtEvade();
@@ -635,6 +614,8 @@ struct boss_thorim : public BossAI
         if (Creature* pillar = ObjectAccessor::GetCreature(*me, _activePillarGUID))
             pillar->RemoveAllAuras();
 
+        me->GetMap()->SpawnGroupDespawn(SPAWN_GROUP_THORIM_GAUNTLET, true);
+
         if (_hardMode)
         {
             if (Creature* sif = instance->GetCreature(DATA_SIF))
@@ -682,16 +663,13 @@ struct boss_thorim : public BossAI
 
         DoCast(me, SPELL_SHEATH_OF_LIGHTNING);
 
-        if (Creature* runicColossus = instance->GetCreature(DATA_RUNIC_COLOSSUS))
-        {
-            runicColossus->SetImmuneToPC(false);
-            runicColossus->AI()->DoAction(ACTION_ACTIVATE_ADDS);
-        }
+        me->GetMap()->SpawnGroupSpawn(SPAWN_GROUP_THORIM_GAUNTLET, true);
 
         if (GameObject* lever = instance->GetGameObject(DATA_THORIM_LEVER))
             lever->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
 
-        // Summon Sif
+        if (Creature* sif = instance->GetCreature(DATA_SIF))
+            sif->DespawnOrUnsummon();
         me->SummonCreature(NPC_SIF, SifSpawnPosition);
     }
 
@@ -985,7 +963,7 @@ struct boss_thorim : public BossAI
 
         Creature* runicColossus = instance->GetCreature(DATA_RUNIC_COLOSSUS);
         Creature* runeGiant = instance->GetCreature(DATA_RUNE_GIANT);
-        return runicColossus && !runicColossus->IsAlive() && runeGiant && !runeGiant->IsAlive();
+        return (!runicColossus || !runicColossus->IsAlive()) && (!runeGiant || !runeGiant->IsAlive());
     }
 
     void DamageTaken(Unit* attacker, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
@@ -1393,7 +1371,7 @@ private:
 
 struct npc_thorim_minibossAI : public ScriptedAI
 {
-    npc_thorim_minibossAI(Creature* creature) : ScriptedAI(creature), _summons(me)
+    npc_thorim_minibossAI(Creature* creature) : ScriptedAI(creature)
     {
         _instance = creature->GetInstanceScript();
 
@@ -1405,30 +1383,9 @@ struct npc_thorim_minibossAI : public ScriptedAI
         return IsInBoundary(who);
     }
 
-    void JustSummoned(Creature* summon) final override
-    {
-        _summons.Summon(summon);
-    }
-
-    void SummonedCreatureDespawn(Creature* summon) final override
-    {
-        _summons.Despawn(summon);
-    }
-
-    void DoAction(int32 action) override
-    {
-        if (action == ACTION_ACTIVATE_ADDS)
-        {
-            for (ObjectGuid const& guid : _summons)
-                if (Creature* summon = ObjectAccessor::GetCreature(*me, guid))
-                    summon->SetImmuneToPC(false);
-        }
-    }
-
 protected:
     InstanceScript* _instance;
     EventMap _events;
-    SummonList _summons;
 };
 
 struct npc_runic_colossus : public npc_thorim_minibossAI
@@ -1450,12 +1407,6 @@ struct npc_runic_colossus : public npc_thorim_minibossAI
 
         // close the Runic Door
         _instance->HandleGameObject(_instance->GetGuidData(DATA_RUNIC_DOOR), false);
-
-        _summons.DespawnAll();
-        _instance->SetData(DATA_THORIM_COLOSSUS_SUMMONS, 0);
-        for (ThorimSummonLocation const& s : ColossusAddLocations)
-            if (Creature* add = me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s))
-                _instance->SetGuidData(DATA_THORIM_COLOSSUS_SUMMONS, add->GetGUID());
     }
 
     void MoveInLineOfSight(Unit* /*who*/) override
@@ -1465,8 +1416,6 @@ struct npc_runic_colossus : public npc_thorim_minibossAI
 
     void DoAction(int32 action) override
     {
-        npc_thorim_minibossAI::DoAction(action);
-
         if (_runicActive)
             return;
 
@@ -1486,10 +1435,7 @@ struct npc_runic_colossus : public npc_thorim_minibossAI
             thorim->AI()->Talk(SAY_SPECIAL);
 
         if (Creature* giant = _instance->GetCreature(DATA_RUNE_GIANT))
-        {
             giant->SetImmuneToPC(false);
-            giant->AI()->DoAction(ACTION_ACTIVATE_ADDS);
-        }
     }
 
     void JustEngagedWith(Unit* /*who*/) override
@@ -1561,12 +1507,6 @@ struct npc_ancient_rune_giant : public npc_thorim_minibossAI
 
         // close the Stone Door
         _instance->HandleGameObject(_instance->GetGuidData(DATA_STONE_DOOR), false);
-
-        _summons.DespawnAll();
-        _instance->SetData(DATA_THORIM_GIANT_SUMMONS, 0);
-        for (ThorimSummonLocation const& s : GiantAddLocations)
-            if (Creature* add = me->SummonCreature(s.entry, s.pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s))
-                _instance->SetGuidData(DATA_THORIM_GIANT_SUMMONS, add->GetGUID());
     }
 
     void JustEngagedWith(Unit* /*who*/) override
@@ -1633,6 +1573,7 @@ struct npc_sif : public ScriptedAI
 
     void Reset() override
     {
+        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
         _events.Reset();
     }
 
