@@ -67,13 +67,11 @@ namespace
     {
         { 42253, 1, 10 }, // Iceweb Spider Silk
         { 36860, 1, 10 }, // Eternal Fire
-        { 35624, 1, 10 }, // Eternal Earth
         { 35622, 1, 10 }, // Eternal Water
         { 35623, 1, 10 }, // Eternal Air
         { 35625, 1, 10 }, // Eternal Life
         { 35627, 1, 10 }, // Eternal Shadow
-        { 38558, 1, 10 }, // Nerubian Chitin
-        { 36903, 2, 15 }, // Adder's Tongue
+        { 38558, 1, 5 }, // Nerubian Chitin
         { 34055, 1, 5 }, // Greater Cosmic Essence
         { 34052, 1, 5 }, // Dream Shard
     };
@@ -91,14 +89,29 @@ namespace
     // Craft materials - rare
     constexpr PoolItem CRAFT_RARE_ITEMS[] =
     {
+        { 41593, 1, 3 }, // Ebonweave
+        { 41595, 1, 3 }, // Spellweave
+        { 41594, 1, 3 }, // Moonshroud
+        { 37663, 1, 4 }, // Titansteel bar
+    };
+
+    // Rare
+    constexpr PoolItem RARE_ITEMS[] =
+    {
         { 43102, 1, 1 }, // Frozen Orb
-        { 43297, 1, 1 }, // Damaged Necklage
+        { 43297, 1, 1 }, // Damaged Necklace
     };
 
     // Relics - rare
     constexpr PoolItem RELIC_RARE_ITEMS[] =
     {
         { 50255, 1, 1 }, // Dread Pirate Ring
+        { 44091, 1, 1 }, // Sharpened Scarlet Kris
+        { 44092, 1, 1 }, // Reforged Truesilver Champion
+        { 44093, 1, 1 }, // Upgraded Dwarven Hand Cannon
+        { 44094, 1, 1 }, // The Blessed Hammer of Grace
+        { 44095, 1, 1 }, // Grand Staff of Jordan
+        { 44096, 1, 1 }, // Battleworn Thrash Blade
     };
 
     // Fortune
@@ -113,7 +126,8 @@ namespace
         { "Epic Gems", 8.25f, false, false, EPIC_GEMS_ITEMS },
         { "Craft Materials", 20.0f, true, false, CRAFT_COMMON_ITEMS },
         { "Craft Materials (Uncommon)", 20.0f, false, false, CRAFT_UNCOMMON_ITEMS },
-        { "Craft Materials (Rare)", 5.0f, false, false, CRAFT_RARE_ITEMS },
+        { "Craft Materials (Rare)", 8.25f, false, false, CRAFT_RARE_ITEMS },
+        { "Rare", 5.0f, false, false, RARE_ITEMS },
         { "Relics (Rare)", 1.0f, false, true, RELIC_RARE_ITEMS },
         { "Fortune", 0.0825f, false, false, FORTUNE_ITEMS },
     };
