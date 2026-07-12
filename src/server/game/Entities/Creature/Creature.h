@@ -437,6 +437,8 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         uint32 m_cannotReachTimer;
 
         SpellSchoolMask m_meleeDamageSchoolMask;
+        uint32 m_baseAttackPower;
+        uint32 m_baseRangedAttackPower;
         uint32 m_originalEntry;
 
         Position m_homePosition;
@@ -485,11 +487,6 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         // Regenerate health
         bool _regenerateHealth; // Set on creation
         bool _regenerateHealthLock; // Dynamically set
-
-        // EG - cached base AP for stale UNIT_FIELD_ATTACK_POWER_MODS fix
-        // set in UpdateLevelDependantStats, read in UpdateAttackPowerAndDamage
-        uint32 _baseAttackPower;
-        uint32 _baseRangedAttackPower;
 
         // EG - Custom declarations
         uint32 _storedMovementFlags;

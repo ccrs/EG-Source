@@ -350,6 +350,13 @@ Unit::Unit(bool isWorldObject) :
                                                             // implement 50% base damage from offhand
     m_auraPctModifiersGroup[UNIT_MOD_DAMAGE_OFFHAND][TOTAL_PCT] = 0.5f;
 
+    for (uint32 i = 0; i < uint32(AttackPowerModIndex::End); ++i)
+    {
+        m_attackPowerMods[i][uint32(AttackPowerModType::FlatPositive)] = 0.0f;
+        m_attackPowerMods[i][uint32(AttackPowerModType::FlatNegative)] = 0.0f;
+        m_attackPowerMods[i][uint32(AttackPowerModType::Pct)] = 1.0f;
+    }
+
     for (uint8 i = 0; i < MAX_ATTACK; ++i)
     {
         m_weaponDamage[i][MINDAMAGE][0] = BASE_MINDAMAGE;
@@ -9022,53 +9029,9 @@ bool Unit::IsInDisallowedMountForm() const
 ########                         ########
 #######################################*/
 
-void ApplyPercentModFloatVar(float& var, float val, bool apply);
-
-// EG - AP modifier accessor backing the stale UNIT_FIELD_ATTACK_POWER_MODS sign-change fix (separate pos/neg/pct indices)
-void Unit::HandleAttackPowerModifier(AttackPowerModIndex index, AttackPowerModType modifierType, float amount, bool apply)
+void ApplyPercentModFloatVar(float& var, float val, bool apply)
 {
-    if (index >= AP_MODS_COUNT || modifierType >= AP_MOD_TYPE_COUNT)
-    {
-        TC_LOG_ERROR("entities.unit", "ERROR in HandleAttackPowerModifier(): non-existing AttackPowerModIndex or wrong AttackPowerModType!");
-        return;
-    }
-
-    switch (modifierType)
-    {
-        case AP_MOD_POSITIVE_FLAT:
-            m_attackPowerMods[index].PositiveMods += apply ? amount : -amount;
-            break;
-        case AP_MOD_NEGATIVE_FLAT:
-            m_attackPowerMods[index].NegativeMods += apply ? amount : -amount;
-            break;
-        case AP_MOD_PCT:
-            ApplyPercentModFloatVar(m_attackPowerMods[index].Multiplier, amount, apply);
-            break;
-        default:
-            break;
-    }
-
-    if (!CanModifyStats())
-        return;
-
-    UpdateAttackPowerAndDamage(index == RANGED_AP_MODS);
-}
-
-float Unit::GetAttackPowerModifierValue(AttackPowerModIndex index, AttackPowerModType modifierType) const
-{
-    if (index >= AP_MODS_COUNT || modifierType >= AP_MOD_TYPE_COUNT)
-    {
-        TC_LOG_ERROR("entities.unit", "ERROR in GetAttackPowerModifierValue(): non-existing AttackPowerModIndex or wrong AttackPowerModType!");
-        return 0.0f;
-    }
-
-    switch (modifierType)
-    {
-        case AP_MOD_POSITIVE_FLAT: return m_attackPowerMods[index].PositiveMods;
-        case AP_MOD_NEGATIVE_FLAT: return m_attackPowerMods[index].NegativeMods;
-        case AP_MOD_PCT:           return std::max(0.0f, m_attackPowerMods[index].Multiplier);
-        default:                   return 0.0f;
-    }
+    var *= (apply ? (100.0f + val) / 100.0f : 100.0f / (100.0f + val));
 }
 
 void Unit::HandleStatFlatModifier(UnitMods unitMod, UnitModifierFlatType modifierType, float amount, bool apply)
@@ -9197,6 +9160,41 @@ void Unit::UpdateUnitMod(UnitMods unitMod)
         default:
             break;
     }
+}
+
+void Unit::HandleAttackPowerModifier(AttackPowerModIndex index, AttackPowerModType modifierType, float amount, bool apply)
+{
+    if (index >= AttackPowerModIndex::End || modifierType >= AttackPowerModType::End)
+    {
+        TC_LOG_ERROR("entities.unit", "ERROR in HandleAttackPowerModifier(): non-existing AttackPowerModIndex or wrong AttackPowerModType!");
+        return;
+    }
+
+    switch (modifierType)
+    {
+        case AttackPowerModType::Pct:
+            ApplyPercentModFloatVar(m_attackPowerMods[uint32(index)][uint32(modifierType)], amount, apply);
+            break;
+        default:
+            m_attackPowerMods[uint32(index)][uint32(modifierType)] += apply ? amount : -amount;
+            break;
+    }
+
+    if (!CanModifyStats())
+        return;
+
+    UpdateAttackPowerAndDamage(index == AttackPowerModIndex::Ranged);
+}
+
+float Unit::GetAttackPowerModifierValue(AttackPowerModIndex index, AttackPowerModType modifierType) const
+{
+    if (index >= AttackPowerModIndex::End || modifierType >= AttackPowerModType::End)
+    {
+        TC_LOG_ERROR("entities.unit", "ERROR in GetAttackPowerModifierValue(): non-existing AttackPowerModIndex or wrong AttackPowerModType!");
+        return 0.0f;
+    }
+
+    return m_attackPowerMods[uint32(index)][uint32(modifierType)];
 }
 
 void Unit::UpdateDamageDoneMods(WeaponAttackType attackType, int32 /*skipEnchantSlot = -1*/)
@@ -10687,11 +10685,6 @@ Unit* Unit::SelectNearbyTarget(Unit* exclude, float dist) const
 
     // select random
     return Trinity::Containers::SelectRandomContainerElement(targets);
-}
-
-void ApplyPercentModFloatVar(float& var, float val, bool apply)
-{
-    var *= (apply ? (100.0f + val) / 100.0f : 100.0f / (100.0f + val));
 }
 
 void Unit::ApplyAttackTimePercentMod(WeaponAttackType att, float val, bool apply)

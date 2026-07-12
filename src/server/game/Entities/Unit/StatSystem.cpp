@@ -342,8 +342,7 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
     float val2 = 0.0f;
     float level = float(GetLevel());
 
-    // EG - fix stale UNIT_FIELD_ATTACK_POWER_MODS on AP modifier sign change (track pos/neg flat AP mods separately)
-    AttackPowerModIndex unitMod = ranged ? RANGED_AP_MODS : MELEE_AP_MODS;
+    AttackPowerModIndex unitMod = ranged ? AttackPowerModIndex::Ranged : AttackPowerModIndex::Melee;
 
     if (ranged)
     {
@@ -449,41 +448,38 @@ void Player::UpdateAttackPowerAndDamage(bool ranged)
         }
     }
 
-    float baseAttackPower    = val2;
-    float attackPowerModPos  = GetAttackPowerModifierValue(unitMod, AP_MOD_POSITIVE_FLAT);
-    float attackPowerModNeg  = GetAttackPowerModifierValue(unitMod, AP_MOD_NEGATIVE_FLAT);
-    float attackPowerMultiplier = GetAttackPowerModifierValue(unitMod, AP_MOD_PCT) - 1.0f;
+    float baseAttackPower       = val2;
+    float attackPowerModPos     = GetAttackPowerModifierValue(unitMod, AttackPowerModType::FlatPositive);
+    float attackPowerModNeg     = GetAttackPowerModifierValue(unitMod, AttackPowerModType::FlatNegative);
+    float attackPowerMultiplier = GetAttackPowerModifierValue(unitMod, AttackPowerModType::Pct) - 1.0f;
 
     // Dynamic flat mods: routed to pos or neg based on sign
-    float dynMod = 0.0f;
+    auto accumulateMod = [&attackPowerModPos, &attackPowerModNeg](float value)
+    {
+        if (value >= 0.0f)
+            attackPowerModPos += value;
+        else
+            attackPowerModNeg += value;
+    };
+
     if (ranged)
     {
         if ((GetClassMask() & CLASSMASK_WAND_USERS) == 0)
         {
             AuraEffectList const& mRAPbyStat = GetAuraEffectsByType(SPELL_AURA_MOD_RANGED_ATTACK_POWER_OF_STAT_PERCENT);
             for (AuraEffect const* aurEff : mRAPbyStat)
-            {
-                dynMod = CalculatePct(GetStat(Stats(aurEff->GetMiscValue())), aurEff->GetAmount());
-                if (dynMod > 0.0f) attackPowerModPos += dynMod;
-                else               attackPowerModNeg += dynMod;
-            }
+                accumulateMod(CalculatePct(GetStat(Stats(aurEff->GetMiscValue())), aurEff->GetAmount()));
         }
     }
     else
     {
         AuraEffectList const& mAPbyStat = GetAuraEffectsByType(SPELL_AURA_MOD_ATTACK_POWER_OF_STAT_PERCENT);
         for (AuraEffect const* aurEff : mAPbyStat)
-        {
-            dynMod = CalculatePct(GetStat(Stats(aurEff->GetMiscValue())), aurEff->GetAmount());
-            if (dynMod > 0.0f) attackPowerModPos += dynMod;
-            else               attackPowerModNeg += dynMod;
-        }
+            accumulateMod(CalculatePct(GetStat(Stats(aurEff->GetMiscValue())), aurEff->GetAmount()));
     }
 
     // applies to both, amount updated in PeriodicTick each 30 seconds
-    dynMod = GetTotalAuraModifier(SPELL_AURA_MOD_ATTACK_POWER_OF_ARMOR);
-    if (dynMod > 0.0f) attackPowerModPos += dynMod;
-    else               attackPowerModNeg += dynMod;
+    accumulateMod(GetTotalAuraModifier(SPELL_AURA_MOD_ATTACK_POWER_OF_ARMOR));
 
     if (ranged)
     {
@@ -1129,13 +1125,12 @@ void Creature::UpdateMaxPower(Powers power)
 
 void Creature::UpdateAttackPowerAndDamage(bool ranged)
 {
-    // EG - fix stale UNIT_FIELD_ATTACK_POWER_MODS on AP modifier sign change (track pos/neg flat AP mods separately)
-    AttackPowerModIndex unitMod = ranged ? RANGED_AP_MODS : MELEE_AP_MODS;
+    AttackPowerModIndex unitMod = ranged ? AttackPowerModIndex::Ranged : AttackPowerModIndex::Melee;
 
-    float baseAttackPower       = ranged ? _baseRangedAttackPower : _baseAttackPower;
-    float attackPowerModPos     = GetAttackPowerModifierValue(unitMod, AP_MOD_POSITIVE_FLAT);
-    float attackPowerModNeg     = GetAttackPowerModifierValue(unitMod, AP_MOD_NEGATIVE_FLAT);
-    float attackPowerMultiplier = GetAttackPowerModifierValue(unitMod, AP_MOD_PCT) - 1.0f;
+    float baseAttackPower       = ranged ? m_baseRangedAttackPower : m_baseAttackPower;
+    float attackPowerModPos     = GetAttackPowerModifierValue(unitMod, AttackPowerModType::FlatPositive);
+    float attackPowerModNeg     = GetAttackPowerModifierValue(unitMod, AttackPowerModType::FlatNegative);
+    float attackPowerMultiplier = GetAttackPowerModifierValue(unitMod, AttackPowerModType::Pct) - 1.0f;
 
     if (ranged)
     {
@@ -1438,8 +1433,7 @@ void Guardian::UpdateAttackPowerAndDamage(bool ranged)
 
     float val = 0.0f;
     float bonusAP = 0.0f;
-    // EG - fix stale UNIT_FIELD_ATTACK_POWER_MODS on AP modifier sign change (track pos/neg flat AP mods separately)
-    AttackPowerModIndex unitMod = MELEE_AP_MODS;
+    AttackPowerModIndex unitMod = AttackPowerModIndex::Melee;
 
     if (GetEntry() == ENTRY_IMP)                                   // imp's attack power
         val = GetStat(STAT_STRENGTH) - 10.0f;
@@ -1508,9 +1502,9 @@ void Guardian::UpdateAttackPowerAndDamage(bool ranged)
     }
 
     float base_attPower      = val + bonusAP;
-    float attPowerModPos     = GetAttackPowerModifierValue(unitMod, AP_MOD_POSITIVE_FLAT);
-    float attPowerModNeg     = GetAttackPowerModifierValue(unitMod, AP_MOD_NEGATIVE_FLAT);
-    float attPowerMultiplier = GetAttackPowerModifierValue(unitMod, AP_MOD_PCT) - 1.0f;
+    float attPowerModPos     = GetAttackPowerModifierValue(unitMod, AttackPowerModType::FlatPositive);
+    float attPowerModNeg     = GetAttackPowerModifierValue(unitMod, AttackPowerModType::FlatNegative);
+    float attPowerMultiplier = GetAttackPowerModifierValue(unitMod, AttackPowerModType::Pct) - 1.0f;
 
     SetAttackPower(int32(base_attPower));
     SetAttackPowerModPos(int32(attPowerModPos));
