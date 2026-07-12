@@ -1126,23 +1126,34 @@ class spell_hodir_biting_cold_area_aura : public AuraScript
         return ValidateSpellInfo({ SPELL_TOASTY_FIRE_AREA_AURA, SPELL_BITING_COLD_PERIODIC });
     }
 
-    void OnPeriodic(AuraEffect const* aurEff)
+    void OnPeriodic(AuraEffect const* /*aurEff*/)
     {
         Unit* target = GetTarget();
 
         if (target->isMoving() || target->HasAura(SPELL_TOASTY_FIRE_AREA_AURA))
         {
             target->RemoveAuraFromStack(SPELL_BITING_COLD_PERIODIC);
-            const_cast<AuraEffect*>(aurEff)->ResetTicks();
+            _stillTicks[target->GetGUID()] = 0;
         }
-        else if (!(aurEff->GetTickNumber() % 4) && !target->HasAura(SPELL_TOASTY_FIRE_AREA_AURA))
+        else if (++_stillTicks[target->GetGUID()] >= 4)
+        {
+            _stillTicks[target->GetGUID()] = 0;
             target->CastSpell(target, SPELL_BITING_COLD_PERIODIC, true);
+        }
+    }
+
+    void OnApplicationRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        _stillTicks.erase(GetTarget()->GetGUID());
     }
 
     void Register() override
     {
         OnEffectPeriodic += AuraEffectPeriodicFn(spell_hodir_biting_cold_area_aura::OnPeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+        AfterEffectRemove += AuraEffectRemoveFn(spell_hodir_biting_cold_area_aura::OnApplicationRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
     }
+
+    std::unordered_map<ObjectGuid, uint8> _stillTicks;
 };
 
 // 62039 - Biting Cold
