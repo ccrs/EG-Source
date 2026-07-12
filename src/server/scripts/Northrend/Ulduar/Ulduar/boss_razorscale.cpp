@@ -367,6 +367,9 @@ struct boss_razorscale : public BossAI
 
     void ScheduleAirPhaseEvents()
     {
+        events.CancelEvent(EVENT_SUMMON_MINIONS);
+        events.CancelEvent(EVENT_SUMMON_MINIONS_2);
+
         events.ScheduleEvent(EVENT_FIREBALL, Seconds(3), 0, PHASE_AIR);
         events.ScheduleEvent(EVENT_DEVOURING_FLAME, Seconds(9), 0, PHASE_AIR);
         events.ScheduleEvent(EVENT_SUMMON_MINIONS, Seconds(1), 0, PHASE_AIR);

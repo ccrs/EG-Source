@@ -589,12 +589,6 @@ struct npc_boombot : public ScriptedAI
 
         DoCastSelf(SPELL_321_BOOMBOT_AURA);
 
-        // HACK/workaround:
-        // these values aren't confirmed - lack of data - and the values in DB are incorrect
-        // these values are needed for correct damage of Boom spell
-        me->SetFloatValue(UNIT_FIELD_MINDAMAGE, 15000.0f);
-        me->SetFloatValue(UNIT_FIELD_MAXDAMAGE, 18000.0f);
-
         if (Creature* xt002 = _instance->GetCreature(DATA_XT002))
             xt002->AI()->JustSummoned(me);
 

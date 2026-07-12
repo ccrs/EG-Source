@@ -245,9 +245,9 @@ struct boss_hodir : public BossAI
 
         Talk(SAY_AGGRO);
 
-        DoCastSelf(SPELL_SHATTER_CHEST);
-        DoCastSelf(SPELL_BITING_COLD);
-        DoCastSelf(SPELL_ICICLE_PERIODIC);
+        DoCastSelf(SPELL_SHATTER_CHEST, true);
+        DoCastSelf(SPELL_BITING_COLD, true);
+        DoCastSelf(SPELL_ICICLE_PERIODIC, true);
 
         events.ScheduleEvent(EVENT_FREEZE, 10s, 20s);
         events.ScheduleEvent(EVENT_FROZEN_BLOWS, 60s, 65s);
