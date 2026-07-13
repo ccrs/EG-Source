@@ -323,9 +323,9 @@ Player::Player(WorldSession* session): Unit(true)
 
     m_ChampioningFaction = 0;
 
+    m_healthFraction = 0.0f;
     for (uint8 i = 0; i < MAX_POWERS; ++i)
         m_powerFraction[i] = 0;
-    m_healthFraction = 0.f;
 
     isDebugAreaTriggers = false;
 
@@ -2136,15 +2136,28 @@ void Player::RegenerateHealth()
     addValue += m_baseHealthRegen / 2.5f;
 
     if (addValue < 0.0f)
-        addValue = 0.0f;
+        return;
 
-    // EG - carry fractional health regen across ticks (no silent rounding loss)
     addValue += m_healthFraction;
-    uint32 integerValue = uint32(addValue);
-    m_healthFraction = addValue - integerValue;
+    int32 integerValue = int32(addValue);
+    if (!integerValue)
+    {
+        m_healthFraction = addValue; // EG - store the accumulated fraction so sub-1 ticks are not lost
+        return;
+    }
 
-    if (integerValue)
-        ModifyHealth(int32(integerValue));
+    if (curValue + integerValue < maxValue)
+    {
+        curValue += integerValue;
+        m_healthFraction = addValue - integerValue;
+    }
+    else
+    {
+        curValue = maxValue;
+        m_healthFraction = 0.0f;
+    }
+
+    SetHealth(curValue);
 }
 
 void Player::ResetAllPowers()
