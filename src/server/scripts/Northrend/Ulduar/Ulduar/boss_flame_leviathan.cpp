@@ -1311,7 +1311,7 @@ class npc_lorekeeper : public CreatureScript
             {
                 if (menuId == GOSSIP_MENU_LORE_KEEPER_CONFIRM && gossipListId == GOSSIP_OPTION_LORE_KEEPER_CONFIRM)
                 {
-                    if (_instance->GetData(DATA_ACTIVE_TOWERS) != 0)
+                    if (_instance->GetData(DATA_ACTIVE_TOWERS) != 0 || _instance->GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
                     {
                         player->PlayerTalkClass->SendCloseGossip();
                         return false;

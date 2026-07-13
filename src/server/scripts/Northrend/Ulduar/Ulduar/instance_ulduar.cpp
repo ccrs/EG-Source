@@ -367,17 +367,14 @@ class instance_ulduar : public InstanceMapScript
                         if (_flIntroCompleted || _activeTowers || GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
                             creature->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                         break;
+                    case NPC_LORE_KEEPER_OF_NORGANNON:
+                        if (_activeTowers || GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
+                            creature->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+                        break;
                     case NPC_KIRIN_TOR_BATTLE_MAGE:
                         if (creature->GetSpawnId() == ShieldChannelMageSpawnIdEast || creature->GetSpawnId() == ShieldChannelMageSpawnIdNorthEast)
-                        {
                             if (!_flIntroCompleted)
                                 KirinTorMageGUIDs.push_back(creature->GetGUID());
-                            else
-                            {
-                                creature->InterruptNonMeleeSpells(true);
-                                creature->SetEmoteState(EMOTE_STATE_NONE);
-                            }
-                        }
                         break;
 
                     // XT-002 Deconstructor
@@ -1078,6 +1075,8 @@ class instance_ulduar : public InstanceMapScript
                         return _activeTowers ? 1 : 0;
                     case DATA_DESTROYED_TOWERS:
                         return _destroyedTowers;
+                    case DATA_FL_INTRO_COMPLETED:
+                        return _flIntroCompleted ? 1 : 0;
                     case DATA_CALL_TRAM:
                         return _mimironTramUsed ? 1 : 0;
                     default:

@@ -513,6 +513,7 @@ enum UlduarData
     DATA_FL_INTRO_PLAYER,
     DATA_FL_HARDMODE_CONFIRMED,
     DATA_FL_HARDMODE_PLAYER,
+    DATA_FL_INTRO_COMPLETED, // DB condition
 
     DATA_CALL_TRAM              = 710
 };
