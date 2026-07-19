@@ -602,6 +602,7 @@ class boss_flame_leviathan : public CreatureScript
                                 c->SetReactState(REACT_AGGRESSIVE);
                             return true;
                         }), me->m_Events.CalculateTime(2s));
+                        break;
                     default:
                         break;
                 }
