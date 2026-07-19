@@ -308,7 +308,8 @@ enum MimironActions
     DO_DEACTIVATE_COMPUTER,
     DO_ACTIVATE_SELF_DESTRUCT,
 
-    DO_ENCOUNTER_DONE
+    DO_ENCOUNTER_DONE,
+    DO_RESET_MKII
 };
 
 enum MimironPhases
@@ -470,10 +471,15 @@ struct boss_mimiron : public BossAI
 
     void EnterEvadeMode(EvadeReason why) override
     {
-        if (instance->GetBossState(DATA_MIMIRON) == DONE)
+        if (instance->GetBossState(DATA_MIMIRON) == DONE || why == EVADE_REASON_VEHICLE_EVADE)
             return;
 
-        CreatureAI::EnterEvadeMode(why);
+        BossAI::EnterEvadeMode(why);
+    }
+
+    void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
+    {
+        damage = 0;
     }
 
     void JustDied(Unit* /*killer*/) override
@@ -495,8 +501,12 @@ struct boss_mimiron : public BossAI
         if (instance->GetBossState(DATA_MIMIRON) == DONE) // Mimiron will attempt to reset because he is not dead and will be set to friendly before despawning.
             return;
 
+        if (Creature* vx001 = instance->GetCreature(DATA_VX_001))
+            vx001->AI()->EnterEvadeMode();
         if (Creature* aerial = instance->GetCreature(DATA_AERIAL_COMMAND_UNIT))
             aerial->AI()->EnterEvadeMode();
+        if (Creature* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II))
+            mkii->AI()->DoAction(DO_RESET_MKII);
 
         _Reset();
         me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
@@ -780,7 +790,14 @@ struct boss_mimiron : public BossAI
                         if (!alive)
                             EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
                         else
+                        {
+                            for (uint32 data : { DATA_LEVIATHAN_MK_II, DATA_VX_001, DATA_AERIAL_COMMAND_UNIT })
+                                if (Creature* machine = instance->GetCreature(data))
+                                    if (machine->IsAlive() && !machine->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2) && !machine->IsImmuneToPC())
+                                        DoZoneInCombat(machine);
+
                             events.ScheduleEvent(EVENT_CHECK_PLAYERS, 5s);
+                        }
                     }
                     break;
                 case EVENT_BERSERK:
@@ -893,6 +910,9 @@ struct boss_leviathan_mk_ii : public BossAI
                 events.ScheduleEvent(EVENT_SHOCK_BLAST, 45s);
                 MimironApplyBerserkIfActive(me);
                 break;
+            case DO_RESET_MKII:
+                BossAI::EnterEvadeMode(EVADE_REASON_OTHER);
+                break;
             default:
                 break;
         }
@@ -925,6 +945,11 @@ struct boss_leviathan_mk_ii : public BossAI
         if (victim->GetTypeId() == TYPEID_PLAYER)
             if (Creature* mimiron = instance->GetCreature(DATA_MIMIRON))
                 mimiron->AI()->Talk(events.IsInPhase(PHASE_LEVIATHAN_MK_II) ? SAY_MKII_SLAY : SAY_V07TRON_SLAY);
+    }
+
+    void EnterEvadeMode(EvadeReason /*why*/) override
+    {
+        summons.DespawnAll();
     }
 
     void MovementInform(uint32 type, uint32 point) override
