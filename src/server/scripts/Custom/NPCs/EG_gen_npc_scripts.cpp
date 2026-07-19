@@ -34,7 +34,7 @@ struct EG_npc_damage_test_dummy : public NullCreatureAI
 {
     friend struct EG_npc_damage_test_controller;
 
-    EG_npc_damage_test_dummy(Creature* creature) : NullCreatureAI(creature), _mode(MODE_NULL), _attemptCountdown(0), _attemptTimer(0), _attemptDuration(0), _healthUpdateInterval(1000), _rageGainInterval(3000) { }
+    EG_npc_damage_test_dummy(Creature* creature) : NullCreatureAI(creature), _attemptCountdown(0), _attemptTimer(0), _attemptDuration(0), _healthUpdateInterval(1000), _rageGainInterval(3000) { }
 
     void InitializeAI() override
     {
@@ -224,7 +224,6 @@ private:
     }
 
     ObjectGuid _currentPlayer;
-    TestDummyModes _mode;
     std::unordered_map<ObjectGuid, std::pair<std::string, uint32>> _attemptScores;
     uint32 _attemptCountdown;
     uint32 _attemptTimer;
