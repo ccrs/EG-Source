@@ -308,8 +308,7 @@ enum MimironActions
     DO_DEACTIVATE_COMPUTER,
     DO_ACTIVATE_SELF_DESTRUCT,
 
-    DO_ENCOUNTER_DONE,
-    DO_RESET_MKII
+    DO_ENCOUNTER_DONE
 };
 
 enum MimironPhases
@@ -474,7 +473,14 @@ struct boss_mimiron : public BossAI
         if (instance->GetBossState(DATA_MIMIRON) == DONE || why == EVADE_REASON_VEHICLE_EVADE)
             return;
 
-        BossAI::EnterEvadeMode(why);
+        for (uint32 data : { DATA_LEVIATHAN_MK_II, DATA_VX_001, DATA_AERIAL_COMMAND_UNIT })
+            if (Creature* machine = instance->GetCreature(data))
+                machine->AI()->EnterEvadeMode();
+
+        summons.DespawnAll();
+        if (Creature* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II))
+            mkii->DespawnOrUnsummon(0s, 15s);
+        _DespawnAtEvade();
     }
 
     void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
@@ -500,13 +506,6 @@ struct boss_mimiron : public BossAI
     {
         if (instance->GetBossState(DATA_MIMIRON) == DONE) // Mimiron will attempt to reset because he is not dead and will be set to friendly before despawning.
             return;
-
-        if (Creature* vx001 = instance->GetCreature(DATA_VX_001))
-            vx001->AI()->EnterEvadeMode();
-        if (Creature* aerial = instance->GetCreature(DATA_AERIAL_COMMAND_UNIT))
-            aerial->AI()->EnterEvadeMode();
-        if (Creature* mkii = instance->GetCreature(DATA_LEVIATHAN_MK_II))
-            mkii->AI()->DoAction(DO_RESET_MKII);
 
         _Reset();
         me->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
@@ -909,9 +908,6 @@ struct boss_leviathan_mk_ii : public BossAI
                 events.ScheduleEvent(EVENT_PROXIMITY_MINE, 15s);
                 events.ScheduleEvent(EVENT_SHOCK_BLAST, 45s);
                 MimironApplyBerserkIfActive(me);
-                break;
-            case DO_RESET_MKII:
-                BossAI::EnterEvadeMode(EVADE_REASON_OTHER);
                 break;
             default:
                 break;
