@@ -112,3 +112,14 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 
 
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 3900 AND `SourceId` = 0;
+
+UPDATE `creature_summon_groups` SET `summonTime` = 20000 WHERE (((`summonerId` = 4484) AND (`summonerType` = 0)) AND (`groupId` = 0)) AND (`entry` = 3879);
+UPDATE `creature_summon_groups` SET `summonTime` = 20000 WHERE (((`summonerId` = 4484) AND (`summonerType` = 0)) AND (`groupId` = 0)) AND (`entry` = 3879);
+UPDATE `creature_summon_groups` SET `summonTime` = 20000 WHERE (((`summonerId` = 4484) AND (`summonerType` = 0)) AND (`groupId` = 0)) AND (`entry` = 3879);
+UPDATE `creature_summon_groups` SET `summonTime` = 20000 WHERE (((`summonerId` = 4484) AND (`summonerType` = 0)) AND (`groupId` = 0)) AND (`entry` = 3879);
+UPDATE `creature_summon_groups` SET `summonTime` = 20000 WHERE (((`summonerId` = 4484) AND (`summonerType` = 0)) AND (`groupId` = 1)) AND (`entry` = 3893);
+UPDATE `creature_summon_groups` SET `summonTime` = 20000 WHERE (((`summonerId` = 4484) AND (`summonerType` = 0)) AND (`groupId` = 1)) AND (`entry` = 3893);
+UPDATE `creature_summon_groups` SET `summonTime` = 20000 WHERE (((`summonerId` = 4484) AND (`summonerType` = 0)) AND (`groupId` = 1)) AND (`entry` = 3893);
+UPDATE `creature_summon_groups` SET `summonTime` = 20000 WHERE (((`summonerId` = 4484) AND (`summonerType` = 0)) AND (`groupId` = 2)) AND (`entry` = 3898);
+UPDATE `creature_summon_groups` SET `summonTime` = 20000 WHERE (((`summonerId` = 4484) AND (`summonerType` = 0)) AND (`groupId` = 2)) AND (`entry` = 3899);
+UPDATE `creature_summon_groups` SET `summonTime` = 20000 WHERE (((`summonerId` = 4484) AND (`summonerType` = 0)) AND (`groupId` = 2)) AND (`entry` = 3900);

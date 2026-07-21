@@ -3434,6 +3434,7 @@ void SpellMgr::LoadSpellInfoCorrections()
     ApplySpellFix({ 37408 }, [](SpellInfo* spellInfo)
     {
         spellInfo->AttributesEx3 |= SPELL_ATTR3_STACK_FOR_DIFF_CASTERS;
+        spellInfo->StackAmount = 5; // EG
     });
 
     // Everlasting Affliction
