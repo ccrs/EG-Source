@@ -125,7 +125,7 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
     if (!target || !target->IsInWorld())
         return false;
 
-    if (owner->HasUnitState(UNIT_STATE_NOT_MOVE) || owner->IsMovementPreventedByCasting())
+    if (owner->HasUnitState(UNIT_STATE_NOT_MOVE) || owner->IsMovementPreventedByCasting() || owner->GetSpeed(MOVE_RUN) < 0.001f)
     {
         _path = nullptr;
         owner->StopMoving();

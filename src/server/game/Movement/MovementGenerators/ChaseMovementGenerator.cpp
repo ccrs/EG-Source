@@ -160,8 +160,8 @@ bool ChaseMovementGenerator::Update(Unit* owner, uint32 diff)
     if (!target || !target->IsInWorld())
         return false;
 
-    // the owner might be unable to move (rooted or casting), or we have lost the target, pause movement
-    if (owner->HasUnitState(UNIT_STATE_NOT_MOVE) || owner->IsMovementPreventedByCasting() || _HasLostTarget(owner, target))
+    // the owner might be unable to move (rooted, casting or fully slowed), or we have lost the target, pause movement
+    if (owner->HasUnitState(UNIT_STATE_NOT_MOVE) || owner->IsMovementPreventedByCasting() || owner->GetSpeed(MOVE_RUN) < 0.001f || _HasLostTarget(owner, target))
     {
         owner->StopMoving();
         _lastTargetPosition.reset();
