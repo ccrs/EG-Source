@@ -17,3 +17,25 @@ INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry
 
 --
 UPDATE `creature_template` SET `unit_flags` = 32832 WHERE `entry` = 448;
+
+ -- Arcane Protector smart ai
+SET @ENTRY := 16504;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 0, 2000, 21000, 30000, 11, 29788, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Every 21 - 30 seconds (0 - 2s initially) (IC) - Self: Cast spell  Return Fire (29788) on Self'),
+(@ENTRY, 0, 1, 0, 0, 0, 100, 0, 0, 5000, 15000, 30000, 11, 29857, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'Every 15 - 30 seconds (0 - 5s initially) (IC) - Self: Cast spell  Summon Astral Spark (29857) on Self'),
+(@ENTRY, 0, 2, 0, 25, 0, 100, 0, 0, 0, 0, 0, 11, 18950, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 'On reset - Self: Cast spell  Invisibility and Stealth Detection (18950) on Self');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 16504 AND `SourceId` = 0;
+
+ -- Astral Spark smart ai
+SET @ENTRY := 17283;
+UPDATE `creature_template` SET `AIName` = 'SmartAI', `ScriptName` = '' WHERE `entry` = @ENTRY;
+DELETE FROM `smart_scripts` WHERE `source_type` = 0 AND `entryOrGuid` = @ENTRY;
+INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
+(@ENTRY, 0, 0, 0, 0, 0, 100, 0, 0, 15000, 30000, 30000, 11, 31472, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 'Every 30 - 30 seconds (0 - 15s initially) (IC) - Self: Cast spell  Arcane Discharge (31472) on Victim');
+
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 22 AND `SourceEntry` = 17283 AND `SourceId` = 0;
