@@ -14,3 +14,6 @@ INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry
 (22, 2, 24314, 0, 0, 1, 0, 42786, 0, 0, 0, 0, 0, '', 'SAI OOC LoS on 24314 only triggers if player has aura 42786'),
 (22, 4, 24321, 0, 0, 9, 0, 11344, 0, 0, 0, 0, 0, '', 'SAI OOC LoS on 24321 only triggers if player has taken quest 11344'),
 (22, 4, 24321, 0, 0, 1, 0, 43466, 0, 0, 0, 0, 0, '', 'SAI OOC LoS on 24321 only triggers if player has aura 43466');
+
+--
+UPDATE `creature_template` SET `unit_flags` = 32832 WHERE `entry` = 448;
