@@ -54,7 +54,7 @@ bool PointMovementGenerator<T>::DoInitialize(T* owner)
         return true;
     }
 
-    if (owner->HasUnitState(UNIT_STATE_NOT_MOVE) || owner->IsMovementPreventedByCasting())
+    if (owner->HasUnitState(UNIT_STATE_NOT_MOVE) || owner->IsMovementPreventedByCasting() || owner->GetSpeed(MOVE_RUN) < 0.001f)
     {
         MovementGenerator::AddFlag(MOVEMENTGENERATOR_FLAG_INTERRUPTED);
         owner->StopMoving();
@@ -103,7 +103,7 @@ bool PointMovementGenerator<T>::DoUpdate(T* owner, uint32 /*diff*/)
         return true;
     }
 
-    if (owner->HasUnitState(UNIT_STATE_NOT_MOVE) || owner->IsMovementPreventedByCasting())
+    if (owner->HasUnitState(UNIT_STATE_NOT_MOVE) || owner->IsMovementPreventedByCasting() || owner->GetSpeed(MOVE_RUN) < 0.001f)
     {
         MovementGenerator::AddFlag(MOVEMENTGENERATOR_FLAG_INTERRUPTED);
         owner->StopMoving();
