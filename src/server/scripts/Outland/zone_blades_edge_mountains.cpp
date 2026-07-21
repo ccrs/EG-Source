@@ -924,6 +924,7 @@ enum ScannerMasterBunny
 {
     NPC_OSCILLATING_FREQUENCY_SCANNER_TOP_BUNNY = 21759,
     GO_OSCILLATING_FREQUENCY_SCANNER            = 184926,
+    SPELL_SUMMON_TOP_BUNNY_CASTER               = 37392, // EG - serverside
     SPELL_OSCILLATION_FIELD                     = 37408,
     QUEST_GAUGING_THE_RESONANT_FREQUENCY        = 10594
 };
@@ -946,10 +947,8 @@ public:
                 me->DespawnOrUnsummon();
             else
             {
-                // Spell 37392 does not exist in dbc, manually spawning
-                me->SummonCreature(NPC_OSCILLATING_FREQUENCY_SCANNER_TOP_BUNNY, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() + 0.5f, me->GetOrientation(), TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 50s);
-                me->SummonGameObject(GO_OSCILLATING_FREQUENCY_SCANNER, *me, QuaternionData(), 50s);
-                me->DespawnOrUnsummon(50s);
+                DoCastSelf(SPELL_SUMMON_TOP_BUNNY_CASTER, true);
+                me->SummonGameObject(GO_OSCILLATING_FREQUENCY_SCANNER, *me, QuaternionData(), 210s);
             }
 
             timer = 500;
