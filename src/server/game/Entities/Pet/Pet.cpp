@@ -1928,6 +1928,10 @@ void Pet::CastPetAuras(bool current)
 {
     Player* owner = GetOwner();
 
+    // EG - creature_template_addon aura support for summoned class pets
+    if (getPetType() != HUNTER_PET)
+        LoadCreaturesAddonAuras();
+
     if (!IsPermanentPetFor(owner))
         return;
 
