@@ -131,8 +131,6 @@ enum AssemblyYells
 
 enum AssemblyMisc
 {
-    NPC_WORLD_TRIGGER                            = 22515,
-
     DATA_PHASE_3                                 = 1,
     POINT_BRUNDIR_LAND                           = 1,
     POINT_BRUNDIR_TAKEOFF                        = 2

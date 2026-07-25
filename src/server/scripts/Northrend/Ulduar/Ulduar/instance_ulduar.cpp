@@ -355,6 +355,10 @@ class instance_ulduar : public InstanceMapScript
 
                 switch (creature->GetEntry())
                 {
+                    case NPC_WORLD_TRIGGER_MIMIRON:
+                    case NPC_WORLD_TRIGGER:
+                        creature->SetIsCombatDisallowed(true);
+                        break;
                     case NPC_SALVAGED_DEMOLISHER:
                     case NPC_SALVAGED_SIEGE_ENGINE:
                     case NPC_SALVAGED_CHOPPER:

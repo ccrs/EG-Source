@@ -135,6 +135,7 @@ enum UlduarNPCs
     NPC_DB_TARGET                           = 33576,
     NPC_ROCKET_MIMIRON_VISUAL               = 34050,
     NPC_WORLD_TRIGGER_MIMIRON               = 21252,
+    NPC_WORLD_TRIGGER                       = 22515,
     NPC_COMPUTER                            = 34143,
 
     // Freya's Keepers

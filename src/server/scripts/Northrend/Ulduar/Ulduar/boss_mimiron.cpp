@@ -473,6 +473,12 @@ struct boss_mimiron : public BossAI
         if (instance->GetBossState(DATA_MIMIRON) == DONE || why == EVADE_REASON_VEHICLE_EVADE)
             return;
 
+        Map::PlayerList const& players = me->GetMap()->GetPlayers();
+        for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+            if (Player* player = itr->GetSource())
+                if (!player->IsGameMaster() && player->IsAlive() && IsInBoundary(player))
+                    return;
+
         for (uint32 data : { DATA_LEVIATHAN_MK_II, DATA_VX_001, DATA_AERIAL_COMMAND_UNIT })
             if (Creature* machine = instance->GetCreature(data))
                 machine->AI()->EnterEvadeMode();
@@ -712,7 +718,7 @@ struct boss_mimiron : public BossAI
                         events.Repeat(1s);
                         break;
                     }
-                    aerial->SetDisableGravity(false);
+                    aerial->SetDisableGravity(false, true, true);
                     aerial->CastSpell(vx001, SPELL_MOUNT_VX_001);
                     aerial->CastSpell(aerial, SPELL_HALF_HEAL);
                     events.ScheduleEvent(EVENT_VOL7RON_ACTIVATION_5, 4s);
@@ -1086,6 +1092,10 @@ struct boss_vx_001 : public BossAI
         me->SetImmuneToPC(true);
     }
 
+    void Reset() override
+    {
+    }
+
     void DamageTaken(Unit* who, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
     {
         if (damage >= me->GetHealth())
@@ -1097,18 +1107,16 @@ struct boss_vx_001 : public BossAI
             me->AttackStop();
             me->InterruptNonMeleeSpells(true);
             me->SetTarget(ObjectGuid::Empty);
+            me->DoNotReacquireSpellFocusTarget();
 
             me->RemoveAllAurasExceptType(SPELL_AURA_CONTROL_VEHICLE, SPELL_AURA_MOD_INCREASE_HEALTH_PERCENT);
             DoCast(me, SPELL_VEHICLE_DAMAGED, true);
 
             if (events.IsInPhase(PHASE_VX_001))
             {
-                me->CastStop();
-                me->DoNotReacquireSpellFocusTarget();
-                me->SetTarget(ObjectGuid::Empty);
                 me->SetFacingTo(me->GetHomePosition().GetOrientation());
                 DoCast(me, SPELL_HALF_HEAL, true); // has no effect, wat
-                DoCast(me, SPELL_TORSO_DISABLED);
+                DoCast(me, SPELL_TORSO_DISABLED, true);
                 if (Creature* mimiron = instance->GetCreature(DATA_MIMIRON))
                     mimiron->AI()->DoAction(DO_ACTIVATE_AERIAL);
             }
@@ -1120,7 +1128,6 @@ struct boss_vx_001 : public BossAI
                 if (MimironIsEncounterFinished(ref))
                     return;
 
-                me->CastStop();
                 DoCast(me, SPELL_SELF_REPAIR);
             }
             events.Reset();
@@ -1286,6 +1293,10 @@ struct boss_aerial_command_unit : public BossAI
         fireFigther = false;
         moving = false;
         magneticPull = false;
+    }
+
+    void Reset() override
+    {
     }
 
     void DamageTaken(Unit* who, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
