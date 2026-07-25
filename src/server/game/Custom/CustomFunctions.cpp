@@ -80,6 +80,30 @@ void Creature::InsertLOSEntry(ObjectGuid guid)
     }
 }
 
+void Creature::LoadCreaturesAddonAuras()
+{
+    CreatureAddon const* creatureAddon = GetCreatureAddon();
+    if (!creatureAddon || creatureAddon->auras.empty())
+        return;
+
+    for (std::vector<uint32>::const_iterator itr = creatureAddon->auras.begin(); itr != creatureAddon->auras.end(); ++itr)
+    {
+        SpellInfo const* AdditionalSpellInfo = sSpellMgr->GetSpellInfo(*itr);
+        if (!AdditionalSpellInfo)
+        {
+            TC_LOG_ERROR("sql.sql", "Creature {} has wrong spell {} defined in `auras` field.", GetGUID().ToString(), *itr);
+            continue;
+        }
+
+        // skip already applied aura
+        if (HasAura(*itr))
+            continue;
+
+        AddAura(*itr, this);
+        TC_LOG_DEBUG("entities.unit", "Spell: {} added to creature {}", *itr, GetGUID().ToString());
+    }
+}
+
 Item* Player::GetWeaponForDamageMods(WeaponAttackType attackType) const
 {
     uint8 slot;

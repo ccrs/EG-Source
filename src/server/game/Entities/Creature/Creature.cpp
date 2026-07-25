@@ -2609,25 +2609,7 @@ bool Creature::LoadCreaturesAddon()
     if (creatureAddon->path_id != 0)
         _waypointPathId = creatureAddon->path_id;
 
-    if (!creatureAddon->auras.empty())
-    {
-        for (std::vector<uint32>::const_iterator itr = creatureAddon->auras.begin(); itr != creatureAddon->auras.end(); ++itr)
-        {
-            SpellInfo const* AdditionalSpellInfo = sSpellMgr->GetSpellInfo(*itr);
-            if (!AdditionalSpellInfo)
-            {
-                TC_LOG_ERROR("sql.sql", "Creature {} has wrong spell {} defined in `auras` field.", GetGUID().ToString(), *itr);
-                continue;
-            }
-
-            // skip already applied aura
-            if (HasAura(*itr))
-                continue;
-
-            AddAura(*itr, this);
-            TC_LOG_DEBUG("entities.unit", "Spell: {} added to creature {}", *itr, GetGUID().ToString());
-        }
-    }
+    LoadCreaturesAddonAuras(); // EG
 
     // EG - apply hover state from creature addon AnimTier on load
     if (GetAnimTier() == AnimTier::Hover)
