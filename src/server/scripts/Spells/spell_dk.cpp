@@ -2262,6 +2262,7 @@ enum RaiseAllyMisc
     SPELL_DK_RISEN_GHOUL_SELF_STUN = 47466,
     SPELL_DK_RISEN_GHOUL_SPAWN__IN = 47448,
     SPELL_DK_SUMMON_HEAL = 36492,
+    SPELL_DK_AVOIDANCE = 62137,
     SPELL_DK_DEATH_KNIGHT_RUNE_WEAPON_SCALING_02 = 51906,
     SPELL_DK_DEATH_KNIGHT_PET_SCALING_01 = 54566,
     SPELL_DK_DEATH_KNIGHT_PET_SCALING_03 = 61697,
@@ -2408,6 +2409,7 @@ public:
             summon->CastSpell(summon, SPELL_DK_DEATH_KNIGHT_PET_SCALING_03, true);
             summon->CastSpell(summon, SPELL_DK_PET_SCALING___MASTER_SPELL_03___INTELLECT_SPIRIT_RESILIENCE, true);
             summon->CastSpell(summon, SPELL_DK_PET_SCALING___MASTER_SPELL_06___SPELL_HIT_EXPERTISE_SPELL_PENETRATION, true);
+            summon->CastSpell(summon, SPELL_DK_AVOIDANCE, true); // EG - owner is the DK, so the Night of the Dead scaling resolves like the pet ghoul's
 
             // SMSG_POWER_UPDATE is sent
             summon->SetMaxPower(POWER_ENERGY, 100);
