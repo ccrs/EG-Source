@@ -66,7 +66,8 @@ enum Events
     EVENT_TRANSITION_2,             // timer until thaddius gets zapped by the coils
     EVENT_TRANSITION_3,             // timer until thaddius becomes attackable
     EVENT_ENGAGE,                   // timer until thaddius engages
-    EVENT_ENABLE_BALL_LIGHTNING     // grace period after thaddius aggro after which he starts tossing ball lightning at out of range targets
+    EVENT_ENABLE_BALL_LIGHTNING,    // grace period after thaddius aggro after which he starts tossing ball lightning at out of range targets
+    EVENT_CHECK_PLAYERS             // EG - periodic wipe check
 };
 
 enum Misc
@@ -249,6 +250,7 @@ public:
                 me->setActive(true);
                 me->SetFarVisible(true);
                 DoZoneInCombat();
+                events.ScheduleEvent(EVENT_CHECK_PLAYERS, 5s);
                 if (Creature* stalagg = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_STALAGG)))
                 {
                     stalagg->setActive(true);
@@ -352,6 +354,27 @@ public:
         {
             switch (eventId)
             {
+                case EVENT_CHECK_PLAYERS:
+                {
+                    bool raidWiped = true;
+                    Map::PlayerList const& players = me->GetMap()->GetPlayers();
+                    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+                        if (Player* player = itr->GetSource())
+                            if (!player->IsGameMaster() && player->IsAlive() && IsInBoundary(player))
+                            {
+                                raidWiped = false;
+                                break;
+                            }
+
+                    if (raidWiped)
+                    {
+                        BeginResetEncounter();
+                        return;
+                    }
+
+                    events.ScheduleEvent(EVENT_CHECK_PLAYERS, 5s);
+                    break;
+                }
                 case EVENT_REVIVE_FEUGEN:
                     feugenAlive = true;
                     if (Creature* feugen = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_FEUGEN)))
