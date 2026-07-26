@@ -246,7 +246,13 @@ class boss_kologarn : public CreatureScript
                             _right = true;
 
                         if (me->IsEngaged())
+                        {
                             events.CancelEvent(EVENT_STONE_SHOUT);
+                            if (summon->GetEntry() == NPC_LEFT_ARM)
+                                events.RescheduleEvent(EVENT_SWEEP, 19s);
+                            else
+                                events.RescheduleEvent(EVENT_STONE_GRIP, 25s);
+                        }
                         return;
                     default:
                         BossAI::JustSummoned(summon);
