@@ -29,6 +29,7 @@
 #include "ScriptedCreature.h"
 #include "SmartAI.h"
 #include "Spell.h"
+#include "SpellMgr.h"
 #include "TemporarySummon.h"
 #include "Transport.h"
 #include "Unit.h"
