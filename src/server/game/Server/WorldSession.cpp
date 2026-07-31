@@ -127,6 +127,7 @@ WorldSession::WorldSession(uint32 id, std::string&& name, std::shared_ptr<WorldS
     _logoutTime(0),
     m_inQueue(false),
     m_playerLoading(false),
+    _worldChatInvited(false),
     m_playerLogout(false),
     m_playerRecentlyLogout(false),
     m_playerSave(false),

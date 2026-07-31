@@ -121,6 +121,10 @@ enum ChannelMemberFlags
 static constexpr std::string_view WORLD_CHAT = "world";
 static constexpr std::string_view WORLD_CHAT_ES = "world-es";
 
+// EG - World Chat auto-invite
+static constexpr uint32 WORLD_CHAT_INVITER_GUID = 0xFFFFFFFE;
+static constexpr std::string_view WORLD_CHAT_INVITER_NAME = "World";
+
 class TC_GAME_API Channel
 {
     struct PlayerInfo

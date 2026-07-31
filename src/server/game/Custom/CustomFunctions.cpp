@@ -5,6 +5,8 @@
 #include "InstanceSaveMgr.h"
 #include "InstanceScript.h"
 #include "CellImpl.h"
+#include "Channel.h"
+#include "ChannelPackets.h"
 #include "Containers.h"
 #include "Creature.h"
 #include "CreatureAI.h"
@@ -1069,6 +1071,31 @@ bool WorldSession::NormalizeTransportMovementInfo(Unit* mover, MovementInfo& mov
     }
 
     return true;
+}
+
+void WorldSession::SendWorldChannelInvite()
+{
+    if (_worldChatInvited || !sWorld->getBoolConfig(CONFIG_WORLD_CHAT))
+        return;
+
+    _worldChatInvited = true;
+
+    Player* player = GetPlayer();
+    if (!player || !player->IsInWorld())
+        return;
+
+    player->m_Events.AddEventAtOffset([player]
+    {
+        for (Channel* channel : player->GetJoinedChannels())
+            if (Channel::IsWorldChat(channel->GetName()))
+                return;
+
+        WorldPackets::Channel::ChannelNotify notify;
+        notify.Type = CHAT_INVITE_NOTICE;
+        notify._Channel = std::string(WORLD_CHAT);
+        notify.SenderGuid = ObjectGuid::Create<HighGuid::Player>(WORLD_CHAT_INVITER_GUID);
+        player->GetSession()->SendPacket(notify.Write());
+    }, 5s);
 }
 
 void InstanceScript::ForceRespawnQueuedCreaturesByEntry(std::vector<uint32> const& entries)

@@ -115,6 +115,9 @@ void WorldSession::HandleJoinChannel(WorldPackets::Channel::JoinChannel& packet)
             channel->JoinChannel(GetPlayer(), packet.Password);
         }
     }
+
+    // EG - World Chat auto-invite
+    SendWorldChannelInvite();
 }
 
 void WorldSession::HandleLeaveChannel(WorldPackets::Channel::LeaveChannel& packet)

@@ -1060,6 +1060,7 @@ class TC_GAME_API WorldSession
 
         void HandleJoinChannel(WorldPackets::Channel::JoinChannel& packet);
         void HandleLeaveChannel(WorldPackets::Channel::LeaveChannel& packet);
+        void SendWorldChannelInvite(); // EG - World Chat auto-invite
         void HandleChannelCommand(WorldPackets::Channel::ChannelCommand& packet);
         void HandleChannelPlayerCommand(WorldPackets::Channel::ChannelPlayerCommand& packet);
         void HandleChannelPassword(WorldPackets::Channel::ChannelPassword& packet);
@@ -1330,6 +1331,7 @@ class TC_GAME_API WorldSession
         time_t _logoutTime;
         bool m_inQueue;                                     // session wait in auth.queue
         bool m_playerLoading;                               // code processed in LoginPlayer
+        bool _worldChatInvited;                             // EG - World Chat auto-invite
         bool m_playerLogout;                                // code processed in LogoutPlayer
         bool m_playerRecentlyLogout;
         bool m_playerSave;

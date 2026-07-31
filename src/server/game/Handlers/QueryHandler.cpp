@@ -16,6 +16,7 @@
  */
 
 #include "WorldSession.h"
+#include "Channel.h"
 #include "CharacterCache.h"
 #include "Common.h"
 #include "Corpse.h"
@@ -37,6 +38,21 @@ void WorldSession::SendNameQueryOpcode(ObjectGuid guid)
 {
     WorldPackets::Query::QueryPlayerNameResponse response;
     response.Player = guid;
+
+    // EG - World Chat auto-invite
+    if (guid == ObjectGuid::Create<HighGuid::Player>(WORLD_CHAT_INVITER_GUID))
+    {
+        response.Result = RESPONSE_SUCCESS;
+
+        WorldPackets::Query::PlayerGuidLookupData& data = response.Data.emplace();
+        data.Name = WORLD_CHAT_INVITER_NAME;
+        data.Race = RACE_HUMAN;
+        data.Sex = GENDER_MALE;
+        data.ClassID = CLASS_WARRIOR;
+
+        SendPacket(response.Write());
+        return;
+    }
 
     if (CharacterCacheEntry const* characterInfo = sCharacterCache->GetCharacterCacheByGuid(guid))
     {
