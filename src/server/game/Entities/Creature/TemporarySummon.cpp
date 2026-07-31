@@ -346,6 +346,12 @@ void TempSummon::RemoveFromWorld()
     }
 }
 
+// EG
+bool TempSummon::IsVanityPet() const
+{
+    return m_Properties && m_Properties->Title == SUMMON_TYPE_MINIPET;
+}
+
 std::string TempSummon::GetDebugInfo() const
 {
     std::stringstream sstr;

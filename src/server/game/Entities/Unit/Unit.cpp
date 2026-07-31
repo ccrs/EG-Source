@@ -8624,12 +8624,22 @@ void Unit::UpdateSpeed(UnitMoveType mtype)
             if (GetMotionMaster()->GetCurrentMovementGeneratorType() == FOLLOW_MOTION_TYPE)
             {
                 Unit* followed = ASSERT_NOTNULL(dynamic_cast<AbstractFollower*>(GetMotionMaster()->GetCurrentMovementGenerator()))->GetTarget();
-                if (followed && followed->GetGUID() == GetOwnerGUID() && !followed->IsInCombat())
+                // EG
+                bool const isVanityPet = creature->ToTempSummon() && creature->ToTempSummon()->IsVanityPet();
+                if (followed && followed->GetGUID() == GetOwnerGUID() && (!followed->IsInCombat() || isVanityPet))
                 {
                     float ownerSpeed = followed->GetSpeedRate(mtype);
                     if (speed < ownerSpeed || creature->IsWithinDist3d(followed, 10.0f))
                         speed = ownerSpeed;
-                    speed *= std::min(std::max(1.0f, 0.75f + (GetDistance(followed) - PET_FOLLOW_DIST) * 0.05f), 1.3f);
+                    if (isVanityPet)
+                    {
+                        // EG
+                        float const gap = std::max(GetDistance(followed) - PET_FOLLOW_DIST, 0.0f);
+                        float const steppedGap = std::floor(gap * 2.0f) * 0.5f;
+                        speed *= std::min(1.0f + steppedGap * 0.075f, 1.5f);
+                    }
+                    else
+                        speed *= std::min(std::max(1.0f, 0.75f + (GetDistance(followed) - PET_FOLLOW_DIST) * 0.05f), 1.3f);
                 }
             }
         }
