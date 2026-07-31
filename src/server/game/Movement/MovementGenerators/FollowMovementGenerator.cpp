@@ -24,6 +24,7 @@
 #include "PathGenerator.h"
 #include "Pet.h"
 #include "Player.h"
+#include "TemporarySummon.h"
 #include "Unit.h"
 #include "Util.h"
 
@@ -140,6 +141,10 @@ bool FollowMovementGenerator::Update(Unit* owner, uint32 diff)
     if (_checkTimer.Passed())
     {
         _checkTimer.Reset(CHECK_INTERVAL);
+
+        if (TempSummon const* summon = owner->ToTempSummon())
+            if (summon->IsVanityPet())
+                UpdatePetSpeed(owner);
 
         float const acceptableRange = _range + FOLLOW_RANGE_TOLERANCE;
         float const curAngle = target->GetRelativeAngle(owner);
@@ -325,13 +330,17 @@ void FollowMovementGenerator::Finalize(Unit* owner, bool active, bool/* movement
 
 void FollowMovementGenerator::UpdatePetSpeed(Unit* owner)
 {
-    if (Pet* oPet = owner->ToPet())
+    bool isVanityPet = false;
+    if (TempSummon const* summon = owner->ToTempSummon())
+        isVanityPet = summon->IsVanityPet();
+
+    if (!owner->ToPet() && !isVanityPet)
+        return;
+
+    if (!GetTarget() || GetTarget()->GetGUID() == owner->GetOwnerGUID())
     {
-        if (!GetTarget() || GetTarget()->GetGUID() == owner->GetOwnerGUID())
-        {
-            oPet->UpdateSpeed(MOVE_RUN);
-            oPet->UpdateSpeed(MOVE_WALK);
-            oPet->UpdateSpeed(MOVE_SWIM);
-        }
+        owner->UpdateSpeed(MOVE_RUN);
+        owner->UpdateSpeed(MOVE_WALK);
+        owner->UpdateSpeed(MOVE_SWIM);
     }
 }
