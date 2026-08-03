@@ -18,6 +18,7 @@
 #include "Group.h"
 #include "Item.h"
 #include "ItemTemplate.h"
+#include "Language.h"
 #include "LFGMgr.h"
 #include "LFGQueue.h"
 #include "Map.h"
@@ -32,6 +33,7 @@
 #include "ObjectGuid.h"
 #include "ObjectMgr.h"
 #include "Optional.h"
+#include "Pet.h"
 #include "Player.h"
 #include "PlayerTaxi.h"
 #include "ScriptedCreature.h"
@@ -430,6 +432,154 @@ uint16 Player::GetCustomFlags(CustomFlagsIndex const i) const
 {
     uint16 index = i;
     return _customFlags[index];
+}
+
+void Player::ActivateHardcore()
+{
+    bool hadVisuals = GetCustomFlags(CustomFlagsIndex::CUSTOM_VISUALS) != 0;
+
+    for (uint16 i = 0; i < static_cast<uint16>(CustomFlagsIndex::CUSTOM_FLAGS_MAX); ++i)
+        if (i != CustomFlagsIndex::CUSTOM_HARDCORE)
+            SetCustomFlags(CustomFlagsIndex(i), CustomFlags::CUSTOM_FLAG_NONE);
+
+    SetCustomFlags(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags(CUSTOM_FLAG_TRANSMOG_HIDE | CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY));
+    SetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE, CustomFlags::CUSTOM_FLAG_RACE_MASQUERADE_HIDE);
+    AddCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE);
+
+    StoredLootView.clear();
+    StoredLoot.clear();
+    if (hadVisuals)
+        if (Pet* pet = GetPet())
+            pet->Remove(PET_SAVE_NOT_IN_SLOT, true);
+    if (IsMasqueradingRace())
+        SetMasqueradeRace(RACE_NONE);
+
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_EXISTING_CHARACTER_SPELLS);
+    stmt->setUInt32(0, GetSession()->GetAccountId());
+    stmt->setUInt32(1, GetGUID().GetCounter());
+
+    static constexpr uint32 scriptedMountIds[] =
+    {
+        58983, // spell_big_blizzard_bear
+        71342, // spell_big_love_rocket
+        74856, // spell_blazing_hippogryph
+        75614, // spell_celestial_steed
+        48025, // spell_headless_horseman_mount
+        72286, // spell_invincible
+        47977, // spell_magic_broom
+        54729, // spell_winged_steed_of_the_ebon_blade
+        75973, // spell_x53_touring_rocket
+    };
+
+    static constexpr uint32 ridingSpellIds[] =
+    {
+        33388, // Apprentice Riding (Apprentice)
+        33391, // Journeyman Riding (Journeyman)
+        34090, // Expert Riding (Expert)
+        34091, // Artisan Riding (Artisan)
+        54197, // Cold Weather Flying (Passive)
+    };
+
+    if (PreparedQueryResult result = CharacterDatabase.Query(stmt))
+    {
+        do
+        {
+            Field* fields = result->Fetch();
+            uint32 spellId = fields[0].GetUInt32();
+            if (!HasSpell(spellId))
+                continue;
+            SpellInfo const* relatedInfo = sSpellMgr->GetSpellInfo(spellId);
+            if (!relatedInfo)
+                continue;
+
+            bool isAccountShared = (relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).Effect == SPELL_EFFECT_APPLY_AURA && relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).ApplyAuraName == SPELL_AURA_MOUNTED)
+                || std::find(std::begin(scriptedMountIds), std::end(scriptedMountIds), spellId) != std::end(scriptedMountIds)
+                || (relatedInfo->IsAbilityOfSkillType(SkillType::SKILL_COMPANIONS) && relatedInfo->GetEffect(SpellEffIndex::EFFECT_0).Effect == SPELL_EFFECT_SUMMON)
+                || std::find(std::begin(ridingSpellIds), std::end(ridingSpellIds), spellId) != std::end(ridingSpellIds);
+
+            if (isAccountShared)
+                RemoveSpell(spellId, false, false);
+        }
+        while (result->NextRow());
+    }
+
+    m_taxi.ResetTaximask();
+    InitTaxiNodesForLevel();
+
+    _SaveCustomSettings();
+}
+
+void Player::HandleHardcoreDeath(Unit* killer)
+{
+    if (!HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE) || HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+        return;
+
+    AddCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD);
+    _SaveCustomSettings();
+
+    Player* killerPlayer = killer ? killer->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
+    if (killerPlayer && killerPlayer != this)
+        sWorld->SendWorldText(LANG_HARDCORE_DEATH_PLAYER, GetName().c_str(), uint32(GetLevel()), killerPlayer->GetName().c_str());
+    else if (killer && killer != this && killer->GetTypeId() == TYPEID_UNIT)
+        sWorld->SendWorldText(LANG_HARDCORE_DEATH_CREATURE, GetName().c_str(), uint32(GetLevel()), killer->GetName().c_str());
+    else
+        sWorld->SendWorldText(LANG_HARDCORE_DEATH_GENERIC, GetName().c_str(), uint32(GetLevel()));
+}
+
+/*static*/ bool Player::IsHardcoreCharacter(ObjectGuid guid)
+{
+    if (Player* player = ObjectAccessor::FindConnectedPlayer(guid))
+        return player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE);
+
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CUSTOM_SETTINGS);
+    stmt->setUInt32(0, guid.GetCounter());
+    PreparedQueryResult result = CharacterDatabase.Query(stmt);
+    if (!result)
+        return false;
+
+    std::vector<std::string_view> tokens = Trinity::Tokenize(result->Fetch()[0].GetStringView(), ' ', false);
+    if (tokens.size() <= CustomFlagsIndex::CUSTOM_HARDCORE)
+        return false;
+
+    Optional<uint16> hardcoreFlags = Trinity::StringTo<uint16>(tokens[CustomFlagsIndex::CUSTOM_HARDCORE]);
+    return hardcoreFlags && (*hardcoreFlags & CUSTOM_FLAG_HARDCORE_ACTIVE);
+}
+
+void Player::ClearHardcoreDeath()
+{
+    RemoveCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD);
+    _SaveCustomSettings();
+}
+
+/*static*/ void Player::OfflineClearHardcoreDeath(ObjectGuid::LowType guid)
+{
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CUSTOM_SETTINGS);
+    stmt->setUInt32(0, guid);
+    PreparedQueryResult result = CharacterDatabase.Query(stmt);
+    if (!result)
+        return;
+
+    std::vector<std::string_view> tokens = Trinity::Tokenize(result->Fetch()[0].GetStringView(), ' ', false);
+    if (tokens.size() <= CustomFlagsIndex::CUSTOM_HARDCORE)
+        return;
+
+    Optional<uint16> hardcoreFlags = Trinity::StringTo<uint16>(tokens[CustomFlagsIndex::CUSTOM_HARDCORE]);
+    if (!hardcoreFlags || !(*hardcoreFlags & CUSTOM_FLAG_HARDCORE_DEAD))
+        return;
+
+    std::ostringstream data;
+    for (size_t i = 0; i < tokens.size(); ++i)
+    {
+        if (i == CustomFlagsIndex::CUSTOM_HARDCORE)
+            data << uint16(*hardcoreFlags & ~CUSTOM_FLAG_HARDCORE_DEAD) << ' ';
+        else
+            data << tokens[i] << ' ';
+    }
+
+    stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_CUSTOM_SETTINGS);
+    stmt->setUInt32(0, guid);
+    stmt->setString(1, data.str());
+    CharacterDatabase.Execute(stmt);
 }
 
 uint32 Player::GetTransmogrificationEntry(ObjectGuid itemGUID) const

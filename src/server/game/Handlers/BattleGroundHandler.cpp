@@ -84,6 +84,13 @@ void WorldSession::HandleBattlemasterJoinOpcode(WorldPackets::Battleground::Batt
     if (_player->InBattleground())
         return;
 
+    // EG - Hardcore
+    if (_player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+    {
+        ChatHandler(this).SendSysMessage("|cffff0000You died in Hardcore mode. You cannot join battleground queues.|r");
+        return;
+    }
+
     // get bg instance or bg template if instance not found
     Battleground* bg = nullptr;
     if (battlemasterJoin.InstanceID)
@@ -350,6 +357,15 @@ void WorldSession::HandleBattleFieldPortOpcode(WorldPackets::Battleground::Battl
     PvPDifficultyEntry const* bracketEntry = GetBattlegroundBracketByLevel(bg->GetMapId(), _player->GetLevel());
     if (!bracketEntry)
         return;
+
+    // EG - Hardcore
+    if (battlefieldPort.AcceptedInvite && _player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+    {
+        WorldPackets::Battleground::BattlefieldStatusFailed battlefieldStatus;
+        BattlegroundMgr::BuildBattlegroundStatusFailed(&battlefieldStatus, ERR_BATTLEGROUND_JOIN_FAILED);
+        SendPacket(battlefieldStatus.Write());
+        battlefieldPort.AcceptedInvite = false;
+    }
 
     //some checks if player isn't cheating - it is not exactly cheating, but we cannot allow it
     if (battlefieldPort.AcceptedInvite && bgQueue.GetQueueId().TeamSize == 0)
@@ -763,6 +779,17 @@ void WorldSession::HandleHearthAndResurrect(WorldPackets::Battleground::HearthAn
 {
     if (_player->IsInFlight())
         return;
+
+    // EG
+    if (_player->IsAlive())
+        return;
+
+    // EG - Hardcore
+    if (_player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+    {
+        ChatHandler(this).SendSysMessage("|cffff0000You died in Hardcore mode. This death is permanent.|r");
+        return;
+    }
 
     if (/*Battlefield* bf = */sBattlefieldMgr->GetEnabledBattlefield(_player->GetZoneId()))
     {

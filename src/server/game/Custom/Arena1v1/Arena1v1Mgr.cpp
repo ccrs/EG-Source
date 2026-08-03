@@ -178,6 +178,13 @@ bool Arena1v1Mgr::HandleJoinQueue(Player* player, Creature* npc)
         return false;
     }
 
+    // EG - Hardcore
+    if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+    {
+        npc->Whisper("The dead may not enter the arena.", LANG_UNIVERSAL, player);
+        return false;
+    }
+
     if (player->isUsingLfg())
     {
         WorldPackets::Battleground::BattlefieldStatusFailed status;

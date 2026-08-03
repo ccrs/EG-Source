@@ -130,6 +130,10 @@ public:
             Player* target = it->GetSource();
             if (target)
             {
+                // EG - Hardcore
+                if (target->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+                    continue;
+
                 target->ResurrectPlayer(target->GetSession()->HasPermission(rbac::RBAC_PERM_RESURRECT_WITH_FULL_HPS) ? 1.0f : 0.5f);
                 target->SpawnCorpseBones();
                 target->SaveToDB();
@@ -418,6 +422,14 @@ public:
         if (groupSource->IsFull())
         {
             handler->PSendSysMessage(LANG_GROUP_FULL);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        // EG - Hardcore
+        if (playerTarget->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+        {
+            handler->PSendSysMessage("%s fell in Hardcore mode and cannot join groups.", playerTarget->GetName().c_str());
             handler->SetSentErrorMessage(true);
             return false;
         }

@@ -1304,6 +1304,9 @@ void Player::setDeathState(DeathState s)
 
         ClearResurrectRequestData();
 
+        // EG - Hardcore
+        HandleHardcoreDeath(nullptr);
+
         //FIXME: is pet dismissed at dying or releasing spirit? if second, add setDeathState(DEAD) to HandleRepopRequest and define pet unsummon here with (s == DEAD)
         RemovePet(nullptr, PET_SAVE_NOT_IN_SLOT, true);
 
@@ -1313,6 +1316,11 @@ void Player::setDeathState(DeathState s)
         // passive spell
         if (!ressSpellId)
             ressSpellId = GetResurrectionSpellId();
+
+        // EG - Hardcore
+        if (HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE))
+            ressSpellId = 0;
+
         UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_DEATH_AT_MAP, 1);
         UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_DEATH, 1);
         UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_DEATH_IN_DUNGEON, 1);
@@ -4458,6 +4466,14 @@ void Player::BuildPlayerRepop()
 
 void Player::ResurrectPlayer(float restore_percent, bool applySickness)
 {
+    // EG - Hardcore
+    if (HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+    {
+        if (GetSession())
+            ChatHandler(GetSession()).SendSysMessage("|cffff0000You died in Hardcore mode. This death is permanent.|r");
+        return;
+    }
+
     WorldPackets::Misc::DeathReleaseLoc packet;
     packet.MapID = -1;
     GetSession()->SendPacket(packet.Write());
@@ -23779,6 +23795,10 @@ void Player::RemoveItemDependentAurasAndCasts(Item* pItem)
 
 uint32 Player::GetResurrectionSpellId()
 {
+    // EG - Hardcore
+    if (HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE))
+        return 0;
+
     // search priceless resurrection possibilities
     uint32 prio = 0;
     uint32 spell_id = 0;
@@ -23953,6 +23973,13 @@ uint32 Player::GetBaseWeaponSkillValue(WeaponAttackType attType) const
 
 void Player::ResurrectUsingRequestData()
 {
+    // EG - Hardcore
+    if (HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+    {
+        ClearResurrectRequestData();
+        return;
+    }
+
     RemoveGhoul();
 
     if (uint32 aura = _resurrectionData->Aura)
@@ -23975,6 +24002,10 @@ void Player::ResurrectUsingRequestData()
 
 void Player::ResurrectUsingRequestDataImpl()
 {
+    // EG
+    if (!_resurrectionData)
+        return;
+
     // save health and mana before resurrecting, _resurrectionData can be erased
     uint32 resurrectHealth = _resurrectionData->Health;
     uint32 resurrectMana = _resurrectionData->Mana;

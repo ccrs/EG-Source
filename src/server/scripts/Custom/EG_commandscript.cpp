@@ -10,6 +10,7 @@
 #include "ScriptMgr.h"
 #include "SmartEnum.h"
 #include "Language.h"
+#include "StringConvert.h"
 #include "Util.h"
 #include "WorldSession.h"
 
@@ -45,6 +46,7 @@ public:
             { "masquerade",         HandleRaceMasquerade, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "weaponSkill",        HandleWeaponSkill, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "visuals",            HandleVisuals, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "hardcore",           HandleHardcore, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "resetflags",         HandleResetCustomFlags, rbac::RBAC_ROLE_MODERATOR, Console::No },
         };
 
@@ -57,11 +59,71 @@ public:
         return commandTable;
     }
 
+    // EG - Hardcore
+    static bool CheckHardcore(ChatHandler* handler, Player* player)
+    {
+        if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE))
+        {
+            handler->SendSysMessage("Hardcore characters cannot modify character settings.");
+            return true;
+        }
+        return false;
+    }
+
+    static bool HandleHardcore(ChatHandler* handler, Optional<EXACT_SEQUENCE("confirm")> confirmed)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        if (!player)
+            return false;
+
+        if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+        {
+            handler->SendSysMessage("This character fell in Hardcore mode and is permanently dead.");
+            return true;
+        }
+
+        if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE))
+        {
+            handler->SendSysMessage("This character is already in Hardcore mode. It can never be disabled.");
+            return true;
+        }
+
+        if (player->GetLevel() != 1)
+        {
+            handler->SendSysMessage("Hardcore mode can only be activated at level 1.");
+            return true;
+        }
+
+        if (!player->IsAlive())
+        {
+            handler->SendSysMessage("You must be alive to activate Hardcore mode.");
+            return true;
+        }
+
+        if (!confirmed)
+        {
+            handler->SendSysMessage("|cffff0000=== HARDCORE MODE WARNING ===|r");
+            handler->SendSysMessage("Hardcore mode is PERMANENT and IRREVERSIBLE, it can NEVER be disabled:");
+            handler->SendSysMessage("- If this character dies for ANY reason, the death is PERMANENT. You will remain a ghost forever and can never be resurrected by any means.");
+            handler->SendSysMessage("- All other character settings are wiped NOW and remain disabled forever on this character.");
+            handler->SendSysMessage("If you are absolutely certain, type: .settings hardcore confirm");
+            return true;
+        }
+
+        player->ActivateHardcore();
+        handler->SendSysMessage("|cffff0000Hardcore mode activated.|r All other settings have been wiped and permanently disabled. Death is now permanent. Good luck.");
+        return true;
+    }
+
     static bool HandleDisableTransmogrification(ChatHandler* handler, bool active)
     {
         Player* player = handler->GetSession()->GetPlayer();
         if (!player)
             return false;
+
+        // EG - Hardcore
+        if (CheckHardcore(handler, player))
+            return true;
 
         if (active)
         {
@@ -85,6 +147,10 @@ public:
         if (!player)
             return false;
 
+        // EG - Hardcore
+        if (CheckHardcore(handler, player))
+            return true;
+
         if (active)
         {
             player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY);
@@ -106,6 +172,10 @@ public:
         Player* player = handler->GetSession()->GetPlayer();
         if (!player)
             return false;
+
+        // EG - Hardcore
+        if (CheckHardcore(handler, player))
+            return true;
 
         if (active)
         {
@@ -131,6 +201,10 @@ public:
         if (!player)
             return false;
 
+        // EG - Hardcore
+        if (CheckHardcore(handler, player))
+            return true;
+
         if (!rate || rate > 5)
         {
             handler->SendSysMessage("Please use a rate value between 1 and 5.");
@@ -147,6 +221,10 @@ public:
         Player* player = handler->GetSession()->GetPlayer();
         if (!player)
             return false;
+
+        // EG - Hardcore
+        if (CheckHardcore(handler, player))
+            return true;
 
         if (active)
         {
@@ -167,6 +245,10 @@ public:
         if (!player)
             return false;
 
+        // EG - Hardcore
+        if (CheckHardcore(handler, player))
+            return true;
+
         if (active)
         {
             player->AddCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE);
@@ -186,6 +268,10 @@ public:
         if (!player)
             return false;
 
+        // EG - Hardcore
+        if (CheckHardcore(handler, player))
+            return true;
+
         if (active)
         {
             player->AddCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_PET, CustomFlags::CUSTOM_FLAG_ACCOUNT_PET_ACTIVE);
@@ -204,6 +290,10 @@ public:
         Player* player = handler->GetSession()->GetPlayer();
         if (!player)
             return false;
+
+        // EG - Hardcore
+        if (CheckHardcore(handler, player))
+            return true;
 
         if (value > 12)
         {
@@ -241,6 +331,10 @@ public:
         if (!player)
             return false;
 
+        // EG - Hardcore
+        if (CheckHardcore(handler, player))
+            return true;
+
         if (active)
         {
             player->AddCustomFlag(CustomFlagsIndex::CUSTOM_WEAPON_SKILL, CustomFlags::CUSTOM_FLAG_WEAPON_SKILL_ACTIVE);
@@ -261,6 +355,10 @@ public:
         if (!player)
             return false;
 
+        // EG - Hardcore
+        if (CheckHardcore(handler, player))
+            return true;
+
         if (active)
         {
             player->AddCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_TAXI, CustomFlags::CUSTOM_FLAG_ACCOUNT_TAXI_ACTIVE);
@@ -279,6 +377,10 @@ public:
         Player* player = handler->GetSession()->GetPlayer();
         if (!player)
             return false;
+
+        // EG - Hardcore
+        if (CheckHardcore(handler, player))
+            return true;
 
         CustomFlags flag = CustomFlags::CUSTOM_FLAG_NONE;
         switch (player->GetClass())
@@ -337,22 +439,57 @@ public:
             return false;
         }
 
+        // EG - Hardcore
+        uint16 preservedHardcore = 0;
         if (Player* player = target->GetConnectedPlayer())
         {
+            preservedHardcore = player->GetCustomFlags(CustomFlagsIndex::CUSTOM_HARDCORE);
             for (uint16 i = 0; i < static_cast<uint16>(CustomFlagsIndex::CUSTOM_FLAGS_MAX); ++i)
-                player->SetCustomFlags(CustomFlagsIndex(i), CustomFlags::CUSTOM_FLAG_NONE);
+                if (i != CustomFlagsIndex::CUSTOM_HARDCORE)
+                    player->SetCustomFlags(CustomFlagsIndex(i), CustomFlags::CUSTOM_FLAG_NONE);
+
+            if (preservedHardcore & CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE)
+            {
+                player->SetCustomFlags(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags(CUSTOM_FLAG_TRANSMOG_HIDE | CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY));
+                player->SetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE, CustomFlags::CUSTOM_FLAG_RACE_MASQUERADE_HIDE);
+            }
+        }
+        else
+        {
+            CharacterDatabasePreparedStatement* selStmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CUSTOM_SETTINGS);
+            selStmt->setUInt32(0, target->GetGUID().GetCounter());
+            if (PreparedQueryResult result = CharacterDatabase.Query(selStmt))
+            {
+                std::vector<std::string_view> tokens = Trinity::Tokenize(result->Fetch()[0].GetStringView(), ' ', false);
+                if (tokens.size() > CustomFlagsIndex::CUSTOM_HARDCORE)
+                    if (Optional<uint16> value = Trinity::StringTo<uint16>(tokens[CustomFlagsIndex::CUSTOM_HARDCORE]))
+                        preservedHardcore = *value;
+            }
         }
 
+        bool preservedHardcoreActive = (preservedHardcore & CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE) != 0;
         std::ostringstream data;
         for (uint16 i = 0; i < static_cast<uint16>(CustomFlagsIndex::CUSTOM_FLAGS_MAX); ++i)
-            data << 0 << ' ';
+        {
+            if (i == CustomFlagsIndex::CUSTOM_HARDCORE)
+                data << preservedHardcore << ' ';
+            else if (preservedHardcoreActive && i == CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS)
+                data << uint16(CUSTOM_FLAG_TRANSMOG_HIDE | CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY) << ' ';
+            else if (preservedHardcoreActive && i == CustomFlagsIndex::CUSTOM_RACE_MASQUERADE)
+                data << uint16(CUSTOM_FLAG_RACE_MASQUERADE_HIDE) << ' ';
+            else
+                data << 0 << ' ';
+        }
 
         CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_CUSTOM_SETTINGS);
         stmt->setUInt32(0, target->GetGUID().GetCounter());
         stmt->setString(1, data.str());
         CharacterDatabase.Execute(stmt);
 
-        handler->PSendSysMessage("Custom flags for player '%s' have been reset to defaults.", target->GetName().c_str());
+        if (preservedHardcore)
+            handler->PSendSysMessage("Custom flags for player '%s' have been reset to defaults (hardcore state preserved).", target->GetName().c_str());
+        else
+            handler->PSendSysMessage("Custom flags for player '%s' have been reset to defaults.", target->GetName().c_str());
         return true;
     }
 

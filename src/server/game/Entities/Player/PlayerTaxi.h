@@ -20,6 +20,7 @@
 
 #include "DBCEnums.h"
 #include "Define.h"
+#include <algorithm>
 #include <deque>
 #include <iosfwd>
 #include <string>
@@ -62,6 +63,8 @@ class TC_GAME_API PlayerTaxi
             if (field < m_taximask.size())
                 m_taximask[field] |= submask;
         }
+        // EG - Hardcore
+        void ResetTaximask() { std::fill(m_taximask.begin(), m_taximask.end(), 0); }
 
         // Destinations
         [[nodiscard]] bool LoadTaxiDestinationsFromString(std::string const& values, uint32 team);

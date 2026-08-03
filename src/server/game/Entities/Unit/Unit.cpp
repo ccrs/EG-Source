@@ -11145,6 +11145,10 @@ bool Unit::InitTamedPet(Pet* pet, uint8 level, uint32 spell_id)
         if (Player* killerPlayer = attacker->GetCharmerOrOwnerPlayerOrPlayerItself())
             killerPlayer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_GET_KILLING_BLOWS, 1, 0, victim);
 
+    // EG - Hardcore
+    if (Player* hardcoreVictim = victim->ToPlayer())
+        hardcoreVictim->HandleHardcoreDeath(attacker);
+
     // Spirit of Redemption
     // if talent known but not triggered
     bool spiritOfRedemption = false;

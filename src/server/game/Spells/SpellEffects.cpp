@@ -259,6 +259,10 @@ void Spell::EffectResurrectNew()
     if (!player || player->IsAlive() || !player->IsInWorld())
         return;
 
+    // EG - Hardcore
+    if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+        return;
+
     if (player->IsResurrectRequested())       // already have one active request
         return;
 
@@ -4065,6 +4069,10 @@ void Spell::EffectResurrect()
     if (!player || player->IsAlive() || !player->IsInWorld())
         return;
 
+    // EG - Hardcore
+    if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+        return;
+
     if (player->IsResurrectRequested())       // already have one active request
         return;
 
@@ -4210,6 +4218,10 @@ void Spell::EffectSelfResurrect()
 
     Player* player = m_caster->ToPlayer();
     if (!player || !player->IsInWorld() || player->IsAlive())
+        return;
+
+    // EG - Hardcore
+    if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
         return;
 
     uint32 health = 0;

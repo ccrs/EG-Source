@@ -172,6 +172,15 @@ void WorldSession::HandleSendMail(WorldPackets::Mail::SendMail& sendMail)
             return;
         }
 
+        // EG - Hardcore
+        if (!player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE) && !player->IsGameMaster()
+            && receiverLevel < sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL)
+            && Player::IsHardcoreCharacter(receiverGuid))
+        {
+            SendNotification("%s is a hardcore character and cannot receive mail until level %u.", mailInfo.Target.c_str(), sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL));
+            return;
+        }
+
         std::vector<Item*> items;
 
         for (auto const& att : mailInfo.Attachments)

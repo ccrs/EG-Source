@@ -2029,6 +2029,9 @@ GroupJoinBattlegroundResult Group::CanJoinBattlegroundQueue(Battleground const* 
         // rbac permissions
         if (!member->CanJoinToBattleground(bgOrTemplate))
             return ERR_BATTLEGROUND_JOIN_TIMED_OUT;
+        // EG - Hardcore
+        if (member->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+            return ERR_BATTLEGROUND_JOIN_TIMED_OUT;
         // EG - Crossfaction Arena
         // don't allow cross-faction join as group unless crossfaction arena permission is held and this is an arena queue
         if (member->GetTeam() != team && !(member->GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_ARENA) && bgOrTemplate->isArena()))

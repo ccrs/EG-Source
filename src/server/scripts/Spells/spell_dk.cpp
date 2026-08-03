@@ -2300,6 +2300,10 @@ class spell_dk_raise_ally_initial : public SpellScript
             return SPELL_FAILED_TARGET_NOT_DEAD;
         if (target->IsGhouled())
             return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+        // EG - Hardcore
+        if (Player* playerTarget = target->ToPlayer())
+            if (playerTarget->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+                return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
         return SPELL_CAST_OK;
     }
 

@@ -651,12 +651,19 @@ public:
 
         if (target)
         {
+            // EG - Hardcore
+            if (target->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+                target->ClearHardcoreDeath();
+
             target->ResurrectPlayer(target->GetSession()->HasPermission(rbac::RBAC_PERM_RESURRECT_WITH_FULL_HPS) ? 1.0f : 0.5f);
             target->SpawnCorpseBones();
             target->SaveToDB();
         }
         else
         {
+            // EG - Hardcore
+            Player::OfflineClearHardcoreDeath(targetGuid.GetCounter());
+
             CharacterDatabaseTransaction trans(nullptr);
             Player::OfflineResurrect(targetGuid, trans);
         }
@@ -1958,6 +1965,8 @@ public:
             handler->PSendSysMessage("| - Race Masquerade flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE));
             handler->PSendSysMessage("| - Weapon Skill flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_WEAPON_SKILL));
             handler->PSendSysMessage("| - Account Taxi flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_ACCOUNT_TAXI));
+            handler->PSendSysMessage("| - Visuals flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_VISUALS));
+            handler->PSendSysMessage("| - Hardcore flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_HARDCORE));
         }
 
         return true;

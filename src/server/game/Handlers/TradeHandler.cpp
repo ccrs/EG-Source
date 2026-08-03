@@ -675,6 +675,17 @@ void WorldSession::HandleInitiateTradeOpcode(WorldPacket& recvPacket)
         return;
     }
 
+    // EG - Hardcore
+    uint32 maxLevel = sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL);
+    if ((_player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE) && _player->GetLevel() < maxLevel && !pOther->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE) && !pOther->IsGameMaster())
+        || (pOther->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE) && pOther->GetLevel() < maxLevel && !_player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE) && !_player->IsGameMaster()))
+    {
+        SendNotification("Hardcore characters cannot trade with non-hardcore characters until level %u.", maxLevel);
+        info.Status = TRADE_STATUS_CLOSE_WINDOW;
+        SendTradeStatus(info);
+        return;
+    }
+
     if (pOther->GetTeam() != _player->GetTeam() &&
         (!sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_TRADE) &&
          !GetPlayer()->GetSession()->HasPermission(rbac::RBAC_PERM_ALLOW_TWO_SIDE_TRADE)))

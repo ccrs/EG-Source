@@ -1,6 +1,7 @@
 #include "ScriptMgr.h"
 #include "Channel.h"
 #include "ChannelMgr.h"
+#include "Chat.h"
 #include "DatabaseEnv.h"
 #include "Player.h"
 #include "SpellInfo.h"
@@ -135,10 +136,34 @@ class EG_XPRate : public PlayerScript
         }
 };
 
+class EG_Hardcore : public PlayerScript
+{
+    public:
+        EG_Hardcore() : PlayerScript("EG_Hardcore") { }
+
+        void OnLogin(Player* player, bool /*firstLogin*/) override
+        {
+            if (!player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE))
+                return;
+
+            ChatHandler handler(player->GetSession());
+            if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+            {
+                if (player->IsAlive())
+                    player->setDeathState(JUST_DIED);
+
+                handler.SendSysMessage("|cffff0000This character fell in Hardcore mode and is permanently dead.|r");
+            }
+            else
+                handler.SendSysMessage("|cffff8000Hardcore mode is active on this character: death is permanent.|r");
+        }
+};
+
 void AddSC_EG_player_scripts()
 {
     new EG_AccountSpells();
     if (sWorld->getBoolConfig(CONFIG_WORLD_CHAT))
         new EG_WorldChat();
     new EG_XPRate();
+    new EG_Hardcore();
 }

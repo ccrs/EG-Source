@@ -98,6 +98,11 @@ void WorldSession::HandleLfgProposalResultOpcode(WorldPacket& recvData)
 
     TC_LOG_DEBUG("lfg", "CMSG_LFG_PROPOSAL_RESULT {} proposal: {} accept: {}",
         GetPlayerInfo(), proposalID, accept ? 1 : 0);
+
+    // EG - Hardcore
+    if (accept && GetPlayer()->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+        accept = false;
+
     sLFGMgr->UpdateProposal(proposalID, GetPlayer()->GetGUID(), accept);
 }
 

@@ -18,6 +18,7 @@
 #include "WorldSession.h"
 #include "Battleground.h"
 #include "BattlegroundMgr.h"
+#include "Chat.h"
 #include "Common.h"
 #include "Creature.h"
 #include "CreatureAI.h"
@@ -200,6 +201,13 @@ void WorldSession::HandleSpiritHealerActivateOpcode(WorldPacket& recvData)
     if (!unit)
     {
         TC_LOG_DEBUG("network", "WORLD: HandleSpiritHealerActivateOpcode - {} not found or you can not interact with him.", guid.ToString());
+        return;
+    }
+
+    // EG - Hardcore
+    if (GetPlayer()->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+    {
+        ChatHandler(this).SendSysMessage("|cffff0000You died in Hardcore mode. This death is permanent.|r");
         return;
     }
 

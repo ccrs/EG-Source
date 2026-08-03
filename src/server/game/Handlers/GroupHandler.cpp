@@ -97,6 +97,13 @@ void WorldSession::HandleGroupInviteOpcode(WorldPackets::Party::PartyInviteClien
         return;
     }
 
+    // EG - Hardcore
+    if (invitingPlayer->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD) || invitedPlayer->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+    {
+        SendPartyResult(PARTY_OP_INVITE, packet.TargetName, ERR_INVITE_RESTRICTED);
+        return;
+    }
+
     // can't group with
     // EG - Crossfaction Arena: allow cross-faction group invite with the crossfaction arena permission
     if (!invitingPlayer->IsGameMaster()
@@ -220,6 +227,10 @@ void WorldSession::HandleGroupAcceptOpcode(WorldPacket& recvData)
 
     // Remove player from invitees in any case
     group->RemoveInvite(GetPlayer());
+
+    // EG - Hardcore
+    if (GetPlayer()->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+        return;
 
     if (group->GetLeaderGUID() == GetPlayer()->GetGUID())
     {

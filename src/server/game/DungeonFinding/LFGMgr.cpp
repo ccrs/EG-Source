@@ -521,6 +521,8 @@ void LFGMgr::JoinLfg(Player* player, uint8 roles, LfgDungeonSet& dungeons, const
     // Check player or group member restrictions
     if (!player->GetSession()->HasPermission(rbac::RBAC_PERM_JOIN_DUNGEON_FINDER))
         joinData.result = LFG_JOIN_NOT_MEET_REQS;
+    else if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD)) // EG - Hardcore
+        joinData.result = LFG_JOIN_NOT_MEET_REQS;
     // EG - LFG/BG co-queue: only arena queues remain mutually exclusive with LFG
     else if (player->InBattleground() || player->InArena() || player->InArenaQueue())
         joinData.result = LFG_JOIN_USING_BG_SYSTEM;
@@ -544,6 +546,8 @@ void LFGMgr::JoinLfg(Player* player, uint8 roles, LfgDungeonSet& dungeons, const
                 if (Player* plrg = itr->GetSource())
                 {
                     if (!plrg->GetSession()->HasPermission(rbac::RBAC_PERM_JOIN_DUNGEON_FINDER))
+                        joinData.result = LFG_JOIN_PARTY_NOT_MEET_REQS;
+                    if (plrg->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD)) // EG - Hardcore
                         joinData.result = LFG_JOIN_PARTY_NOT_MEET_REQS;
                     if (plrg->HasAura(LFG_SPELL_DUNGEON_DESERTER))
                         joinData.result = LFG_JOIN_PARTY_DESERTER;

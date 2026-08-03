@@ -909,6 +909,7 @@ enum CustomFlagsIndex : uint16
     CUSTOM_ACCOUNT_PET = 7,
     CUSTOM_ACCOUNT_TAXI = 8,
     CUSTOM_VISUALS = 9,
+    CUSTOM_HARDCORE = 10,
     CUSTOM_FLAGS_MAX
 };
 
@@ -956,6 +957,9 @@ enum CustomFlags : uint16
     CUSTOM_FLAG_VISUALS_MAGE_ACTIVE = 0x10,
     CUSTOM_FLAG_VISUALS_PALADIN_ACTIVE = 0x20,
     CUSTOM_FLAG_VISUALS_HUNTER_ACTIVE = 0x40,
+
+    CUSTOM_FLAG_HARDCORE_ACTIVE = 0x01,
+    CUSTOM_FLAG_HARDCORE_DEAD = 0x02,
 };
 
 class TC_GAME_API Player : public Unit, public GridObject<Player>
@@ -2340,6 +2344,13 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void SetMasqueradeRace(Races race);
         Races GetMasqueradeRace() const;
         bool CleanMasqueradeRaceValue();
+
+        // EG - Hardcore
+        void ActivateHardcore();
+        void HandleHardcoreDeath(Unit* killer);
+        void ClearHardcoreDeath();
+        static void OfflineClearHardcoreDeath(ObjectGuid::LowType guid);
+        static bool IsHardcoreCharacter(ObjectGuid guid);
     protected:
         // Gamemaster whisper whitelist
         GuidList WhisperList;
