@@ -1,3 +1,4 @@
+#include "AccountMgr.h"
 #include "Chat.h"
 #include "CustomFunctions.h"
 #include "DatabaseEnv.h"
@@ -37,6 +38,11 @@ public:
             { "flightPath", HandleAccountFlightPath, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
         };
 
+        static ChatCommandTable hardcoreCommands =
+        {
+            { "list", HandleHardcoreList, rbac::RBAC_ROLE_MODERATOR, Console::Yes },
+        };
+
         static ChatCommandTable customCharacterSettings =
         {
             { "transmogrification", transmogrificationSettings },
@@ -53,6 +59,7 @@ public:
         static ChatCommandTable commandTable =
         {
             { "settings",    customCharacterSettings },
+            { "hardcore",    hardcoreCommands },
             { "massreward",  HandleMassRewardCommand, rbac::RBAC_ROLE_ADMINISTRATOR, Console::Yes },
         };
 
@@ -112,6 +119,47 @@ public:
 
         player->ActivateHardcore();
         handler->SendSysMessage("|cffff0000Hardcore mode activated.|r All other settings have been wiped and permanently disabled. Death is now permanent. Good luck.");
+        return true;
+    }
+
+    static bool HandleHardcoreList(ChatHandler* handler)
+    {
+        QueryResult result = CharacterDatabase.PQuery(
+            "SELECT c.name, c.level, c.race, c.class, c.account, c.online "
+            "FROM characters c "
+            "INNER JOIN character_extended ce ON ce.guid = c.guid "
+            "WHERE SUBSTRING_INDEX(SUBSTRING_INDEX(ce.customFlags, ' ', {}), ' ', -1) = '{}' "
+            "ORDER BY c.level DESC, c.name ASC",
+            uint32(CustomFlagsIndex::CUSTOM_HARDCORE) + 1, uint32(CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE));
+
+        if (!result)
+        {
+            handler->SendSysMessage("No alive hardcore characters found.");
+            return true;
+        }
+
+        handler->SendSysMessage("Alive hardcore characters:");
+        uint32 count = 0;
+        do
+        {
+            Field* fields = result->Fetch();
+            std::string name = fields[0].GetString();
+            uint8 level = fields[1].GetUInt8();
+            uint8 race = fields[2].GetUInt8();
+            uint8 characterClass = fields[3].GetUInt8();
+            uint32 accountId = fields[4].GetUInt32();
+            bool online = fields[5].GetBool();
+
+            std::string accountName = "<unknown>";
+            AccountMgr::GetName(accountId, accountName);
+
+            handler->PSendSysMessage("| - %s (level %u) %s %s, account: %s%s", name.c_str(), uint32(level),
+                EnumUtils::ToTitle(Races(race)), EnumUtils::ToTitle(Classes(characterClass)), accountName.c_str(), online ? " [online]" : "");
+            ++count;
+        }
+        while (result->NextRow());
+
+        handler->PSendSysMessage("%u alive hardcore character(s) found.", count);
         return true;
     }
 
