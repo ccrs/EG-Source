@@ -214,7 +214,20 @@ struct boss_victor_nefarius : public BossAI
 
     void SummonedCreatureDies(Creature* summon, Unit* /*killer*/) override
     {
-        if (summon->GetEntry() != NPC_NEFARIAN && summon->GetEntry() != NPC_BONE_CONSTRUCT)
+        if (summon->GetEntry() == NPC_NEFARIAN)
+        {
+            summons.Despawn(summon);
+            events.Reset();
+            summons.DespawnAll();
+            me->SetCombatPulseDelay(0);
+            me->CombatStop(true);
+            EngagementOver();
+            me->setActive(false);
+            me->SetImmuneToPC(true);
+            return;
+        }
+
+        if (summon->GetEntry() != NPC_BONE_CONSTRUCT)
         {
             summon->UpdateEntry(NPC_BONE_CONSTRUCT);
             summon->SetHomePosition(summon->GetPosition());
