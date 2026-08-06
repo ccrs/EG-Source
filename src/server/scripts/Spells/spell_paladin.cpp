@@ -104,6 +104,7 @@ enum PaladinSpells
     SPELL_PALADIN_GLYPH_OF_DIVINITY_PROC         = 54986,
 
     SPELL_PALADIN_JUDGEMENTS_OF_THE_WISE_MANA    = 31930,
+    SPELL_PALADIN_CORRUPTED_WISDOM               = 64646, // EG - General Vezax
     SPELL_REPLENISHMENT                          = 57669,
     SPELL_PALADIN_RIGHTEOUS_VENGEANCE_DAMAGE     = 61840,
     SPELL_PALADIN_SHEATH_OF_LIGHT_HEAL           = 54203,
@@ -1377,7 +1378,15 @@ class spell_pal_judgements_of_the_wise : public AuraScript
         PreventDefaultAction();
 
         Unit* caster = eventInfo.GetActor();
-        caster->CastSpell(nullptr, SPELL_PALADIN_JUDGEMENTS_OF_THE_WISE_MANA, aurEff);
+        CastSpellExtraArgs args(aurEff);
+        // EG - General Vezax: Corrupted Wisdom cuts the base-mana percentage by its aura amount (-90%)
+        if (AuraEffect const* corruptedWisdom = caster->GetAuraEffect(SPELL_PALADIN_CORRUPTED_WISDOM, EFFECT_0))
+        {
+            int32 pct = sSpellMgr->AssertSpellInfo(SPELL_PALADIN_JUDGEMENTS_OF_THE_WISE_MANA)->GetEffect(EFFECT_0).CalcValue(caster);
+            AddPct(pct, corruptedWisdom->GetAmount());
+            args.AddSpellBP0(pct);
+        }
+        caster->CastSpell(nullptr, SPELL_PALADIN_JUDGEMENTS_OF_THE_WISE_MANA, args);
         caster->CastSpell(nullptr, SPELL_REPLENISHMENT, aurEff);
     }
 

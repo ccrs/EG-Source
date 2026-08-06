@@ -88,6 +88,7 @@ enum ShamanSpells
     SPELL_SHAMAN_CHAIN_LIGHTNING_OVERLOAD_R1    = 45297,
     SPELL_SHAMAN_LIGHTNING_SHIELD_DAMAGE_R1     = 26364,
     SPELL_SHAMAN_SHAMANISTIC_RAGE_PROC          = 30824,
+    SPELL_SHAMAN_CORRUPTED_RAGE                 = 68415, // EG - General Vezax
     SPELL_SHAMAN_STONECLAW_TOTEM                = 55277,
     SPELL_SHAMAN_GLYPH_OF_STONECLAW_TOTEM       = 63298,
     SPELL_SHAMAN_MAELSTROM_POWER                = 70831,
@@ -1419,6 +1420,9 @@ class spell_sha_shamanistic_rage : public AuraScript
 
         Unit* target = GetTarget();
         int32 amount = CalculatePct(static_cast<int32>(target->GetTotalAttackPowerValue(BASE_ATTACK)), aurEff->GetAmount());
+        // EG - General Vezax: Corrupted Rage cuts the mana returned by its aura amount (-90%)
+        if (AuraEffect const* corruptedRage = target->GetAuraEffect(SPELL_SHAMAN_CORRUPTED_RAGE, EFFECT_0))
+            AddPct(amount, corruptedRage->GetAmount());
         CastSpellExtraArgs args(aurEff);
         args.AddSpellBP0(amount);
         target->CastSpell(target, SPELL_SHAMAN_SHAMANISTIC_RAGE_PROC, args);
