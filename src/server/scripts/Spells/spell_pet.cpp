@@ -1470,7 +1470,7 @@ public:
                         amount = -90;
                     // Night of the dead
                     else if (Aura* aur = owner->GetAuraOfRankedSpell(SPELL_NIGHT_OF_THE_DEAD))
-                        amount = aur->GetSpellInfo()->GetEffect(EFFECT_2).CalcValue();
+                        amount = -aur->GetSpellInfo()->GetEffect(EFFECT_2).CalcValue(); // EG - dbc datapoint is positive (45/90)
                 }
             }
         }
