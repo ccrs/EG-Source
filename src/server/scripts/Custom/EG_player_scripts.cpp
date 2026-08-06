@@ -3,6 +3,9 @@
 #include "ChannelMgr.h"
 #include "Chat.h"
 #include "DatabaseEnv.h"
+#include "Item.h"
+#include "Language.h"
+#include "Mail.h"
 #include "Player.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
@@ -156,6 +159,92 @@ class EG_Hardcore : public PlayerScript
             }
             else
                 handler.SendSysMessage("|cffff8000Hardcore mode is active on this character: death is permanent.|r");
+        }
+
+        void OnLevelChanged(Player* player, uint8 /*oldLevel*/) override
+        {
+            if (!player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE)
+                || player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+                return;
+
+            if (player->GetLevel() % 10 == 0)
+                GrantMilestone(player, player->GetLevel());
+        }
+
+    private:
+        static void GrantMilestone(Player* player, uint8 tier)
+        {
+            uint32 money = 0;
+            uint32 itemId = 0;
+            uint32 itemCount = 0;
+            uint32 spellId = 0;
+
+            switch (tier)
+            {
+                case 10:
+                    money = 1 * GOLD;
+                    break;
+                case 20:
+                    money = 25000;
+                    break;
+                case 30:
+                    money = 5 * GOLD;
+                    itemId = 21841; // Netherweave Bag
+                    itemCount = 2;
+                    break;
+                case 40:
+                    money = 25 * GOLD;
+                    itemId = 28788; // Tabard of the Protector
+                    itemCount = 1;
+                    break;
+                case 50:
+                    money = 50 * GOLD;
+                    itemId = 21841; // Netherweave Bag
+                    itemCount = 2;
+                    break;
+                case 60:
+                    money = 125 * GOLD;
+                    break;
+                case 70:
+                    money = 250 * GOLD;
+                    spellId = 63318; // Summon Murkimus the Gladiator
+                    break;
+                case 80:
+                    money = 500 * GOLD;
+                    spellId = 51412; // Big Battle Bear
+                    break;
+                default:
+                    return;
+            }
+
+            CustomFlags rewardFlag = CustomFlags(CUSTOM_FLAG_HARDCORE_REWARD_10 << (tier / 10 - 1));
+            if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, rewardFlag))
+                return;
+
+            player->AddCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, rewardFlag);
+
+            CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+            MailDraft draft(Trinity::StringFormat("Hardcore Milestone: Level {}", tier), "Your dedication to the one-life journey has been noticed. Take these supplies and press on.");
+            draft.AddMoney(money);
+            for (uint32 i = 0; i < itemCount; ++i)
+            {
+                if (Item* item = Item::CreateItem(itemId, 1, player))
+                {
+                    item->SaveToDB(trans);
+                    draft.AddItem(item);
+                }
+            }
+            draft.SendMailTo(trans, player, MailSender(MAIL_NORMAL, 0, MAIL_STATIONERY_GM));
+            CharacterDatabase.CommitTransaction(trans);
+
+            if (spellId)
+                player->LearnSpell(spellId, false);
+
+            ChatHandler handler(player->GetSession());
+            if (tier == 80)
+                handler.PSendSysMessage(LANG_HARDCORE_MILESTONE_FINAL, uint32(tier));
+            else
+                handler.PSendSysMessage(LANG_HARDCORE_MILESTONE, uint32(tier), uint32(tier) + 10);
         }
 };
 

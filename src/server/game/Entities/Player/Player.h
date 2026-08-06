@@ -960,6 +960,7 @@ enum CustomFlags : uint16
 
     CUSTOM_FLAG_HARDCORE_ACTIVE = 0x01,
     CUSTOM_FLAG_HARDCORE_DEAD = 0x02,
+    CUSTOM_FLAG_HARDCORE_REWARD_10 = 0x04, // one bit per 10-level milestone, up to 0x200 for level 80
 };
 
 class TC_GAME_API Player : public Unit, public GridObject<Player>

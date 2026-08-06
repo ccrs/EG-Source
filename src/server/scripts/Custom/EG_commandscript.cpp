@@ -128,9 +128,10 @@ public:
             "SELECT c.name, c.level, c.race, c.class, c.account, c.online "
             "FROM characters c "
             "INNER JOIN character_extended ce ON ce.guid = c.guid "
-            "WHERE SUBSTRING_INDEX(SUBSTRING_INDEX(ce.customFlags, ' ', {}), ' ', -1) = '{}' "
+            "WHERE (CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(ce.customFlags, ' ', {}), ' ', -1) AS UNSIGNED) & {}) = {} "
             "ORDER BY c.level DESC, c.name ASC",
-            uint32(CustomFlagsIndex::CUSTOM_HARDCORE) + 1, uint32(CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE));
+            uint32(CustomFlagsIndex::CUSTOM_HARDCORE) + 1,
+            uint32(CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE | CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD), uint32(CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE));
 
         if (!result)
         {
