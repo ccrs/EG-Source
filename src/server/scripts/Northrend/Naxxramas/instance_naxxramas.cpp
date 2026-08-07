@@ -141,6 +141,12 @@ class instance_naxxramas : public InstanceMapScript
                     case NPC_FAERLINA:
                         FaerlinaGUID = creature->GetGUID();
                         break;
+                    case NPC_MAEXXNA:
+                        MaexxnaGUID = creature->GetGUID();
+                        break;
+                    case NPC_LOATHEB:
+                        LoathebGUID = creature->GetGUID();
+                        break;
                     case NPC_RAZUVIOUS:
                         RazuviousGUID = creature->GetGUID();
                         break;
@@ -196,6 +202,9 @@ class instance_naxxramas : public InstanceMapScript
                         GothikGateGUID = go->GetGUID();
                         break;
                     case GO_HORSEMEN_CHEST:
+                        if (GetBossState(BOSS_HORSEMEN) == DONE)
+                            ApplyChallengeLootUpgrade(go);
+                        [[fallthrough]];
                     case GO_HORSEMEN_CHEST_HERO:
                         HorsemenChestGUID = go->GetGUID();
                         break;
@@ -262,6 +271,22 @@ class instance_naxxramas : public InstanceMapScript
                 DoRemoveAurasDueToSpellOnPlayer(player, SPELL_BIGGLESWORTH_CURSE, true, true);
             }
 
+            void ApplyChallengeLootUpgrade(Creature* boss)
+            {
+                if (!bigglesworthKilled || instance->Is25ManRaid())
+                    return;
+
+                boss->SetLootMode(LOOT_MODE_HARD_MODE_1);
+            }
+
+            void ApplyChallengeLootUpgrade(GameObject* chest)
+            {
+                if (!bigglesworthKilled || instance->Is25ManRaid())
+                    return;
+
+                chest->SetLootMode(LOOT_MODE_HARD_MODE_1);
+            }
+
             void OnUnitDeath(Unit* unit) override
             {
                 if (!playerDied && unit->IsPlayer() && IsEncounterInProgress())
@@ -282,6 +307,12 @@ class instance_naxxramas : public InstanceMapScript
                         {
                             bigglesworthKilled = true;
                             DoCastSpellOnPlayers(SPELL_BIGGLESWORTH_CURSE, true, true);
+
+                            // covers bosses already engaged when the cat dies
+                            for (ObjectGuid bossGuid : { MaexxnaGUID, LoathebGUID, ThaddiusGUID, KelthuzadGUID })
+                                if (Creature* boss = instance->GetCreature(bossGuid))
+                                    ApplyChallengeLootUpgrade(boss);
+
                             SaveToDB();
                         }
                     }
@@ -405,7 +436,12 @@ class instance_naxxramas : public InstanceMapScript
                 switch (id)
                 {
                     case BOSS_MAEXXNA:
-                        if (state == DONE)
+                        if (state == IN_PROGRESS)
+                        {
+                            if (Creature* maexxna = instance->GetCreature(MaexxnaGUID))
+                                ApplyChallengeLootUpgrade(maexxna);
+                        }
+                        else if (state == DONE)
                         {
                             if (GameObject* teleporter = GetGameObject(DATA_NAXX_PORTAL_ARACHNID))
                                 teleporter->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
@@ -414,7 +450,12 @@ class instance_naxxramas : public InstanceMapScript
                         }
                         break;
                     case BOSS_LOATHEB:
-                        if (state == DONE)
+                        if (state == IN_PROGRESS)
+                        {
+                            if (Creature* loatheb = instance->GetCreature(LoathebGUID))
+                                ApplyChallengeLootUpgrade(loatheb);
+                        }
+                        else if (state == DONE)
                         {
                             if (GameObject* teleporter = GetGameObject(DATA_NAXX_PORTAL_PLAGUE))
                                 teleporter->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
@@ -423,7 +464,12 @@ class instance_naxxramas : public InstanceMapScript
                         }
                         break;
                     case BOSS_THADDIUS:
-                        if (state == DONE)
+                        if (state == IN_PROGRESS)
+                        {
+                            if (Creature* thaddius = instance->GetCreature(ThaddiusGUID))
+                                ApplyChallengeLootUpgrade(thaddius);
+                        }
+                        else if (state == DONE)
                         {
                             if (GameObject* teleporter = GetGameObject(DATA_NAXX_PORTAL_CONSTRUCT))
                                 teleporter->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
@@ -440,6 +486,7 @@ class instance_naxxramas : public InstanceMapScript
                         {
                             if (GameObject* horsemenChest = instance->GetGameObject(HorsemenChestGUID))
                             {
+                                ApplyChallengeLootUpgrade(horsemenChest);
                                 horsemenChest->SetRespawnTime(horsemenChest->GetRespawnDelay());
                                 horsemenChest->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                             }
@@ -456,7 +503,12 @@ class instance_naxxramas : public InstanceMapScript
                         HandleGameObject(KelthuzadDoorGUID, false);
                         break;
                     case BOSS_KELTHUZAD:
-                        if (state == DONE)
+                        if (state == IN_PROGRESS)
+                        {
+                            if (Creature* kelthuzad = instance->GetCreature(KelthuzadGUID))
+                                ApplyChallengeLootUpgrade(kelthuzad);
+                        }
+                        else if (state == DONE)
                             if (GameObject* throne = GetGameObject(DATA_KELTHUZAD_THRONE))
                                 throne->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                         break;
@@ -625,10 +677,14 @@ class instance_naxxramas : public InstanceMapScript
             ObjectGuid AnubRekhanGUID;
             // Grand Widow Faerlina
             ObjectGuid FaerlinaGUID;
+            // Maexxna
+            ObjectGuid MaexxnaGUID;
 
             /* The Plague Quarter */
             // Heigan the Unclean
             ObjectGuid HeiganGUID;
+            // Loatheb
+            ObjectGuid LoathebGUID;
 
             /* The Military Quarter */
             // Instructor Razuvious

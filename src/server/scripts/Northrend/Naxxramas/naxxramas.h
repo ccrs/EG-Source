@@ -87,6 +87,8 @@ enum NAXCreaturesIds
 {
     NPC_ANUBREKHAN              = 15956,
     NPC_FAERLINA                = 15953,
+    NPC_MAEXXNA                 = 15952,
+    NPC_LOATHEB                 = 16011,
     NPC_RAZUVIOUS               = 16061,
     NPC_GOTHIK                  = 16060,
     NPC_THANE                   = 16064,
