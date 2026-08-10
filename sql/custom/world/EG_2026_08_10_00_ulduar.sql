@@ -94,3 +94,6 @@ INSERT INTO `creature_formations` (`leaderGUID`, `memberGUID`, `dist`, `angle`, 
 (137552, 137554, 7.30, 2.6268, 3, 0, 0),
 (137552, 137540, 6.62, 1.2141, 3, 0, 0),
 (137552, 137556, 10.63, 1.9398, 3, 0, 0);
+
+-- Charged Sphere (33715/33756)
+UPDATE `creature_template` SET `speed_run` = 0.6 WHERE `entry` IN (33715, 33756);
