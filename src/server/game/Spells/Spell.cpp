@@ -5904,9 +5904,27 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* param1 /*= nullptr*/, uint
                     return SPELL_FAILED_BAD_TARGETS;
 
                 Player* target = playerCaster->GetSelectedPlayer();
-                if (!target ||
+                if (!target || playerCaster == target ||
                     !(target->GetSession()->GetRecruiterId() == playerCaster->GetSession()->GetAccountId() || target->GetSession()->GetAccountId() == playerCaster->GetSession()->GetRecruiterId()))
                     return SPELL_FAILED_BAD_TARGETS;
+
+                if (target->HasSummonPending())
+                    return SPELL_FAILED_SUMMON_PENDING;
+
+                MapEntry const* rafMap = sMapStore.LookupEntry(playerCaster->GetMapId());
+                if (rafMap && rafMap->IsDungeon())
+                {
+                    uint32 rafMapId = playerCaster->GetMap()->GetId();
+                    Difficulty rafDifficulty = playerCaster->GetMap()->GetDifficultyID();
+                    if (rafMap->IsRaid())
+                        if (InstancePlayerBind* targetBind = target->GetBoundInstance(rafMapId, rafDifficulty))
+                            if (InstancePlayerBind* casterBind = playerCaster->GetBoundInstance(rafMapId, rafDifficulty))
+                                if (targetBind->perm && targetBind->save != casterBind->save)
+                                    return SPELL_FAILED_TARGET_LOCKED_TO_RAID_INSTANCE;
+
+                    if (!sObjectMgr->GetInstanceTemplate(rafMapId))
+                        return SPELL_FAILED_TARGET_NOT_IN_INSTANCE;
+                }
                 break;
             }
             case SPELL_EFFECT_LEAP:

@@ -5527,5 +5527,9 @@ void Spell::EffectSummonRaFFriend()
     if (m_caster->GetTypeId() != TYPEID_PLAYER || !unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER)
         return;
 
-    m_caster->CastSpell(unitTarget, effectInfo->TriggerSpell, true);
+    Unit* unitCaster = GetUnitCasterForEffectHandlers();
+    if (!unitCaster)
+        return;
+
+    unitTarget->ToPlayer()->SendSummonRequestFrom(unitCaster);
 }

@@ -79,10 +79,22 @@ void WorldSession::HandleAcceptGrantLevel(WorldPacket& recvData)
     if (GetAccountId() != other->GetSession()->GetRecruiterId())
         return;
 
-    if (other->GetGrantableLevels())
-        other->SetGrantableLevels(other->GetGrantableLevels() - 1);
-    else
+    if (!other->GetGrantableLevels())
         return;
+
+    if (other->GetTeamId() != _player->GetTeamId() && !sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP))
+        return;
+
+    if (_player->GetLevel() >= other->GetLevel())
+        return;
+
+    if (_player->GetLevel() >= sWorld->getIntConfig(CONFIG_MAX_RECRUIT_A_FRIEND_BONUS_PLAYER_LEVEL))
+        return;
+
+    if (!_player->IsInSameRaidWith(other))
+        return;
+
+    other->SetGrantableLevels(other->GetGrantableLevels() - 1);
 
     _player->SetBeenGrantedLevelsFromRaF();
     _player->GiveLevel(_player->GetLevel() + 1);
