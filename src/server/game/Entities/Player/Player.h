@@ -1825,7 +1825,11 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
 
         bool GetsRecruitAFriendBonus(bool forXP);
         uint8 GetGrantableLevels() const { return m_grantableLevels; }
-        void SetGrantableLevels(uint8 val) { m_grantableLevels = val; }
+        void SetGrantableLevels(uint8 val)
+        {
+            m_grantableLevels = val;
+            SetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_RAF_GRANTABLE_LEVEL, val ? 0x01 : 0x00);
+        }
 
         ReputationMgr&       GetReputationMgr()       { return *m_reputationMgr; }
         ReputationMgr const& GetReputationMgr() const { return *m_reputationMgr; }

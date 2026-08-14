@@ -2568,12 +2568,7 @@ void Player::GiveLevel(uint8 level)
     if (GetSession()->GetRecruiterId())
         if (level < sWorld->getIntConfig(CONFIG_MAX_RECRUIT_A_FRIEND_BONUS_PLAYER_LEVEL))
             if (level % 2 == 0)
-            {
-                ++m_grantableLevels;
-
-                if (!HasByteFlag(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_RAF_GRANTABLE_LEVEL, 0x01))
-                    SetByteFlag(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_RAF_GRANTABLE_LEVEL, 0x01);
-            }
+                SetGrantableLevels(m_grantableLevels + 1); // EG - setter keeps the client indicator in sync
 
     SendQuestGiverStatusMultiple();
 
@@ -17670,12 +17665,9 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
     InitPvP();
 
     // RaF stuff.
-    m_grantableLevels = fields[71].GetUInt8();
+    SetGrantableLevels(fields[71].GetUInt8()); // EG - setter keeps the client indicator in sync
     if (GetSession()->IsARecruiter() || (GetSession()->GetRecruiterId() != 0))
         SetDynamicFlag(UNIT_DYNFLAG_REFER_A_FRIEND);
-
-    if (m_grantableLevels > 0)
-        SetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_RAF_GRANTABLE_LEVEL, 0x01);
 
     _LoadDeclinedNames(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_DECLINED_NAMES));
 
