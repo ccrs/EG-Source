@@ -34,6 +34,7 @@ void AddSC_EG_areatrigger_scripts();
 void AddSC_EG_commandscript();
 void AddSC_EG_go_scripts();
 void AddSC_EG_player_scripts();
+void AddSC_EG_raf_scripts();
 void AddSC_EG_tournament_commandscript();
 void AddSC_EG_tournament_scripts();
 
@@ -58,6 +59,7 @@ void AddCustomScripts()
     AddSC_EG_commandscript();
     AddSC_EG_go_scripts();
     AddSC_EG_player_scripts();
+    AddSC_EG_raf_scripts();
     AddSC_EG_tournament_commandscript();
     AddSC_EG_tournament_scripts();
 }

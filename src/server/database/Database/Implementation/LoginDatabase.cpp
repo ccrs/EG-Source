@@ -132,6 +132,14 @@ void LoginDatabaseConnection::DoPrepareStatements()
     PrepareStatement(LOGIN_SEL_ANTICHEAT_REPORTS_BY_TOTAL, "SELECT MAX(id) AS id, guid, MAX(average) AS average, SUM(total_reports) AS total_reports, MAX(time) AS time, MAX(realmid) AS realmid, COUNT(*) AS days_flagged FROM account_anticheat_reports WHERE total_reports != 0 AND realmid = ? AND time >= ? GROUP BY guid ORDER BY total_reports DESC LIMIT 10", CONNECTION_SYNCH);
     PrepareStatement(LOGIN_DEL_ANTICHEAT_REPORTS, "DELETE FROM account_anticheat_reports WHERE realmid = ? AND guid = ?", CONNECTION_ASYNC);
     PrepareStatement(LOGIN_SEL_ANTICHEAT_PLAYER_ACCOUNT_BANS, "SELECT FROM_UNIXTIME(bandate), unbandate-bandate, active, unbandate, banreason, bannedby FROM account_banned WHERE id = ? ORDER BY bandate ASC", CONNECTION_SYNCH);
+
+    // EG - Recruit-A-Friend reward queue
+    PrepareStatement(LOGIN_UPD_RAF_REWARD_STRANDED, "UPDATE account_recruit_rewards SET status = 3, processdate = UNIX_TIMESTAMP(), last_error = 'stranded in processing by a restart, may already have been delivered' WHERE status = 1 AND realmid = ?", CONNECTION_SYNCH);
+    PrepareStatement(LOGIN_SEL_RAF_REWARD_QUEUE, "SELECT id, recruiter, guid, name, item_entry, item_count, mail_subject, mail_body FROM account_recruit_rewards WHERE realmid = ? AND status = 0 ORDER BY id LIMIT ?", CONNECTION_ASYNC);
+    PrepareStatement(LOGIN_UPD_RAF_REWARD_CLAIM, "UPDATE account_recruit_rewards SET status = 1 WHERE id = ? AND realmid = ? AND status = 0", CONNECTION_ASYNC);
+    PrepareStatement(LOGIN_SEL_RAF_REWARD_CLAIM_CHECK, "SELECT status FROM account_recruit_rewards WHERE id = ? AND realmid = ?", CONNECTION_ASYNC);
+    PrepareStatement(LOGIN_UPD_RAF_REWARD_DELIVERED, "UPDATE account_recruit_rewards SET status = 2, processdate = UNIX_TIMESTAMP(), last_error = NULL WHERE id = ? AND realmid = ?", CONNECTION_ASYNC);
+    PrepareStatement(LOGIN_UPD_RAF_REWARD_FAILED, "UPDATE account_recruit_rewards SET status = 3, processdate = UNIX_TIMESTAMP(), last_error = ? WHERE id = ? AND realmid = ?", CONNECTION_ASYNC);
 }
 
 LoginDatabaseConnection::LoginDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo)

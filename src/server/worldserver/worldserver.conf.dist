@@ -4052,6 +4052,7 @@ Logger.scripts.hotswap=3,Console Server
 Logger.sql.sql=5,Console DBErrors
 Logger.sql.updates=3,Console Server
 Logger.mmaps=3,Server
+Logger.raf=3,Console Server
 
 #Logger.achievement=3,Console Server
 #Logger.addon=3,Console Server
@@ -4675,6 +4676,34 @@ Transmogrification.IgnoreReqSpell = 0
 Transmogrification.IgnoreReqLevel = 0
 Transmogrification.IgnoreReqEvent = 0
 Transmogrification.IgnoreReqStats = 0
+
+#
+###################################################################################################
+
+###################################################################################################
+# RECRUIT-A-FRIEND REWARD DISPATCHER
+#
+#    RAF.Reward.Enable
+#        Description: Drains auth.account_recruit_rewards and delivers the queued reward items by
+#                     in-game mail. The website inserts the rows.
+#        Default:     0 - (Disabled)
+#                     1 - (Enabled)
+
+RAF.Reward.Enable = 0
+
+#
+#    RAF.Reward.PollInterval
+#        Description: Seconds between queue polls. Values below 1 are clamped to 1.
+#        Default:     60
+
+RAF.Reward.PollInterval = 60
+
+#
+#    RAF.Reward.BatchSize
+#        Description: Maximum number of queue rows claimed per poll.
+#        Default:     25
+
+RAF.Reward.BatchSize = 25
 
 #
 ###################################################################################################
