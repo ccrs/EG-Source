@@ -643,6 +643,9 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     PrepareStatement(CHAR_UPD_TOURNAMENT_RUN_VERDICT, "UPDATE tournament_run SET state = ?, rejectReason = ?, verifiedBy = ? WHERE id = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_UPD_TOURNAMENT_RUN_ORPHANS, "UPDATE tournament_run SET state = ?, rejectReason = ? WHERE state IN (?, ?)", CONNECTION_ASYNC);
     PrepareStatement(CHAR_INS_TOURNAMENT_RUN_EVENT, "INSERT INTO tournament_run_event (runId, ts, type, detail) VALUES (?, ?, ?, ?)", CONNECTION_ASYNC);
+
+    // EG - Boosted day
+    PrepareStatement(CHAR_UPD_ALL_CHARACTERS_REM_PLAYER_FLAGS, "UPDATE characters SET playerFlags = playerFlags & ~ ? WHERE playerFlags & ? <> 0", CONNECTION_ASYNC);
 }
 
 CharacterDatabaseConnection::CharacterDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo)

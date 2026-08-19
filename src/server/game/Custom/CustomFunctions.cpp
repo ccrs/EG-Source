@@ -56,6 +56,21 @@
 #include <unordered_set>
 #include <vector>
 
+namespace
+{
+    bool BoostedDayActive = false;
+}
+
+bool EG::IsBoostedDay()
+{
+    return BoostedDayActive;
+}
+
+void EG::SetBoostedDay(bool active)
+{
+    BoostedDayActive = active;
+}
+
 
 void Creature::ProcessDelayedLOSEntries()
 {
@@ -692,6 +707,48 @@ bool Player::InArenaQueue() const
         if (GetBattlegroundQueueTypeId(i).BattlemasterListId == BATTLEGROUND_AA)
             return true;
     return false;
+}
+
+void Player::UpdateHostileAreaState(AreaTableEntry const* zone)
+{
+    // a boosted day forces the realm to behave like a PvP realm for flagging purposes
+    bool const pvpRules = sWorld->IsPvPRealm() || EG::IsBoostedDay();
+
+    // in PvP, any not controlled zone (except zone->FactionGroupMask == 6, default case)
+    // in PvE, only opposition team capital
+    switch (zone->FactionGroupMask)
+    {
+        case AREATEAM_ALLY:
+            pvpInfo.IsInHostileArea = GetTeam() != ALLIANCE && (pvpRules || zone->Flags & AREA_FLAG_CAPITAL);
+            break;
+        case AREATEAM_HORDE:
+            pvpInfo.IsInHostileArea = GetTeam() != HORDE && (pvpRules || zone->Flags & AREA_FLAG_CAPITAL);
+            break;
+        case AREATEAM_NONE:
+            // overwrite for battlegrounds, maybe batter some zone flags but current known not 100% fit to this
+            pvpInfo.IsInHostileArea = pvpRules || InBattleground() || zone->Flags & AREA_FLAG_WINTERGRASP;
+            break;
+        default:                                            // 6 in fact
+            pvpInfo.IsInHostileArea = false;
+            break;
+    }
+
+    // Treat players having a quest flagging for PvP as always in hostile area
+    pvpInfo.IsHostile = pvpInfo.IsInHostileArea || HasPvPForcingQuest();
+}
+
+void Player::RefreshForcedPvPState(bool hardClear)
+{
+    AreaTableEntry const* zone = sAreaTableStore.LookupEntry(GetZoneId());
+    if (!zone)
+        return;
+
+    UpdateHostileAreaState(zone);
+
+    if (!hardClear || pvpInfo.IsHostile)
+        UpdatePvPState();
+    else
+        UpdatePvP(false, true);
 }
 
 void Player::FlushNonArenaBattlegroundQueues()

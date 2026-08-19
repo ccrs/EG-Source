@@ -6713,6 +6713,11 @@ bool Player::RewardHonor(Unit* victim, uint32 groupsize, int32 honor, bool pvpto
     }
 
     honor_f *= sWorld->getRate(RATE_HONOR);
+
+    // EG: boosted days award honor at their own configured rate
+    if (EG::IsBoostedDay())
+        honor_f *= sWorld->getRate(RATE_HONOR_BOOST);
+
     // Back to int now
     honor = int32(honor_f);
     // honor - for show honor points in log
@@ -6942,27 +6947,7 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea)
 
     GetMap()->SendZoneDynamicInfo(newZone, this);
 
-    // in PvP, any not controlled zone (except zone->FactionGroupMask == 6, default case)
-    // in PvE, only opposition team capital
-    switch (zone->FactionGroupMask)
-    {
-        case AREATEAM_ALLY:
-            pvpInfo.IsInHostileArea = GetTeam() != ALLIANCE && (sWorld->IsPvPRealm() || zone->Flags & AREA_FLAG_CAPITAL);
-            break;
-        case AREATEAM_HORDE:
-            pvpInfo.IsInHostileArea = GetTeam() != HORDE && (sWorld->IsPvPRealm() || zone->Flags & AREA_FLAG_CAPITAL);
-            break;
-        case AREATEAM_NONE:
-            // overwrite for battlegrounds, maybe batter some zone flags but current known not 100% fit to this
-            pvpInfo.IsInHostileArea = sWorld->IsPvPRealm() || InBattleground() || zone->Flags & AREA_FLAG_WINTERGRASP;
-            break;
-        default:                                            // 6 in fact
-            pvpInfo.IsInHostileArea = false;
-            break;
-    }
-
-    // Treat players having a quest flagging for PvP as always in hostile area
-    pvpInfo.IsHostile = pvpInfo.IsInHostileArea || HasPvPForcingQuest();
+    UpdateHostileAreaState(zone);
 
     if (zone->Flags & AREA_FLAG_CAPITAL) // Is in a capital city
     {

@@ -572,6 +572,7 @@ void World::LoadConfigSettings(bool reload)
 
     m_int_configs[CONFIG_XP_BOOST_DAYMASK] = sConfigMgr->GetIntDefault("XP.Boost.Daymask", 0);
     rate_values[RATE_XP_BOOST] = sConfigMgr->GetFloatDefault("XP.Boost.Rate", 2.0f);
+    rate_values[RATE_HONOR_BOOST] = sConfigMgr->GetFloatDefault("Honor.Boost.Rate", 2.0f);
 
     rate_values[RATE_REPAIRCOST]  = sConfigMgr->GetFloatDefault("Rate.RepairCost", 1.0f);
     if (rate_values[RATE_REPAIRCOST] < 0.0f)

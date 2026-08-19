@@ -1634,6 +1634,8 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         PvPInfo pvpInfo;
         void InitPvP();
         void UpdatePvPState(bool onlyFFA = false);
+        void UpdateHostileAreaState(AreaTableEntry const* zone); // EG
+        void RefreshForcedPvPState(bool hardClear); // EG
         void SetPvP(bool state) override;
         void UpdatePvP(bool state, bool override = false);
         void UpdateZone(uint32 newZone, uint32 newArea);

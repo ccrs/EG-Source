@@ -3150,6 +3150,23 @@ PlayerStart.AllReputation = 0
 #
 #    XP.Boost.Daymask
 #        Description: Enables experience boost during the defined days. This field is a bitmask.
+#                     Days are evaluated against local server time and roll over at midnight.
+#
+#                     On a boosted day the realm additionally:
+#                      - awards honor at Honor.Boost.Rate (all sources that grant honor:
+#                        honorable kills, battleground bonus honor, quest honor)
+#                      - forces PvP flagging as if GameType was set to a PvP realm,
+#                        regardless of the configured GameType. This follows the zone
+#                        FactionGroupMask, so it covers contested zones, enemy territory
+#                        AND every dungeon and raid instance (all of which share mask 0).
+#                        Own faction zones, own capitals and Dalaran (mask 6) are not
+#                        affected. Battlegrounds and arenas already force PvP on their
+#                        own and are unchanged.
+#
+#                     When the boosted day ends, PvP state is cleared for online and
+#                     offline characters alike: the PvP flag, the manual /pvp toggle and
+#                     the contested-PvP flag. A character stays flagged only where the
+#                     zone still forces it (battleground, enemy capital, PvP quest).
 #
 #        Default:     0 - (Disabled)
 #                     1 - (Sunday)
@@ -3166,10 +3183,20 @@ XP.Boost.Daymask = 0
 
 #
 #    XP.Boost.Rate
-#        Description: The boost multiplier for experience gain during XP boosted days.
+#        Description: The boost multiplier for experience gain during boosted days.
 #        Default:     2.0 - (Double experience)
 
 XP.Boost.Rate = 2.0
+
+#
+#    Honor.Boost.Rate
+#        Description: The boost multiplier for honor gain during boosted days. Applies to
+#                     every source that grants honor: honorable kills, battleground bonus
+#                     honor and quest honor. Arenas grant no honor and are unaffected.
+#                     Only used on days enabled by XP.Boost.Daymask.
+#        Default:     2.0 - (Double honor)
+
+Honor.Boost.Rate = 2.0
 
 #
 #    PlayerStart.AllSpells

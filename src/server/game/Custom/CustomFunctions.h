@@ -11,6 +11,9 @@ class WorldObject;
 
 namespace EG
 {
+    TC_GAME_API bool IsBoostedDay();
+    TC_GAME_API void SetBoostedDay(bool active);
+
     class TC_GAME_API MostHPMissingFriendlyUnitInRangeSearcher
     {
     public:

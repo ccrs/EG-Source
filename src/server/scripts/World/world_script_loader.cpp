@@ -55,6 +55,5 @@ void AddWorldScripts()
     if (sWorld->getBoolConfig(CONFIG_IP_BASED_ACTION_LOGGING))
         AddSC_action_ip_logger(); // location: scripts\World\action_ip_logger.cpp
     AddSC_duel_reset();
-    if (sWorld->getIntConfig(CONFIG_XP_BOOST_DAYMASK) != 0)
-        AddSC_xp_boost();
+    AddSC_xp_boost();
 }
