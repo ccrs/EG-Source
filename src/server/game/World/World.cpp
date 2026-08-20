@@ -1663,6 +1663,14 @@ void World::LoadConfigSettings(bool reload)
     m_int_configs[CONFIG_ARENA_1V1_VENDOR_RATING_OFFSET] = sConfigMgr->GetIntDefault("Arena1v1.VendorRatingOffset", 100);
     m_int_configs[CONFIG_ARENA_1V1_RATING_DISCARD_TIMER] = sConfigMgr->GetIntDefault("Arena1v1.RatingDiscardTimer", 60000);
 
+    int32 hardcoreGracePeriod = sConfigMgr->GetIntDefault("Hardcore.GracePeriod", 2);
+    if (hardcoreGracePeriod < 0)
+    {
+        TC_LOG_ERROR("server.loading", "Hardcore.GracePeriod ({}) must be >=0. Using 0 instead.", hardcoreGracePeriod);
+        hardcoreGracePeriod = 0;
+    }
+    m_int_configs[CONFIG_HARDCORE_GRACE_PERIOD] = uint32(hardcoreGracePeriod);
+
     // call ScriptMgr if we're reloading the configuration
     if (reload)
         sScriptMgr->OnConfigLoad(reload);

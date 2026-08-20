@@ -147,10 +147,16 @@ class EG_Hardcore : public PlayerScript
 
         void OnLogin(Player* player, bool /*firstLogin*/) override
         {
-            if (!player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE))
-                return;
-
             ChatHandler handler(player->GetSession());
+
+            if (!player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE))
+            {
+                if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_COMPLETED))
+                    handler.SendSysMessage("|cffff8000This character was levelled to max level in Hardcore mode.|r");
+
+                return;
+            }
+
             if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
             {
                 if (player->IsAlive())
@@ -174,8 +180,11 @@ class EG_Hardcore : public PlayerScript
             if (player->GetLevel() % 10 == 0)
                 GrantMilestone(player, player->GetLevel());
 
-            ChatHandler handler(player->GetSession());
-            AnnounceGracePeriod(player, handler);
+            if (player->GetLevel() >= sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+            {
+                ChatHandler handler(player->GetSession());
+                AnnounceGracePeriod(player, handler);
+            }
         }
 
     private:
@@ -186,8 +195,8 @@ class EG_Hardcore : public PlayerScript
                 return;
 
             handler.SendSysMessage("|cffff0000=== HARDCORE: ONE-TIME CHOICE ===|r");
-            handler.PSendSysMessage("You reached max level in Hardcore mode. For the next |cffffffff%s|r you may retire Hardcore on this character.",
-                secsToTimeString(secondsLeft).c_str());
+            handler.PSendSysMessage("You reached max level in Hardcore mode. For the next |cffffffff%s|r of played time you may retire Hardcore on this character.",
+                secsToTimeString(secondsLeft, TimeFormat::ShortText).c_str());
             handler.SendSysMessage("Retiring keeps a permanent record that you levelled this character in Hardcore, unlocks every other character setting and returns you to regular play.");
             handler.SendSysMessage("To retire Hardcore now, type: |cffffffff.settings hardcore|r");
             handler.SendSysMessage("|cffff0000If you die or let this time run out, Hardcore stays on this character forever.|r");

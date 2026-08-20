@@ -7,7 +7,6 @@
 #include "CellImpl.h"
 #include "Channel.h"
 #include "ChannelPackets.h"
-#include "Config.h"
 #include "Containers.h"
 #include "Creature.h"
 #include "CreatureAI.h"
@@ -527,6 +526,9 @@ void Player::ActivateHardcore()
 
 void Player::DisableHardcore()
 {
+    if (!GetHardcoreGraceSecondsLeft())
+        return;
+
     SetCustomFlags(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_COMPLETED);
     SetCustomFlags(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_NONE);
     SetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE, CustomFlags::CUSTOM_FLAG_NONE);
@@ -545,11 +547,10 @@ uint32 Player::GetHardcoreGraceSecondsLeft() const
     if (GetLevel() < sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
         return 0;
 
-    uint32 graceHours = sConfigMgr->GetIntDefault("Hardcore.GracePeriod", 2);
-    if (!graceHours)
+    uint32 grace = sWorld->getIntConfig(CONFIG_HARDCORE_GRACE_PERIOD) * HOUR;
+    if (!grace)
         return 0;
 
-    uint32 grace = graceHours * HOUR;
     uint32 played = GetLevelPlayedTime();
     if (played >= grace)
         return 0;

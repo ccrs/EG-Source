@@ -13,6 +13,7 @@
 #include "Language.h"
 #include "StringConvert.h"
 #include "Util.h"
+#include "World.h"
 #include "WorldSession.h"
 
 using namespace Trinity::ChatCommands;
@@ -91,17 +92,30 @@ public:
 
         if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE))
         {
+            uint32 maxLevel = sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL);
+            if (!sWorld->getIntConfig(CONFIG_HARDCORE_GRACE_PERIOD))
+            {
+                handler->SendSysMessage("This character is in Hardcore mode and it can never be disabled.");
+                return true;
+            }
+
+            if (player->GetLevel() < maxLevel)
+            {
+                handler->PSendSysMessage("This character is in Hardcore mode. Survive to level %u and you will get a one-time window to retire it.", maxLevel);
+                return true;
+            }
+
             uint32 secondsLeft = player->GetHardcoreGraceSecondsLeft();
             if (!secondsLeft)
             {
-                handler->SendSysMessage("This character is in Hardcore mode and it can no longer be disabled.");
+                handler->SendSysMessage("This character is in Hardcore mode and the window to retire it has passed. It can no longer be disabled.");
                 return true;
             }
 
             if (!confirmed)
             {
                 handler->SendSysMessage("|cffff0000=== RETIRE HARDCORE MODE ===|r");
-                handler->PSendSysMessage("You have %s left to make this choice, and it can only be made once.", secsToTimeString(secondsLeft).c_str());
+                handler->PSendSysMessage("You have %s left to make this choice, and it can only be made once.", secsToTimeString(secondsLeft, TimeFormat::ShortText).c_str());
                 handler->SendSysMessage("- Hardcore mode is switched off and death is no longer permanent.");
                 handler->SendSysMessage("- A permanent record that you levelled this character in Hardcore is kept. Nothing else from Hardcore is retained.");
                 handler->SendSysMessage("- Every other character setting becomes available again.");
@@ -133,7 +147,11 @@ public:
             handler->SendSysMessage("Hardcore mode cannot be switched off once it is on, with a single exception:");
             handler->SendSysMessage("- If this character dies for ANY reason, the death is PERMANENT. You will remain a ghost forever and can never be resurrected by any means.");
             handler->SendSysMessage("- All other character settings are wiped NOW and stay disabled while Hardcore is on.");
-            handler->PSendSysMessage("- The only way out is to survive to level %u. You then get a short, one-time window to retire Hardcore and return to regular play.", sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL));
+            if (uint32 graceHours = sWorld->getIntConfig(CONFIG_HARDCORE_GRACE_PERIOD))
+                handler->PSendSysMessage("- The only way out is to survive to level %u. You then get %s of played time to retire Hardcore and return to regular play.",
+                    sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL), secsToTimeString(graceHours * HOUR, TimeFormat::ShortText).c_str());
+            else
+                handler->SendSysMessage("- There is no way out. Hardcore mode can never be removed from this character.");
             handler->SendSysMessage("If you are absolutely certain, type: .settings hardcore confirm");
             return true;
         }
