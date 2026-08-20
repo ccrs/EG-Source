@@ -9,6 +9,7 @@
 #include "Player.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
+#include "Util.h"
 #include "World.h"
 #include "WorldSession.h"
 #include <unordered_set>
@@ -158,7 +159,10 @@ class EG_Hardcore : public PlayerScript
                 handler.SendSysMessage("|cffff0000This character fell in Hardcore mode and is permanently dead.|r");
             }
             else
+            {
                 handler.SendSysMessage("|cffff8000Hardcore mode is active on this character: death is permanent.|r");
+                AnnounceGracePeriod(player, handler);
+            }
         }
 
         void OnLevelChanged(Player* player, uint8 /*oldLevel*/) override
@@ -169,9 +173,26 @@ class EG_Hardcore : public PlayerScript
 
             if (player->GetLevel() % 10 == 0)
                 GrantMilestone(player, player->GetLevel());
+
+            ChatHandler handler(player->GetSession());
+            AnnounceGracePeriod(player, handler);
         }
 
     private:
+        static void AnnounceGracePeriod(Player* player, ChatHandler& handler)
+        {
+            uint32 secondsLeft = player->GetHardcoreGraceSecondsLeft();
+            if (!secondsLeft)
+                return;
+
+            handler.SendSysMessage("|cffff0000=== HARDCORE: ONE-TIME CHOICE ===|r");
+            handler.PSendSysMessage("You reached max level in Hardcore mode. For the next |cffffffff%s|r you may retire Hardcore on this character.",
+                secsToTimeString(secondsLeft).c_str());
+            handler.SendSysMessage("Retiring keeps a permanent record that you levelled this character in Hardcore, unlocks every other character setting and returns you to regular play.");
+            handler.SendSysMessage("To retire Hardcore now, type: |cffffffff.settings hardcore|r");
+            handler.SendSysMessage("|cffff0000If you die or let this time run out, Hardcore stays on this character forever.|r");
+        }
+
         static void GrantMilestone(Player* player, uint8 tier)
         {
             uint32 money = 0;

@@ -91,7 +91,27 @@ public:
 
         if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE))
         {
-            handler->SendSysMessage("This character is already in Hardcore mode. It can never be disabled.");
+            uint32 secondsLeft = player->GetHardcoreGraceSecondsLeft();
+            if (!secondsLeft)
+            {
+                handler->SendSysMessage("This character is in Hardcore mode and it can no longer be disabled.");
+                return true;
+            }
+
+            if (!confirmed)
+            {
+                handler->SendSysMessage("|cffff0000=== RETIRE HARDCORE MODE ===|r");
+                handler->PSendSysMessage("You have %s left to make this choice, and it can only be made once.", secsToTimeString(secondsLeft).c_str());
+                handler->SendSysMessage("- Hardcore mode is switched off and death is no longer permanent.");
+                handler->SendSysMessage("- A permanent record that you levelled this character in Hardcore is kept. Nothing else from Hardcore is retained.");
+                handler->SendSysMessage("- Every other character setting becomes available again.");
+                handler->SendSysMessage("- Hardcore mode can never be switched back on.");
+                handler->SendSysMessage("If you are certain, type: .settings hardcore confirm");
+                return true;
+            }
+
+            player->DisableHardcore();
+            handler->SendSysMessage("|cff00ff00Hardcore mode retired.|r Your Hardcore levelling record is kept, all character settings are available again and death is no longer permanent.");
             return true;
         }
 
@@ -110,9 +130,10 @@ public:
         if (!confirmed)
         {
             handler->SendSysMessage("|cffff0000=== HARDCORE MODE WARNING ===|r");
-            handler->SendSysMessage("Hardcore mode is PERMANENT and IRREVERSIBLE, it can NEVER be disabled:");
+            handler->SendSysMessage("Hardcore mode cannot be switched off once it is on, with a single exception:");
             handler->SendSysMessage("- If this character dies for ANY reason, the death is PERMANENT. You will remain a ghost forever and can never be resurrected by any means.");
-            handler->SendSysMessage("- All other character settings are wiped NOW and remain disabled forever on this character.");
+            handler->SendSysMessage("- All other character settings are wiped NOW and stay disabled while Hardcore is on.");
+            handler->PSendSysMessage("- The only way out is to survive to level %u. You then get a short, one-time window to retire Hardcore and return to regular play.", sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL));
             handler->SendSysMessage("If you are absolutely certain, type: .settings hardcore confirm");
             return true;
         }

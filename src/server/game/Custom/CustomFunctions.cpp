@@ -7,6 +7,7 @@
 #include "CellImpl.h"
 #include "Channel.h"
 #include "ChannelPackets.h"
+#include "Config.h"
 #include "Containers.h"
 #include "Creature.h"
 #include "CreatureAI.h"
@@ -522,6 +523,38 @@ void Player::ActivateHardcore()
     InitTaxiNodesForLevel();
 
     _SaveCustomSettings();
+}
+
+void Player::DisableHardcore()
+{
+    SetCustomFlags(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_COMPLETED);
+    SetCustomFlags(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_NONE);
+    SetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE, CustomFlags::CUSTOM_FLAG_NONE);
+
+    _SaveCustomSettings();
+}
+
+uint32 Player::GetHardcoreGraceSecondsLeft() const
+{
+    if (!HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE))
+        return 0;
+
+    if (HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+        return 0;
+
+    if (GetLevel() < sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
+        return 0;
+
+    uint32 graceHours = sConfigMgr->GetIntDefault("Hardcore.GracePeriod", 2);
+    if (!graceHours)
+        return 0;
+
+    uint32 grace = graceHours * HOUR;
+    uint32 played = GetLevelPlayedTime();
+    if (played >= grace)
+        return 0;
+
+    return grace - played;
 }
 
 void Player::HandleHardcoreDeath(Unit* killer)

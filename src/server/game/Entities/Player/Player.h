@@ -961,6 +961,7 @@ enum CustomFlags : uint16
     CUSTOM_FLAG_HARDCORE_ACTIVE = 0x01,
     CUSTOM_FLAG_HARDCORE_DEAD = 0x02,
     CUSTOM_FLAG_HARDCORE_REWARD_10 = 0x04, // one bit per 10-level milestone, up to 0x200 for level 80
+    CUSTOM_FLAG_HARDCORE_COMPLETED = 0x400, // reached max level in hardcore, kept forever once the mode is retired
 };
 
 class TC_GAME_API Player : public Unit, public GridObject<Player>
@@ -2358,6 +2359,8 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void ClearHardcoreDeath();
         static void OfflineClearHardcoreDeath(ObjectGuid::LowType guid);
         static bool IsHardcoreCharacter(ObjectGuid guid);
+        void DisableHardcore();
+        uint32 GetHardcoreGraceSecondsLeft() const;
     protected:
         // Gamemaster whisper whitelist
         GuidList WhisperList;

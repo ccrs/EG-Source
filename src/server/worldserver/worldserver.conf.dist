@@ -3199,6 +3199,28 @@ XP.Boost.Rate = 2.0
 Honor.Boost.Rate = 2.0
 
 #
+#    Hardcore.GracePeriod
+#        Description: Amount of PLAYED time (in hours) a hardcore character has, after
+#                     reaching MaxPlayerLevel, to retire hardcore mode with
+#                     ".settings hardcore confirm".
+#
+#                     This is measured with characters.leveltime, so it only counts time
+#                     actually spent in game at max level and does not burn while the
+#                     character is offline.
+#
+#                     Retiring keeps a permanent record that the character was levelled in
+#                     hardcore and nothing else: every other character setting becomes
+#                     available again and death stops being permanent.
+#
+#                     The window is offered on the level-up to max level and on every login
+#                     while it lasts. Once it expires, or if the character dies at any point,
+#                     hardcore mode can never be removed.
+#        Default:     2 - (2 hours of played time at max level)
+#                     0 - (Disabled, hardcore can never be retired)
+
+Hardcore.GracePeriod = 2
+
+#
 #    PlayerStart.AllSpells
 #        Description: If enabled, players will start with all their class spells (not talents).
 #                     You must populate playercreateinfo_spell_custom table with the spells you
