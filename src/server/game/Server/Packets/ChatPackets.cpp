@@ -107,6 +107,13 @@ void WorldPackets::Chat::Chat::SetSender(WorldObject const* sender, LocaleConsta
     }
 }
 
+// EG - Cross-realm World Chat
+void WorldPackets::Chat::Chat::SetRemoteSender(std::string_view name)
+{
+    SenderName = name;
+    _worldPacket.SetOpcode(SMSG_GM_MESSAGECHAT);
+}
+
 void WorldPackets::Chat::Chat::SetReceiver(WorldObject const* receiver, LocaleConstant locale)
 {
     TargetGUID = receiver->GetGUID();

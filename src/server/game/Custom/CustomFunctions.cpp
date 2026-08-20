@@ -7,6 +7,7 @@
 #include "CellImpl.h"
 #include "Channel.h"
 #include "ChannelPackets.h"
+#include "ChatPackets.h"
 #include "Containers.h"
 #include "Creature.h"
 #include "CreatureAI.h"
@@ -1312,6 +1313,41 @@ bool WorldSession::NormalizeTransportMovementInfo(Unit* mover, MovementInfo& mov
     }
 
     return true;
+}
+
+bool Channel::CanSpeak(ObjectGuid const& guid) const
+{
+    PlayerContainer::const_iterator itr = _playersStore.find(guid);
+    return itr != _playersStore.end() && !itr->second.IsMuted();
+}
+
+void Channel::SayRemote(std::string const& senderName, std::string const& what) const
+{
+    if (what.empty() || senderName.empty())
+        return;
+
+    ObjectGuid const senderGuid = ObjectGuid::Create<HighGuid::Player>(CROSS_REALM_CHAT_SENDER_GUID);
+
+    auto builder = [&](WorldPacket& data, LocaleConstant locale)
+    {
+        LocaleConstant localeIdx = sWorld->GetAvailableDbcLocale(locale);
+
+        WorldPackets::Chat::Chat packet;
+        packet.Initialize(CHAT_MSG_CHANNEL, LANG_UNIVERSAL, nullptr, nullptr, what, 0, GetName(localeIdx), DEFAULT_LOCALE);
+        packet.SenderGUID = senderGuid;
+        packet.TargetGUID = senderGuid;
+        packet.SetRemoteSender(senderName);
+
+        packet.Write();
+
+        data = packet.Move();
+    };
+
+    // Inlined rather than SendToAll, that template is only defined in Channel.cpp
+    Trinity::LocalizedPacketDo<decltype(builder)> localizer(builder);
+    for (PlayerContainer::value_type const& member : _playersStore)
+        if (Player* player = ObjectAccessor::FindConnectedPlayer(member.first))
+            localizer(player);
 }
 
 void WorldSession::SendWorldChannelInvite()

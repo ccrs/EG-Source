@@ -1,6 +1,8 @@
 #include "ScriptMgr.h"
+#include "AnticheatMgr.h"
 #include "CharacterCache.h"
 #include "Config.h"
+#include "CrossRealmChatMgr.h"
 #include "DatabaseEnv.h"
 #include "Item.h"
 #include "ItemTemplate.h"
@@ -11,7 +13,9 @@
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "Realm.h"
+#include "RealmStatusMgr.h"
 #include "StringFormat.h"
+#include "Transmogrification.h"
 #include "World.h"
 #include <unordered_set>
 
@@ -33,6 +37,68 @@ struct RAFRewardRow
     uint32 ItemCount;
     std::string Subject;
     std::string Body;
+};
+
+class EG_Anticheat : public WorldScript
+{
+    public:
+        EG_Anticheat() : WorldScript("EG_Anticheat") { }
+
+        void OnStartup() override
+        {
+            TC_LOG_INFO("server.loading", "Initializing AntiCheat...");
+            sAnticheatMgr->Initialize();
+        }
+};
+
+class EG_RealmStatus : public WorldScript
+{
+    public:
+        EG_RealmStatus() : WorldScript("EG_RealmStatus") { }
+
+        void OnUpdate(uint32 diff) override
+        {
+            sRealmStatusMgr->Update(diff);
+        }
+};
+
+class EG_CrossRealmChat : public WorldScript
+{
+    public:
+        EG_CrossRealmChat() : WorldScript("EG_CrossRealmChat") { }
+
+        void OnStartup() override
+        {
+            sCrossRealmChatMgr->Initialize();
+        }
+
+        void OnUpdate(uint32 diff) override
+        {
+            sCrossRealmChatMgr->Update(diff);
+        }
+};
+
+class EG_Transmogrification : public WorldScript
+{
+    public:
+        EG_Transmogrification() : WorldScript("EG_Transmogrification") { }
+
+        void OnConfigLoad(bool reload) override
+        {
+            if (reload)
+            {
+                TC_LOG_INFO("misc", "Reloading Transmogrification config...");
+                sTransmogrification->LoadConfig(reload);
+            }
+        }
+
+        void OnStartup() override
+        {
+            TC_LOG_INFO("misc", "Deleting non-existing transmogrification entries...");
+            CharacterDatabase.DirectExecute(CharacterDatabase.GetPreparedStatement(CHAR_DEL_ORPHANED_TRANSMOGRIFICATIONS));
+            sTransmogrification->LoadConfig(false);
+            TC_LOG_INFO("misc", "Loading Transmogrification config...");
+        }
 };
 
 class EG_RAFRewardDispatcher : public WorldScript
@@ -246,7 +312,11 @@ class EG_RAFRewardDispatcher : public WorldScript
         QueryCallbackProcessor _queryProcessor;
 };
 
-void AddSC_EG_raf_scripts()
+void AddSC_EG_world_scripts()
 {
+    new EG_Anticheat();
+    new EG_RealmStatus();
+    new EG_CrossRealmChat();
+    new EG_Transmogrification();
     new EG_RAFRewardDispatcher();
 }

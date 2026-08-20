@@ -125,6 +125,10 @@ static constexpr std::string_view WORLD_CHAT_ES = "world-es";
 static constexpr uint32 WORLD_CHAT_INVITER_GUID = 0xFFFFFFFE;
 static constexpr std::string_view WORLD_CHAT_INVITER_NAME = "World";
 
+// EG - Cross-realm World Chat
+static constexpr uint32 CROSS_REALM_CHAT_SENDER_GUID = 0xFFFFFFFD;
+static constexpr std::string_view CROSS_REALM_CHAT_SENDER_NAME = "Cross-Realm";
+
 class TC_GAME_API Channel
 {
     struct PlayerInfo
@@ -240,6 +244,8 @@ class TC_GAME_API Channel
         void List(Player const* player) const;
         void Announce(Player const* player);
         void Say(ObjectGuid const& guid, std::string const& what, uint32 lang) const;
+        void SayRemote(std::string const& senderName, std::string const& what) const; // EG - Cross-realm World Chat
+        bool CanSpeak(ObjectGuid const& guid) const; // EG - Cross-realm World Chat: mirrors the gates in Channel::Say
         void DeclineInvite(Player const* player);
         void Invite(Player const* player, std::string const& newp);
         void JoinNotify(ObjectGuid const& guid) const;

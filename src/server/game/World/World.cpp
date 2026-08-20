@@ -1671,6 +1671,19 @@ void World::LoadConfigSettings(bool reload)
     }
     m_int_configs[CONFIG_HARDCORE_GRACE_PERIOD] = uint32(hardcoreGracePeriod);
 
+    // EG - Realm status
+    m_int_configs[CONFIG_REALM_STATUS_INTERVAL] = std::max(1u, uint32(sConfigMgr->GetIntDefault("RealmStatus.HeartbeatInterval", 5))) * IN_MILLISECONDS;
+    // Must outlast two missed beats or healthy peers get declared dead
+    m_int_configs[CONFIG_REALM_STATUS_TIMEOUT] = std::max(uint32(sConfigMgr->GetIntDefault("RealmStatus.PeerTimeout", 20)), (m_int_configs[CONFIG_REALM_STATUS_INTERVAL] / IN_MILLISECONDS) * 3);
+
+    // EG - Cross-realm World Chat
+    m_bool_configs[CONFIG_CROSS_REALM_CHAT] = sConfigMgr->GetBoolDefault("CrossRealmChat.Enable", false);
+    m_bool_configs[CONFIG_CROSS_REALM_CHAT_ANNOUNCE_PEERS] = sConfigMgr->GetBoolDefault("CrossRealmChat.AnnouncePeers", true);
+    m_int_configs[CONFIG_CROSS_REALM_CHAT_BATCH_SIZE] = std::max(1u, uint32(sConfigMgr->GetIntDefault("CrossRealmChat.BatchSize", 50)));
+    m_int_configs[CONFIG_CROSS_REALM_CHAT_POLL_INTERVAL] = std::max(1u, uint32(sConfigMgr->GetIntDefault("CrossRealmChat.PollInterval", 1))) * IN_MILLISECONDS;
+    // Expiring faster than a peer is declared dead would drop lines it is still owed
+    m_int_configs[CONFIG_CROSS_REALM_CHAT_MESSAGE_TTL] = std::max(uint32(sConfigMgr->GetIntDefault("CrossRealmChat.MessageTTL", 300)), m_int_configs[CONFIG_REALM_STATUS_TIMEOUT] * 2);
+
     // call ScriptMgr if we're reloading the configuration
     if (reload)
         sScriptMgr->OnConfigLoad(reload);
@@ -2334,9 +2347,6 @@ void World::SetInitialWorldSettings()
 
     TC_LOG_INFO("server.loading", "Calculate random battleground reset time...");
     InitRandomBGResetTime();
-
-    TC_LOG_INFO("server.loading", "Initializing AntiCheat...");
-    sAnticheatMgr->Initialize();
 
     TC_LOG_INFO("server.loading", "Calculate deletion of old calendar events time...");
     InitCalendarOldEventsDeletionTime();

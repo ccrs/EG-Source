@@ -1,14 +1,11 @@
 #include "Bag.h"
-#include "Config.h"
 #include "Creature.h"
-#include "DatabaseEnv.h"
 #include "DBCStructure.h"
 #include "GameEventMgr.h"
 #include "GossipDef.h"
 #include "Item.h"
 #include "ItemTemplate.h"
 #include "Language.h"
-#include "Log.h"
 #include "Player.h"
 #include "ObjectGuid.h"
 #include "ObjectMgr.h"
@@ -209,32 +206,8 @@ public:
     }
 };
 
-class EG_transmogrification_worldscript : public WorldScript
-{
-public:
-    EG_transmogrification_worldscript() : WorldScript("EG_transmogrification_worldscript") { }
-
-    void OnConfigLoad(bool reload) override
-    {
-        if (reload)
-        {
-            TC_LOG_INFO("misc", "Reloading Transmogrification config...");
-            sTransmogrification->LoadConfig(reload);
-        }
-    }
-
-    void OnStartup() override
-    {
-        TC_LOG_INFO("misc", "Deleting non-existing transmogrification entries...");
-        CharacterDatabase.DirectExecute("DELETE FROM character_transmogrification WHERE NOT EXISTS (SELECT 1 FROM item_instance WHERE item_instance.guid = character_transmogrification.GUID)");
-        sTransmogrification->LoadConfig(false);
-        TC_LOG_INFO("misc", "Loading Transmogrification config...");
-    }
-};
-
 void AddSC_EG_transmogrification()
 {
     RegisterCreatureAI(EG_transmogrification_creature);
     new EG_transmogrification_playerscript();
-    new EG_transmogrification_worldscript();
 }

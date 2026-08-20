@@ -4102,6 +4102,8 @@ Logger.sql.sql=5,Console DBErrors
 Logger.sql.updates=3,Console Server
 Logger.mmaps=3,Server
 Logger.raf=3,Console Server
+Logger.crossrealm=3,Console Server
+Logger.realmstatus=3,Console Server
 
 #Logger.achievement=3,Console Server
 #Logger.addon=3,Console Server
@@ -4753,6 +4755,75 @@ RAF.Reward.PollInterval = 60
 #        Default:     25
 
 RAF.Reward.BatchSize = 25
+
+#
+###################################################################################################
+
+###################################################################################################
+# REALM STATUS
+#
+#    RealmStatus.HeartbeatInterval
+#        Description: Seconds between the heartbeats this realm writes to auth.realm_status, and
+#                     between refreshes of the peer roster. Nothing is written unless a
+#                     cross-realm feature is enabled. Values below 1 are clamped to 1.
+#        Default:     5
+
+RealmStatus.HeartbeatInterval = 5
+
+#
+#    RealmStatus.PeerTimeout
+#        Description: Seconds without a heartbeat after which a peer realm is treated as down by
+#                     every cross-realm feature. Clamped to at least three times
+#                     HeartbeatInterval so a healthy realm survives a single missed beat.
+#        Default:     20
+
+RealmStatus.PeerTimeout = 20
+
+#
+###################################################################################################
+
+###################################################################################################
+# CROSS-REALM WORLD CHAT
+#
+#    CrossRealmChat.Enable
+#        Description: Bridges the world channel across every realm sharing this auth database.
+#                     Requires WorldChat.Enable on each participating realm.
+#        Default:     0 - (Disabled)
+#                     1 - (Enabled)
+
+CrossRealmChat.Enable = 0
+
+#
+#    CrossRealmChat.PollInterval
+#        Description: Seconds between inbox polls, and so the worst-case delivery delay.
+#                     Values below 1 are clamped to 1.
+#        Default:     1
+
+CrossRealmChat.PollInterval = 1
+
+#
+#    CrossRealmChat.BatchSize
+#        Description: Maximum number of queued lines delivered per poll.
+#        Default:     50
+
+CrossRealmChat.BatchSize = 50
+
+#
+#    CrossRealmChat.MessageTTL
+#        Description: Seconds after which an undelivered queued line is swept, bounding the table
+#                     when a realm stays down. Clamped to at least twice RealmStatus.PeerTimeout.
+#        Default:     300
+
+CrossRealmChat.MessageTTL = 300
+
+#
+#    CrossRealmChat.AnnouncePeers
+#        Description: Posts a notice in the world channel when a peer realm connects or drops, so
+#                     a silent bridge is not mistaken for a broken one.
+#        Default:     1 - (Enabled)
+#                     0 - (Disabled)
+
+CrossRealmChat.AnnouncePeers = 1
 
 #
 ###################################################################################################

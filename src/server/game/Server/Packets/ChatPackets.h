@@ -54,6 +54,7 @@ namespace WorldPackets
                 std::string_view channelName = "", LocaleConstant locale = DEFAULT_LOCALE, std::string_view addonPrefix = "");
             void SetSender(WorldObject const* sender, LocaleConstant locale);
             void SetReceiver(WorldObject const* receiver, LocaleConstant locale);
+            void SetRemoteSender(std::string_view name); // EG - Cross-realm World Chat
 
             WorldPacket const* Write() override;
 

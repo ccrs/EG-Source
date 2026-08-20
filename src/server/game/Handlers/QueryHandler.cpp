@@ -54,6 +54,21 @@ void WorldSession::SendNameQueryOpcode(ObjectGuid guid)
         return;
     }
 
+    // EG - Cross-realm World Chat
+    if (guid == ObjectGuid::Create<HighGuid::Player>(CROSS_REALM_CHAT_SENDER_GUID))
+    {
+        response.Result = RESPONSE_SUCCESS;
+
+        WorldPackets::Query::PlayerGuidLookupData& data = response.Data.emplace();
+        data.Name = CROSS_REALM_CHAT_SENDER_NAME;
+        data.Race = RACE_HUMAN;
+        data.Sex = GENDER_MALE;
+        data.ClassID = CLASS_WARRIOR;
+
+        SendPacket(response.Write());
+        return;
+    }
+
     if (CharacterCacheEntry const* characterInfo = sCharacterCache->GetCharacterCacheByGuid(guid))
     {
         response.Result = RESPONSE_SUCCESS; // name known

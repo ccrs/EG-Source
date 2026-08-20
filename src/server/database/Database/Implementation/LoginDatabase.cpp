@@ -140,6 +140,17 @@ void LoginDatabaseConnection::DoPrepareStatements()
     PrepareStatement(LOGIN_SEL_RAF_REWARD_CLAIM_CHECK, "SELECT status FROM account_recruit_rewards WHERE id = ? AND realmid = ?", CONNECTION_ASYNC);
     PrepareStatement(LOGIN_UPD_RAF_REWARD_DELIVERED, "UPDATE account_recruit_rewards SET status = 2, processdate = UNIX_TIMESTAMP(), last_error = NULL WHERE id = ? AND realmid = ?", CONNECTION_ASYNC);
     PrepareStatement(LOGIN_UPD_RAF_REWARD_FAILED, "UPDATE account_recruit_rewards SET status = 3, processdate = UNIX_TIMESTAMP(), last_error = ? WHERE id = ? AND realmid = ?", CONNECTION_ASYNC);
+
+    // EG - Realm status
+    PrepareStatement(LOGIN_REP_REALM_STATUS, "REPLACE INTO realm_status (realmid, realmname, capabilities, heartbeat) VALUES (?, ?, ?, UNIX_TIMESTAMP())", CONNECTION_ASYNC);
+    PrepareStatement(LOGIN_SEL_REALM_STATUS_PEERS, "SELECT realmid, realmname, capabilities FROM realm_status WHERE realmid <> ? AND heartbeat > UNIX_TIMESTAMP() - ?", CONNECTION_ASYNC);
+
+    // EG - Cross-realm World Chat
+    PrepareStatement(LOGIN_DEL_REALM_CHAT_INBOX, "DELETE FROM realm_chat_queue WHERE realmid = ?", CONNECTION_SYNCH);
+    PrepareStatement(LOGIN_INS_REALM_CHAT_QUEUE, "INSERT INTO realm_chat_queue (realmid, sourcerealmid, sourcerealm, channel, sender, text, postdate) VALUES (?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP())", CONNECTION_ASYNC);
+    PrepareStatement(LOGIN_SEL_REALM_CHAT_QUEUE, "SELECT id, sourcerealm, channel, sender, text FROM realm_chat_queue WHERE realmid = ? ORDER BY id LIMIT ?", CONNECTION_ASYNC);
+    PrepareStatement(LOGIN_DEL_REALM_CHAT_MESSAGE, "DELETE FROM realm_chat_queue WHERE id = ?", CONNECTION_ASYNC);
+    PrepareStatement(LOGIN_DEL_REALM_CHAT_EXPIRED, "DELETE FROM realm_chat_queue WHERE postdate < UNIX_TIMESTAMP() - ?", CONNECTION_ASYNC);
 }
 
 LoginDatabaseConnection::LoginDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo)
