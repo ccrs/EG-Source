@@ -26,7 +26,7 @@ Transmogrification* Transmogrification::instance()
 
 const char* Transmogrification::GetSlotName(uint8 slot) const
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::GetSlotName with value: slot (%u)", slot);
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::GetSlotName with value: slot ({})", slot);
 
     switch (slot)
     {
@@ -65,7 +65,7 @@ const char* Transmogrification::GetSlotName(uint8 slot) const
 
 std::string Transmogrification::GetItemIcon(uint32 entry, uint32 width, uint32 height, int x, int y) const
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::GetItemIcon with values: entry (%u), width (%u), height (%u), x (%d), y (%i)", entry, width, height, x, y);
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::GetItemIcon with values: entry ({}), width ({}), height ({}), x ({}), y ({})", entry, width, height, x, y);
 
     std::string value = "|TInterface";
     ItemTemplate const* temp = sObjectMgr->GetItemTemplate(entry);
@@ -84,7 +84,7 @@ std::string Transmogrification::GetItemIcon(uint32 entry, uint32 width, uint32 h
 
 std::string Transmogrification::GetSlotIcon(uint8 slot, uint32 width, uint32 height, int x, int y) const
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::GetSlotIcon with values: slot (%u), width (%u), height (%u), x (%d), y (%i)", slot, width, height, x, y);
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::GetSlotIcon with values: slot ({}), width ({}), height ({}), x ({}), y ({})", slot, width, height, x, y);
 
     std::string value = "|TInterface/PaperDoll/";
     switch (slot)
@@ -140,7 +140,7 @@ std::string Transmogrification::GetSlotIcon(uint8 slot, uint32 width, uint32 hei
 
 std::string Transmogrification::GetItemLink(Item* item, WorldSession* session) const
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::GetItemLink called with value: item (%u)", item->GetEntry());
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::GetItemLink called with value: item ({})", item->GetEntry());
 
     LocaleConstant loc_idx = session->GetSessionDbLocaleIndex();
     ItemTemplate const* temp = item->GetTemplate();
@@ -186,7 +186,7 @@ std::string Transmogrification::GetItemLink(Item* item, WorldSession* session) c
 
 std::string Transmogrification::GetItemLink(uint32 entry, WorldSession* session) const
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::GetItemLink called with value: entry (%u)", entry);
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::GetItemLink called with value: entry ({})", entry);
 
     ItemTemplate const* temp = sObjectMgr->GetItemTemplate(entry);
     LocaleConstant loc_idx = session->GetSessionDbLocaleIndex();
@@ -202,7 +202,7 @@ std::string Transmogrification::GetItemLink(uint32 entry, WorldSession* session)
 
 uint32 Transmogrification::GetFakeEntry(Item const* item) const
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::GetFakeEntry called with value: item (%u)", item->GetEntry());
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::GetFakeEntry called with value: item ({})", item->GetEntry());
 
     Player* owner = item->GetOwner();
 
@@ -214,7 +214,7 @@ uint32 Transmogrification::GetFakeEntry(Item const* item) const
 
 void Transmogrification::UpdateItem(Player* player, Item* item) const
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::UpdateItem called with values: player (%s, %s), item (%u)", player->GetName().c_str(), player->GetGUID().ToString().c_str(), item->GetEntry());
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::UpdateItem called with values: player ({}, {}), item ({})", player->GetName().c_str(), player->GetGUID().ToString().c_str(), item->GetEntry());
 
     if (item->IsEquipped())
     {
@@ -226,7 +226,7 @@ void Transmogrification::UpdateItem(Player* player, Item* item) const
 
 void Transmogrification::DeleteFakeEntry(Player* player, Item* item)
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::DeleteFakeEntry called with values: player (%s, %s), item (%u)", player->GetName().c_str(), player->GetGUID().ToString().c_str(), item->GetEntry());
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::DeleteFakeEntry called with values: player ({}, {}), item ({})", player->GetName().c_str(), player->GetGUID().ToString().c_str(), item->GetEntry());
 
     if (player->EraseTransmogrificationEntry(item->GetGUID()))
         UpdateItem(player, item);
@@ -234,7 +234,7 @@ void Transmogrification::DeleteFakeEntry(Player* player, Item* item)
 
 void Transmogrification::SetFakeEntry(Player* player, Item* item, uint32 entry)
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::SetFakeEntry called with values: player (%s, %s), item (%u)", player->GetName().c_str(), player->GetGUID().ToString().c_str(), item->GetEntry());
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::SetFakeEntry called with values: player ({}, {}), item ({})", player->GetName().c_str(), player->GetGUID().ToString().c_str(), item->GetEntry());
 
     player->InsertTransmogrificationEntry(item->GetGUID(), entry);
     UpdateItem(player, item);
@@ -242,12 +242,12 @@ void Transmogrification::SetFakeEntry(Player* player, Item* item, uint32 entry)
 
 TrinityStrings Transmogrification::Transmogrify(Player* player, ObjectGuid itemGUID, uint8 slot, bool noCost)
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::Transmogrify called with values: player (%s, %s), itemGUID (%s), slot (%u), cost (%s)", player->GetName().c_str(), player->GetGUID().ToString().c_str(), itemGUID.ToString().c_str(), slot, noCost ? "true" : "false");
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::Transmogrify called with values: player ({}, {}), itemGUID ({}), slot ({}), cost ({})", player->GetName().c_str(), player->GetGUID().ToString().c_str(), itemGUID.ToString().c_str(), slot, noCost ? "true" : "false");
 
     // slot of the transmogrified item
     if (slot >= EQUIPMENT_SLOT_END)
     {
-        TC_LOG_DEBUG("transmogrification", "Transmogrification::Transmogrify - %s (%s) tried to transmogrify an %s with a wrong slot (%u) when transmogrifying items.", player->GetName().c_str(), player->GetGUID().ToString().c_str(), itemGUID.ToString().c_str(), slot);
+        TC_LOG_DEBUG("transmogrification", "Transmogrification::Transmogrify - {} ({}) tried to transmogrify an {} with a wrong slot ({}) when transmogrifying items.", player->GetName().c_str(), player->GetGUID().ToString().c_str(), itemGUID.ToString().c_str(), slot);
         return LANG_ERR_TRANSMOG_INVALID_SLOT;
     }
 
@@ -258,7 +258,7 @@ TrinityStrings Transmogrification::Transmogrify(Player* player, ObjectGuid itemG
         itemTransmogrifier = player->GetItemByGuid(itemGUID);
         if (!itemTransmogrifier)
         {
-            TC_LOG_DEBUG("transmogrification", "Transmogrification::Transmogrify - %s (%s) tried to transmogrify with an invalid %s.", player->GetName().c_str(), player->GetGUID().ToString().c_str(), itemGUID.ToString().c_str());
+            TC_LOG_DEBUG("transmogrification", "Transmogrification::Transmogrify - {} ({}) tried to transmogrify with an invalid {}.", player->GetName().c_str(), player->GetGUID().ToString().c_str(), itemGUID.ToString().c_str());
             return LANG_ERR_TRANSMOG_MISSING_SRC_ITEM;
         }
     }
@@ -267,7 +267,7 @@ TrinityStrings Transmogrification::Transmogrify(Player* player, ObjectGuid itemG
     Item* itemTransmogrified = player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
     if (!itemTransmogrified)
     {
-        TC_LOG_DEBUG("transmogrification", "Transmogrification::Transmogrify - %s (%s) tried to transmogrify an invalid item in a valid slot (slot: %u).", player->GetName().c_str(), player->GetGUID().ToString().c_str(), slot);
+        TC_LOG_DEBUG("transmogrification", "Transmogrification::Transmogrify - {} ({}) tried to transmogrify an invalid item in a valid slot (slot: {}).", player->GetName().c_str(), player->GetGUID().ToString().c_str(), slot);
         return LANG_ERR_TRANSMOG_MISSING_DEST_ITEM;
     }
 
@@ -279,7 +279,7 @@ TrinityStrings Transmogrification::Transmogrify(Player* player, ObjectGuid itemG
     {
         if (!CanTransmogrifyItemWithItem(player, itemTransmogrified->GetTemplate(), itemTransmogrifier->GetTemplate()))
         {
-            TC_LOG_DEBUG("transmogrification", "Transmogrification::Transmogrify - %s (%s) failed CanTransmogrifyItemWithItem (%u with %u).", player->GetName().c_str(), player->GetGUID().ToString().c_str(), itemTransmogrified->GetEntry(), itemTransmogrifier->GetEntry());
+            TC_LOG_DEBUG("transmogrification", "Transmogrification::Transmogrify - {} ({}) failed CanTransmogrifyItemWithItem ({} with {}).", player->GetName().c_str(), player->GetGUID().ToString().c_str(), itemTransmogrified->GetEntry(), itemTransmogrifier->GetEntry());
             return LANG_ERR_TRANSMOG_INVALID_ITEMS;
         }
 
@@ -304,7 +304,7 @@ TrinityStrings Transmogrification::Transmogrify(Player* player, ObjectGuid itemG
             if (cost) // 0 cost if reverting look
             {
                 if (cost < 0)
-                    TC_LOG_DEBUG("transmogrification", "Transmogrification::Transmogrify - %s (%s) transmogrification invalid cost (non negative, amount %i). Transmogrified %u with %u", player->GetName().c_str(), player->GetGUID().ToString().c_str(), -cost, itemTransmogrified->GetEntry(), itemTransmogrifier->GetEntry());
+                    TC_LOG_DEBUG("transmogrification", "Transmogrification::Transmogrify - {} ({}) transmogrification invalid cost (non negative, amount {}). Transmogrified {} with {}", player->GetName().c_str(), player->GetGUID().ToString().c_str(), -cost, itemTransmogrified->GetEntry(), itemTransmogrifier->GetEntry());
                 else
                 {
                     if (!player->HasEnoughMoney(cost))
@@ -335,7 +335,7 @@ TrinityStrings Transmogrification::Transmogrify(Player* player, ObjectGuid itemG
 
 bool Transmogrification::CanTransmogrifyItemWithItem(Player* player, ItemTemplate const* target, ItemTemplate const* source) const
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::CanTransmogrifyItemWithItem called with values: player (%s, %s), target (%u), source (%u)", player->GetName().c_str(), player->GetGUID().ToString().c_str(), target->ItemId, source->ItemId);
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::CanTransmogrifyItemWithItem called with values: player ({}, {}), target ({}), source ({})", player->GetName().c_str(), player->GetGUID().ToString().c_str(), target->ItemId, source->ItemId);
 
     if (!target || !source)
         return false;
@@ -381,10 +381,6 @@ bool Transmogrification::CanTransmogrifyItemWithItem(Player* player, ItemTemplat
                 (IsOneHandedWeapon(target->Class, target->SubClass) && IsOneHandedWeapon(source->Class, source->SubClass)) ||
                 (IsMainHandDagger(target) && IsOneHandedWeapon(source->Class, source->SubClass))))
                 return false;
-            if (source->InventoryType == INVTYPE_WEAPONMAINHAND && target->InventoryType != INVTYPE_WEAPONMAINHAND)
-                return false;
-            if (source->InventoryType == INVTYPE_WEAPONOFFHAND && target->InventoryType != INVTYPE_WEAPONOFFHAND)
-                return false;
         }
         if (source->Class == ITEM_CLASS_ARMOR)
         {
@@ -399,7 +395,7 @@ bool Transmogrification::CanTransmogrifyItemWithItem(Player* player, ItemTemplat
 
 bool Transmogrification::SuitableForTransmogrification(Player* player, ItemTemplate const* proto) const
 {
-    TC_LOG_DEBUG("transmogrification", "Transmogrification::SuitableForTransmogrification called with values: player (%s, %s), proto (%u)", player->GetName().c_str(), player->GetGUID().ToString().c_str(), proto->ItemId);
+    TC_LOG_DEBUG("transmogrification", "Transmogrification::SuitableForTransmogrification called with values: player ({}, {}), proto ({})", player->GetName().c_str(), player->GetGUID().ToString().c_str(), proto->ItemId);
 
     // ItemTemplate const* proto = item->GetTemplate();
     if (!player || !proto)
@@ -516,7 +512,10 @@ bool Transmogrification::IsOneHandedWeapon(uint32 Class, uint32 SubClass) const
     return Class == ITEM_CLASS_WEAPON && (
         SubClass == ITEM_SUBCLASS_WEAPON_AXE ||
         SubClass == ITEM_SUBCLASS_WEAPON_MACE ||
-        SubClass == ITEM_SUBCLASS_WEAPON_SWORD);
+        SubClass == ITEM_SUBCLASS_WEAPON_SWORD ||
+        SubClass == ITEM_SUBCLASS_WEAPON_FIST_WEAPON ||
+        SubClass == ITEM_SUBCLASS_WEAPON_MISCELLANEOUS ||
+        SubClass == ITEM_SUBCLASS_WEAPON_DAGGER);
 }
 
 bool Transmogrification::IsTwoHandedWeapon(uint32 Class, uint32 SubClass) const
@@ -528,7 +527,9 @@ bool Transmogrification::IsTwoHandedWeapon(uint32 Class, uint32 SubClass) const
         SubClass == ITEM_SUBCLASS_WEAPON_MACE2 ||
         SubClass == ITEM_SUBCLASS_WEAPON_SWORD2 ||
         SubClass == ITEM_SUBCLASS_WEAPON_STAFF ||
-        SubClass == ITEM_SUBCLASS_WEAPON_POLEARM);
+        SubClass == ITEM_SUBCLASS_WEAPON_POLEARM ||
+        SubClass == ITEM_SUBCLASS_WEAPON_SPEAR ||
+        SubClass == ITEM_SUBCLASS_WEAPON_FISHING_POLE);
 }
 
 bool Transmogrification::IsMainHandDagger(ItemTemplate const* item) const
@@ -647,7 +648,7 @@ void Transmogrification::LoadConfig(bool /*reload*/)
 
     if (!sObjectMgr->GetItemTemplate(TokenEntry))
     {
-        TC_LOG_INFO("transmogrification", "Transmogrification.TokenEntry (%u) does not exist. Using default (%u).", TokenEntry, 49426);
+        TC_LOG_INFO("transmogrification", "Transmogrification.TokenEntry ({}) does not exist. Using default ({}).", TokenEntry, 49426);
         TokenEntry = 49426;
     }
 }
