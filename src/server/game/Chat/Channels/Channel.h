@@ -178,11 +178,18 @@ class TC_GAME_API Channel
         Channel(uint32 channelId, uint32 team = 0, AreaTableEntry const* zoneEntry = nullptr);  // built-in channel ctor
         Channel(std::string const& name, uint32 team, std::string const& banList = "");         // custom player channel ctor
 
-        // EG - Crossfaction World Chat: identify the world channel(s)
+        // EG - Crossfaction World Chat
         static bool IsWorldChat(std::string name)
         {
             strToLower(name);
             return name == WORLD_CHAT || name == WORLD_CHAT_ES;
+        }
+
+        // EG - Crossfaction World Chat
+        static bool IsDefaultWorldChat(std::string name)
+        {
+            strToLower(name);
+            return name == WORLD_CHAT;
         }
 
         Channel(Channel const&) = delete;
@@ -244,7 +251,7 @@ class TC_GAME_API Channel
         void List(Player const* player) const;
         void Announce(Player const* player);
         void Say(ObjectGuid const& guid, std::string const& what, uint32 lang) const;
-        void SayRemote(std::string const& senderName, std::string const& what) const; // EG - Cross-realm World Chat
+        void SayRemote(std::string const& senderName, std::string const& what, uint8 chatTag) const; // EG - Cross-realm World Chat
         bool CanSpeak(ObjectGuid const& guid) const; // EG - Cross-realm World Chat: mirrors the gates in Channel::Say
         void DeclineInvite(Player const* player);
         void Invite(Player const* player, std::string const& newp);

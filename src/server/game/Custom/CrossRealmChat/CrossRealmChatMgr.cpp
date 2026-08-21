@@ -75,9 +75,12 @@ void CrossRealmChatMgr::Update(uint32 diff)
     Poll();
 }
 
-void CrossRealmChatMgr::Publish(std::string const& channelName, std::string const& senderName, std::string const& text)
+void CrossRealmChatMgr::Publish(std::string const& channelName, std::string const& senderName, uint8 senderClass, uint8 chatTag, std::string const& text)
 {
     if (!_active || text.empty() || senderName.empty())
+        return;
+
+    if (!Channel::IsDefaultWorldChat(channelName))
         return;
 
     LoginDatabaseTransaction trans = LoginDatabase.BeginTransaction();
@@ -94,7 +97,9 @@ void CrossRealmChatMgr::Publish(std::string const& channelName, std::string cons
         stmt->setString(2, realm.Name);
         stmt->setString(3, channelName);
         stmt->setString(4, senderName);
-        stmt->setString(5, text);
+        stmt->setUInt8(5, senderClass);
+        stmt->setUInt8(6, chatTag);
+        stmt->setString(7, text);
         trans->Append(stmt);
         queued = true;
     }
@@ -133,7 +138,9 @@ void CrossRealmChatMgr::Poll()
             message.SourceRealm = fields[1].GetString();
             message.Channel = fields[2].GetString();
             message.Sender = fields[3].GetString();
-            message.Text = fields[4].GetString();
+            message.SenderClass = fields[4].GetUInt8();
+            message.ChatTag = fields[5].GetUInt8();
+            message.Text = fields[6].GetString();
 
             messages.push_back(std::move(message));
         }
@@ -177,7 +184,7 @@ void CrossRealmChatMgr::Consume(std::vector<QueuedMessage> messages)
             }
 
             // Realm tag ahead of the text, which already carries its own realm's faction tag
-            Broadcast(message.Channel, message.Sender, Trinity::StringFormat("|cff00FF96[{}]|r {}", message.SourceRealm, message.Text));
+            Broadcast(message.Channel, message.Sender, Trinity::StringFormat("|cff00FF96[{}]|r {}", message.SourceRealm, message.Text), message.ChatTag);
         }
     });
 }
@@ -232,14 +239,12 @@ void CrossRealmChatMgr::AnnouncePeer(std::string const& realmName, bool connecte
 
     std::string const sender(CROSS_REALM_CHAT_SENDER_NAME);
 
-    Broadcast(std::string(WORLD_CHAT), sender, text);
-    Broadcast(std::string(WORLD_CHAT_ES), sender, text);
+    Broadcast(std::string(WORLD_CHAT), sender, text, CHAT_TAG_NONE);
 }
 
-/*static*/ void CrossRealmChatMgr::Broadcast(std::string const& channelName, std::string const& senderName, std::string const& text)
+/*static*/ void CrossRealmChatMgr::Broadcast(std::string const& channelName, std::string const& senderName, std::string const& text, uint8 chatTag)
 {
-    // HandleJoinChannel forces every faction onto the alliance mgr, so one Channel per name
-    if (!Channel::IsWorldChat(channelName))
+    if (!Channel::IsDefaultWorldChat(channelName))
         return;
 
     ChannelMgr* channelMgr = ChannelMgr::ForTeam(Team::ALLIANCE);
@@ -248,5 +253,5 @@ void CrossRealmChatMgr::AnnouncePeer(std::string const& realmName, bool connecte
 
     // Absent while nobody here has joined it
     if (Channel* channel = channelMgr->GetCustomChannel(channelName))
-        channel->SayRemote(senderName, text);
+        channel->SayRemote(senderName, text, chatTag);
 }

@@ -33,7 +33,7 @@ public:
 
     void Initialize();
     void Update(uint32 diff);
-    void Publish(std::string const& channelName, std::string const& senderName, std::string const& text);
+    void Publish(std::string const& channelName, std::string const& senderName, uint8 senderClass, uint8 chatTag, std::string const& text);
 
 private:
     CrossRealmChatMgr() = default;
@@ -47,6 +47,8 @@ private:
         std::string SourceRealm;
         std::string Channel;
         std::string Sender;
+        uint8 SenderClass;
+        uint8 ChatTag;
         std::string Text;
     };
 
@@ -56,7 +58,7 @@ private:
     void AnnouncePeerChanges();
     void AnnouncePeer(std::string const& realmName, bool connected) const;
 
-    static void Broadcast(std::string const& channelName, std::string const& senderName, std::string const& text);
+    static void Broadcast(std::string const& channelName, std::string const& senderName, std::string const& text, uint8 chatTag);
 
     bool _active = false;
     uint32 _pollTimer = 0;

@@ -118,7 +118,7 @@ class EG_WorldChat : public PlayerScript
                     msg = Trinity::StringFormat("[{}] {}", player->GetTeamId() == TeamId::TEAM_ALLIANCE ? "|cff3399FFA|r" : "|cffCC0000H|r", msg);
 
                 if (channel->CanSpeak(player->GetGUID()))
-                    sCrossRealmChatMgr->Publish(channel->GetName(), player->GetName(), msg);
+                    sCrossRealmChatMgr->Publish(channel->GetName(), player->GetName(), player->GetClass(), player->GetChatTag(), msg);
             }
         }
 };

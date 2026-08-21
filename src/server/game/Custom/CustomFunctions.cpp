@@ -1321,7 +1321,7 @@ bool Channel::CanSpeak(ObjectGuid const& guid) const
     return itr != _playersStore.end() && !itr->second.IsMuted();
 }
 
-void Channel::SayRemote(std::string const& senderName, std::string const& what) const
+void Channel::SayRemote(std::string const& senderName, std::string const& what, uint8 chatTag) const
 {
     if (what.empty() || senderName.empty())
         return;
@@ -1337,6 +1337,7 @@ void Channel::SayRemote(std::string const& senderName, std::string const& what) 
         packet.SenderGUID = senderGuid;
         packet.TargetGUID = senderGuid;
         packet.SetRemoteSender(senderName);
+        packet.ChatTag = chatTag;
 
         packet.Write();
 

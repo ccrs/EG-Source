@@ -1,0 +1,4 @@
+--
+ALTER TABLE `realm_chat_queue`
+  ADD COLUMN `senderclass` TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER `sender`,
+  ADD COLUMN `sendertag` TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER `senderclass`;
