@@ -535,6 +535,8 @@ void Player::DisableHardcore()
     SetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE, CustomFlags::CUSTOM_FLAG_NONE);
 
     _SaveCustomSettings();
+
+    RefreshForcedPvPState(false);
 }
 
 uint32 Player::GetHardcoreGraceSecondsLeft() const
@@ -747,7 +749,8 @@ bool Player::InArenaQueue() const
 void Player::UpdateHostileAreaState(AreaTableEntry const* zone)
 {
     // a boosted day forces the realm to behave like a PvP realm for flagging purposes
-    bool const pvpRules = sWorld->IsPvPRealm() || EG::IsBoostedDay();
+    bool const boostedForcing = EG::IsBoostedDay() && !HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE);
+    bool const pvpRules = sWorld->IsPvPRealm() || boostedForcing;
 
     // in PvP, any not controlled zone (except zone->FactionGroupMask == 6, default case)
     // in PvE, only opposition team capital
