@@ -334,12 +334,12 @@ DELETE FROM `creature_addon` WHERE `guid` IN (125693, 125691, 125689, 133917, 13
 -- Kirin Tor rings
 DELETE FROM `npc_vendor` WHERE `entry` = 32172;
 INSERT INTO `npc_vendor` (`entry`, `slot`, `item`, `maxcount`, `incrtime`, `ExtendedCost`, `VerifiedBuild`) VALUES
-(32172, 0, 36919, 0, 0, 2706, 0),
-(32172, 0, 36922, 0, 0, 2706, 0),
-(32172, 0, 36925, 0, 0, 2706, 0),
-(32172, 0, 36928, 0, 0, 2484, 0),
-(32172, 0, 36931, 0, 0, 2484, 0),
-(32172, 0, 36934, 0, 0, 2484, 0),
+-- (32172, 0, 36919, 0, 0, 2706, 0), -- Cardinal Ruby
+-- (32172, 0, 36922, 0, 0, 2706, 0), -- King's Amber
+-- (32172, 0, 36925, 0, 0, 2706, 0), -- Majestic Zircon
+-- (32172, 0, 36928, 0, 0, 2484, 0), -- Dreadstone
+-- (32172, 0, 36931, 0, 0, 2484, 0), -- Ametrine
+-- (32172, 0, 36934, 0, 0, 2484, 0), -- Eye of Zul
 (32172, 0, 40585, 0, 0, 0, 0),
 (32172, 0, 40586, 0, 0, 0, 0),
 (32172, 0, 40678, 0, 0, 2523, 0),
@@ -366,3 +366,42 @@ INSERT INTO `npc_vendor` (`entry`, `slot`, `item`, `maxcount`, `incrtime`, `Exte
 (32172, 0, 47731, 0, 0, 2685, 0),
 (32172, 0, 47732, 0, 0, 2685, 0),
 (32172, 0, 47733, 0, 0, 2685, 0);
+
+-- Titanium Ore prospecting
+UPDATE `prospecting_loot_template` SET `Reference` = 45010 WHERE (`Entry` = 36910) AND (`Reference` = 13005);
+-- Icy Prism
+UPDATE `item_loot_template` SET `Reference` = 45010 WHERE (`Entry` = 44943) AND (`Reference` = 10008);
+-- Emblem of Heroism, jewelcrafting honor vendor
+DELETE FROM `npc_vendor` WHERE (`entry` IN (31580,31582,34040)) AND (`item` IN (36919,36922,36925,36928,36931,36934));
+-- INSERT INTO `npc_vendor` (`entry`, `slot`, `item`, `maxcount`, `incrtime`, `ExtendedCost`, `VerifiedBuild`) VALUES
+-- (31580, 0, 36919, 0, 0, 2706, 0), -- Cardinal Ruby
+-- (31580, 0, 36922, 0, 0, 2706, 0), -- King's Amber
+-- (31580, 0, 36925, 0, 0, 2706, 0), -- Majestic Zircon
+-- (31580, 0, 36928, 0, 0, 2484, 0), -- Dreadstone
+-- (31580, 0, 36931, 0, 0, 2484, 0), -- Ametrine
+-- (31580, 0, 36934, 0, 0, 2484, 0), -- Eye of Zul
+-- (31582, 0, 36919, 0, 0, 2706, 0), -- Cardinal Ruby
+-- (31582, 0, 36922, 0, 0, 2706, 0), -- King's Amber
+-- (31582, 0, 36925, 0, 0, 2706, 0), -- Majestic Zircon
+-- (31582, 0, 36928, 0, 0, 2484, 0), -- Dreadstone
+-- (31582, 0, 36931, 0, 0, 2484, 0), -- Ametrine
+-- (31582, 0, 36934, 0, 0, 2484, 0), -- Eye of Zul
+-- (34040, 0, 36919, 0, 0, 2588, 0), -- Cardinal Ruby
+-- (34040, 0, 36922, 0, 0, 2588, 0), -- King's Amber
+-- (34040, 0, 36925, 0, 0, 2588, 0), -- Majestic Zircon
+-- (34040, 0, 36928, 0, 0, 2588, 0), -- Dreadstone
+-- (34040, 0, 36931, 0, 0, 2588, 0), -- Ametrine
+-- (34040, 0, 36934, 0, 0, 2588, 0); -- Eye of Zul
+
+-- Epic gem designs
+-- (npc, 0, item, 0, 0, 2436, 0)
+DELETE FROM `npc_vendor` WHERE (`entry` IN (28701,33637,33680)) AND (`item` IN (
+    46897,46898,46899,46900,46901,46902,46903,46904,46905,46906,
+    46907,46908,46909,46910,46911,46912,46913,46914,46915,46916,
+    46917,46918,46919,46920,46921,46922,46923,46924,46925,46926,
+    46927,46928,46929,46930,46931,46932,46933,46934,46935,46936,
+    46937,46938,46939,46940,46941,46942,46943,46944,46945,46946,
+    46947,46948,46949,46950,46951,46952,46953,46956,47007,47008,
+    47010,47011,47012,47015,47016,47017,47018,47019,47020,47021,
+    47022,47023,49112
+));
