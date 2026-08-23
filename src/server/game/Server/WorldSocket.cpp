@@ -93,8 +93,6 @@ void WorldSocket::StartAuthTimeout()
 
         TC_LOG_DEBUG("network", "WorldSocket::StartAuthTimeout: closing unauthenticated connection from {} after {} seconds", self->GetRemoteIpAddress().to_string(), timeout);
 
-        boost::system::error_code shutdownError;
-        self->underlying_stream().shutdown(boost::asio::socket_base::shutdown_both, shutdownError);
         self->CloseSocket();
     });
 }
