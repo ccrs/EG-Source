@@ -65,15 +65,15 @@ namespace
     // Craft materials
     constexpr PoolItem CRAFT_COMMON_ITEMS[] =
     {
-        { 42253, 1, 10 }, // Iceweb Spider Silk
-        { 36860, 1, 10 }, // Eternal Fire
-        { 35622, 1, 10 }, // Eternal Water
-        { 35623, 1, 10 }, // Eternal Air
-        { 35625, 1, 10 }, // Eternal Life
-        { 35627, 1, 10 }, // Eternal Shadow
-        { 38558, 1, 5 }, // Nerubian Chitin
-        { 34055, 1, 5 }, // Greater Cosmic Essence
-        { 34052, 1, 5 }, // Dream Shard
+        { 42253, 1, 5 }, // Iceweb Spider Silk
+        { 36860, 1, 5 }, // Eternal Fire
+        { 35622, 1, 5 }, // Eternal Water
+        { 35623, 1, 5 }, // Eternal Air
+        { 35625, 1, 5 }, // Eternal Life
+        { 35627, 1, 5 }, // Eternal Shadow
+        { 38558, 1, 3 }, // Nerubian Chitin
+        { 34054, 1, 5 }, // Infinite Dust
+        { 34052, 1, 2 }, // Dream Shard
     };
 
     // Craft materials - uncommon
