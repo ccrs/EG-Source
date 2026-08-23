@@ -36,8 +36,6 @@ public:
     /// Stops all network threads, It will wait for all running threads .
     void StopNetwork() override;
 
-    void OnSocketOpen(Trinity::Net::IoContextTcpSocket&& sock, uint32 threadIndex) override;
-
     std::size_t GetApplicationSendBufferSize() const { return _socketApplicationSendBufferSize; }
 
 protected:
@@ -46,6 +44,8 @@ protected:
     Trinity::Net::NetworkThread<WorldSocket>* CreateThreads() const override;
 
     uint32 GetMaxConnectionsPerAddress() const override;
+
+    bool ConfigureSocket(Trinity::Net::IoContextTcpSocket& sock) override;
 
 private:
     int32 _socketSystemSendBufferSize;

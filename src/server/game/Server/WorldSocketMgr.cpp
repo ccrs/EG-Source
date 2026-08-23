@@ -93,7 +93,7 @@ uint32 WorldSocketMgr::GetMaxConnectionsPerAddress() const
     return sWorld->getIntConfig(CONFIG_NETWORK_MAX_CONNECTIONS_PER_IP);
 }
 
-void WorldSocketMgr::OnSocketOpen(Trinity::Net::IoContextTcpSocket&& sock, uint32 threadIndex)
+bool WorldSocketMgr::ConfigureSocket(Trinity::Net::IoContextTcpSocket& sock)
 {
     // set some options here
     if (_socketSystemSendBufferSize >= 0)
@@ -102,11 +102,8 @@ void WorldSocketMgr::OnSocketOpen(Trinity::Net::IoContextTcpSocket&& sock, uint3
         sock.set_option(boost::asio::socket_base::send_buffer_size(_socketSystemSendBufferSize), err);
         if (err && err != boost::system::errc::not_supported)
         {
-            TC_LOG_ERROR("misc", "WorldSocketMgr::OnSocketOpen sock.set_option(boost::asio::socket_base::send_buffer_size) err = {}", err.message());
-
-            boost::system::error_code closeError;
-            sock.close(closeError);
-            return;
+            TC_LOG_ERROR("misc", "WorldSocketMgr::ConfigureSocket sock.set_option(boost::asio::socket_base::send_buffer_size) err = {}", err.message());
+            return false;
         }
     }
 
@@ -117,17 +114,12 @@ void WorldSocketMgr::OnSocketOpen(Trinity::Net::IoContextTcpSocket&& sock, uint3
         sock.set_option(boost::asio::ip::tcp::no_delay(true), err);
         if (err)
         {
-            TC_LOG_ERROR("misc", "WorldSocketMgr::OnSocketOpen sock.set_option(boost::asio::ip::tcp::no_delay) err = {}", err.message());
-
-            boost::system::error_code closeError;
-            sock.close(closeError);
-            return;
+            TC_LOG_ERROR("misc", "WorldSocketMgr::ConfigureSocket sock.set_option(boost::asio::ip::tcp::no_delay) err = {}", err.message());
+            return false;
         }
     }
 
-    //sock->m_OutBufferSize = static_cast<size_t> (m_SockOutUBuff);
-
-    BaseSocketMgr::OnSocketOpen(std::move(sock), threadIndex);
+    return true;
 }
 
 Trinity::Net::NetworkThread<WorldSocket>* WorldSocketMgr::CreateThreads() const

@@ -115,6 +115,13 @@ public:
             }
         }
 
+        if (!ConfigureSocket(sock))
+        {
+            boost::system::error_code closeError;
+            sock.close(closeError);
+            return;
+        }
+
         try
         {
             std::shared_ptr<SocketType> newSocket = std::make_shared<SocketType>(std::move(sock));
@@ -181,6 +188,8 @@ protected:
     virtual NetworkThread<SocketType>* CreateThreads() const = 0;
 
     virtual uint32 GetMaxConnectionsPerAddress() const { return 0; }
+
+    virtual bool ConfigureSocket(IoContextTcpSocket& /*sock*/) { return true; }
 
     std::unique_ptr<AsyncAcceptor> _acceptor;
     std::unique_ptr<NetworkThread<SocketType>[]> _threads;
