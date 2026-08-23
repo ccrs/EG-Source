@@ -64,6 +64,17 @@ RealmServerPort = 3724
 BindIP = "0.0.0.0"
 
 #
+#    Network.MaxConnectionsPerIp
+#        Description: Maximum number of concurrent logon connections allowed from a single
+#                     source IP address. Connections over the limit are dropped before the
+#                     ip_banned lookup is issued. Read once at startup.
+#                     Raise this if legitimate players share one NAT address.
+#        Default:     10
+#                     0 - (Disabled, stock TrinityCore behaviour)
+
+Network.MaxConnectionsPerIp = 10
+
+#
 #    PidFile
 #        Description: Auth server PID file.
 #        Example:     "./authserver.pid"  - (Enabled)

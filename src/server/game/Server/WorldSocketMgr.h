@@ -45,6 +45,8 @@ protected:
 
     Trinity::Net::NetworkThread<WorldSocket>* CreateThreads() const override;
 
+    uint32 GetMaxConnectionsPerAddress() const override;
+
 private:
     int32 _socketSystemSendBufferSize;
     int32 _socketApplicationSendBufferSize;

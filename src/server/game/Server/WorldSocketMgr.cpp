@@ -18,6 +18,7 @@
 #include "Config.h"
 #include "NetworkThread.h"
 #include "ScriptMgr.h"
+#include "World.h"
 #include "WorldSocket.h"
 #include "WorldSocketMgr.h"
 
@@ -29,11 +30,13 @@ public:
     void SocketAdded(std::shared_ptr<WorldSocket> const& sock) override
     {
         sock->SetSendBufferSize(sWorldSocketMgr.GetApplicationSendBufferSize());
+        sWorldSocketMgr.AddConnectionForAddress(sock->GetRemoteIpAddress());
         sScriptMgr->OnSocketOpen(sock);
     }
 
     void SocketRemoved(std::shared_ptr<WorldSocket>const& sock) override
     {
+        sWorldSocketMgr.RemoveConnectionForAddress(sock->GetRemoteIpAddress());
         sScriptMgr->OnSocketClose(sock);
     }
 };
@@ -85,6 +88,11 @@ void WorldSocketMgr::StopNetwork()
     sScriptMgr->OnNetworkStop();
 }
 
+uint32 WorldSocketMgr::GetMaxConnectionsPerAddress() const
+{
+    return sWorld->getIntConfig(CONFIG_NETWORK_MAX_CONNECTIONS_PER_IP);
+}
+
 void WorldSocketMgr::OnSocketOpen(Trinity::Net::IoContextTcpSocket&& sock, uint32 threadIndex)
 {
     // set some options here
@@ -95,6 +103,9 @@ void WorldSocketMgr::OnSocketOpen(Trinity::Net::IoContextTcpSocket&& sock, uint3
         if (err && err != boost::system::errc::not_supported)
         {
             TC_LOG_ERROR("misc", "WorldSocketMgr::OnSocketOpen sock.set_option(boost::asio::socket_base::send_buffer_size) err = {}", err.message());
+
+            boost::system::error_code closeError;
+            sock.close(closeError);
             return;
         }
     }
@@ -107,6 +118,9 @@ void WorldSocketMgr::OnSocketOpen(Trinity::Net::IoContextTcpSocket&& sock, uint3
         if (err)
         {
             TC_LOG_ERROR("misc", "WorldSocketMgr::OnSocketOpen sock.set_option(boost::asio::ip::tcp::no_delay) err = {}", err.message());
+
+            boost::system::error_code closeError;
+            sock.close(closeError);
             return;
         }
     }

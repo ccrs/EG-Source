@@ -3018,6 +3018,27 @@ Network.OutUBuff = 65536
 Network.TcpNodelay = 1
 
 #
+#    Network.AuthTimeout
+#        Description: Time (in seconds) a connection may stay open without completing
+#                     authentication before the server closes it. Guards against peers that
+#                     open a socket and never send CMSG_AUTH_SESSION.
+#        Default:     30
+#                     0 - (Disabled, stock TrinityCore behaviour)
+
+Network.AuthTimeout = 30
+
+#
+#    Network.MaxConnectionsPerIp
+#        Description: Maximum number of concurrent world connections allowed from a single
+#                     source IP address. Connections over the limit are dropped before the
+#                     ip_banned lookup and the auth challenge are issued.
+#                     Raise this if legitimate players share one NAT address.
+#        Default:     5
+#                     0 - (Disabled, stock TrinityCore behaviour)
+
+Network.MaxConnectionsPerIp = 5
+
+#
 ###################################################################################################
 
 ###################################################################################################

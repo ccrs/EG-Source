@@ -20,6 +20,14 @@
 
 #include "SocketMgr.h"
 #include "AuthSession.h"
+#include "Config.h"
+
+class AuthSocketThread : public Trinity::Net::NetworkThread<AuthSession>
+{
+public:
+    void SocketAdded(std::shared_ptr<AuthSession> const& sock) override;
+    void SocketRemoved(std::shared_ptr<AuthSession> const& sock) override;
+};
 
 class AuthSocketMgr : public Trinity::Net::SocketMgr<AuthSession>
 {
@@ -34,6 +42,15 @@ public:
 
     bool StartNetwork(Trinity::Asio::IoContext& ioContext, std::string const& bindIp, uint16 port, int threadCount = 1) override
     {
+        // EG - cached at startup, the authserver has no runtime config reload
+        int32 maxConnectionsPerAddress = sConfigMgr->GetIntDefault("Network.MaxConnectionsPerIp", 10);
+        if (maxConnectionsPerAddress < 0)
+        {
+            TC_LOG_ERROR("server.authserver", "Network.MaxConnectionsPerIp ({}) must be 0 or greater (0 disables the check). Set to 10.", maxConnectionsPerAddress);
+            maxConnectionsPerAddress = 10;
+        }
+        _maxConnectionsPerAddress = uint32(maxConnectionsPerAddress);
+
         if (!BaseSocketMgr::StartNetwork(ioContext, bindIp, port, threadCount))
             return false;
 
@@ -47,10 +64,25 @@ public:
 protected:
     Trinity::Net::NetworkThread<AuthSession>* CreateThreads() const override
     {
-        return new Trinity::Net::NetworkThread<AuthSession>[1];
+        return new AuthSocketThread[1];
     }
+
+    uint32 GetMaxConnectionsPerAddress() const override { return _maxConnectionsPerAddress; }
+
+private:
+    uint32 _maxConnectionsPerAddress = 0;
 };
 
 #define sAuthSocketMgr AuthSocketMgr::Instance()
+
+inline void AuthSocketThread::SocketAdded(std::shared_ptr<AuthSession> const& sock)
+{
+    sAuthSocketMgr.AddConnectionForAddress(sock->GetRemoteIpAddress());
+}
+
+inline void AuthSocketThread::SocketRemoved(std::shared_ptr<AuthSession> const& sock)
+{
+    sAuthSocketMgr.RemoveConnectionForAddress(sock->GetRemoteIpAddress());
+}
 
 #endif // AuthSocketMgr_h__

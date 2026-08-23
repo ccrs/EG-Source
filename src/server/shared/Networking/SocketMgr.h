@@ -22,8 +22,11 @@
 #include "Errors.h"
 #include "NetworkThread.h"
 #include "Socket.h"
+#include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <memory>
+#include <mutex>
+#include <unordered_map>
 
 namespace Trinity::Net
 {
@@ -98,6 +101,20 @@ public:
 
     virtual void OnSocketOpen(IoContextTcpSocket&& sock, uint32 threadIndex)
     {
+        if (uint32 limit = GetMaxConnectionsPerAddress())
+        {
+            boost::system::error_code addressError;
+            boost::asio::ip::tcp::endpoint remoteEndpoint = sock.remote_endpoint(addressError);
+            if (!addressError && IsConnectionLimitReached(remoteEndpoint.address(), limit))
+            {
+                TC_LOG_DEBUG("network", "SocketMgr::OnSocketOpen: rejecting connection from {}, per-IP limit of {} reached", remoteEndpoint.address().to_string(), limit);
+
+                boost::system::error_code closeError;
+                sock.close(closeError);
+                return;
+            }
+        }
+
         try
         {
             std::shared_ptr<SocketType> newSocket = std::make_shared<SocketType>(std::move(sock));
@@ -130,6 +147,32 @@ public:
         return std::make_pair(_threads[threadIndex].GetSocketForAccept(), threadIndex);
     }
 
+    bool IsConnectionLimitReached(boost::asio::ip::address const& address, uint32 limit) const
+    {
+        std::lock_guard<std::mutex> guard(_connectionCountsLock);
+        std::unordered_map<boost::asio::ip::address, uint32>::const_iterator itr = _connectionCounts.find(address);
+        return itr != _connectionCounts.end() && itr->second >= limit;
+    }
+
+    void AddConnectionForAddress(boost::asio::ip::address const& address)
+    {
+        std::lock_guard<std::mutex> guard(_connectionCountsLock);
+        ++_connectionCounts[address];
+    }
+
+    void RemoveConnectionForAddress(boost::asio::ip::address const& address)
+    {
+        std::lock_guard<std::mutex> guard(_connectionCountsLock);
+        std::unordered_map<boost::asio::ip::address, uint32>::iterator itr = _connectionCounts.find(address);
+        if (itr == _connectionCounts.end())
+            return;
+
+        if (itr->second <= 1)
+            _connectionCounts.erase(itr);
+        else
+            --itr->second;
+    }
+
 protected:
     SocketMgr() : _threadCount(0)
     {
@@ -137,9 +180,13 @@ protected:
 
     virtual NetworkThread<SocketType>* CreateThreads() const = 0;
 
+    virtual uint32 GetMaxConnectionsPerAddress() const { return 0; }
+
     std::unique_ptr<AsyncAcceptor> _acceptor;
     std::unique_ptr<NetworkThread<SocketType>[]> _threads;
     int32 _threadCount;
+    mutable std::mutex _connectionCountsLock;
+    std::unordered_map<boost::asio::ip::address, uint32> _connectionCounts;
 };
 }
 

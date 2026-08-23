@@ -34,7 +34,8 @@
 #include "WorldSession.h"
 #include <memory>
 
-WorldSocket::WorldSocket(Trinity::Net::IoContextTcpSocket&& socket) : BaseSocket(std::move(socket)), _OverSpeedPings(0), _worldSession(nullptr), _authed(false), _sendBufferSize(4096)
+WorldSocket::WorldSocket(Trinity::Net::IoContextTcpSocket&& socket) : BaseSocket(std::move(socket)), _OverSpeedPings(0), _worldSession(nullptr), _authed(false),
+    _authTimeout(underlying_stream().get_executor()), _sendBufferSize(4096)
 {
     _headerBuffer.Resize(sizeof(ClientPktHeader));
 }
@@ -68,6 +69,39 @@ void WorldSocket::Start()
     } };
 
     Trinity::Net::SocketConnectionInitializer::SetupChain(initializers)->Start();
+    StartAuthTimeout();
+}
+
+void WorldSocket::StartAuthTimeout()
+{
+    uint32 timeout = sWorld->getIntConfig(CONFIG_NETWORK_AUTH_TIMEOUT);
+    if (!timeout)
+        return;
+
+    _authTimeout.expires_after(std::chrono::seconds(timeout));
+    _authTimeout.async_wait([selfRef = weak_from_this(), timeout](boost::system::error_code const& error)
+    {
+        if (error == boost::asio::error::operation_aborted)
+            return;
+
+        std::shared_ptr<WorldSocket> self = static_pointer_cast<WorldSocket>(selfRef.lock());
+        if (!self || !self->IsOpen())
+            return;
+
+        if (self->_authed)
+            return;
+
+        TC_LOG_DEBUG("network", "WorldSocket::StartAuthTimeout: closing unauthenticated connection from {} after {} seconds", self->GetRemoteIpAddress().to_string(), timeout);
+
+        boost::system::error_code shutdownError;
+        self->underlying_stream().shutdown(boost::asio::socket_base::shutdown_both, shutdownError);
+        self->CloseSocket();
+    });
+}
+
+void WorldSocket::CancelAuthTimeout()
+{
+    _authTimeout.cancel();
 }
 
 bool WorldSocket::Update()
@@ -219,6 +253,12 @@ bool WorldSocket::ReadHeaderHandler()
     {
         TC_LOG_ERROR("network", "WorldSocket::ReadHeaderHandler(): client {} sent malformed packet (size: {}, cmd: {})",
             GetRemoteIpAddress().to_string(), header->size, header->cmd);
+        return false;
+    }
+
+    if (!_authed && header->cmd != CMSG_AUTH_SESSION)
+    {
+        TC_LOG_DEBUG("network", "WorldSocket::ReadHeaderHandler(): client {} sent opcode {} before authenticating", GetRemoteIpAddress().to_string(), header->cmd);
         return false;
     }
 
@@ -607,6 +647,7 @@ void WorldSocket::HandleAuthSessionCallback(std::shared_ptr<AuthSession> authSes
     sScriptMgr->OnAccountLogin(account.Id);
 
     _authed = true;
+    CancelAuthTimeout();
     _worldSession = new WorldSession(account.Id, std::move(authSession->Account),
         static_pointer_cast<WorldSocket>(shared_from_this()), account.Security, account.Expansion, mutetime,
         account.TimezoneOffset, account.Locale,

@@ -909,6 +909,9 @@ void AuthSession::SetTimeout()
             return;
 
         TC_LOG_DEBUG("server.authserver", "{}:{} session timed out.", self->GetRemoteIpAddress().to_string(), self->GetRemotePort());
+
+        boost::system::error_code shutdownError;
+        self->underlying_stream().shutdown(boost::asio::socket_base::shutdown_both, shutdownError);
         self->CloseSocket();
     });
 }
