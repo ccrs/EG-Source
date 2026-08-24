@@ -7,6 +7,8 @@
 #include "Item.h"
 #include "Language.h"
 #include "Mail.h"
+#include "ObjectAccessor.h"
+#include "ObjectMgr.h"
 #include "Player.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
@@ -139,8 +141,145 @@ class EG_XPRate : public PlayerScript
                 for (index = 0; index < 5; index++)
                     if (storedValue & (1 << index))
                         break;
+
+                uint32 baseAmount = amount;
                 amount *= ++index;
+
+                if (!sWorld->getBoolConfig(CONFIG_MILESTONE_REWARDS) || player->IsMaxLevel())
+                    return;
+
+                uint32 levelXp = sObjectMgr->GetXPForLevel(player->GetLevel());
+                if (!levelXp)
+                    return;
+
+                uint32 credit = player->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_CREDIT) + uint32((uint64(amount - baseAmount) * 1000 + levelXp / 2) / levelXp);
+                player->SetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_CREDIT, CustomFlags(credit > 0xFFFF ? 0xFFFF : credit));
             }
+        }
+};
+
+static void SendRewardMail(Player* player, std::string const& subject, std::string const& body, uint32 money, uint32 itemId, uint32 itemCount)
+{
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+    MailDraft draft(subject, body);
+    draft.AddMoney(money);
+    for (uint32 i = 0; i < itemCount; ++i)
+    {
+        if (Item* item = Item::CreateItem(itemId, 1, player))
+        {
+            item->SetBinding(true);
+            item->SaveToDB(trans);
+            draft.AddItem(item);
+        }
+    }
+    draft.SendMailTo(trans, player, MailSender(MAIL_NORMAL, 0, MAIL_STATIONERY_GM));
+    CharacterDatabase.CommitTransaction(trans);
+}
+
+enum MilestoneRewardLevels
+{
+    MILESTONE_LEVEL_STEP = 20
+};
+
+class EG_LevelMilestones : public PlayerScript
+{
+    public:
+        EG_LevelMilestones() : PlayerScript("EG_LevelMilestones") { }
+
+        void OnLevelChanged(Player* player, uint8 /*oldLevel*/) override
+        {
+            if (!sWorld->getBoolConfig(CONFIG_MILESTONE_REWARDS))
+                return;
+
+            if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE))
+                return;
+
+            uint8 level = player->GetLevel();
+            if (level >= 20 && level <= 80 && level % MILESTONE_LEVEL_STEP == 0)
+                GrantMilestone(player, level);
+        }
+
+    private:
+        static void GrantMilestone(Player* player, uint8 level)
+        {
+            uint8 tierIndex = uint8(level / MILESTONE_LEVEL_STEP - 1);
+            CustomFlags claimFlag = CustomFlags(CUSTOM_FLAG_MILESTONE_REWARD_20 << tierIndex);
+            if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_MILESTONE_REWARD, claimFlag))
+                return;
+
+            uint32 credit = player->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_CREDIT);
+            player->SetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_CREDIT, CustomFlags::CUSTOM_FLAG_NONE);
+
+            uint8 startLevel = player->GetClass() == CLASS_DEATH_KNIGHT ? uint8(sWorld->getIntConfig(CONFIG_START_DEATH_KNIGHT_PLAYER_LEVEL)) : uint8(sWorld->getIntConfig(CONFIG_START_PLAYER_LEVEL));
+            uint8 bracketStart = level - MILESTONE_LEVEL_STEP > startLevel ? uint8(level - MILESTONE_LEVEL_STEP) : startLevel;
+            if (bracketStart >= level)
+                return;
+
+            uint32 share = credit / (uint32(level - bracketStart) * 10);
+            if (share > 100)
+                share = 100;
+
+            if (share < 10)
+                return;
+
+            bool accountRiding = player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE);
+            bool accountMounts = sWorld->getBoolConfig(CONFIG_ACCOUNT_MOUNTS) && player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT, CustomFlags::CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE);
+            uint32 money = 0;
+            uint8 bagCount = 0;
+
+            switch (level)
+            {
+                case 20:
+                    if (!accountRiding)
+                        money += 4 * GOLD; // Apprentice Riding
+                    if (!accountMounts)
+                        money += 1 * GOLD; // cheapest racial mount
+                    if (share >= 40)
+                        bagCount = 2;
+                    break;
+                case 40:
+                    if (!accountRiding)
+                        money += 50 * GOLD; // Journeyman Riding
+                    if (!accountMounts)
+                        money += 10 * GOLD; // cheapest racial mount
+                    break;
+                case 60:
+                    money = 75 * GOLD;
+                    break;
+                case 80:
+                    money = 250 * GOLD;
+                    break;
+                default:
+                    return;
+            }
+
+            money = money * share / 100;
+            if (!money && !bagCount)
+                return;
+
+            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_EXISTING_SAME_ACCOUNT_CUSTOM_FLAGS);
+            stmt->setUInt32(0, player->GetSession()->GetAccountId());
+            stmt->setUInt32(1, player->GetGUID().GetCounter());
+            stmt->setUInt8(2, uint8(CustomFlagsIndex::CUSTOM_MILESTONE_REWARD) + 1);
+            stmt->setUInt16(3, uint16(claimFlag));
+
+            player->GetSession()->GetQueryProcessor().AddCallback(CharacterDatabase.AsyncQuery(stmt)
+                .WithPreparedCallback([guid = player->GetGUID(), level, claimFlag, money, bagCount](PreparedQueryResult result)
+            {
+                if (result)
+                    return;
+
+                Player* player = ObjectAccessor::FindPlayer(guid);
+                if (!player)
+                    return;
+
+                player->AddCustomFlag(CustomFlagsIndex::CUSTOM_MILESTONE_REWARD, claimFlag);
+
+                SendRewardMail(player, Trinity::StringFormat("Leveling milestone reached: Level {}", level), "Small token of appreciation for your leveling efforts.", money, 38145, bagCount);
+
+                ChatHandler handler(player->GetSession());
+                handler.PSendSysMessage(LANG_MILESTONE_REWARD, uint32(level));
+            }));
         }
 };
 
@@ -257,19 +396,7 @@ class EG_Hardcore : public PlayerScript
 
             player->AddCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, rewardFlag);
 
-            CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
-            MailDraft draft(Trinity::StringFormat("Hardcore Milestone: Level {}", tier), "Your dedication to the one-life journey has been noticed. Take these supplies and press on.");
-            draft.AddMoney(money);
-            for (uint32 i = 0; i < itemCount; ++i)
-            {
-                if (Item* item = Item::CreateItem(itemId, 1, player))
-                {
-                    item->SaveToDB(trans);
-                    draft.AddItem(item);
-                }
-            }
-            draft.SendMailTo(trans, player, MailSender(MAIL_NORMAL, 0, MAIL_STATIONERY_GM));
-            CharacterDatabase.CommitTransaction(trans);
+            SendRewardMail(player, Trinity::StringFormat("Hardcore Milestone: Level {}", tier), "Your dedication to the one-life journey has been noticed. Take these supplies and press on.", money, itemId, itemCount);
 
             if (spellId)
                 player->LearnSpell(spellId, false);
@@ -288,5 +415,6 @@ void AddSC_EG_player_scripts()
     if (sWorld->getBoolConfig(CONFIG_WORLD_CHAT))
         new EG_WorldChat();
     new EG_XPRate();
+    new EG_LevelMilestones();
     new EG_Hardcore();
 }

@@ -3466,6 +3466,16 @@ PreventRenameCharacterOnCustomization = 0
 
 Account.Mounts = 0
 
+#
+#    XPRate.MilestoneRewards.Enable
+#        Description: Sends a mailed reward when a character levelling on a boosted experience
+#                     rate (.settings xpRate above 1).
+#
+#        Default:     1 - (Enabled)
+#                     0 - (Disabled)
+
+XPRate.MilestoneRewards.Enable = 1
+
 # These settings control WiiZZy's World Chat System
 #
 #    WorldChat.Enable

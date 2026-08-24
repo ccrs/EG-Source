@@ -1597,6 +1597,9 @@ void World::LoadConfigSettings(bool reload)
     // EG - Account wide mount learning
     m_bool_configs[CONFIG_ACCOUNT_MOUNTS] = sConfigMgr->GetBoolDefault("Account.Mounts", false);
 
+    // EG - Boosted levelling milestones
+    m_bool_configs[CONFIG_MILESTONE_REWARDS] = sConfigMgr->GetBoolDefault("XPRate.MilestoneRewards.Enable", true);
+
     // EG - Crossfaction World Chat
     m_bool_configs[CONFIG_WORLD_CHAT] = sConfigMgr->GetBoolDefault("WorldChat.Enable", false);
 
