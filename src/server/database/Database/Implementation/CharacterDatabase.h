@@ -523,6 +523,7 @@ enum CharacterDatabaseStatements : uint32
 
     // EG - Account wide character search
     CHAR_SEL_EXISTING_SAME_ACCOUNT_CHARACTERS,
+    CHAR_SEL_EXISTING_SAME_ACCOUNT_CUSTOM_FLAGS,
 
     // EG - Anticheat
     CHAR_SEL_ANTICHEAT_PLAYER_CHARACTER_BANS,

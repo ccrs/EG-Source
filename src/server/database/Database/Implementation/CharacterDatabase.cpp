@@ -608,6 +608,7 @@ void CharacterDatabaseConnection::DoPrepareStatements()
 
     // EG - Account wide search
     PrepareStatement(CHAR_SEL_EXISTING_SAME_ACCOUNT_CHARACTERS, "SELECT taximask, race, class FROM characters WHERE characters.account = ? AND characters.guid != ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_EXISTING_SAME_ACCOUNT_CUSTOM_FLAGS, "SELECT 1 FROM character_extended LEFT JOIN characters ON character_extended.guid = characters.guid WHERE characters.account = ? AND character_extended.guid != ? AND (CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(character_extended.customFlags, ' ', ?), ' ', -1) AS UNSIGNED) & ?) != 0 LIMIT 1", CONNECTION_ASYNC);
 
     // EG - Anticheat
     PrepareStatement(CHAR_SEL_ANTICHEAT_PLAYER_CHARACTER_BANS, "SELECT FROM_UNIXTIME(bandate), unbandate-bandate, active, unbandate, banreason, bannedby FROM character_banned WHERE guid = ? ORDER BY bandate ASC", CONNECTION_SYNCH);
