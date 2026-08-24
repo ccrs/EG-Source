@@ -2566,9 +2566,13 @@ void Player::GiveLevel(uint8 level)
 
     // Refer-A-Friend
     if (GetSession()->GetRecruiterId())
+    {
         if (level < sWorld->getIntConfig(CONFIG_MAX_RECRUIT_A_FRIEND_BONUS_PLAYER_LEVEL))
+        {
             if (level % 2 == 0)
                 SetGrantableLevels(m_grantableLevels + 1); // EG - setter keeps the client indicator in sync
+        }
+    }
 
     SendQuestGiverStatusMultiple();
 
