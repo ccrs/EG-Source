@@ -8767,6 +8767,7 @@ void ObjectMgr::LoadGameObjectForQuests()
     uint32 oldMSTime = getMSTime();
 
     _gameObjectForQuestStore.clear();                         // need for reload case
+    _questDependentGameObjectStore.clear();
 
     if (_gameObjectTemplateStore.empty())
     {
@@ -8810,6 +8811,20 @@ void ObjectMgr::LoadGameObjectForQuests()
 
         _gameObjectForQuestStore.insert(gameObjectTemplatePair.first);
         ++count;
+    }
+
+    _questDependentGameObjectStore = _gameObjectForQuestStore;
+    for (auto const& questTemplatePair : _questTemplates)
+    {
+        for (int32 requiredNpcOrGo : questTemplatePair.second->RequiredNpcOrGo)
+        {
+            if (requiredNpcOrGo >= 0)
+                continue;
+
+            uint32 goEntry = uint32(-requiredNpcOrGo);
+            if (GetGameObjectTemplate(goEntry))
+                _questDependentGameObjectStore.insert(goEntry);
+        }
     }
 
     TC_LOG_INFO("server.loading", ">> Loaded {} GameObjects for quests in {} ms", count, GetMSTimeDiffToNow(oldMSTime));
