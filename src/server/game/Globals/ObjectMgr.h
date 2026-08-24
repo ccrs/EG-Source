@@ -1047,6 +1047,12 @@ class TC_GAME_API ObjectMgr
             return _gameObjectForQuestStore.find(entry) != _gameObjectForQuestStore.end();
         }
 
+        // EG - entries whose GAMEOBJECT_DYNAMIC depends on the observing player quest log
+        bool IsQuestDependentGameObject(uint32 entry) const
+        {
+            return _questDependentGameObjectStore.find(entry) != _questDependentGameObjectStore.end();
+        }
+
         GossipText const* GetGossipText(uint32 Text_ID) const;
         QuestGreeting const* GetQuestGreeting(ObjectGuid guid) const;
 
@@ -1586,6 +1592,7 @@ class TC_GAME_API ObjectMgr
         QuestAreaTriggerContainer _questAreaTriggerStore;
         TavernAreaTriggerContainer _tavernAreaTriggerStore;
         GameObjectForQuestContainer _gameObjectForQuestStore;
+        GameObjectForQuestContainer _questDependentGameObjectStore; // EG
         GossipTextContainer _gossipTextStore;
         QuestGreetingContainer _questGreetingStore;
         AreaTriggerContainer _areaTriggerStore;

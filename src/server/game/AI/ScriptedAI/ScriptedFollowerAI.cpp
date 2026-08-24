@@ -77,7 +77,7 @@ void FollowerAI::JustReachedHome()
         me->DespawnOrUnsummon();
 }
 
-void FollowerAI::OwnerAttackedBy(Unit* other)
+void FollowerAI::OwnerAttackedBy(Unit* other, DamageEffectType /*damagetype*/)
 {
     if (!me->HasReactState(REACT_PASSIVE) && ShouldAssistPlayerInCombatAgainst(other))
         me->EngageWithTarget(other);

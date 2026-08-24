@@ -40,7 +40,7 @@ class TC_GAME_API PetAI : public CreatureAI
         // always start attacking if possible
         void _AttackStart(Unit* target);
         void MovementInform(uint32 type, uint32 id) override;
-        void OwnerAttackedBy(Unit* attacker) override;
+        void OwnerAttackedBy(Unit* attacker, DamageEffectType damagetype) override; // EG
         void OwnerAttacked(Unit* target) override;
         void DamageTaken(Unit* attacker, uint32& /*damage*/, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override { AttackStart(attacker); }
         void ReceiveEmote(Player* player, uint32 textEmote) override;
