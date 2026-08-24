@@ -35,9 +35,17 @@ class EG_AccountSpells : public PlayerScript
             stmt->setUInt32(0, playerAccountID);
             stmt->setUInt32(1, player->GetGUID().GetCounter());
 
-            std::unordered_set<uint32> spellIds;
-            if (PreparedQueryResult resultCharacterSpells = CharacterDatabase.Query(stmt))
+            player->GetSession()->GetQueryProcessor().AddCallback(CharacterDatabase.AsyncQuery(stmt)
+                .WithPreparedCallback([guid = player->GetGUID()](PreparedQueryResult resultCharacterSpells)
             {
+                if (!resultCharacterSpells)
+                    return;
+
+                Player* player = ObjectAccessor::FindPlayer(guid);
+                if (!player)
+                    return;
+
+                std::unordered_set<uint32> spellIds;
                 do
                 {
                     Field* fields = resultCharacterSpells->Fetch();
@@ -45,62 +53,62 @@ class EG_AccountSpells : public PlayerScript
                     spellIds.insert(spellId);
                 }
                 while (resultCharacterSpells->NextRow());
-            }
 
-            bool searchForRiding = player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE);
-            for (uint32 spellId : spellIds)
-            {
-                SpellInfo const* relatedInfo = sSpellMgr->GetSpellInfo(spellId);
-                if (!relatedInfo)
-                    continue;
-                if (searchForRiding)
+                bool searchForRiding = player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE);
+                for (uint32 spellId : spellIds)
                 {
-                    switch (relatedInfo->Id)
+                    SpellInfo const* relatedInfo = sSpellMgr->GetSpellInfo(spellId);
+                    if (!relatedInfo)
+                        continue;
+                    if (searchForRiding)
                     {
-                        case 33388: // Apprentice Riding (Apprentice)
-                        case 5784: // Felsteed (Summon)
-                        case 13819: // Warhorse (Summon)
-                        case 34769: // Summon Warhorse (Summon)
-                            if (player->GetLevel() >= 20)
-                                player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
-                            break;
-                        case 33391: // Journeyman Riding (Journeyman)
-                        case 23161: // Dreadsteed (Summon)
-                        case 23214: // Charger (Summon)
-                        case 34767: // Summon Charger (Summon)
-                        case 48778: // Acherus Deathcharger (Summon)
-                            if (player->GetLevel() >= 40)
-                                player->LearnSpell(33391, false); // Journeyman Riding (Journeyman)
-                            else if (player->GetLevel() >= 20)
-                                player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
-                            break;
-                        case 34090: // Expert Riding (Expert)
-                        case 33943: // Flight Form (Shapeshift)
-                            if (player->GetLevel() >= 60)
-                                player->LearnSpell(34090, false); // Expert Riding (Expert)
-                            else if (player->GetLevel() >= 40)
-                                player->LearnSpell(33391, false); // Journeyman Riding (Journeyman)
-                            else if (player->GetLevel() >= 20)
-                                player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
-                            break;
-                        case 34091: // Artisan Riding (Artisan)
-                        case 40120: // Swift Flight Form (Shapeshift)
-                            if (player->GetLevel() >= 70)
-                                player->LearnSpell(34091, false);
-                            else if (player->GetLevel() >= 60)
-                                player->LearnSpell(34090, false); // Expert Riding (Expert)
-                            else if (player->GetLevel() >= 40)
-                                player->LearnSpell(33391, false); // Journeyman Riding (Journeyman)
-                            else if (player->GetLevel() >= 20)
-                                player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
-                            break;
-                        case 54197: // Cold Weather Flying (Passive)
-                            if (player->GetLevel() >= 68)
-                                player->LearnSpell(relatedInfo->Id, false);
-                            break;
+                        switch (relatedInfo->Id)
+                        {
+                            case 33388: // Apprentice Riding (Apprentice)
+                            case 5784: // Felsteed (Summon)
+                            case 13819: // Warhorse (Summon)
+                            case 34769: // Summon Warhorse (Summon)
+                                if (player->GetLevel() >= 20)
+                                    player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
+                                break;
+                            case 33391: // Journeyman Riding (Journeyman)
+                            case 23161: // Dreadsteed (Summon)
+                            case 23214: // Charger (Summon)
+                            case 34767: // Summon Charger (Summon)
+                            case 48778: // Acherus Deathcharger (Summon)
+                                if (player->GetLevel() >= 40)
+                                    player->LearnSpell(33391, false); // Journeyman Riding (Journeyman)
+                                else if (player->GetLevel() >= 20)
+                                    player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
+                                break;
+                            case 34090: // Expert Riding (Expert)
+                            case 33943: // Flight Form (Shapeshift)
+                                if (player->GetLevel() >= 60)
+                                    player->LearnSpell(34090, false); // Expert Riding (Expert)
+                                else if (player->GetLevel() >= 40)
+                                    player->LearnSpell(33391, false); // Journeyman Riding (Journeyman)
+                                else if (player->GetLevel() >= 20)
+                                    player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
+                                break;
+                            case 34091: // Artisan Riding (Artisan)
+                            case 40120: // Swift Flight Form (Shapeshift)
+                                if (player->GetLevel() >= 70)
+                                    player->LearnSpell(34091, false);
+                                else if (player->GetLevel() >= 60)
+                                    player->LearnSpell(34090, false); // Expert Riding (Expert)
+                                else if (player->GetLevel() >= 40)
+                                    player->LearnSpell(33391, false); // Journeyman Riding (Journeyman)
+                                else if (player->GetLevel() >= 20)
+                                    player->LearnSpell(33388, false); // Apprentice Riding (Apprentice)
+                                break;
+                            case 54197: // Cold Weather Flying (Passive)
+                                if (player->GetLevel() >= 68)
+                                    player->LearnSpell(relatedInfo->Id, false);
+                                break;
+                        }
                     }
                 }
-            }
+            }));
         }
 };
 
