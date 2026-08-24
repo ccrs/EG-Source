@@ -2601,9 +2601,13 @@ void Player::GiveLevel(uint8 level)
 
     // Refer-A-Friend
     if (GetSession()->GetRecruiterId())
+    {
         if (level < sWorld->getIntConfig(CONFIG_MAX_RECRUIT_A_FRIEND_BONUS_PLAYER_LEVEL))
+        {
             if (level % 2 == 0)
                 SetGrantableLevels(m_grantableLevels + 1); // EG - setter keeps the client indicator in sync
+        }
+    }
 
     SendQuestGiverStatusMultiple();
 
@@ -16458,6 +16462,7 @@ void Player::KilledPlayerCreditForQuest(uint16 count, Quest const* quest)
 void Player::KillCreditGO(uint32 entry, ObjectGuid guid)
 {
     uint16 addCastCount = 1;
+    bool objectiveSatisfied = false;
     for (uint8 i = 0; i < MAX_QUEST_LOG_SIZE; ++i)
     {
         uint32 questid = GetQuestSlotQuestId(i);
@@ -16496,6 +16501,10 @@ void Player::KillCreditGO(uint32 entry, ObjectGuid guid)
                         m_QuestStatusSave[questid] = QUEST_DEFAULT_SAVE_TYPE;
 
                         SendQuestUpdateAddCreatureOrGo(qInfo, guid, j, curCastCount, addCastCount);
+
+                        // EG - the objective counter feeds HasQuestForGO, so a satisfied objective must clear the dynamic flags
+                        if (q_status.CreatureOrGOCount[j] >= reqCastCount)
+                            objectiveSatisfied = true;
                     }
 
                     if (CanCompleteQuest(questid))
@@ -16507,6 +16516,9 @@ void Player::KillCreditGO(uint32 entry, ObjectGuid guid)
             }
         }
     }
+
+    if (objectiveSatisfied)
+        UpdateVisibleGameobjectsOrSpellClicks();
 }
 
 void Player::TalkedToCreature(uint32 entry, ObjectGuid guid)
@@ -23501,15 +23513,11 @@ void Player::UpdateVisibleGameobjectsOrSpellClicks()
             if (!go)
                 continue;
 
-            if (!sObjectMgr->IsGameObjectForQuests(go->GetEntry()))
+            if (!sObjectMgr->IsQuestDependentGameObject(go->GetEntry()))
                 continue;
 
-            // GAMEOBJECT_DYNAMIC is target-dependent. The gameobject itself may not
-            // have any changed field when this player's quest status changes, so force
-            // a per-player values update.
-            go->SetFieldNotifyFlag(UF_FLAG_PUBLIC);
+            // EG - GAMEOBJECT_DYNAMIC is UF_FLAG_DYNAMIC, it is recomputed for this target on every values block
             go->BuildValuesUpdateBlockForPlayer(&udata, this);
-            go->RemoveFieldNotifyFlag(UF_FLAG_PUBLIC);
         }
         else if (guid.IsCreatureOrVehicle())
         {
@@ -23526,9 +23534,8 @@ void Player::UpdateVisibleGameobjectsOrSpellClicks()
             {
                 if (sConditionMgr->GetConditionsForSpellClickEvent(creature->GetEntry(), clickPair.second.spellId))
                 {
-                    creature->SetFieldNotifyFlag(UF_FLAG_PUBLIC);
+                    // EG - UNIT_NPC_FLAGS is UF_FLAG_DYNAMIC, spellclick masking is recomputed for this target
                     creature->BuildValuesUpdateBlockForPlayer(&udata, this);
-                    creature->RemoveFieldNotifyFlag(UF_FLAG_PUBLIC);
                     break;
                 }
             }

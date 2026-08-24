@@ -136,7 +136,7 @@ public:
 
     virtual bool Update()
     {
-        if (_openState == OpenState_Closed)
+        if (_openState & OpenState_Closed)
             return false;
 
 #ifndef TC_SOCKET_USE_IOCP
@@ -190,11 +190,11 @@ public:
 
     void CloseSocket()
     {
-        if ((_openState.fetch_or(OpenState_Closed) & OpenState_Closed) == 0)
+        if (_openState.fetch_or(OpenState_Closed) & OpenState_Closed)
             return;
 
         boost::system::error_code shutdownError;
-        _socket.shutdown(boost::asio::socket_base::shutdown_send, shutdownError);
+        _socket.shutdown(boost::asio::socket_base::shutdown_both, shutdownError);
         if (shutdownError)
             TC_LOG_DEBUG("network", "Socket::CloseSocket: {} errored when shutting down socket: {} ({})", GetRemoteIpAddress().to_string(),
                 shutdownError.value(), shutdownError.message());

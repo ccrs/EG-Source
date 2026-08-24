@@ -909,6 +909,7 @@ void AuthSession::SetTimeout()
             return;
 
         TC_LOG_DEBUG("server.authserver", "{}:{} session timed out.", self->GetRemoteIpAddress().to_string(), self->GetRemotePort());
+
         self->CloseSocket();
     });
 }

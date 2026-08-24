@@ -272,12 +272,15 @@ void PetAI::_AttackStart(Unit* target)
     DoAttack(target, (!me->GetCharmInfo()->HasCommandState(COMMAND_STAY) || me->GetCharmInfo()->IsCommandAttack()));
 }
 
-void PetAI::OwnerAttackedBy(Unit* attacker)
+void PetAI::OwnerAttackedBy(Unit* attacker, DamageEffectType damagetype)
 {
     // Called when owner takes damage. This function helps keep pets from running off
     //  simply due to owner gaining aggro.
 
     if (!attacker || !me->IsAlive())
+        return;
+
+    if (damagetype == DOT)
         return;
 
     // Passive pets don't do anything

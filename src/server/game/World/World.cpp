@@ -764,6 +764,22 @@ void World::LoadConfigSettings(bool reload)
     m_int_configs[CONFIG_SOCKET_TIMEOUTTIME] = sConfigMgr->GetIntDefault("SocketTimeOutTime", 900000) / 1000;
     m_int_configs[CONFIG_SOCKET_TIMEOUTTIME_ACTIVE] = sConfigMgr->GetIntDefault("SocketTimeOutTimeActive", 60000) / 1000;
 
+    int32 authTimeout = sConfigMgr->GetIntDefault("Network.AuthTimeout", 30);
+    if (authTimeout < 0)
+    {
+        TC_LOG_ERROR("server.loading", "Network.AuthTimeout ({}) must be 0 or greater (0 disables the check). Set to 30.", authTimeout);
+        authTimeout = 30;
+    }
+    m_int_configs[CONFIG_NETWORK_AUTH_TIMEOUT] = uint32(authTimeout);
+
+    int32 maxConnectionsPerIp = sConfigMgr->GetIntDefault("Network.MaxConnectionsPerIp", 5);
+    if (maxConnectionsPerIp < 0)
+    {
+        TC_LOG_ERROR("server.loading", "Network.MaxConnectionsPerIp ({}) must be 0 or greater (0 disables the check). Set to 5.", maxConnectionsPerIp);
+        maxConnectionsPerIp = 5;
+    }
+    m_int_configs[CONFIG_NETWORK_MAX_CONNECTIONS_PER_IP] = uint32(maxConnectionsPerIp);
+
     m_int_configs[CONFIG_SESSION_ADD_DELAY] = sConfigMgr->GetIntDefault("SessionAddDelay", 10000);
 
     m_float_configs[CONFIG_GROUP_XP_DISTANCE] = sConfigMgr->GetFloatDefault("MaxGroupXPDistance", 74.0f);

@@ -19,6 +19,7 @@
 #define TRINITYCORE_WORLD_SOCKET_H
 
 #include "Common.h"
+#include "DeadlineTimer.h"
 #include "ServerPktHeader.h"
 #include "Socket.h"
 #include "Util.h"
@@ -114,6 +115,9 @@ private:
     void LoadSessionPermissionsCallback(PreparedQueryResult result);
     void SendAuthResponseError(uint8 code);
 
+    void StartAuthTimeout();
+    void CancelAuthTimeout();
+
     bool HandlePing(WorldPacket& recvPacket);
 
     std::array<uint8, 4> _serverChallenge;
@@ -126,6 +130,7 @@ private:
     std::mutex _worldSessionLock;
     WorldSession* _worldSession;
     bool _authed;
+    Trinity::Asio::DeadlineTimer _authTimeout;
 
     MessageBuffer _headerBuffer;
     MessageBuffer _packetBuffer;
