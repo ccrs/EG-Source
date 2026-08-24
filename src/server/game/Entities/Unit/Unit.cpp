@@ -734,13 +734,14 @@ bool Unit::HasBreakableByDamageCrowdControlAura(Unit* excludeCasterChannel) cons
     // Hook for OnDamage Event
     sScriptMgr->OnDamage(attacker, victim, damage);
 
-    // Signal to pets that their owner was attacked - except when DOT.
-    if (attacker != victim && damagetype != DOT)
+    // Signal to pets that their owner was attacked
+    // EG - the DOT filter moved into PetAI, minions running any other AI must see periodic damage too
+    if (attacker != victim)
     {
         for (Unit* controlled : victim->m_Controlled)
             if (Creature* cControlled = controlled->ToCreature())
                 if (CreatureAI* controlledAI = cControlled->AI())
-                    controlledAI->OwnerAttackedBy(attacker);
+                    controlledAI->OwnerAttackedBy(attacker, damagetype);
     }
 
     if (Player* player = victim->ToPlayer())

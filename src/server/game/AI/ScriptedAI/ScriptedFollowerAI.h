@@ -41,7 +41,7 @@ class TC_GAME_API FollowerAI : public ScriptedAI
         void MoveInLineOfSight(Unit*) override;
         void JustDied(Unit*) override;
         void JustReachedHome() override;
-        void OwnerAttackedBy(Unit* other) override;
+        void OwnerAttackedBy(Unit* other, DamageEffectType damagetype) override; // EG
 
         // the "internal" update, calls UpdateFollowerAI()
         void UpdateAI(uint32) override;
