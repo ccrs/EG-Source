@@ -7720,6 +7720,10 @@ bool Unit::IsImmunedToSpell(SpellInfo const* spellInfo, WorldObject const* caste
             if (!mechanicExplicitOnEffect)
                 return true;
         }
+
+        // EG
+        if ((mechanic == MECHANIC_SILENCE || mechanic == MECHANIC_INTERRUPT) && HasShieldedCast())
+            return true;
     }
 
     bool immuneToAllEffects = true;
@@ -7832,6 +7836,10 @@ bool Unit::IsImmunedToSpellEffect(SpellInfo const* spellInfo, SpellEffectInfo co
     {
         SpellImmuneContainer const& mechanicList = m_spellImmune[IMMUNITY_MECHANIC];
         if (hasImmunity(mechanicList, mechanic))
+            return true;
+
+        // EG
+        if ((mechanic == MECHANIC_SILENCE || mechanic == MECHANIC_INTERRUPT) && HasShieldedCast())
             return true;
     }
 
