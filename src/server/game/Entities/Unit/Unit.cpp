@@ -7701,8 +7701,10 @@ bool Unit::IsImmunedToSpell(SpellInfo const* spellInfo, WorldObject const* caste
     if (uint32 mechanic = spellInfo->Mechanic)
     {
         SpellImmuneContainer const& mechanicList = m_spellImmune[IMMUNITY_MECHANIC];
+        // EG - a shielded cast counts as silence/interrupt mechanic immunity
+        bool const shielded = (mechanic == MECHANIC_SILENCE || mechanic == MECHANIC_INTERRUPT) && HasShieldedCast();
         // EG - spell-level mechanic immunity must not block non-immune sibling effects
-        if (hasImmunity(mechanicList, mechanic))
+        if (hasImmunity(mechanicList, mechanic) || shielded)
         {
             // If any effect explicitly declares the same mechanic, that effect "owns" the mechanic.
             // The other effects (EffMechanic=0) should not inherit immunity from the spell level;
@@ -7720,10 +7722,6 @@ bool Unit::IsImmunedToSpell(SpellInfo const* spellInfo, WorldObject const* caste
             if (!mechanicExplicitOnEffect)
                 return true;
         }
-
-        // EG
-        if ((mechanic == MECHANIC_SILENCE || mechanic == MECHANIC_INTERRUPT) && HasShieldedCast())
-            return true;
     }
 
     bool immuneToAllEffects = true;
@@ -7835,11 +7833,9 @@ bool Unit::IsImmunedToSpellEffect(SpellInfo const* spellInfo, SpellEffectInfo co
     if (uint32 mechanic = spellEffectInfo.Mechanic)
     {
         SpellImmuneContainer const& mechanicList = m_spellImmune[IMMUNITY_MECHANIC];
-        if (hasImmunity(mechanicList, mechanic))
-            return true;
-
-        // EG
-        if ((mechanic == MECHANIC_SILENCE || mechanic == MECHANIC_INTERRUPT) && HasShieldedCast())
+        // EG - a shielded cast counts as silence/interrupt mechanic immunity
+        if (hasImmunity(mechanicList, mechanic)
+            || ((mechanic == MECHANIC_SILENCE || mechanic == MECHANIC_INTERRUPT) && HasShieldedCast()))
             return true;
     }
 
