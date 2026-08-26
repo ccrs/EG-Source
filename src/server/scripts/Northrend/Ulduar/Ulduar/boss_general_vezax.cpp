@@ -425,8 +425,8 @@ struct npc_saronite_vapors : public ScriptedAI
         _merging = true;
         events.Reset();
         me->RemoveAllAuras();
-        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-        me->GetMotionMaster()->Clear();
+        me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
+        me->GetMotionMaster()->MoveIdle();
         me->GetMotionMaster()->MoveCharge(AnimusFormationPos.GetPositionX(), AnimusFormationPos.GetPositionY(), AnimusFormationPos.GetPositionZ(), 28.0f);
     }
 
@@ -461,7 +461,7 @@ struct npc_saronite_vapors : public ScriptedAI
         if (damage >= me->GetHealth())
         {
             damage = 0;
-            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_UNINTERACTIBLE);
+            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE);
             me->SetControlled(true, UNIT_STATE_ROOT);
             me->SetStandState(UNIT_STAND_STATE_DEAD);
             me->SetHealth(me->GetMaxHealth());
