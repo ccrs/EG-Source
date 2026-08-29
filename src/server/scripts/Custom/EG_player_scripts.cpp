@@ -184,9 +184,12 @@ static void SendRewardMail(Player* player, std::string const& subject, std::stri
     CharacterDatabase.CommitTransaction(trans);
 }
 
-enum MilestoneRewardLevels
+enum MilestoneRewardMisc
 {
-    MILESTONE_LEVEL_STEP = 20
+    MILESTONE_LEVEL_STEP = 20,
+    MILESTONE_BAG_LEVEL_FIRST = 10,
+    MILESTONE_BAG_LEVEL_SECOND = 20,
+    ITEM_MILESTONE_BAG = 38145
 };
 
 class EG_LevelMilestones : public PlayerScript
@@ -203,11 +206,24 @@ class EG_LevelMilestones : public PlayerScript
                 return;
 
             uint8 level = player->GetLevel();
+            GrantBag(player, level);
+
             if (level >= 20 && level <= 80 && level % MILESTONE_LEVEL_STEP == 0)
                 GrantMilestone(player, level);
         }
 
     private:
+        static void GrantBag(Player* player, uint8 level)
+        {
+            if (level != MILESTONE_BAG_LEVEL_FIRST && level != MILESTONE_BAG_LEVEL_SECOND)
+                return;
+
+            SendRewardMail(player, Trinity::StringFormat("Leveling milestone reached: Level {}", level), "Some extra bag space to help you on your way.", 0, ITEM_MILESTONE_BAG, 1);
+
+            ChatHandler handler(player->GetSession());
+            handler.PSendSysMessage(LANG_MILESTONE_REWARD, uint32(level));
+        }
+
         static void GrantMilestone(Player* player, uint8 level)
         {
             uint8 tierIndex = uint8(level / MILESTONE_LEVEL_STEP - 1);
@@ -233,7 +249,6 @@ class EG_LevelMilestones : public PlayerScript
             bool accountRiding = player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE);
             bool accountMounts = sWorld->getBoolConfig(CONFIG_ACCOUNT_MOUNTS) && player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT, CustomFlags::CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE);
             uint32 money = 0;
-            uint8 bagCount = 0;
 
             switch (level)
             {
@@ -242,8 +257,6 @@ class EG_LevelMilestones : public PlayerScript
                         money += 4 * GOLD; // Apprentice Riding
                     if (!accountMounts)
                         money += 1 * GOLD; // cheapest racial mount
-                    if (share >= 40)
-                        bagCount = 2;
                     break;
                 case 40:
                     if (!accountRiding)
@@ -262,7 +275,7 @@ class EG_LevelMilestones : public PlayerScript
             }
 
             money = money * share / 100;
-            if (!money && !bagCount)
+            if (!money)
                 return;
 
             CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_EXISTING_SAME_ACCOUNT_CUSTOM_FLAGS);
@@ -272,7 +285,7 @@ class EG_LevelMilestones : public PlayerScript
             stmt->setUInt16(3, uint16(claimFlag));
 
             player->GetSession()->GetQueryProcessor().AddCallback(CharacterDatabase.AsyncQuery(stmt)
-                .WithPreparedCallback([guid = player->GetGUID(), level, claimFlag, money, bagCount](PreparedQueryResult result)
+                .WithPreparedCallback([guid = player->GetGUID(), level, claimFlag, money](PreparedQueryResult result)
             {
                 if (result)
                     return;
@@ -283,7 +296,7 @@ class EG_LevelMilestones : public PlayerScript
 
                 player->AddCustomFlag(CustomFlagsIndex::CUSTOM_MILESTONE_REWARD, claimFlag);
 
-                SendRewardMail(player, Trinity::StringFormat("Leveling milestone reached: Level {}", level), "Small token of appreciation for your leveling efforts.", money, 38145, bagCount);
+                SendRewardMail(player, Trinity::StringFormat("Leveling milestone reached: Level {}", level), "Small token of appreciation for your leveling efforts.", money, 0, 0);
 
                 ChatHandler handler(player->GetSession());
                 handler.PSendSysMessage(LANG_MILESTONE_REWARD, uint32(level));
