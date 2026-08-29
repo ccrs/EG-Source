@@ -346,6 +346,7 @@ Player::Player(WorldSession* session): Unit(true)
 
     // EG - Custom
     _customFlags = {};
+    _accountUsedXPRate = false;
 
     _masqueradeRace = RACE_NONE;
     _masqueradeRaceDirty = false;
@@ -17160,6 +17161,7 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
 
     // EG - Custom Settings
     _LoadCustomSettings(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS));
+    _LoadAccountXPRate(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_ACCOUNT_XPRATE));
 
     if (!_LoadIntoDataField(fields[66].GetString(), PLAYER_EXPLORED_ZONES_1, PLAYER_EXPLORED_ZONES_SIZE))
         TC_LOG_WARN("entities.player.loading", "Player::LoadFromDB: Player ({}) has invalid exploredzones data ({}). Forcing partial load.", guid.ToString(), fields[66].GetCString());

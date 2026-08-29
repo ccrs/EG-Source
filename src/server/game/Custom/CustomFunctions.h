@@ -25,11 +25,13 @@
 class Player;
 class Unit;
 class WorldObject;
+struct AchievementEntry;
 
 namespace EG
 {
     TC_GAME_API bool IsBoostedDay();
     TC_GAME_API void SetBoostedDay(bool active);
+    TC_GAME_API bool CanEarnRealmFirst(Player const* player, AchievementEntry const* achievement);
 
     class TC_GAME_API MostHPMissingFriendlyUnitInRangeSearcher
     {

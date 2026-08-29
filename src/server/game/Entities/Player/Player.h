@@ -723,11 +723,12 @@ enum PlayerLoginQueryIndex
     PLAYER_LOGIN_QUERY_LOAD_MONTHLY_QUEST_STATUS,
     PLAYER_LOGIN_QUERY_LOAD_CORPSE_LOCATION,
     PLAYER_LOGIN_QUERY_LOAD_PET_SLOTS,
-    // EG - login queries for Custom Settings, Transmogrification, Account-shared spells, Account characters
+    // EG - login queries for Custom Settings, Transmogrification, Account-shared spells, Account characters, Account XP rate usage
     PLAYER_LOGIN_QUERY_LOAD_CUSTOM_SETTINGS,
     PLAYER_LOGIN_QUERY_LOAD_TRANSMOGRIFICATIONS,
     PLAYER_LOGIN_QUERY_LOAD_ACCOUNT_SHARED_SPELLS,
     PLAYER_LOGIN_QUERY_LOAD_ACCOUNT_CHARACTERS,
+    PLAYER_LOGIN_QUERY_LOAD_ACCOUNT_XPRATE,
     MAX_PLAYER_LOGIN_QUERY
 };
 
@@ -2348,6 +2349,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void AddCustomFlag(CustomFlagsIndex const index, CustomFlags const flag);
         void RemoveCustomFlag(CustomFlagsIndex const index, CustomFlags const flag);
         uint16 GetCustomFlags(CustomFlagsIndex const index) const;
+        bool HasAccountUsedXPRate() const { return _accountUsedXPRate; }
 
         bool HasTransmogrifications() const { return !_transmogrificationMap.empty(); }
         uint32 GetTransmogrificationEntry(ObjectGuid itemGUID) const;
@@ -2702,8 +2704,10 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void _LoadMasqueradeRace();
         void _LoadAccountSharedSpells(PreparedQueryResult result);
         void _LoadAccountCharacters(PreparedQueryResult result);
+        void _LoadAccountXPRate(PreparedQueryResult result);
 
         std::array<uint16, CUSTOM_FLAGS_MAX> _customFlags;
+        bool _accountUsedXPRate;
 
         std::unordered_map<ObjectGuid, uint32> _transmogrificationMap;
         std::unordered_map<uint8, uint32> _transmogrificationHideMap;

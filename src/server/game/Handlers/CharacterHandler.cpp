@@ -235,6 +235,13 @@ bool LoginQueryHolder::Initialize()
     stmt->setUInt32(0, m_accountId);
     stmt->setUInt32(1, lowGuid);
     res &= SetPreparedQuery(PLAYER_LOGIN_QUERY_LOAD_ACCOUNT_CHARACTERS, stmt);
+
+    stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_EXISTING_SAME_ACCOUNT_CUSTOM_FLAGS);
+    stmt->setUInt32(0, m_accountId);
+    stmt->setUInt32(1, lowGuid);
+    stmt->setUInt8(2, uint8(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS) + 1);
+    stmt->setUInt16(3, uint16(CustomFlags::CUSTOM_FLAG_XPRATE_1 | CustomFlags::CUSTOM_FLAG_XPRATE_2 | CustomFlags::CUSTOM_FLAG_XPRATE_3 | CustomFlags::CUSTOM_FLAG_XPRATE_4 | CustomFlags::CUSTOM_FLAG_XPRATE_5));
+    res &= SetPreparedQuery(PLAYER_LOGIN_QUERY_LOAD_ACCOUNT_XPRATE, stmt);
     return res;
 }
 

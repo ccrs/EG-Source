@@ -60,6 +60,11 @@
 namespace
 {
     bool BoostedDayActive = false;
+
+    enum RealmFirstAchievements
+    {
+        ACHIEV_REALM_FIRST_LEVEL_80_DEATH_KNIGHT = 461
+    };
 }
 
 bool EG::IsBoostedDay()
@@ -72,6 +77,19 @@ void EG::SetBoostedDay(bool active)
     BoostedDayActive = active;
 }
 
+bool EG::CanEarnRealmFirst(Player const* player, AchievementEntry const* achievement)
+{
+    if (achievement->Flags != ACHIEVEMENT_FLAG_REALM_FIRST_REACH)
+        return true;
+
+    if (player->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS) > CustomFlags::CUSTOM_FLAG_NONE)
+        return false;
+
+    if (player->GetClass() == CLASS_DEATH_KNIGHT && player->HasAccountUsedXPRate())
+        return achievement->ID == ACHIEV_REALM_FIRST_LEVEL_80_DEATH_KNIGHT;
+
+    return true;
+}
 
 void Creature::ProcessDelayedLOSEntries()
 {
@@ -176,6 +194,11 @@ void Player::_LoadCustomSettings(PreparedQueryResult result)
             _customFlags[itr] = temp;
         }
     }
+}
+
+void Player::_LoadAccountXPRate(PreparedQueryResult result)
+{
+    _accountUsedXPRate = result != nullptr;
 }
 
 void Player::_LoadTransmogrifications(PreparedQueryResult result)
