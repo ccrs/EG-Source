@@ -4461,7 +4461,10 @@ class spell_gen_pony_mount_check : public AuraScript
         Unit* caster = GetCaster();
         if (!caster)
             return;
-        Player* owner = caster->GetOwner()->ToPlayer();
+        Unit* petOwner = caster->GetOwner(); // EG - guard the owner deref
+        if (!petOwner)
+            return;
+        Player* owner = petOwner->ToPlayer();
         if (!owner || !owner->HasAchieved(ACHIEV_PONY_UP))
             return;
 

@@ -15,15 +15,17 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
-#include "InstanceScript.h"
-#include "MotionMaster.h"
 #include "naxxramas.h"
+#include "InstanceScript.h"
+#include "Map.h"
+#include "MotionMaster.h"
 #include "ObjectAccessor.h"
+#include "Player.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "SpellScript.h"
 
-enum Texts
+enum GluthTexts
 {
     EMOTE_SPOTS_ONE                     = 0,
     EMOTE_DECIMATE                      = 1,
@@ -32,7 +34,7 @@ enum Texts
     EMOTE_BERSERKER                     = 4
 };
 
-enum Spells
+enum GluthSpells
 {
     // Gluth
     SPELL_MORTAL_WOUND                  = 54378, // spell effect dummy unused. what its supposed to do is unkown.
@@ -47,14 +49,7 @@ enum Spells
     SPELL_INFECTED_WOUND                = 29307  // Used by the zombies on self.
 };
 
-Position const PosSummon[3] =
-{
-    { 3270.132f, -3169.948f, 297.5891f, 5.88176f },
-    { 3307.298f, -3183.449f, 297.5891f, 5.742133f },
-    { 3255.708f, -3135.677f, 297.5891f, 1.867502f }
-};
-
-enum Events
+enum GluthEvents
 {
     EVENT_WOUND                         = 1,
     EVENT_ENRAGE,
@@ -63,10 +58,11 @@ enum Events
     EVENT_SUMMON,
     EVENT_SEARCH_ZOMBIE_SINGLE,
     EVENT_KILL_ZOMBIE_SINGLE,
-    EVENT_SEARCH_ZOMBIE_MULTI
+    EVENT_SEARCH_ZOMBIE_MULTI,
+    EVENT_CHECK_WIPE
 };
 
-enum States
+enum GluthStates
 {
     STATE_GLUTH_NORMAL                  = 1,
     STATE_GLUTH_EATING                  = 2,
@@ -76,13 +72,13 @@ enum States
     STATE_ZOMBIE_TOBE_EATEN             = 3
 };
 
-enum SummonGroups
+enum GluthSummonGroups
 {
     SUMMON_GROUP_CHOW_10MAN = 1,
     SUMMON_GROUP_CHOW_25MAN = 2
 };
 
-enum Misc
+enum GluthMisc
 {
     EVENT_GLUTH_ZOMBIE_BEHAVIOR         = 10495, // unused. event handled by spell_gluth_decimate_SpellScript::HandleEvent
     DATA_ZOMBIE_STATE                   = 1,
@@ -112,6 +108,7 @@ struct boss_gluth : public BossAI
         events.ScheduleEvent(EVENT_BERSERK, 8min);
         events.ScheduleEvent(EVENT_SUMMON, 15s);
         events.ScheduleEvent(EVENT_SEARCH_ZOMBIE_SINGLE, 12s);
+        events.ScheduleEvent(EVENT_CHECK_WIPE, 5s); // EG
     }
 
     void SummonedCreatureDies(Creature* summoned, Unit* /* who */) override
@@ -247,6 +244,27 @@ struct boss_gluth : public BossAI
                         Talk(EMOTE_DEVOURS_ALL);
                         DoCastAOE(SPELL_ZOMBIE_CHOW_SEARCH_MULTI);
                     }
+                    break;
+                }
+                case EVENT_CHECK_WIPE:
+                {
+                    bool raidWiped = true;
+                    Map::PlayerList const& players = me->GetMap()->GetPlayers();
+                    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+                        if (Player* player = itr->GetSource())
+                            if (!player->IsGameMaster() && player->IsAlive() && IsInBoundary(player))
+                            {
+                                raidWiped = false;
+                                break;
+                            }
+
+                    if (raidWiped)
+                    {
+                        EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
+                        return;
+                    }
+
+                    events.Repeat(Seconds(5));
                     break;
                 }
             }

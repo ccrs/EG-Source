@@ -958,6 +958,16 @@ void Unit::InterruptSpellsCastedOnMe(bool killDelayed, bool interruptFriendlySpe
     }
 }
 
+bool Unit::HasShieldedCast() const
+{
+    for (uint32 i = CURRENT_FIRST_NON_MELEE_SPELL; i < CURRENT_AUTOREPEAT_SPELL; ++i)
+        if (Spell const* spell = m_currentSpells[i])
+            if (spell->m_spellInfo->HasAttribute(SPELL_ATTR0_CU_UNINTERRUPTIBLE))
+                return true;
+
+    return false;
+}
+
 /*static*/ float Vehicle::GetSeatOrientationOffset(VehicleSeatEntry const* seatInfo, VehicleSeatAddon const* seatAddon)
 {
     if (seatAddon)

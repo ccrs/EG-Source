@@ -3113,6 +3113,10 @@ uint32 SpellInfo::GetMechanicImmunityMask(Unit* caster) const
     uint32 casterMechanicImmunityMask = caster->GetMechanicImmunityMask();
     uint32 mechanicImmunityMask = 0;
 
+    // EG - report a shielded cast to the client
+    if (HasAttribute(SPELL_ATTR0_CU_UNINTERRUPTIBLE))
+        return (1 << MECHANIC_SILENCE) | (1 << MECHANIC_INTERRUPT);
+
     // @todo: research other interrupt flags
     if (InterruptFlags & SPELL_INTERRUPT_FLAG_INTERRUPT)
     {

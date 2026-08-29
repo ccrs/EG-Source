@@ -28,6 +28,7 @@
 #include "SpellAuraEffects.h"
 #include "SpellMgr.h"
 #include "SpellScript.h"
+#include "TemporarySummon.h"
 #include "Unit.h"
 
 enum HunterPetCalculate
@@ -99,14 +100,15 @@ class spell_gen_pet_calculate : public SpellScriptLoader
 
             bool Load() override
             {
-                if (!GetCaster() || !GetCaster()->GetOwner() || GetCaster()->GetOwner()->GetTypeId() != TYPEID_PLAYER)
-                    return false;
-                return true;
+                TempSummon* pet = GetCaster() ? GetCaster()->ToTempSummon() : nullptr;
+                return pet && !pet->GetSummonerGUID().IsEmpty() && pet->GetSummonerGUID().IsPlayer();
             }
 
             void CalculateAmountCritSpell(AuraEffect const* /* aurEff */, int32& amount, bool& /*canBeRecalculated*/)
             {
-                if (Player* owner = GetCaster()->GetOwner()->ToPlayer())
+                TempSummon* pet = GetUnitOwner() ? GetUnitOwner()->ToTempSummon() : nullptr;
+                Unit* summoner = pet ? pet->GetSummonerUnit() : nullptr;
+                if (Player* owner = summoner ? summoner->ToPlayer() : nullptr)
                 {
                     // For others recalculate it from:
                     float CritSpell = 0.0f;
@@ -125,7 +127,9 @@ class spell_gen_pet_calculate : public SpellScriptLoader
 
             void CalculateAmountCritMelee(AuraEffect const* /* aurEff */, int32& amount, bool& /*canBeRecalculated*/)
             {
-                if (Player* owner = GetCaster()->GetOwner()->ToPlayer())
+                TempSummon* pet = GetUnitOwner() ? GetUnitOwner()->ToTempSummon() : nullptr;
+                Unit* summoner = pet ? pet->GetSummonerUnit() : nullptr;
+                if (Player* owner = summoner ? summoner->ToPlayer() : nullptr)
                 {
                     // For others recalculate it from:
                     float CritMelee = 0.0f;
@@ -144,7 +148,9 @@ class spell_gen_pet_calculate : public SpellScriptLoader
 
             void CalculateAmountMeleeHit(AuraEffect const* /* aurEff */, int32& amount, bool& /*canBeRecalculated*/)
             {
-                if (Player* owner = GetCaster()->GetOwner()->ToPlayer())
+                TempSummon* pet = GetUnitOwner() ? GetUnitOwner()->ToTempSummon() : nullptr;
+                Unit* summoner = pet ? pet->GetSummonerUnit() : nullptr;
+                if (Player* owner = summoner ? summoner->ToPlayer() : nullptr)
                 {
                     // For others recalculate it from:
                     float HitMelee = 0.0f;
@@ -159,7 +165,9 @@ class spell_gen_pet_calculate : public SpellScriptLoader
 
             void CalculateAmountSpellHit(AuraEffect const* /* aurEff */, int32& amount, bool& /*canBeRecalculated*/)
             {
-                if (Player* owner = GetCaster()->GetOwner()->ToPlayer())
+                TempSummon* pet = GetUnitOwner() ? GetUnitOwner()->ToTempSummon() : nullptr;
+                Unit* summoner = pet ? pet->GetSummonerUnit() : nullptr;
+                if (Player* owner = summoner ? summoner->ToPlayer() : nullptr)
                 {
                     // For others recalculate it from:
                     float HitSpell = 0.0f;
@@ -174,7 +182,9 @@ class spell_gen_pet_calculate : public SpellScriptLoader
 
             void CalculateAmountExpertise(AuraEffect const* /* aurEff */, int32& amount, bool& /*canBeRecalculated*/)
             {
-                if (Player* owner = GetCaster()->GetOwner()->ToPlayer())
+                TempSummon* pet = GetUnitOwner() ? GetUnitOwner()->ToTempSummon() : nullptr;
+                Unit* summoner = pet ? pet->GetSummonerUnit() : nullptr;
+                if (Player* owner = summoner ? summoner->ToPlayer() : nullptr)
                 {
                     // For others recalculate it from:
                     float Expertise = 0.0f;
@@ -1454,16 +1464,16 @@ public:
 
         bool Load() override
         {
-            if (!GetCaster() || !GetCaster()->GetOwner() || GetCaster()->GetOwner()->GetTypeId() != TYPEID_PLAYER)
-                return false;
-            return true;
+            TempSummon* pet = GetCaster() ? GetCaster()->ToTempSummon() : nullptr;
+            return pet && !pet->GetSummonerGUID().IsEmpty() && pet->GetSummonerGUID().IsPlayer();
         }
 
         void CalculateAvoidanceAmount(AuraEffect const* /* aurEff */, int32& amount, bool& /*canBeRecalculated*/)
         {
-            if (Unit* pet = GetUnitOwner())
+            Unit* unitOwner = GetUnitOwner();
+            if (TempSummon* pet = unitOwner ? unitOwner->ToTempSummon() : nullptr)
             {
-                if (Unit* owner = pet->GetOwner())
+                if (Unit* owner = pet->GetSummonerUnit())
                 {
                     // Army of the dead ghoul
                     if (pet->GetEntry() == ENTRY_ARMY_OF_THE_DEAD_GHOUL)
