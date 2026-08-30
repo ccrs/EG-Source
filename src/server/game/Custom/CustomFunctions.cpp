@@ -237,6 +237,10 @@ void Player::_LoadMasqueradeRace()
         for (; index < 11; index++)
             if (storedValue & (1 << index))
                 break;
+
+        if (index > 10)
+            return;
+
         if (index > 8)
             ++index;
         _masqueradeRace = Races(index);

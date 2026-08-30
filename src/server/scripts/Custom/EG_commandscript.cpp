@@ -383,9 +383,9 @@ public:
         if (CheckHardcore(handler, player))
             return true;
 
-        if (value > 12)
+        if (value > 11)
         {
-            handler->SendSysMessage("Please use a value between 0 and 12.\nDisconnect and reconnect to see this setting applied.");
+            handler->SendSysMessage("Please use a value between 0 and 11.\nDisconnect and reconnect to see this setting applied.");
             return true;
         }
 
