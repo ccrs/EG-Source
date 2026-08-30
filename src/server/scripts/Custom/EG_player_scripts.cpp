@@ -125,7 +125,15 @@ class EG_WorldChat : public PlayerScript
             if (sWorld->getBoolConfig(CONFIG_WORLD_CHAT) && lang != LANG_ADDON && Channel::IsWorldChat(channel->GetName()))
             {
                 if (!player->isGMChat())
-                    msg = Trinity::StringFormat("[{}] {}", player->GetTeamId() == TeamId::TEAM_ALLIANCE ? "|cff3399FFA|r" : "|cffCC0000H|r", msg);
+                {
+                    std::string tags = Trinity::StringFormat("[{}]", player->GetTeamId() == TeamId::TEAM_ALLIANCE ? "|cff3399FFA|r" : "|cffCC0000H|r");
+
+                    // EG - Hardcore
+                    if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE))
+                        tags += "[|cffFF7D0AHC|r]";
+
+                    msg = Trinity::StringFormat("{} {}", tags, msg);
+                }
 
                 if (channel->CanSpeak(player->GetGUID()))
                     sCrossRealmChatMgr->Publish(channel->GetName(), player->GetName(), player->GetClass(), player->GetChatTag(), msg);
