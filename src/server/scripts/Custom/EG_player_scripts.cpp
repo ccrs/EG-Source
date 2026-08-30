@@ -232,12 +232,13 @@ class EG_LevelMilestones : public PlayerScript
                 return;
 
             uint32 credit = player->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_CREDIT);
-            player->SetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_CREDIT, CustomFlags::CUSTOM_FLAG_NONE);
 
             uint8 startLevel = player->GetClass() == CLASS_DEATH_KNIGHT ? uint8(sWorld->getIntConfig(CONFIG_START_DEATH_KNIGHT_PLAYER_LEVEL)) : uint8(sWorld->getIntConfig(CONFIG_START_PLAYER_LEVEL));
             uint8 bracketStart = level - MILESTONE_LEVEL_STEP > startLevel ? uint8(level - MILESTONE_LEVEL_STEP) : startLevel;
             if (bracketStart >= level)
                 return;
+
+            player->SetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_CREDIT, CustomFlags::CUSTOM_FLAG_NONE);
 
             uint32 share = credit / (uint32(level - bracketStart) * 10);
             if (share > 100)
@@ -246,26 +247,18 @@ class EG_LevelMilestones : public PlayerScript
             if (share < 10)
                 return;
 
-            bool accountRiding = player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_RIDING, CustomFlags::CUSTOM_FLAG_ACCOUNT_RIDING_ACTIVE);
-            bool accountMounts = sWorld->getBoolConfig(CONFIG_ACCOUNT_MOUNTS) && player->HasCustomFlag(CustomFlagsIndex::CUSTOM_ACCOUNT_MOUNT, CustomFlags::CUSTOM_FLAG_ACCOUNT_MOUNT_ACTIVE);
             uint32 money = 0;
 
             switch (level)
             {
                 case 20:
-                    if (!accountRiding)
-                        money += 4 * GOLD; // Apprentice Riding
-                    if (!accountMounts)
-                        money += 1 * GOLD; // cheapest racial mount
+                    money = 5 * GOLD;
                     break;
                 case 40:
-                    if (!accountRiding)
-                        money += 50 * GOLD; // Journeyman Riding
-                    if (!accountMounts)
-                        money += 10 * GOLD; // cheapest racial mount
+                    money = 60 * GOLD;
                     break;
                 case 60:
-                    money = 75 * GOLD;
+                    money = 100 * GOLD;
                     break;
                 case 80:
                     money = 250 * GOLD;
@@ -275,32 +268,13 @@ class EG_LevelMilestones : public PlayerScript
             }
 
             money = money * share / 100;
-            if (!money)
-                return;
 
-            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_EXISTING_SAME_ACCOUNT_CUSTOM_FLAGS);
-            stmt->setUInt32(0, player->GetSession()->GetAccountId());
-            stmt->setUInt32(1, player->GetGUID().GetCounter());
-            stmt->setUInt8(2, uint8(CustomFlagsIndex::CUSTOM_MILESTONE_REWARD) + 1);
-            stmt->setUInt16(3, uint16(claimFlag));
+            player->AddCustomFlag(CustomFlagsIndex::CUSTOM_MILESTONE_REWARD, claimFlag);
 
-            player->GetSession()->GetQueryProcessor().AddCallback(CharacterDatabase.AsyncQuery(stmt)
-                .WithPreparedCallback([guid = player->GetGUID(), level, claimFlag, money](PreparedQueryResult result)
-            {
-                if (result)
-                    return;
+            SendRewardMail(player, Trinity::StringFormat("Leveling milestone reached: Level {}", level), "Small token of appreciation for your leveling efforts.", money, 0, 0);
 
-                Player* player = ObjectAccessor::FindPlayer(guid);
-                if (!player)
-                    return;
-
-                player->AddCustomFlag(CustomFlagsIndex::CUSTOM_MILESTONE_REWARD, claimFlag);
-
-                SendRewardMail(player, Trinity::StringFormat("Leveling milestone reached: Level {}", level), "Small token of appreciation for your leveling efforts.", money, 0, 0);
-
-                ChatHandler handler(player->GetSession());
-                handler.PSendSysMessage(LANG_MILESTONE_REWARD, uint32(level));
-            }));
+            ChatHandler handler(player->GetSession());
+            handler.PSendSysMessage(LANG_MILESTONE_REWARD, uint32(level));
         }
 };
 
