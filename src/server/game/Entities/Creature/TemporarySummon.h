@@ -52,6 +52,7 @@ class TC_GAME_API TempSummon : public Creature
         ObjectGuid GetSummonerGUID() const { return m_summonerGUID; }
         TempSummonType GetSummonType() const { return m_type; }
         uint32 GetTimer() const { return m_timer; }
+        void SetTimer(uint32 timer) { m_timer = timer; m_lifetime = timer; }
         bool CanFollowOwner() const { return m_canFollowOwner; }
         void SetCanFollowOwner(bool can) { m_canFollowOwner = can; }
         bool IsVanityPet() const;

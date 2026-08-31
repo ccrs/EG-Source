@@ -6222,28 +6222,44 @@ Unit* Unit::GetFirstControlled() const
     return unit;
 }
 
-void Unit::RemoveAllControlled()
+void Unit::RemoveAllControlled(bool onDeath/* = false*/)
 {
     // possessed pet and vehicle
     if (GetTypeId() == TYPEID_PLAYER)
         ToPlayer()->StopCastingCharm();
 
-    while (!m_Controlled.empty())
+    bool exception = false;
+    for (auto itr = m_Controlled.begin(); itr != m_Controlled.end();)
     {
-        Unit* target = *m_Controlled.begin();
-        m_Controlled.erase(m_Controlled.begin());
+        Unit* target = *itr;
+        itr = m_Controlled.erase(itr);
         if (target->GetCharmerGUID() == GetGUID())
             target->RemoveCharmAuras();
         else if (target->GetOwnerGUID() == GetGUID() && target->IsSummon())
-            target->ToTempSummon()->UnSummon();
+        {
+            TempSummon* summon = target->ToTempSummon();
+            if (onDeath && GetTypeId() == TYPEID_UNIT && summon->HasUnitTypeMask(UNIT_MASK_GUARDIAN | UNIT_MASK_MINION) && TempSummon::ShouldFollowOnSpawn(summon->m_Properties))
+            {
+                if (summon->IsInCombat() && summon->CanHaveThreatList() && summon->GetCombatManager().HasPvECombatWithPlayers())
+                {
+                    summon->SetTimer(1000);
+                    summon->SetTempSummonType(TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT);
+                    exception = true;
+                }
+                else
+                    summon->UnSummon();
+            }
+            else
+                summon->UnSummon();
+        }
         else
             TC_LOG_ERROR("entities.unit", "Unit {} is trying to release unit {} which is neither charmed nor owned by it", GetEntry(), target->GetEntry());
     }
-    if (!GetPetGUID().IsEmpty())
+    if (!exception && !GetPetGUID().IsEmpty())
         TC_LOG_FATAL("entities.unit", "Unit {} is not able to release its pet {}", GetEntry(), GetPetGUID().ToString());
-    if (!GetMinionGUID().IsEmpty())
+    if (!exception && !GetMinionGUID().IsEmpty())
         TC_LOG_FATAL("entities.unit", "Unit {} is not able to release its minion {}", GetEntry(), GetMinionGUID().ToString());
-    if (!GetCharmedGUID().IsEmpty())
+    if (!exception && !GetCharmedGUID().IsEmpty())
         TC_LOG_FATAL("entities.unit", "Unit {} is not able to release its charm {}", GetEntry(), GetCharmedGUID().ToString());
     if (!IsPet()) // pets don't use the flag for this
         RemoveUnitFlag(UNIT_FLAG_PET_IN_COMBAT); // m_controlled is now empty, so we know none of our minions are in combat
@@ -6361,16 +6377,30 @@ void Unit::RemoveCharmAuras()
     RemoveAurasByType(SPELL_AURA_AOE_CHARM);
 }
 
-void Unit::UnsummonAllTotems()
+void Unit::UnsummonAllTotems(bool onDeath/* = false*/)
 {
     for (uint8 i = 0; i < MAX_SUMMON_SLOT; ++i)
     {
         if (!m_SummonSlot[i])
             continue;
 
-        if (Creature* OldTotem = GetMap()->GetCreature(m_SummonSlot[i]))
-            if (OldTotem->IsSummon())
-                OldTotem->ToTempSummon()->UnSummon();
+        if (Creature* summonCreature = GetMap()->GetCreature(m_SummonSlot[i]))
+            if (summonCreature->IsSummon())
+            {
+                TempSummon* summon = summonCreature->ToTempSummon();
+                if (onDeath && GetTypeId() == TYPEID_UNIT && i == SUMMON_SLOT_PET && summon->HasUnitTypeMask(UNIT_MASK_GUARDIAN | UNIT_MASK_MINION) && TempSummon::ShouldFollowOnSpawn(summon->m_Properties))
+                {
+                    if (summon->IsInCombat() && summon->CanHaveThreatList() && summon->GetCombatManager().HasPvECombatWithPlayers())
+                    {
+                        summon->SetTimer(1000);
+                        summon->SetTempSummonType(TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT);
+                    }
+                    else
+                        summon->UnSummon();
+                }
+                else
+                    summon->UnSummon();
+            }
     }
 }
 
@@ -8743,8 +8773,8 @@ void Unit::setDeathState(DeathState s)
         ExitVehicle();                                      // Exit vehicle before calling RemoveAllControlled
                                                             // vehicles use special type of charm that is not removed by the next function
                                                             // triggering an assert
-        UnsummonAllTotems();
-        RemoveAllControlled();
+        UnsummonAllTotems(true);
+        RemoveAllControlled(true);
         RemoveAllAurasOnDeath();
     }
 
