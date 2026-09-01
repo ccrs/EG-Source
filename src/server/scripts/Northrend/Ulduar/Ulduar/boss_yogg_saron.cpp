@@ -376,6 +376,12 @@ enum YoggSaronActions
     ACTION_TOGGLE_SHATTERED_ILLUSION    = 9,
 };
 
+enum YoggSaronGuidData
+{
+    DATA_BRAIN_LINK_FIRST = 0,
+    DATA_BRAIN_LINK_SECOND
+};
+
 enum YoggSaronCreatureGroups
 {
     CREATURE_GROUP_CLOUDS       = 0,
@@ -658,25 +664,22 @@ struct boss_sara : public ScriptedAI
 {
     boss_sara(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript()) { }
 
-    ObjectGuid GetLinkedPlayerGUID(ObjectGuid guid) const
+    void SetGUID(ObjectGuid const& guid, int32 id) override
     {
-        std::map<ObjectGuid, ObjectGuid>::const_iterator itr = _linkData.find(guid);
-        if (itr != _linkData.end())
-            return itr->second;
+        if (id == DATA_BRAIN_LINK_FIRST)
+            _brainLinkFirst = guid;
+        else if (id == DATA_BRAIN_LINK_SECOND)
+            _brainLinkSecond = guid;
+    }
+
+    ObjectGuid GetGUID(int32 id) const override
+    {
+        if (id == DATA_BRAIN_LINK_FIRST)
+            return _brainLinkFirst;
+        if (id == DATA_BRAIN_LINK_SECOND)
+            return _brainLinkSecond;
 
         return ObjectGuid::Empty;
-    }
-
-    void SetLinkBetween(ObjectGuid player1, ObjectGuid player2)
-    {
-        _linkData[player1] = player2;
-        _linkData[player2] = player1;
-    }
-
-    // called once for each target on aura remove
-    void RemoveLinkFrom(ObjectGuid player1)
-    {
-        _linkData.erase(player1);
     }
 
     void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
@@ -873,7 +876,8 @@ struct boss_sara : public ScriptedAI
 private:
     EventMap _events;
     InstanceScript* _instance;
-    std::map<ObjectGuid, ObjectGuid> _linkData;
+    ObjectGuid _brainLinkFirst;
+    ObjectGuid _brainLinkSecond;
 };
 
 struct boss_yogg_saron : public PassiveAI
@@ -1892,14 +1896,41 @@ class spell_yogg_saron_brain_link : public SpellScript    // 63802
             return;
         }
 
-        if (boss_sara* ai = CAST_AI(boss_sara, GetCaster()->GetAI()))
-            ai->SetLinkBetween(targets.front()->GetGUID(), targets.back()->GetGUID());
+        _first = targets.front()->GetGUID();
+        _second = targets.back()->GetGUID();
+
+        if (UnitAI* ai = GetCaster()->GetAI())
+        {
+            ai->SetGUID(_first, DATA_BRAIN_LINK_FIRST);
+            ai->SetGUID(_second, DATA_BRAIN_LINK_SECOND);
+        }
+    }
+
+    void VerifyLink()
+    {
+        Unit* caster = GetCaster();
+        if (!caster || _first.IsEmpty() || _second.IsEmpty())
+            return;
+
+        Player* first = ObjectAccessor::GetPlayer(*caster, _first);
+        Player* second = ObjectAccessor::GetPlayer(*caster, _second);
+        if (first && second && first->HasAura(SPELL_BRAIN_LINK) && second->HasAura(SPELL_BRAIN_LINK))
+            return;
+
+        if (first)
+            first->RemoveAurasDueToSpell(SPELL_BRAIN_LINK);
+        if (second)
+            second->RemoveAurasDueToSpell(SPELL_BRAIN_LINK);
     }
 
     void Register() override
     {
         OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_yogg_saron_brain_link::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+        AfterCast += SpellCastFn(spell_yogg_saron_brain_link::VerifyLink);
     }
+
+    ObjectGuid _first;
+    ObjectGuid _second;
 };
 
 class spell_yogg_saron_brain_link_aura : public AuraScript
@@ -1911,38 +1942,44 @@ class spell_yogg_saron_brain_link_aura : public AuraScript
         return ValidateSpellInfo({ SPELL_BRAIN_LINK_DAMAGE, SPELL_BRAIN_LINK_NO_DAMAGE });
     }
 
-    void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    void RefreshLink()
     {
         Unit* caster = GetCaster();
-        if (!caster)
+        if (!caster || !caster->GetAI())
             return;
 
-        if (boss_sara* ai = CAST_AI(boss_sara, caster->GetAI()))
-        {
-            if (GetTargetApplication()->GetRemoveMode() == AURA_REMOVE_BY_EXPIRE)
-                ai->RemoveLinkFrom(GetTarget()->GetGUID());
-            else
-            {
-                if (Player* player = ObjectAccessor::GetPlayer(*GetTarget(), ai->GetLinkedPlayerGUID(GetTarget()->GetGUID())))
-                {
-                    ai->RemoveLinkFrom(GetTarget()->GetGUID());
-                    player->RemoveAurasDueToSpell(SPELL_BRAIN_LINK);
-                }
-            }
-        }
+        ObjectGuid self = GetTarget()->GetGUID();
+        ObjectGuid first = caster->GetAI()->GetGUID(DATA_BRAIN_LINK_FIRST);
+        ObjectGuid second = caster->GetAI()->GetGUID(DATA_BRAIN_LINK_SECOND);
+
+        if (self == first)
+            _linked = second;
+        else if (self == second)
+            _linked = first;
+    }
+
+    void OnApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        RefreshLink();
+    }
+
+    void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        if (GetTargetApplication()->GetRemoveMode() == AURA_REMOVE_BY_EXPIRE)
+            return;
+
+        ObjectGuid linked = _linked;
+        _linked.Clear();
+
+        if (Player* player = ObjectAccessor::GetPlayer(*GetTarget(), linked))
+            player->RemoveAurasDueToSpell(SPELL_BRAIN_LINK);
     }
 
     void DummyTick(AuraEffect const* aurEff)
     {
-        Unit* caster = GetCaster();
-        if (!caster)
-            return;
+        RefreshLink();
 
-        boss_sara* ai = CAST_AI(boss_sara, caster->GetAI());
-        if (!ai)
-            return;
-
-        Player* linked = ObjectAccessor::GetPlayer(*GetTarget(), ai->GetLinkedPlayerGUID(GetTarget()->GetGUID()));
+        Player* linked = ObjectAccessor::GetPlayer(*GetTarget(), _linked);
         if (!linked)
             return;
 
@@ -1951,9 +1988,12 @@ class spell_yogg_saron_brain_link_aura : public AuraScript
 
     void Register() override
     {
+        OnEffectApply += AuraEffectApplyFn(spell_yogg_saron_brain_link_aura::OnApply, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
         OnEffectPeriodic += AuraEffectPeriodicFn(spell_yogg_saron_brain_link_aura::DummyTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
         OnEffectRemove += AuraEffectRemoveFn(spell_yogg_saron_brain_link_aura::OnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
     }
+
+    ObjectGuid _linked;
 };
 
 // 63803 - Brain Link (Damage)
