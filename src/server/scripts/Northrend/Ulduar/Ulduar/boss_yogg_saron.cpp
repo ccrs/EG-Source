@@ -118,7 +118,7 @@ enum YoggSaronSpells
     SPELL_SANITY                            = 63050,
     SPELL_INSANE_PERIODIC                   = 64554,
     SPELL_INSANE                            = 63120,
-    //SPELL_CLEAR_INSANE                      = 63122,  // when should it be cast?
+    SPELL_CLEAR_INSANE                      = 63122,
     SPELL_CONSTRICTOR_TENTACLE              = 64132,
     SPELL_CRUSHER_TENTACLE_SUMMON           = 64139,
     SPELL_CORRUPTOR_TENTACLE_SUMMON         = 64143,
@@ -157,6 +157,7 @@ enum YoggSaronSpells
     SPELL_KNOCK_AWAY                        = 64022,
     SPELL_PHASE_3_TRANSFORM                 = 63895,
     SPELL_DEAFENING_ROAR                    = 64189,
+    SPELL_DEATH_ANIMATION                   = 64165,
     SPELL_LUNATIC_GAZE                      = 64163,
     SPELL_LUNATIC_GAZE_DAMAGE               = 64164,
     SPELL_SHADOW_BEACON                     = 64465,
@@ -356,6 +357,8 @@ enum YoggSaronEvents
     EVENT_STORMWIND_ROLEPLAY_5              = 45,
     EVENT_STORMWIND_ROLEPLAY_6              = 46,
     EVENT_STORMWIND_ROLEPLAY_7              = 47,
+
+    EVENT_CHECK_WIPE                        = 48,
 };
 
 enum YoggSaronEventGroups
@@ -374,6 +377,7 @@ enum YoggSaronActions
     ACTION_TENTACLE_KILLED              = 6,
     ACTION_START_ROLEPLAY               = 8,
     ACTION_TOGGLE_SHATTERED_ILLUSION    = 9,
+    ACTION_YOGG_DEFEATED                = 10,
 };
 
 enum YoggSaronGuidData
@@ -505,6 +509,7 @@ struct boss_voice_of_yogg_saron : public BossAI
         events.ScheduleEvent(EVENT_LOCK_DOOR, 15s);
         events.ScheduleEvent(EVENT_SUMMON_GUARDIAN_OF_YOGG_SARON, _guardianTimer, 0, PHASE_ONE);
         events.ScheduleEvent(EVENT_EXTINGUISH_ALL_LIFE, 15min);    // 15 minutes
+        events.ScheduleEvent(EVENT_CHECK_WIPE, 5s);
     }
 
     void JustDied(Unit* /*killer*/) override
@@ -588,6 +593,28 @@ struct boss_voice_of_yogg_saron : public BossAI
                     DoCastAOE(SPELL_IMMORTAL_GUARDIAN);
                     events.ScheduleEvent(EVENT_SUMMON_IMMORTAL_GUARDIAN, 15s, 0, PHASE_THREE);
                     break;
+                case EVENT_CHECK_WIPE:
+                {
+                    bool raidWiped = true;
+                    Map::PlayerList const& players = me->GetMap()->GetPlayers();
+                    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+                        if (Player* player = itr->GetSource())
+                            if (player->IsAlive() && !player->IsGameMaster())
+                                if (player->HasAura(SPELL_ILLUSION_ROOM) || IsInBoundary(player))
+                                {
+                                    raidWiped = false;
+                                    break;
+                                }
+
+                    if (raidWiped)
+                    {
+                        EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
+                        return;
+                    }
+
+                    events.Repeat(5s);
+                    break;
+                }
                 default:
                     break;
             }
@@ -614,6 +641,10 @@ struct boss_voice_of_yogg_saron : public BossAI
                 break;
             case ACTION_TOGGLE_SHATTERED_ILLUSION:
                 _illusionShattered = !_illusionShattered;
+                break;
+            case ACTION_YOGG_DEFEATED:
+                if (Creature* yogg = instance->GetCreature(DATA_YOGG_SARON))
+                    summons.Despawn(yogg);
                 break;
             case ACTION_PHASE_THREE:
                 events.SetPhase(PHASE_THREE);
@@ -886,6 +917,7 @@ struct boss_yogg_saron : public PassiveAI
 
     void Reset() override
     {
+        _defeated = false;
         _events.Reset();
         _events.SetPhase(PHASE_TWO);
         _events.ScheduleEvent(EVENT_YELL_BOW_DOWN, 3s, 0, PHASE_TWO);
@@ -911,6 +943,41 @@ struct boss_yogg_saron : public PassiveAI
             me->AddLootMode(32);
     }
 
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        if (_defeated)
+            return;
+
+        PassiveAI::EnterEvadeMode(why);
+    }
+
+    void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
+    {
+        if (_defeated)
+        {
+            damage = 0;
+            return;
+        }
+
+        if (damage >= me->GetHealth())
+            damage = me->GetHealth() - 1;
+
+        if (me->GetHealth() - damage >= CalculatePct(me->GetMaxHealth(), 1.5f))
+            return;
+
+        _defeated = true;
+        me->InterruptNonMeleeSpells(true);
+        DoCast(me, SPELL_DEATH_ANIMATION, true);
+
+        if (Creature* voice = _instance->GetCreature(DATA_VOICE_OF_YOGG_SARON))
+        {
+            voice->AI()->DoAction(ACTION_YOGG_DEFEATED);
+            voice->CastSpell(nullptr, SPELL_CLEAR_INSANE, true);
+        }
+
+        me->m_Events.AddEventAtOffset([this]() { me->KillSelf(); }, 500ms);
+    }
+
     void JustDied(Unit* /*killer*/) override
     {
         Talk(SAY_YOGG_SARON_DEATH);
@@ -925,14 +992,6 @@ struct boss_yogg_saron : public PassiveAI
         for (uint8 i = DATA_FREYA_YS; i <= DATA_MIMIRON_YS; ++i)
             if (Creature* creature = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(i)))
                 creature->AI()->EnterEvadeMode();
-
-        Map::PlayerList const& players = me->GetMap()->GetPlayers();
-        for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
-            if (Player* player = itr->GetSource())
-            {
-                player->RemoveAurasDueToSpell(SPELL_SANITY);
-                player->RemoveAurasDueToSpell(SPELL_INSANE);
-            }
     }
 
     void UpdateAI(uint32 diff) override
@@ -994,6 +1053,7 @@ struct boss_yogg_saron : public PassiveAI
 private:
     EventMap _events;
     InstanceScript* _instance;
+    bool _defeated = false;
 };
 
 struct boss_brain_of_yogg_saron : public PassiveAI
@@ -2496,6 +2556,31 @@ class spell_yogg_saron_sanity_aura : public AuraScript
     }
 };
 
+// 63122 - Clear Insane
+class EG_spell_yogg_saron_clear_insane : public SpellScript
+{
+    PrepareSpellScript(EG_spell_yogg_saron_clear_insane);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_SANITY, SPELL_INSANE });
+    }
+
+    void ClearSanity(SpellEffIndex /*effIndex*/)
+    {
+        if (Unit* target = GetHitUnit())
+        {
+            target->RemoveAurasDueToSpell(SPELL_SANITY);
+            target->RemoveAurasDueToSpell(SPELL_INSANE);
+        }
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_yogg_saron_clear_insane::ClearSanity, EFFECT_1, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
 // 63120 - Insane
 class spell_yogg_saron_insane : public AuraScript    // 63120
 {
@@ -2730,6 +2815,7 @@ void AddSC_boss_yogg_saron()
     RegisterSpellScript(spell_yogg_saron_grim_reprisal);
     RegisterSpellScript(spell_yogg_saron_induce_madness);
     RegisterSpellAndAuraScriptPair(spell_yogg_saron_sanity, spell_yogg_saron_sanity_aura);
+    RegisterSpellScript(EG_spell_yogg_saron_clear_insane);
     RegisterSpellScript(spell_yogg_saron_insane);
     RegisterSpellScript(spell_yogg_saron_insane_periodic);
     RegisterSpellScript(spell_yogg_saron_lunatic_gaze);
