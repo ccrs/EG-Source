@@ -96,6 +96,7 @@ enum MimironSpells
     SPELL_FLAME_SUPPRESSANT_VX                  = 65192,
     SPELL_SPINNING_UP                           = 63414,
     SPELL_HEAT_WAVE_AURA                        = 63679,
+    SPELL_HEAT_WAVE_AURA_H                      = 64534,
     SPELL_HAND_PULSE_LEFT                       = 64348,
     SPELL_HAND_PULSE_RIGHT                      = 64352,
     SPELL_MOUNT_MKII                            = 64387,
@@ -1151,7 +1152,7 @@ struct boss_vx_001 : public BossAI
                 me->SetStandState(UNIT_STAND_STATE_STAND);
                 me->SetHover(true, false);
                 me->SetAnimTier(AnimTier::Hover);
-                DoCast(me, SPELL_HEAT_WAVE_AURA);
+                DoCast(me, _fireFighter ? SPELL_HEAT_WAVE_AURA_H : SPELL_HEAT_WAVE_AURA);
 
                 events.SetPhase(PHASE_VX_001);
                 events.ScheduleEvent(EVENT_ROCKET_STRIKE, 20s);
