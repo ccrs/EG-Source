@@ -441,6 +441,7 @@ struct boss_voice_of_yogg_saron : public BossAI
         _guardiansCount = 0;
         _guardianTimer = 20s;
         _illusionShattered = false;
+        _illusion = urand(CHAMBER_ILLUSION, STORMWIND_ILLUSION);
     }
 
     void MoveInLineOfSight(Unit* who) override
@@ -581,8 +582,8 @@ struct boss_voice_of_yogg_saron : public BossAI
                     if (me->GetMap()->Is25ManRaid())
                         me->SummonCreatureGroup(CREATURE_GROUP_PORTALS_25);
 
-                    uint8 illusion = urand(CHAMBER_ILLUSION, STORMWIND_ILLUSION);
-                    instance->SetData(DATA_ILLUSION, illusion);
+                    instance->SetData(DATA_ILLUSION, _illusion);
+                    _illusion = _illusion == STORMWIND_ILLUSION ? CHAMBER_ILLUSION : _illusion + 1;
 
                     if (Creature* brain = instance->GetCreature(DATA_BRAIN_OF_YOGG_SARON))
                         brain->AI()->DoAction(ACTION_INDUCE_MADNESS);
@@ -689,6 +690,7 @@ private:
     uint8 _guardiansCount;
     Milliseconds _guardianTimer;
     bool _illusionShattered;
+    uint8 _illusion;
 };
 
 struct boss_sara : public ScriptedAI
@@ -1043,6 +1045,7 @@ struct boss_yogg_saron : public PassiveAI
                 Talk(SAY_YOGG_SARON_PHASE_3);
                 DoCast(me, SPELL_PHASE_3_TRANSFORM);
                 me->RemoveAurasDueToSpell(SPELL_SHADOWY_BARRIER_YOGG);
+                me->SetHealth(me->CountPctFromMaxHealth(30));
                 me->ResetPlayerDamageReq();
                 break;
             default:
@@ -1065,8 +1068,8 @@ struct boss_brain_of_yogg_saron : public PassiveAI
 
     void Reset() override
     {
-        me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-        me->SetImmuneToPC(false);
+        me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+        me->SetImmuneToPC(true);
         DoCast(me, SPELL_MATCH_HEALTH);
         _summons.DespawnAll();
     }
@@ -1081,7 +1084,7 @@ struct boss_brain_of_yogg_saron : public PassiveAI
             DoCast(me, SPELL_MATCH_HEALTH_2, true); // it doesn't seem to hit Yogg-Saron here
             DoCast(me, SPELL_BRAIN_HURT_VISUAL, true);
             me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-            me->SetImmuneToPC(true);
+            me->SetImmuneToPC(true, true);
 
             if (Creature* voice = _instance->GetCreature(DATA_VOICE_OF_YOGG_SARON))
                 voice->AI()->DoAction(ACTION_PHASE_THREE);
@@ -1105,6 +1108,8 @@ struct boss_brain_of_yogg_saron : public PassiveAI
             case ACTION_INDUCE_MADNESS:
             {
                 _tentaclesKilled = 0;
+                me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                me->SetImmuneToPC(true, true);
 
                 me->SummonCreatureGroup(_instance->GetData(DATA_ILLUSION));
 
@@ -1123,6 +1128,8 @@ struct boss_brain_of_yogg_saron : public PassiveAI
                     sCreatureTextMgr->SendChat(me, EMOTE_BRAIN_ILLUSION_SHATTERED, nullptr, CHAT_MSG_ADDON, LANG_ADDON, TEXT_RANGE_AREA);
                     _summons.DespawnAll();
                     DoCastAOE(SPELL_SHATTERED_ILLUSION, true);
+                    me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                    me->SetImmuneToPC(false);
                     _instance->HandleGameObject(_instance->GetGuidData(GO_BRAIN_ROOM_DOOR_1 + illusion), true);
 
                     if (Creature* voice = _instance->GetCreature(DATA_VOICE_OF_YOGG_SARON))
@@ -2486,6 +2493,12 @@ class spell_yogg_saron_induce_madness : public SpellScript    // 64059
     void ClearShatteredIllusion()
     {
         GetCaster()->CastSpell(nullptr, SPELL_SHATTERED_ILLUSION_REMOVE);
+
+        if (Creature* brain = GetCaster()->ToCreature())
+        {
+            brain->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+            brain->SetImmuneToPC(true, true); // keepCombat: leaving combat would regen the brain
+        }
 
         if (InstanceScript* instance = GetCaster()->GetInstanceScript())
             if (Creature* voice = instance->GetCreature(DATA_VOICE_OF_YOGG_SARON))
