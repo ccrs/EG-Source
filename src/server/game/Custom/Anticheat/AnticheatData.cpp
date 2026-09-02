@@ -22,6 +22,7 @@ AnticheatData::AnticheatData()
     AlertCounter = 0;
     _dirty = true;
     _lastOpcode = 0;
+    _lastRawMovementFlags = 0;
     _totalReports = 0;
     for (uint8 i = 0; i < MAX_REPORT_TYPES; ++i)
     {
@@ -70,6 +71,16 @@ void AnticheatData::SetLastMovementInfo(MovementInfo const& moveInfo)
 {
     _dirty = false;
     _lastMovementInfo = moveInfo;
+}
+
+uint32 AnticheatData::GetLastRawMovementFlags() const
+{
+    return _lastRawMovementFlags;
+}
+
+void AnticheatData::SetLastRawMovementFlags(uint32 flags)
+{
+    _lastRawMovementFlags = flags;
 }
 
 uint32 AnticheatData::GetTotalReports() const

@@ -1638,7 +1638,7 @@ class EG_spell_pool_of_tar_blaze_damage : public SpellScript
                 continue;
             if (u->GetVehicle())
                 continue;
-            if (u->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE))
+            if (u->HasUnitFlag(UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_UNINTERACTIBLE | UNIT_FLAG_IMMUNE_TO_NPC))
                 continue;
             if (u->IsImmunedToSpell(spellInfo, caster))
                 continue;
