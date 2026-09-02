@@ -5250,7 +5250,13 @@ void SpellMgr::LoadSpellInfoCorrections()
     // Shadow Nova
     ApplySpellFix({ 65719 }, [](SpellInfo* spellInfo)
     {
-        spellInfo->AttributesEx3 |= SPELL_ATTR3_IGNORE_HIT_RESULT; // phase one must take a fixed number of Guardians
+        spellInfo->AttributesEx3 |= SPELL_ATTR3_IGNORE_HIT_RESULT;
+    });
+
+    // Burning Tar
+    ApplySpellFix({ 62290 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).RadiusEntry = sSpellRadiusStore.LookupEntry(EFFECT_RADIUS_9_YARDS);
     });
 
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
