@@ -2115,7 +2115,7 @@ class spell_mimiron_p3wx2_laser_barrage : public SpellScript
         GetCaster()->SetChannelObjectGuid(GetHitUnit()->GetGUID());
         if (Creature* creatureCaster = GetCaster()->ToCreature())
         {
-            creatureCaster->ReleaseSpellFocus(nullptr, false);
+            creatureCaster->DoNotReacquireSpellFocusTarget();
             creatureCaster->SetSpellFocus(GetSpell(), GetHitUnit());
         }
     }
