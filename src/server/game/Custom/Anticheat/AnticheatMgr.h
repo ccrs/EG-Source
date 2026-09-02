@@ -59,7 +59,7 @@ public:
     static AnticheatMgr* instance();
     void Initialize();
     void SavePlayerData(Player* player);
-    void OnPlayerMove(Player* player, MovementInfo const& movementInfo, uint32 opcode);
+    void OnPlayerMove(Player* player, MovementInfo const& movementInfo, uint32 opcode, uint32 rawMovementFlags);
 
     void HandlePlayerLogin(Player* player);
     void HandlePlayerLogout(Player* player);
@@ -80,16 +80,16 @@ private:
     void _LoadBlockedLuaFunctions();
     void _SaveLuaCheater(uint32 accountId, uint32 realmId, uint32 guid, std::string macro);
 
-    void _StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, AnticheatData& data);
+    void _StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, uint32 rawMovementFlags, AnticheatData& data);
     void _SpeedHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
-    void _FlyHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
+    void _FlyHackDetection(Player* player, MovementInfo const& movementInfo, uint32 rawMovementFlags, AnticheatData& data);
     void _TeleportHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
     void _JumpHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, AnticheatData& data);
     void _TeleportPlaneHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, AnticheatData& data);
     void _ClimbHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, AnticheatData& data);
     void _IgnoreControlHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, AnticheatData& data);
     void _GravityHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
-    void _WalkOnWaterHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
+    void _WalkOnWaterHackDetection(Player* player, MovementInfo const& movementInfo, uint32 rawMovementFlags, AnticheatData& data);
     void _ZAxisHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
     void _AntiSwimHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, AnticheatData& data);
     void _AntiKnockBackHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data);
