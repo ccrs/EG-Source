@@ -2263,7 +2263,7 @@ class spell_yogg_saron_diminsh_power : public AuraScript    // 64148
         PreventDefaultAction();
         if (Spell* spell = GetTarget()->GetCurrentSpell(CURRENT_CHANNELED_SPELL))
             if (spell->getState() == SPELL_STATE_CASTING)
-                GetTarget()->InterruptSpell(CURRENT_CHANNELED_SPELL);
+                spell->cancel();
     }
 
     void Register() override
