@@ -555,7 +555,7 @@ void WorldSession::HandleMovementOpcode(OpcodeClient opcode, MovementInfo& movem
                 break;
         }
 
-        sAnticheatMgr->OnPlayerMove(plrMover, movementInfo, opcode);
+        sAnticheatMgr->OnPlayerMove(plrMover, movementInfo, opcode, rawMovementFlags);
     }
 }
 

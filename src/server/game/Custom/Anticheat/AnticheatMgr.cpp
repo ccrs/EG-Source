@@ -210,7 +210,7 @@ void AnticheatMgr::SavePlayerData(Player* player)
     LoginDatabase.Execute(saveStmt);
 }
 
-void AnticheatMgr::OnPlayerMove(Player* player, MovementInfo const& movementInfo, uint32 opcode)
+void AnticheatMgr::OnPlayerMove(Player* player, MovementInfo const& movementInfo, uint32 opcode, uint32 rawMovementFlags)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
         return;
@@ -225,10 +225,11 @@ void AnticheatMgr::OnPlayerMove(Player* player, MovementInfo const& movementInfo
     AnticheatData& data = itr->second;
     if (!data.IsDirty())
         if (!AccountMgr::IsAdminAccount(player->GetSession()->GetSecurity()) || sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE_ON_GM))
-            _StartHackDetection(player, movementInfo, opcode, data);
+            _StartHackDetection(player, movementInfo, opcode, rawMovementFlags, data);
 
     data.SetLastMovementInfo(movementInfo);
     data.SetLastOpcode(opcode);
+    data.SetLastRawMovementFlags(rawMovementFlags);
 }
 
 uint32 AnticheatMgr::GetTotalReports(uint32 lowGUID) const
@@ -384,7 +385,7 @@ void AnticheatMgr::_SaveLuaCheater(uint32 accountId, uint32 realmId, uint32 guid
     LoginDatabase.Execute(pstmt);
 }
 
-void AnticheatMgr::_StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, AnticheatData& data)
+void AnticheatMgr::_StartHackDetection(Player* player, MovementInfo const& movementInfo, uint32 opcode, uint32 rawMovementFlags, AnticheatData& data)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
         return;
@@ -403,7 +404,7 @@ void AnticheatMgr::_StartHackDetection(Player* player, MovementInfo const& movem
     // The project compromised of various developers of the open source scene and we hang out there.
     // We would never charge for modules or "lessons"
     _SpeedHackDetection(player, movementInfo, data);
-    _FlyHackDetection(player, movementInfo, data);
+    _FlyHackDetection(player, movementInfo, rawMovementFlags, data);
     _TeleportHackDetection(player, movementInfo, data);
     _JumpHackDetection(player, movementInfo, opcode, data);
     _TeleportPlaneHackDetection(player, movementInfo, opcode, data);
@@ -411,7 +412,7 @@ void AnticheatMgr::_StartHackDetection(Player* player, MovementInfo const& movem
     _IgnoreControlHackDetection(player, movementInfo, opcode, data);
     _GravityHackDetection(player, movementInfo, data);
     if (HasAnyLiquidStatus(player, LIQUID_MAP_WATER_WALK))
-        _WalkOnWaterHackDetection(player, movementInfo, data);
+        _WalkOnWaterHackDetection(player, movementInfo, rawMovementFlags, data);
     else
         _ZAxisHackDetection(player, movementInfo, data);
 
@@ -531,13 +532,15 @@ void AnticheatMgr::_SpeedHackDetection(Player* player, MovementInfo const& movem
     }
 }
 
-void AnticheatMgr::_FlyHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data)
+void AnticheatMgr::_FlyHackDetection(Player* player, MovementInfo const& /*movementInfo*/, uint32 rawMovementFlags, AnticheatData& data)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_FLYHACK_ENABLE))
         return;
 
-    //we check to ensure they are not flying
-    if (!data.GetLastMovementInfo().HasMovementFlag(MOVEMENTFLAG_FLYING))
+    if (!(data.GetLastRawMovementFlags() & MOVEMENTFLAG_FLYING))
+        return;
+
+    if (player->HasUnitMovementFlag(MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_FLYING))
         return;
 
     //we check to see if they have legal flight auras
@@ -550,11 +553,11 @@ void AnticheatMgr::_FlyHackDetection(Player* player, MovementInfo const& movemen
     {
         // super strict way to check, you can only ascend\descend in water and air, we check u are ascending\descending and not in water.
         // we are not checking for legal flight here because those checks were dont earlier.
-        stricterChecks = !(movementInfo.HasMovementFlag(MOVEMENTFLAG_ASCENDING | MOVEMENTFLAG_DESCENDING) && !player->IsInWater());
+        stricterChecks = !((rawMovementFlags & (MOVEMENTFLAG_ASCENDING | MOVEMENTFLAG_DESCENDING)) && !player->IsInWater());
     }
 
     // if you are not flying and not ascending then we do a return, you are then not guilty.
-    if (!movementInfo.HasMovementFlag(MOVEMENTFLAG_CAN_FLY) && !movementInfo.HasMovementFlag(MOVEMENTFLAG_FLYING) && stricterChecks)
+    if (!(rawMovementFlags & (MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_FLYING)) && stricterChecks)
         return;
 
     _LogInfo(player, "Fly-Hack detected");
@@ -910,7 +913,7 @@ void AnticheatMgr::_GravityHackDetection(Player* player, MovementInfo const& mov
     }
 }
 
-void AnticheatMgr::_WalkOnWaterHackDetection(Player* player, MovementInfo const& movementInfo, AnticheatData& data)
+void AnticheatMgr::_WalkOnWaterHackDetection(Player* player, MovementInfo const& movementInfo, uint32 rawMovementFlags, AnticheatData& data)
 {
     if (!sWorld->getBoolConfig(CONFIG_ANTICHEAT_WATERWALKHACK_ENABLE))
         return;
@@ -930,8 +933,7 @@ void AnticheatMgr::_WalkOnWaterHackDetection(Player* player, MovementInfo const&
     if (data.GetLastOpcode() == MSG_DELAY_GHOST_TELEPORT)
         return;
 
-    // if the player previous movement and current movement is water walking then we do a follow up check
-    if (data.GetLastMovementInfo().HasMovementFlag(MOVEMENTFLAG_WATERWALKING) && movementInfo.HasMovementFlag(MOVEMENTFLAG_WATERWALKING))
+    if ((data.GetLastRawMovementFlags() & MOVEMENTFLAG_WATERWALKING) && (rawMovementFlags & MOVEMENTFLAG_WATERWALKING))
     {
         // if player has the following auras then we return
         if (player->HasAuraType(SPELL_AURA_WATER_WALK) || player->HasAuraType(SPELL_AURA_FEATHER_FALL) || player->HasAuraType(SPELL_AURA_SAFE_FALL))

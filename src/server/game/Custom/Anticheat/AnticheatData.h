@@ -37,6 +37,9 @@ public:
     MovementInfo const& GetLastMovementInfo() const;
     void SetLastMovementInfo(MovementInfo const& moveInfo);
 
+    uint32 GetLastRawMovementFlags() const;
+    void SetLastRawMovementFlags(uint32 flags);
+
     void SetPosition(float x, float y, float z, float o);
 
     uint32 GetTotalReports() const;
@@ -71,6 +74,7 @@ private:
     bool _dirty;
     uint32 _lastOpcode;
     MovementInfo _lastMovementInfo;
+    uint32 _lastRawMovementFlags;
     uint32 _totalReports;
     uint32 _typeReports[MAX_REPORT_TYPES];
     float _average;
