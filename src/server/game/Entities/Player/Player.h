@@ -913,6 +913,7 @@ enum CustomFlagsIndex : uint16
     CUSTOM_HARDCORE = 10,
     CUSTOM_XPRATE_CREDIT = 11,
     CUSTOM_MILESTONE_REWARD = 12,
+    CUSTOM_REALM_FIRST_BLOCK = 13,
     CUSTOM_FLAGS_MAX
 };
 
@@ -977,6 +978,8 @@ enum CustomFlags : uint16
     CUSTOM_FLAG_MILESTONE_REWARD_40 = 0x02,
     CUSTOM_FLAG_MILESTONE_REWARD_60 = 0x04,
     CUSTOM_FLAG_MILESTONE_REWARD_80 = 0x08,
+
+    CUSTOM_FLAG_REALM_FIRST_BLOCKED = 0x01,
 };
 
 class TC_GAME_API Player : public Unit, public GridObject<Player>

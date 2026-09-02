@@ -1967,6 +1967,7 @@ public:
             handler->PSendSysMessage("| - Account Taxi flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_ACCOUNT_TAXI));
             handler->PSendSysMessage("| - Visuals flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_VISUALS));
             handler->PSendSysMessage("| - Hardcore flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_HARDCORE));
+            handler->PSendSysMessage("| - Realm First block flags = %u", target->GetCustomFlags(CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK));
         }
 
         return true;

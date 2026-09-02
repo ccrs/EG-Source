@@ -54,6 +54,7 @@ public:
             { "weaponSkill",        HandleWeaponSkill, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "visuals",            HandleVisuals, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
             { "hardcore",           HandleHardcore, rbac::RBAC_PERM_COMMAND_CUSTOM_CHARACTER_SETTINGS, Console::No },
+            { "realmfirst",         HandleRealmFirstBlock, rbac::RBAC_ROLE_ADMINISTRATOR, Console::Yes },
             { "resetflags",         HandleResetCustomFlags, rbac::RBAC_ROLE_MODERATOR, Console::No },
         };
 
@@ -516,6 +517,63 @@ public:
         return true;
     }
 
+    static bool HandleRealmFirstBlock(ChatHandler* handler, bool active, Optional<PlayerIdentifier> target)
+    {
+        if (!target)
+            target = PlayerIdentifier::FromTarget(handler);
+        if (!target)
+        {
+            handler->SendSysMessage("Please select a player or provide a player name.");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        if (Player* player = target->GetConnectedPlayer())
+        {
+            player->SetCustomFlags(CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK, active ? CustomFlags::CUSTOM_FLAG_REALM_FIRST_BLOCKED : CustomFlags::CUSTOM_FLAG_NONE);
+            ChatHandler(player->GetSession()).SendSysMessage(active ? LANG_REALM_FIRST_BLOCKED : LANG_REALM_FIRST_UNBLOCKED);
+        }
+        else
+        {
+            CharacterDatabasePreparedStatement* selStmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CUSTOM_SETTINGS);
+            selStmt->setUInt32(0, target->GetGUID().GetCounter());
+            PreparedQueryResult result = CharacterDatabase.Query(selStmt);
+
+            std::string stored;
+            std::vector<std::string_view> tokens;
+            if (result)
+            {
+                stored = result->Fetch()[0].GetString();
+                tokens = Trinity::Tokenize(stored, ' ', false);
+            }
+
+            std::ostringstream data;
+            for (size_t i = 0; i < size_t(CustomFlagsIndex::CUSTOM_FLAGS_MAX); ++i)
+            {
+                if (i == size_t(CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK))
+                    data << uint16(active ? CUSTOM_FLAG_REALM_FIRST_BLOCKED : CUSTOM_FLAG_NONE) << ' ';
+                else if (i < tokens.size())
+                    data << tokens[i] << ' ';
+                else
+                    data << 0 << ' ';
+            }
+
+            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_CUSTOM_SETTINGS);
+            stmt->setUInt32(0, target->GetGUID().GetCounter());
+            stmt->setString(1, data.str());
+            CharacterDatabase.Execute(stmt);
+        }
+
+        if (active)
+            sWorld->SendWorldText(LANG_REALM_FIRST_BLOCKED_ANNOUNCE, target->GetName().c_str());
+
+        if (active)
+            handler->PSendSysMessage("Player '%s' can no longer earn realm first achievements.", target->GetName().c_str());
+        else
+            handler->PSendSysMessage("Player '%s' can earn realm first achievements again.", target->GetName().c_str());
+        return true;
+    }
+
     static bool HandleResetCustomFlags(ChatHandler* handler, Optional<PlayerIdentifier> target)
     {
         if (!target)
@@ -529,11 +587,13 @@ public:
 
         // EG - Hardcore
         uint16 preservedHardcore = 0;
+        uint16 preservedRealmFirstBlock = 0;
         if (Player* player = target->GetConnectedPlayer())
         {
             preservedHardcore = player->GetCustomFlags(CustomFlagsIndex::CUSTOM_HARDCORE);
+            preservedRealmFirstBlock = player->GetCustomFlags(CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK);
             for (uint16 i = 0; i < static_cast<uint16>(CustomFlagsIndex::CUSTOM_FLAGS_MAX); ++i)
-                if (i != CustomFlagsIndex::CUSTOM_HARDCORE)
+                if (i != CustomFlagsIndex::CUSTOM_HARDCORE && i != CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK)
                     player->SetCustomFlags(CustomFlagsIndex(i), CustomFlags::CUSTOM_FLAG_NONE);
 
             if (preservedHardcore & CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE)
@@ -552,6 +612,10 @@ public:
                 if (tokens.size() > CustomFlagsIndex::CUSTOM_HARDCORE)
                     if (Optional<uint16> value = Trinity::StringTo<uint16>(tokens[CustomFlagsIndex::CUSTOM_HARDCORE]))
                         preservedHardcore = *value;
+
+                if (tokens.size() > CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK)
+                    if (Optional<uint16> value = Trinity::StringTo<uint16>(tokens[CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK]))
+                        preservedRealmFirstBlock = *value;
             }
         }
 
@@ -561,6 +625,8 @@ public:
         {
             if (i == CustomFlagsIndex::CUSTOM_HARDCORE)
                 data << preservedHardcore << ' ';
+            else if (i == CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK)
+                data << preservedRealmFirstBlock << ' ';
             else if (preservedHardcoreActive && i == CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS)
                 data << uint16(CUSTOM_FLAG_TRANSMOG_HIDE | CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY) << ' ';
             else if (preservedHardcoreActive && i == CustomFlagsIndex::CUSTOM_RACE_MASQUERADE)
