@@ -71,6 +71,7 @@ void WorldSession::HandleSendMail(WorldPackets::Mail::SendMail& sendMail)
 
     if (_player->GetLevel() < sWorld->getIntConfig(CONFIG_MAIL_LEVEL_REQ))
     {
+        player->SendMailResult(0, MAIL_SEND, MAIL_ERR_INTERNAL_ERROR);
         SendNotification(GetTrinityString(LANG_MAIL_SENDER_REQ), sWorld->getIntConfig(CONFIG_MAIL_LEVEL_REQ));
         return;
     }
@@ -168,6 +169,7 @@ void WorldSession::HandleSendMail(WorldPackets::Mail::SendMail& sendMail)
 
         if (receiverLevel < sWorld->getIntConfig(CONFIG_MAIL_LEVEL_REQ))
         {
+            player->SendMailResult(0, MAIL_SEND, MAIL_ERR_INTERNAL_ERROR);
             SendNotification(GetTrinityString(LANG_MAIL_RECEIVER_REQ), sWorld->getIntConfig(CONFIG_MAIL_LEVEL_REQ));
             return;
         }
@@ -177,6 +179,7 @@ void WorldSession::HandleSendMail(WorldPackets::Mail::SendMail& sendMail)
             && receiverLevel < sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL)
             && Player::IsHardcoreCharacter(receiverGuid))
         {
+            player->SendMailResult(0, MAIL_SEND, MAIL_ERR_INTERNAL_ERROR);
             SendNotification("%s is a hardcore character and cannot receive mail until level %u.", mailInfo.Target.c_str(), sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL));
             return;
         }
