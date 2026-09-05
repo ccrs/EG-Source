@@ -25,8 +25,17 @@
 #define UlduarScriptName "instance_ulduar"
 #define DataHeader "UU"
 
-extern Position const ObservationRingKeepersPos[4];
-extern Position const YSKeepersPos[4];
+enum UlduarKeeperIndexes
+{
+    KEEPER_INDEX_FREYA = 0,
+    KEEPER_INDEX_HODIR,
+    KEEPER_INDEX_THORIM,
+    KEEPER_INDEX_MIMIRON,
+    MAX_ULDUAR_KEEPERS
+};
+
+extern Position const ObservationRingKeepersPos[MAX_ULDUAR_KEEPERS];
+extern Position const YSKeepersPos[MAX_ULDUAR_KEEPERS];
 extern Position const AlgalonLandPos;
 
 static constexpr uint8 const MAX_ENCOUNTER = 17;
@@ -515,6 +524,7 @@ enum UlduarData
     DATA_FL_HARDMODE_CONFIRMED,
     DATA_FL_HARDMODE_PLAYER,
     DATA_FL_INTRO_COMPLETED, // DB condition
+    DATA_VERIFY_YS_KEEPERS,
 
     DATA_CALL_TRAM              = 710
 };
