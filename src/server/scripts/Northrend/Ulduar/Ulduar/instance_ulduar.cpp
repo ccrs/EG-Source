@@ -245,6 +245,21 @@ static FlGauntletProximityPoint const FlGauntletProximityPoints[] =
     { { 163.52f,   56.11f, 409.80f, 0.f }, 30.0f, SAY_BRANN_RADIO_GAUNTLET_REPAIR_PAD,   GAUNTLET_RADIO_REPAIR_PAD,   false }
 };
 
+struct UlduarKeeperData
+{
+    uint32 BossId;
+    uint32 ObservationRingEntry;
+    uint32 YoggSaronEntry;
+};
+
+UlduarKeeperData const KeeperData[MAX_ULDUAR_KEEPERS] =
+{
+    { DATA_FREYA,   NPC_FREYA_OBSERVATION_RING,   NPC_FREYA_YS   },
+    { DATA_HODIR,   NPC_HODIR_OBSERVATION_RING,   NPC_HODIR_YS   },
+    { DATA_THORIM,  NPC_THORIM_OBSERVATION_RING,  NPC_THORIM_YS  },
+    { DATA_MIMIRON, NPC_MIMIRON_OBSERVATION_RING, NPC_MIMIRON_YS }
+};
+
 UlduarKeeperDespawnEvent::UlduarKeeperDespawnEvent(Creature* owner, Milliseconds despawnTimerOffset) : _owner(owner), _despawnTimer(despawnTimerOffset)
 {
 }
@@ -279,7 +294,7 @@ class instance_ulduar : public InstanceMapScript
                 ColossusData = 0;
                 elderCount = 0;
                 illusion = 0;
-                keepersCount = 0;
+                _activatedKeeperMask = 0;
                 conSpeedAtory = false;
                 lumberjacked = false;
                 Unbroken = true;
@@ -287,9 +302,6 @@ class instance_ulduar : public InstanceMapScript
                 _algalonSummoned = false;
                 _summonAlgalon = false;
                 _CoUAchivePlayerDeathMask = 0;
-
-                memset(_summonObservationRingKeeper, 0, sizeof(_summonObservationRingKeeper));
-                memset(_summonYSKeeper, 0, sizeof(_summonYSKeeper));
 
                 _activeTowers = false;
                 _destroyedTowers = 0;
@@ -323,37 +335,7 @@ class instance_ulduar : public InstanceMapScript
                         algalon->SetImmuneToPC(false);
                 }
 
-                // Keepers at Observation Ring
-                if (GetBossState(DATA_FREYA) == DONE && _summonObservationRingKeeper[0] && !KeeperGUIDs[0])
-                {
-                    _summonObservationRingKeeper[0] = false;
-                    instance->SummonCreature(NPC_FREYA_OBSERVATION_RING, ObservationRingKeepersPos[0]);
-                }
-                if (GetBossState(DATA_HODIR) == DONE && _summonObservationRingKeeper[1] && !KeeperGUIDs[1])
-                {
-                    _summonObservationRingKeeper[1] = false;
-                    instance->SummonCreature(NPC_HODIR_OBSERVATION_RING, ObservationRingKeepersPos[1]);
-                }
-                if (GetBossState(DATA_THORIM) == DONE && _summonObservationRingKeeper[2] && !KeeperGUIDs[2])
-                {
-                    _summonObservationRingKeeper[2] = false;
-                    instance->SummonCreature(NPC_THORIM_OBSERVATION_RING, ObservationRingKeepersPos[2]);
-                }
-                if (GetBossState(DATA_MIMIRON) == DONE && _summonObservationRingKeeper[3] && !KeeperGUIDs[3])
-                {
-                    _summonObservationRingKeeper[3] = false;
-                    instance->SummonCreature(NPC_MIMIRON_OBSERVATION_RING, ObservationRingKeepersPos[3]);
-                }
-
-                // Keepers in Yogg-Saron's room
-                if (_summonYSKeeper[0])
-                    instance->SummonCreature(NPC_FREYA_YS, YSKeepersPos[0]);
-                if (_summonYSKeeper[1])
-                    instance->SummonCreature(NPC_HODIR_YS, YSKeepersPos[1]);
-                if (_summonYSKeeper[2])
-                    instance->SummonCreature(NPC_THORIM_YS, YSKeepersPos[2]);
-                if (_summonYSKeeper[3])
-                    instance->SummonCreature(NPC_MIMIRON_YS, YSKeepersPos[3]);
+                VerifyKeeperState();
             }
 
             void OnCreatureCreate(Creature* creature) override
@@ -441,30 +423,38 @@ class instance_ulduar : public InstanceMapScript
                         break;
 
                     // Yogg-Saron
+                    case NPC_VOICE_OF_YOGG_SARON:
+                        VerifyKeeperState();
+                        break;
                     case NPC_FREYA_YS:
-                        KeeperGUIDs[0] = creature->GetGUID();
-                        _summonYSKeeper[0] = false;
-                        SaveToDB();
-                        ++keepersCount;
-                        break;
                     case NPC_HODIR_YS:
-                        KeeperGUIDs[1] = creature->GetGUID();
-                        _summonYSKeeper[1] = false;
-                        SaveToDB();
-                        ++keepersCount;
-                        break;
                     case NPC_THORIM_YS:
-                        KeeperGUIDs[2] = creature->GetGUID();
-                        _summonYSKeeper[2] = false;
-                        SaveToDB();
-                        ++keepersCount;
-                        break;
                     case NPC_MIMIRON_YS:
-                        KeeperGUIDs[3] = creature->GetGUID();
-                        _summonYSKeeper[3] = false;
-                        SaveToDB();
-                        ++keepersCount;
+                    {
+                        uint8 index = GetKeeperIndex(creature->GetEntry(), false);
+                        if (index == MAX_ULDUAR_KEEPERS)
+                            break;
+
+                        KeeperGUIDs[index] = creature->GetGUID();
+                        if (!(_activatedKeeperMask & (1 << index)))
+                        {
+                            _activatedKeeperMask |= 1 << index;
+                            SaveToDB();
+                        }
                         break;
+                    }
+                    case NPC_FREYA_OBSERVATION_RING:
+                    case NPC_HODIR_OBSERVATION_RING:
+                    case NPC_THORIM_OBSERVATION_RING:
+                    case NPC_MIMIRON_OBSERVATION_RING:
+                    {
+                        uint8 index = GetKeeperIndex(creature->GetEntry(), true);
+                        if (index == MAX_ULDUAR_KEEPERS)
+                            break;
+
+                        ObservationRingKeeperGUIDs[index] = creature->GetGUID();
+                        break;
+                    }
                     case NPC_SANITY_WELL:
                         creature->SetReactState(REACT_PASSIVE);
                         break;
@@ -525,6 +515,20 @@ class instance_ulduar : public InstanceMapScript
                     case NPC_MOLGEIM:
                     case NPC_BRUNDIR:
                         AddMinion(creature, false);
+                        break;
+                    case NPC_FREYA_YS:
+                    case NPC_HODIR_YS:
+                    case NPC_THORIM_YS:
+                    case NPC_MIMIRON_YS:
+                        if (uint8 index = GetKeeperIndex(creature->GetEntry(), false); index != MAX_ULDUAR_KEEPERS)
+                            KeeperGUIDs[index].Clear();
+                        break;
+                    case NPC_FREYA_OBSERVATION_RING:
+                    case NPC_HODIR_OBSERVATION_RING:
+                    case NPC_THORIM_OBSERVATION_RING:
+                    case NPC_MIMIRON_OBSERVATION_RING:
+                        if (uint8 index = GetKeeperIndex(creature->GetEntry(), true); index != MAX_ULDUAR_KEEPERS)
+                            ObservationRingKeeperGUIDs[index].Clear();
                         break;
                     default:
                         break;
@@ -780,13 +784,13 @@ class instance_ulduar : public InstanceMapScript
                         break;
                     case DATA_MIMIRON:
                         if (state == DONE)
-                            instance->SummonCreature(NPC_MIMIRON_OBSERVATION_RING, ObservationRingKeepersPos[3]);
+                            VerifyKeeperState();
                         else if (state == IN_PROGRESS)
                             _mimironEngaged = true;
                         break;
                     case DATA_FREYA:
                         if (state == DONE)
-                            instance->SummonCreature(NPC_FREYA_OBSERVATION_RING, ObservationRingKeepersPos[0]);
+                            VerifyKeeperState();
                         break;
                     case DATA_IRONBRANCH:
                     case DATA_STONEBARK:
@@ -814,7 +818,7 @@ class instance_ulduar : public InstanceMapScript
                             if (GameObject* hodirChest = instance->GetGameObject(HodirChestGUID))
                                 hodirChest->ActivateObject(GameObjectActions::MakeActive);
 
-                            instance->SummonCreature(NPC_HODIR_OBSERVATION_RING, ObservationRingKeepersPos[1]);
+                            VerifyKeeperState();
                         }
                         break;
                     case DATA_THORIM:
@@ -830,7 +834,7 @@ class instance_ulduar : public InstanceMapScript
                                 }
                             }
 
-                            instance->SummonCreature(NPC_THORIM_OBSERVATION_RING, ObservationRingKeepersPos[2]);
+                            VerifyKeeperState();
                         }
                         else
                         {
@@ -919,6 +923,9 @@ class instance_ulduar : public InstanceMapScript
                         break;
                     case DATA_DRIVE_ME_CRAZY:
                         IsDriveMeCrazyEligible = data ? true : false;
+                        break;
+                    case DATA_VERIFY_YS_KEEPERS:
+                        VerifyKeeperState();
                         break;
                     case EVENT_DESPAWN_ALGALON:
                         DoUpdateWorldState(WORLD_STATE_ALGALON_TIMER_ENABLED, 1);
@@ -1047,13 +1054,13 @@ class instance_ulduar : public InstanceMapScript
                     case GO_BRAIN_ROOM_DOOR_3:
                         return BrainRoomDoorGUIDs[2];
                     case DATA_FREYA_YS:
-                        return KeeperGUIDs[0];
+                        return KeeperGUIDs[KEEPER_INDEX_FREYA];
                     case DATA_HODIR_YS:
-                        return KeeperGUIDs[1];
+                        return KeeperGUIDs[KEEPER_INDEX_HODIR];
                     case DATA_THORIM_YS:
-                        return KeeperGUIDs[2];
+                        return KeeperGUIDs[KEEPER_INDEX_THORIM];
                     case DATA_MIMIRON_YS:
-                        return KeeperGUIDs[3];
+                        return KeeperGUIDs[KEEPER_INDEX_MIMIRON];
                 }
 
                 return InstanceScript::GetGuidData(data);
@@ -1072,7 +1079,7 @@ class instance_ulduar : public InstanceMapScript
                     case DATA_ILLUSION:
                         return illusion;
                     case DATA_KEEPERS_COUNT:
-                        return keepersCount;
+                        return GetActivatedKeeperCount();
                     case WORLD_STATE_ULDUAR_TEAM_IN_INSTANCE:
                         switch (TeamInInstance)
                         {
@@ -1116,17 +1123,17 @@ class instance_ulduar : public InstanceMapScript
                         return IsDriveMeCrazyEligible;
                     case CRITERIA_THREE_LIGHTS_IN_THE_DARKNESS_10:
                     case CRITERIA_THREE_LIGHTS_IN_THE_DARKNESS_25:
-                        return keepersCount <= 3;
+                        return GetActivatedKeeperCount() <= 3;
                     case CRITERIA_TWO_LIGHTS_IN_THE_DARKNESS_10:
                     case CRITERIA_TWO_LIGHTS_IN_THE_DARKNESS_25:
-                        return keepersCount <= 2;
+                        return GetActivatedKeeperCount() <= 2;
                     case CRITERIA_ONE_LIGHT_IN_THE_DARKNESS_10:
                     case CRITERIA_ONE_LIGHT_IN_THE_DARKNESS_25:
-                        return keepersCount <= 1;
+                        return GetActivatedKeeperCount() <= 1;
                     case CRITERIA_ALONE_IN_THE_DARKNESS_10:
                     case CRITERIA_ALONE_IN_THE_DARKNESS_25:
                     case REALM_FIRST_DEATHS_DEMISE:
-                        return keepersCount == 0;
+                        return GetActivatedKeeperCount() == 0;
                     case CRITERIA_C_O_U_LEVIATHAN_10:
                     case CRITERIA_C_O_U_LEVIATHAN_25:
                         return (_CoUAchivePlayerDeathMask & (1 << DATA_FLAME_LEVIATHAN)) == 0;
@@ -1190,8 +1197,8 @@ class instance_ulduar : public InstanceMapScript
             {
                 data << ColossusData << ' ' << _algalonTimer << ' ' << uint32(_algalonSummoned ? 1 : 0);
 
-                for (uint8 i = 0; i < 4; ++i)
-                    data << ' ' << uint32(!KeeperGUIDs[i].IsEmpty() ? 1 : 0);
+                for (uint8 i = 0; i < MAX_ULDUAR_KEEPERS; ++i)
+                    data << ' ' << uint32((_activatedKeeperMask & (1 << i)) ? 1 : 0);
 
                 data << ' ' << _CoUAchivePlayerDeathMask;
                 data << ' ' << uint32(_activeTowers ? 1 : 0);
@@ -1220,20 +1227,12 @@ class instance_ulduar : public InstanceMapScript
                     }
                 }
 
-                for (uint8 i = 0; i < 4; ++i)
+                for (uint8 i = 0; i < MAX_ULDUAR_KEEPERS; ++i)
                 {
                     data >> tempState;
-                    _summonYSKeeper[i] = tempState != 0;
+                    if (tempState != 0)
+                        _activatedKeeperMask |= 1 << i;
                 }
-
-                if (GetBossState(DATA_FREYA) == DONE && !_summonYSKeeper[0])
-                    _summonObservationRingKeeper[0] = true;
-                if (GetBossState(DATA_HODIR) == DONE && !_summonYSKeeper[1])
-                    _summonObservationRingKeeper[1] = true;
-                if (GetBossState(DATA_THORIM) == DONE && !_summonYSKeeper[2])
-                    _summonObservationRingKeeper[2] = true;
-                if (GetBossState(DATA_MIMIRON) == DONE && !_summonYSKeeper[3])
-                    _summonObservationRingKeeper[3] = true;
 
                 data >> _CoUAchivePlayerDeathMask;
 
@@ -1614,6 +1613,39 @@ class instance_ulduar : public InstanceMapScript
                 summons.clear();
             }
 
+            static uint8 GetKeeperIndex(uint32 entry, bool observationRing)
+            {
+                for (uint8 i = 0; i < MAX_ULDUAR_KEEPERS; ++i)
+                    if (entry == (observationRing ? KeeperData[i].ObservationRingEntry : KeeperData[i].YoggSaronEntry))
+                        return i;
+
+                return MAX_ULDUAR_KEEPERS;
+            }
+
+            uint32 GetActivatedKeeperCount() const
+            {
+                uint32 count = 0;
+                for (uint8 i = 0; i < MAX_ULDUAR_KEEPERS; ++i)
+                    if (_activatedKeeperMask & (1 << i))
+                        ++count;
+
+                return count;
+            }
+
+            void VerifyKeeperState()
+            {
+                for (uint8 i = 0; i < MAX_ULDUAR_KEEPERS; ++i)
+                {
+                    if (_activatedKeeperMask & (1 << i))
+                    {
+                        if (GetBossState(DATA_YOGG_SARON) != DONE && !instance->GetCreature(KeeperGUIDs[i]))
+                            instance->SummonCreature(KeeperData[i].YoggSaronEntry, YSKeepersPos[i]);
+                    }
+                    else if (GetBossState(KeeperData[i].BossId) == DONE && !instance->GetCreature(ObservationRingKeeperGUIDs[i]))
+                        instance->SummonCreature(KeeperData[i].ObservationRingEntry, ObservationRingKeepersPos[i]);
+                }
+            }
+
         private:
             // Creatures
             GuidVector LeviathanVehicleGUIDs;
@@ -1623,7 +1655,8 @@ class instance_ulduar : public InstanceMapScript
             ObjectGuid AssemblyGUIDs[3];
             ObjectGuid ElderGUIDs[3];
             ObjectGuid FreyaAchieveTriggerGUID;
-            ObjectGuid KeeperGUIDs[4];
+            ObjectGuid KeeperGUIDs[MAX_ULDUAR_KEEPERS];
+            ObjectGuid ObservationRingKeeperGUIDs[MAX_ULDUAR_KEEPERS];
             ObjectGuid OutroFlameLeviathanFlyingMachineGUID;
             ObjectGuid OutroFlameLeviathanBrannGUID;
             ObjectGuid OutroFlameLeviathanRhydianGUID;
@@ -1643,7 +1676,6 @@ class instance_ulduar : public InstanceMapScript
             uint32 ColossusData;
             uint8 elderCount;
             uint8 illusion;
-            uint8 keepersCount;
             bool conSpeedAtory;
             bool lumberjacked;
             bool Unbroken;
@@ -1653,8 +1685,7 @@ class instance_ulduar : public InstanceMapScript
             uint32 _algalonTimer;
             bool _summonAlgalon;
             bool _algalonSummoned;
-            bool _summonObservationRingKeeper[4];
-            bool _summonYSKeeper[4];
+            uint8 _activatedKeeperMask;
             uint32 _maxArmorItemLevel;
             uint32 _maxWeaponItemLevel;
             uint32 _CoUAchivePlayerDeathMask;

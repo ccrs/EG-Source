@@ -394,14 +394,14 @@ enum YoggSaronCreatureGroups
 };
 
 Position const YoggSaronSpawnPos            = {1980.43f, -25.7708f, 324.9724f, 3.141593f};
-Position const ObservationRingKeepersPos[4] =
+Position const ObservationRingKeepersPos[MAX_ULDUAR_KEEPERS] =
 {
     {1945.682f,  33.34201f, 411.4408f, 5.270895f},  // Freya
     {1945.761f, -81.52171f, 411.4407f, 1.029744f},  // Hodir
     {2028.822f, -65.73573f, 411.4426f, 2.460914f},  // Thorim
     {2028.766f,  17.42014f, 411.4446f, 3.857178f},  // Mimiron
 };
-Position const YSKeepersPos[4] =
+Position const YSKeepersPos[MAX_ULDUAR_KEEPERS] =
 {
     {2036.873f,  25.42513f, 338.4984f, 3.909538f},  // Freya
     {1939.045f, -90.87457f, 338.5426f, 0.994837f},  // Hodir
@@ -495,6 +495,8 @@ struct boss_voice_of_yogg_saron : public BossAI
 
     void JustEngagedWith(Unit* /*who*/) override
     {
+        instance->SetData(DATA_VERIFY_YS_KEEPERS, 0);
+
         if (Creature* sara = instance->GetCreature(DATA_SARA))
             sara->SetInCombatWith(me);
 
