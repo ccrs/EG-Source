@@ -131,6 +131,11 @@ void GameEventMgr::StartInternalEvent(uint16 event_id)
 bool GameEventMgr::StartEvent(uint16 event_id, bool overwrite)
 {
     GameEventData &data = mGameEvent[event_id];
+
+    // EG
+    if (overwrite)
+        _manuallyOverriddenEvents.insert(event_id);
+
     if (data.state == GAMEEVENT_NORMAL || data.state == GAMEEVENT_INTERNAL)
     {
         AddActiveEvent(event_id);
@@ -172,6 +177,10 @@ void GameEventMgr::StopEvent(uint16 event_id, bool overwrite)
 {
     GameEventData &data = mGameEvent[event_id];
     bool serverwide_evt = data.state != GAMEEVENT_NORMAL && data.state != GAMEEVENT_INTERNAL;
+
+    // EG
+    if (overwrite)
+        _manuallyOverriddenEvents.insert(event_id);
 
     RemoveActiveEvent(event_id);
     UnApplyEvent(event_id);
@@ -236,6 +245,11 @@ void GameEventMgr::LoadFromDB()
             GameEventData& pGameEvent = mGameEvent[event_id];
             uint64 starttime        = fields[1].GetUInt64();
             pGameEvent.start        = time_t(starttime);
+
+            // EG
+            if (auto localSchedule = _localScheduleEvents.find(event_id); localSchedule != _localScheduleEvents.end())
+                localSchedule->second = pGameEvent.start;
+
             uint64 endtime          = fields[2].GetUInt64();
             pGameEvent.end          = time_t(endtime);
             pGameEvent.occurence    = fields[3].GetUInt64();
@@ -275,6 +289,9 @@ void GameEventMgr::LoadFromDB()
 
         }
         while (result->NextRow());
+
+        // EG
+        ReanchorLocalScheduleEvents();
 
         TC_LOG_INFO("server.loading", ">> Loaded {} game events in {} ms.", count, GetMSTimeDiffToNow(oldMSTime));
 
@@ -1729,52 +1746,91 @@ void GameEventMgr::RunSmartAIScripts(uint16 event_id, bool activate)
 
 void GameEventMgr::SetHolidayEventTime(GameEventData& event)
 {
-    if (!event.holidayStage) // Ignore holiday
+    // EG
+    EG::HolidayRule const* rule = GetHolidayRule(event.holiday_id);
+
+    // Ignore holiday
+    if (!event.holidayStage && !rule)
         return;
 
     HolidaysEntry const* holiday = sHolidaysStore.LookupEntry(event.holiday_id);
-    if (!holiday->Date[0] || !holiday->Duration[0]) // Invalid definitions
+
+    // Invalid definitions
+    if ((!holiday->Date[0] && !rule) || !holiday->Duration[0])
     {
         TC_LOG_ERROR("sql.sql", "Missing date or duration for holiday {}.", event.holiday_id);
         return;
     }
 
-    uint8 stageIndex = event.holidayStage - 1;
-    event.length = holiday->Duration[stageIndex] * HOUR / MINUTE;
-
     time_t stageOffset = 0;
-    for (uint8 i = 0; i < stageIndex; ++i)
-        stageOffset += holiday->Duration[i] * HOUR;
 
-    switch (holiday->CalendarFilterType)
+    if (event.holidayStage)
     {
-        case -1: // Yearly
-            event.occurence = YEAR / MINUTE; // Not all too useful
-            break;
-        case 0: // Weekly
-            event.occurence = WEEK / MINUTE;
-            break;
-        case 1: // Defined dates only (Darkmoon Faire)
-            break;
-        case 2: // Only used for looping events (Call to Arms)
-            break;
+        uint8 stageIndex = event.holidayStage - 1;
+        event.length = holiday->Duration[stageIndex] * HOUR / MINUTE;
+
+        for (uint8 i = 0; i < stageIndex; ++i)
+            stageOffset += holiday->Duration[i] * HOUR;
+
+        switch (holiday->CalendarFilterType)
+        {
+            case -1: // Yearly
+                event.occurence = YEAR / MINUTE; // Not all too useful
+                break;
+            case 0: // Weekly
+                event.occurence = WEEK / MINUTE;
+                break;
+            case 1: // Defined dates only (Darkmoon Faire)
+                break;
+            case 2: // Only used for looping events (Call to Arms)
+                break;
+        }
+
+        if (holiday->Looping)
+        {
+            event.occurence = 0;
+            for (uint8 i = 0; i < MAX_HOLIDAY_DURATIONS && holiday->Duration[i]; ++i)
+                event.occurence += holiday->Duration[i] * HOUR / MINUTE;
+        }
     }
 
-    if (holiday->Looping)
+    if (rule)
     {
-        event.occurence = 0;
-        for (uint8 i = 0; i < MAX_HOLIDAY_DURATIONS && holiday->Duration[i]; ++i)
-            event.occurence += holiday->Duration[i] * HOUR / MINUTE;
+        if (!SetHolidayEventTimeFromRule(event, *rule, stageOffset))
+            TC_LOG_ERROR("gameevent", "Holiday {} rule produced no usable occurrence, keeping the `game_event` start time.", event.holiday_id);
+
+        return;
     }
 
     bool singleDate = ((holiday->Date[0] >> 24) & 0x1F) == 31; // Events with fixed date within year have - 1
 
     time_t curTime = GameTime::GetGameTime();
+
+    if (holiday->Looping && event.occurence)
+    {
+        tm timeInfo = { };
+        timeInfo.tm_year = ((holiday->Date[0] >> 24) & 0x1F) + 100;
+        timeInfo.tm_mon = (holiday->Date[0] >> 20) & 0xF;
+        timeInfo.tm_mday = ((holiday->Date[0] >> 14) & 0x3F) + 1;
+        timeInfo.tm_hour = (holiday->Date[0] >> 6) & 0x1F;
+        timeInfo.tm_min = holiday->Date[0] & 0x3F;
+        timeInfo.tm_sec = 0;
+        timeInfo.tm_isdst = -1;
+
+        time_t anchor = mktime(&timeInfo) + stageOffset;
+        time_t const period = time_t(event.occurence) * MINUTE;
+        if (anchor < curTime)
+            anchor += ((curTime - anchor) / period) * period;
+
+        event.start = anchor;
+        return;
+    }
+
     for (uint8 i = 0; i < MAX_HOLIDAY_DATES && holiday->Date[i]; ++i)
     {
         uint32 date = holiday->Date[i];
 
-        tm timeInfo;
+        tm timeInfo = { }; // EG: zero init, the non singleDate branch below only fills part of the struct
         if (singleDate)
         {
             localtime_r(&curTime, &timeInfo);
@@ -1794,7 +1850,7 @@ void GameEventMgr::SetHolidayEventTime(GameEventData& event)
 
         // try to get next start time (skip past dates)
         time_t startTime = mktime(&timeInfo);
-        if (curTime < startTime + event.length * MINUTE)
+        if (curTime < startTime + stageOffset + event.length * MINUTE) // EG: a later stage starts stageOffset after the listed date
         {
             event.start = startTime + stageOffset;
             break;
