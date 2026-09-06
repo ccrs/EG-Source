@@ -24,6 +24,7 @@
 #include <chrono>
 #include <vector>
 
+class Group;
 class Player;
 class Unit;
 class WorldObject;
@@ -70,6 +71,11 @@ namespace EG
         TC_GAME_API Optional<time_t> GetWeeklyAnchor(HolidayRule const& rule, time_t referenceTime);
         TC_GAME_API Optional<time_t> GetLocalWallClockAnchor(time_t originalStart, Minutes period, time_t referenceTime);
         TC_GAME_API Optional<uint32> PackDate(time_t localTime);
+    }
+
+    namespace LFGRandomReward
+    {
+        TC_GAME_API void TryReward(Player* player, Group* group);
     }
 
     class TC_GAME_API MostHPMissingFriendlyUnitInRangeSearcher

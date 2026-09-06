@@ -15,7 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "LFGRandomReward.h"
+#include "CustomFunctions.h"
 #include "Chat.h"
 #include "DatabaseEnv.h"
 #include "Group.h"
@@ -176,73 +176,76 @@ namespace
     }
 }
 
-void LFGRandomReward::TryReward(Player* player, Group* group)
+namespace EG::LFGRandomReward
 {
-    if (!player || !group)
-        return;
-
-    std::string const& playerName = player->GetName();
-    CharacterDatabaseTransaction trans;
-    Optional<MailDraft> draft;
-
-    struct PendingDrop
+    void TryReward(Player* player, Group* group)
     {
-        char const* PoolName;
-        uint32 ItemId;
-        uint32 Quantity;
-    };
-    std::vector<PendingDrop> drops;
-
-    auto grant = [&](LootPool const& pool, PoolItem const& item)
-    {
-        if (pool.UniquePerPlayer && player->GetItemCount(item.ItemId, true) > 0)
+        if (!player || !group)
             return;
 
-        uint32 const quantity = RollGeometricQty(item.MinQty, item.MaxQty);
-        Item* created = Item::CreateItem(item.ItemId, quantity, player);
-        if (!created)
-            return;
-        if (!trans)
-        {
-            trans = CharacterDatabase.BeginTransaction();
-            draft.emplace(std::string{MAIL_SUBJECT}, std::string{MAIL_BODY});
-        }
-        created->SaveToDB(trans);
-        draft->AddItem(created);
-        drops.push_back({ pool.Name, item.ItemId, quantity });
-    };
+        std::string const& playerName = player->GetName();
+        CharacterDatabaseTransaction trans;
+        Optional<MailDraft> draft;
 
-    for (LootPool const& pool : POOLS)
-    {
-        if (pool.GuaranteedFirst)
+        struct PendingDrop
         {
-            uint32 const itemCount = uint32(pool.Items.size());
-            uint32 const firstIdx = urand(0, itemCount - 1);
-            grant(pool, pool.Items[firstIdx]);
+            char const* PoolName;
+            uint32 ItemId;
+            uint32 Quantity;
+        };
+        std::vector<PendingDrop> drops;
 
-            if (itemCount >= 2 && roll_chance_f(pool.DropChancePercent))
+        auto grant = [&](LootPool const& pool, PoolItem const& item)
+        {
+            if (pool.UniquePerPlayer && player->GetItemCount(item.ItemId, true) > 0)
+                return;
+
+            uint32 const quantity = RollGeometricQty(item.MinQty, item.MaxQty);
+            Item* created = Item::CreateItem(item.ItemId, quantity, player);
+            if (!created)
+                return;
+            if (!trans)
             {
-                uint32 secondIdx = urand(0, itemCount - 2);
-                if (secondIdx >= firstIdx)
-                    ++secondIdx;
-                grant(pool, pool.Items[secondIdx]);
+                trans = CharacterDatabase.BeginTransaction();
+                draft.emplace(std::string{MAIL_SUBJECT}, std::string{MAIL_BODY});
             }
+            created->SaveToDB(trans);
+            draft->AddItem(created);
+            drops.push_back({ pool.Name, item.ItemId, quantity });
+        };
+
+        for (LootPool const& pool : POOLS)
+        {
+            if (pool.GuaranteedFirst)
+            {
+                uint32 const itemCount = uint32(pool.Items.size());
+                uint32 const firstIdx = urand(0, itemCount - 1);
+                grant(pool, pool.Items[firstIdx]);
+
+                if (itemCount >= 2 && roll_chance_f(pool.DropChancePercent))
+                {
+                    uint32 secondIdx = urand(0, itemCount - 2);
+                    if (secondIdx >= firstIdx)
+                        ++secondIdx;
+                    grant(pool, pool.Items[secondIdx]);
+                }
+            }
+            else if (roll_chance_f(pool.DropChancePercent))
+                grant(pool, pool.Items[urand(0, uint32(pool.Items.size()) - 1)]);
         }
-        else if (roll_chance_f(pool.DropChancePercent))
-            grant(pool, pool.Items[urand(0, uint32(pool.Items.size()) - 1)]);
-    }
 
-    if (!draft)
-        return;
+        if (!draft)
+            return;
 
-    // Persist first, announce second
-    draft->SendMailTo(trans, player, MailSender(MAIL_CREATURE, SENDER_NPC_ENTRY));
-    CharacterDatabase.CommitTransaction(trans);
+        // Persist first, announce second
+        draft->SendMailTo(trans, player, MailSender(MAIL_CREATURE, SENDER_NPC_ENTRY));
+        CharacterDatabase.CommitTransaction(trans);
 
-    for (PendingDrop const& drop : drops)
-    {
-        ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(drop.ItemId);
-        std::string const itemName = itemTemplate ? itemTemplate->Name1 : std::to_string(drop.ItemId);
-        BroadcastHit(group, playerName, drop.PoolName, itemName, drop.Quantity);
+        for (PendingDrop const& drop : drops)
+        {
+            ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(drop.ItemId);
+            std::string const itemName = itemTemplate ? itemTemplate->Name1 : std::to_string(drop.ItemId);
+            BroadcastHit(group, playerName, drop.PoolName, itemName, drop.Quantity);
+        }
     }
 }

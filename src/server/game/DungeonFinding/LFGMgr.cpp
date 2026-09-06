@@ -30,7 +30,7 @@
 #include "Item.h"
 #include "LFGGroupData.h"
 #include "LFGPlayerData.h"
-#include "LFGRandomReward.h"
+#include "CustomFunctions.h"
 #include "LFGScripts.h"
 #include "LFGQueue.h"
 #include "Log.h"
@@ -1720,7 +1720,7 @@ void LFGMgr::FinishDungeon(ObjectGuid gguid, const uint32 dungeonId, Map const* 
             && GroupsStore[gguid].IsCompositionIntact())
         {
             if (Group* group = player->GetGroup())
-                LFGRandomReward::TryReward(player, group);
+                EG::LFGRandomReward::TryReward(player, group);
         }
     }
 
