@@ -843,6 +843,7 @@ class TC_GAME_API World
         void ResetRandomBG();
         void CalendarDeleteOldEvents();
         void ResetGuildCap();
+        void RecalculateScheduledEventTimes(); // EG
     private:
         World();
         ~World();
@@ -905,6 +906,7 @@ class TC_GAME_API World
         time_t m_NextMonthlyQuestReset;
         time_t m_NextRandomBGReset;
         time_t m_NextCalendarOldEventsDeletionTime;
+        time_t m_NextHolidayRecalc; // EG
         time_t m_NextGuildReset;
 
         //Player Queue

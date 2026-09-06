@@ -124,6 +124,7 @@ World::World()
     m_NextMonthlyQuestReset = 0;
     m_NextRandomBGReset = 0;
     m_NextCalendarOldEventsDeletionTime = 0;
+    m_NextHolidayRecalc = 0; // EG
     m_NextGuildReset = 0;
 
     m_defaultDbcLocale = LOCALE_enUS;
@@ -1976,6 +1977,9 @@ void World::SetInitialWorldSettings()
     sQuestPoolMgr->LoadFromDB();                                // must be after quest templates
 
     TC_LOG_INFO("server.loading", "Loading Game Event Data...");               // must be after loading pools fully
+    sGameEventMgr->LoadHolidayRules();                           // EG: Must be after loading DBC
+    sGameEventMgr->LoadLocalScheduleEvents();                    // EG: Must be before LoadFromDB, it captures start_time as loaded
+    sGameEventMgr->RebuildHolidayDates();                        // EG: Must be after loading holiday rules
     sGameEventMgr->LoadHolidayDates();                           // Must be after loading DBC
     sGameEventMgr->LoadFromDB();                                 // Must be after loading holiday dates
 
@@ -2468,6 +2472,12 @@ void World::Update(uint32 diff)
     {
         TC_METRIC_TIMER("world_update_time", TC_METRIC_TAG("type", "Check quest reset times"));
         CheckQuestResetTimes();
+    }
+
+    if (currentGameTime > m_NextHolidayRecalc)
+    {
+        TC_METRIC_TIMER("world_update_time", TC_METRIC_TAG("type", "Recalculate holiday event times"));
+        RecalculateScheduledEventTimes();
     }
 
     if (currentGameTime > m_NextRandomBGReset)
