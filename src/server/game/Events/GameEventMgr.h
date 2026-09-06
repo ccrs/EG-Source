@@ -19,6 +19,7 @@
 #define TRINITY_GAMEEVENT_MGR_H
 
 #include "Common.h"
+#include "CustomFunctions.h" // EG
 #include "ObjectGuid.h"
 #include "SharedDefines.h"
 #include "Define.h"
@@ -114,6 +115,10 @@ class TC_GAME_API GameEventMgr
         bool CheckOneGameEvent(uint16 entry) const;
         uint32 NextCheck(uint16 entry) const;
         void LoadFromDB();
+        void LoadHolidayRules(); // EG
+        void LoadLocalScheduleEvents(); // EG
+        void RebuildHolidayDates(); // EG
+        void RecalculateScheduledEventTimes(); // EG
         void LoadHolidayDates();
         uint32 Update();
         bool IsActiveEvent(uint16 event_id) { return (m_ActiveEvents.find(event_id) != m_ActiveEvents.end()); }
@@ -148,6 +153,9 @@ class TC_GAME_API GameEventMgr
         bool hasCreatureActiveEventExcept(ObjectGuid::LowType creature_guid, uint16 event_id);
         bool hasGameObjectActiveEventExcept(ObjectGuid::LowType go_guid, uint16 event_id);
         void SetHolidayEventTime(GameEventData& event);
+        EG::HolidayRule const* GetHolidayRule(uint32 holidayId) const; // EG
+        bool SetHolidayEventTimeFromRule(GameEventData& event, EG::HolidayRule const& rule, time_t stageOffset); // EG
+        void ReanchorLocalScheduleEvents(); // EG
         time_t GetLastStartTime(uint16 event_id) const;
 
         typedef std::list<ObjectGuid::LowType> GuidList;
@@ -180,6 +188,9 @@ class TC_GAME_API GameEventMgr
         GameEventNPCFlagMap mGameEventNPCFlags;
         ActiveEvents m_ActiveEvents;
         bool isSystemInit;
+        std::unordered_map<uint32 /*holiday id*/, EG::HolidayRule> _holidayRules; // EG
+        std::unordered_map<uint16 /*event id*/, time_t /*start_time as authored*/> _localScheduleEvents; // EG
+        std::set<uint16> _manuallyOverriddenEvents; // EG
 
     public:
         GameEventGuidMap  mGameEventCreatureGuids;

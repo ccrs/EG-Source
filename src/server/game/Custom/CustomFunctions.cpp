@@ -13,6 +13,8 @@
 #include "CreatureAI.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
+#include "GameEventMgr.h"
+#include "GameTime.h"
 #include "GenericMovementGenerator.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
@@ -53,6 +55,7 @@
 #include "VehicleDefines.h"
 #include "World.h"
 #include "WorldSession.h"
+#include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -157,6 +160,237 @@ void Creature::LoadCreaturesAddonAuras()
         AddAura(*itr, this);
         TC_LOG_DEBUG("entities.unit", "Spell: {} added to creature {}", *itr, GetGUID().ToString());
     }
+}
+
+EG::HolidayRule const* GameEventMgr::GetHolidayRule(uint32 holidayId) const
+{
+    auto itr = _holidayRules.find(holidayId);
+    return itr != _holidayRules.end() ? &itr->second : nullptr;
+}
+
+void GameEventMgr::LoadHolidayRules()
+{
+    uint32 oldMSTime = getMSTime();
+
+    _holidayRules.clear();
+
+    //                                               0        1         2      3    4        5          6          7            8
+    QueryResult result = WorldDatabase.Query("SELECT holiday, ruleType, month, day, weekday, dayOffset, startHour, startMinute, occurrence FROM game_event_holiday_rule WHERE enabled = 1");
+    if (!result)
+    {
+        TC_LOG_INFO("server.loading", ">> Loaded 0 holiday scheduling rules. DB table `game_event_holiday_rule` is empty.");
+        return;
+    }
+
+    uint32 count = 0;
+    do
+    {
+        Field* fields = result->Fetch();
+
+        EG::HolidayRule rule;
+        rule.HolidayId = fields[0].GetUInt32();
+        rule.Type = EG::HolidayRuleType(fields[1].GetUInt8());
+        rule.DayOffset = std::chrono::days(fields[5].GetInt16());
+        rule.Occurrence = fields[8].GetUInt8();
+
+        uint8 const month = fields[2].GetUInt8();
+        uint8 const day = fields[3].GetUInt8();
+        uint8 const weekday = fields[4].GetUInt8();
+        uint8 const startHour = fields[6].GetUInt8();
+        uint8 const startMinute = fields[7].GetUInt8();
+
+        if (!sHolidaysStore.LookupEntry(rule.HolidayId))
+        {
+            TC_LOG_ERROR("sql.sql", "`game_event_holiday_rule` has nonexisting holiday id {}.", rule.HolidayId);
+            continue;
+        }
+
+        if (rule.Type >= EG::HolidayRuleType::Max)
+        {
+            TC_LOG_ERROR("sql.sql", "`game_event_holiday_rule` holiday {} has invalid ruleType {}.", rule.HolidayId, uint32(rule.Type));
+            continue;
+        }
+
+        if (day > 31 || weekday > 6 || startHour > 23 || startMinute > 59)
+        {
+            TC_LOG_ERROR("sql.sql", "`game_event_holiday_rule` holiday {} has an out of range date field.", rule.HolidayId);
+            continue;
+        }
+
+        bool const usesMonth = rule.Type == EG::HolidayRuleType::FixedDate
+            || rule.Type == EG::HolidayRuleType::NthWeekday
+            || rule.Type == EG::HolidayRuleType::FirstWeekdayOfMonth
+            || rule.Type == EG::HolidayRuleType::WeekdayOnOrAfter;
+
+        if (usesMonth && (month < 1 || month > 12))
+        {
+            TC_LOG_ERROR("sql.sql", "`game_event_holiday_rule` holiday {} uses ruleType {} but has no valid month.", rule.HolidayId, uint32(rule.Type));
+            continue;
+        }
+
+        rule.Month = std::chrono::month(usesMonth ? month : 1);
+        rule.Day = std::chrono::day(day ? day : 1);
+        rule.Weekday = std::chrono::weekday(weekday);
+        rule.TimeOfDay = Hours(startHour) + Minutes(startMinute);
+
+        _holidayRules[rule.HolidayId] = rule;
+        ++count;
+    }
+    while (result->NextRow());
+
+    TC_LOG_INFO("server.loading", ">> Loaded {} holiday scheduling rules in {} ms", count, GetMSTimeDiffToNow(oldMSTime));
+}
+
+void GameEventMgr::LoadLocalScheduleEvents()
+{
+    uint32 oldMSTime = getMSTime();
+
+    _localScheduleEvents.clear();
+
+    QueryResult result = WorldDatabase.Query("SELECT eventEntry FROM game_event_local_schedule WHERE enabled = 1");
+    if (!result)
+    {
+        TC_LOG_INFO("server.loading", ">> Loaded 0 locally scheduled game events. DB table `game_event_local_schedule` is empty.");
+        return;
+    }
+
+    do
+    {
+        _localScheduleEvents[result->Fetch()[0].GetUInt16()] = 0;
+    }
+    while (result->NextRow());
+
+    TC_LOG_INFO("server.loading", ">> Loaded {} locally scheduled game events in {} ms", uint32(_localScheduleEvents.size()), GetMSTimeDiffToNow(oldMSTime));
+}
+
+void GameEventMgr::ReanchorLocalScheduleEvents()
+{
+    if (_localScheduleEvents.empty())
+        return;
+
+    time_t const curTime = GameTime::GetGameTime();
+    std::vector<uint16> unusable;
+
+    for (auto& [eventId, originalStart] : _localScheduleEvents)
+    {
+        if (!originalStart || eventId >= mGameEvent.size())
+            continue;
+
+        GameEventData& event = mGameEvent[eventId];
+        if (event.state != GAMEEVENT_NORMAL || !event.occurence)
+            continue;
+
+        if (IsActiveEvent(eventId) || _manuallyOverriddenEvents.contains(eventId))
+            continue;
+
+        Optional<time_t> const anchor = EG::HolidayCalendar::GetLocalWallClockAnchor(originalStart, Minutes(event.occurence), curTime);
+        if (!anchor)
+        {
+            TC_LOG_ERROR("sql.sql", "`game_event_local_schedule` event {} has occurence {} minutes, which neither divides nor is a multiple of a day. Dropping it.", eventId, event.occurence);
+            unusable.push_back(eventId);
+            continue;
+        }
+
+        event.start = *anchor;
+    }
+
+    for (uint16 eventId : unusable)
+        _localScheduleEvents.erase(eventId);
+}
+
+void GameEventMgr::RebuildHolidayDates()
+{
+    if (_holidayRules.empty())
+        return;
+
+    std::chrono::year const currentYear{ TimeBreakdown(GameTime::GetGameTime()).tm_year + 1900 };
+
+    for (auto const& itr : _holidayRules)
+    {
+        EG::HolidayRule const& rule = itr.second;
+        if (rule.IsWeekly())
+            continue;
+
+        HolidaysEntry* entry = const_cast<HolidaysEntry*>(sHolidaysStore.LookupEntry(rule.HolidayId));
+        if (!entry)
+            continue;
+
+        if (((entry->Date[0] >> 24) & 0x1F) == 31)
+            continue;
+
+        uint8 dateId = 0;
+        for (std::chrono::year year = currentYear - std::chrono::years(1); year <= EG::HolidayPackedDateMaxYear && dateId < MAX_HOLIDAY_DATES; ++year)
+        {
+            for (time_t occurrence : EG::HolidayCalendar::GetYearOccurrences(rule, year))
+            {
+                if (dateId >= MAX_HOLIDAY_DATES)
+                    break;
+
+                if (Optional<uint32> packed = EG::HolidayCalendar::PackDate(occurrence))
+                    entry->Date[dateId++] = *packed;
+            }
+        }
+
+        while (dateId < MAX_HOLIDAY_DATES)
+            entry->Date[dateId++] = 0;
+
+        auto pos = std::ranges::lower_bound(modifiedHolidays, entry->ID);
+        if (pos == modifiedHolidays.end() || *pos != entry->ID)
+            modifiedHolidays.insert(pos, entry->ID);
+    }
+}
+
+void GameEventMgr::RecalculateScheduledEventTimes()
+{
+    if (!_holidayRules.empty())
+    {
+        RebuildHolidayDates();
+
+        for (uint16 eventId = 1; eventId < mGameEvent.size(); ++eventId)
+        {
+            GameEventData& event = mGameEvent[eventId];
+            if (event.holiday_id == HOLIDAY_NONE || !GetHolidayRule(event.holiday_id))
+                continue;
+            if (IsActiveEvent(eventId) || _manuallyOverriddenEvents.contains(eventId))
+                continue;
+
+            SetHolidayEventTime(event);
+        }
+    }
+
+    ReanchorLocalScheduleEvents();
+}
+
+bool GameEventMgr::SetHolidayEventTimeFromRule(GameEventData& event, EG::HolidayRule const& rule, time_t stageOffset)
+{
+    time_t const curTime = GameTime::GetGameTime();
+
+    if (rule.IsWeekly())
+    {
+        Optional<time_t> const anchor = EG::HolidayCalendar::GetWeeklyAnchor(rule, curTime);
+        if (!anchor)
+            return false;
+
+        event.start = *anchor + stageOffset;
+        return true;
+    }
+
+    time_t const window = stageOffset + time_t(event.length) * MINUTE;
+    std::chrono::year const currentYear{ TimeBreakdown(curTime).tm_year + 1900 };
+
+    for (std::chrono::year year = currentYear - std::chrono::years(1); year <= currentYear + std::chrono::years(2); ++year)
+    {
+        for (time_t occurrence : EG::HolidayCalendar::GetYearOccurrences(rule, year))
+        {
+            if (curTime < occurrence + window)
+            {
+                event.start = occurrence + stageOffset;
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 Item* Player::GetWeaponForDamageMods(WeaponAttackType attackType) const
@@ -1082,6 +1316,18 @@ bool Vehicle::NormalizePassengerMovementInfo(Unit const* passenger, MovementInfo
     movementInfo.pos.Relocate(worldX, worldY, worldZ, worldO);
 
     return true;
+}
+
+void World::RecalculateScheduledEventTimes()
+{
+    sGameEventMgr->RecalculateScheduledEventTimes();
+
+    // Run the event pass right away so an anchor that moved takes effect without waiting out the pending event timer
+    uint32 nextGameEvent = sGameEventMgr->Update();
+    m_timers[WUPDATE_EVENTS].SetInterval(nextGameEvent);
+    m_timers[WUPDATE_EVENTS].Reset();
+
+    m_NextHolidayRecalc = GetLocalHourTimestamp(GameTime::GetGameTime(), 0);
 }
 
 Unit* WorldObject::DoFindLowestHPFriendlyInRange(FriendlySearchOptions options) const
