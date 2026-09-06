@@ -16,7 +16,6 @@
  */
 
 #include "ScriptMgr.h"
-#include "AnticheatScripts.h"
 #include "ChatCommand.h"
 #include "Config.h"
 #include "Creature.h"
@@ -1052,9 +1051,6 @@ void ScriptMgr::Initialize()
 
     // LFGScripts
     lfg::AddSC_LFGScripts();
-
-    // EG - Anticheat: register anticheat script hooks
-    AddSC_AnticheatScripts();
 
     // Load all static linked scripts through the script loader function.
     ASSERT(_script_loader_callback,

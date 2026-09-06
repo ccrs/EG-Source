@@ -1,4 +1,5 @@
 #include "ScriptMgr.h"
+#include "AnticheatMgr.h"
 #include "Channel.h"
 #include "ChannelMgr.h"
 #include "Chat.h"
@@ -412,6 +413,22 @@ class EG_Hardcore : public PlayerScript
         }
 };
 
+class EG_Anticheat : public PlayerScript
+{
+    public:
+        EG_Anticheat() : PlayerScript("EG_Anticheat") { }
+
+        void OnLogin(Player* player, bool /*firstLogin*/) override
+        {
+            sAnticheatMgr->HandlePlayerLogin(player);
+        }
+
+        void OnLogout(Player* player) override
+        {
+            sAnticheatMgr->HandlePlayerLogout(player);
+        }
+};
+
 void AddSC_EG_player_scripts()
 {
     new EG_AccountSpells();
@@ -420,4 +437,6 @@ void AddSC_EG_player_scripts()
     new EG_XPRate();
     new EG_LevelMilestones();
     new EG_Hardcore();
+    if (sWorld->getBoolConfig(CONFIG_ANTICHEAT_ENABLE))
+        new EG_Anticheat();
 }
