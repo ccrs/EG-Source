@@ -147,14 +147,15 @@ namespace
         return meanPhase + correction;
     }
 
-    time_t ToLocalTimestamp(std::chrono::year_month_day date, Minutes timeOfDay)
+    time_t ToLocalTimestamp(std::chrono::year_month_day date, Seconds timeOfDay)
     {
         tm local = { };
         local.tm_year = int(date.year()) - 1900;
         local.tm_mon = int(unsigned(date.month())) - 1;
         local.tm_mday = int(unsigned(date.day()));
         local.tm_hour = int(std::chrono::duration_cast<Hours>(timeOfDay).count());
-        local.tm_min = int((timeOfDay % 1h).count());
+        local.tm_min = int(std::chrono::duration_cast<Minutes>(timeOfDay % 1h).count());
+        local.tm_sec = int((timeOfDay % 1min).count());
         local.tm_isdst = -1;
         return mktime(&local);
     }
@@ -167,7 +168,11 @@ namespace
 
     std::chrono::year_month_day NthWeekdayOfMonth(std::chrono::year targetYear, std::chrono::month targetMonth, std::chrono::weekday targetWeekday, uint8 occurrence)
     {
-        return std::chrono::year_month_day{ std::chrono::sys_days{ targetYear / targetMonth / targetWeekday[occurrence ? occurrence : 1] } };
+        std::chrono::year_month_weekday const nth = targetYear / targetMonth / targetWeekday[occurrence];
+        if (!nth.ok())
+            return std::chrono::year_month_day{ };
+
+        return std::chrono::year_month_day{ std::chrono::sys_days{ nth } };
     }
 
     std::chrono::year_month_day WeekdayOnOrAfter(std::chrono::year_month_day date, std::chrono::weekday target)
@@ -274,8 +279,14 @@ namespace EG::HolidayCalendar
         {
             occurrences.reserve(4);
             for (unsigned monthIndex = 1; monthIndex <= 12; ++monthIndex)
-                if (monthIndex % 3 == rule.Occurrence)
-                    occurrences.push_back(resolve(BaseDate(rule, targetYear, std::chrono::month{ monthIndex })));
+            {
+                if (monthIndex % 3 != rule.Occurrence)
+                    continue;
+
+                std::chrono::year_month_day const quarterBase = BaseDate(rule, targetYear, std::chrono::month{ monthIndex });
+                if (quarterBase.ok())
+                    occurrences.push_back(resolve(quarterBase));
+            }
 
             return occurrences;
         }
@@ -314,7 +325,7 @@ namespace EG::HolidayCalendar
             return originalStart;
 
         tm const original = TimeBreakdown(originalStart);
-        Minutes const originalTimeOfDay = Hours(original.tm_hour) + Minutes(original.tm_min);
+        Seconds const originalTimeOfDay = Hours(original.tm_hour) + Minutes(original.tm_min) + Seconds(original.tm_sec);
 
         // Shorter than a day, so the pattern repeats within every local day and only its phase has to be kept
         if (period < oneDay && oneDay % period == Minutes::zero())
