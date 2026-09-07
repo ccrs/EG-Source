@@ -222,14 +222,36 @@ void GameEventMgr::LoadHolidayRules()
             || rule.Type == EG::HolidayRuleType::FirstWeekdayOfMonth
             || rule.Type == EG::HolidayRuleType::WeekdayOnOrAfter;
 
+        bool const usesDay = rule.Type == EG::HolidayRuleType::FixedDate
+            || rule.Type == EG::HolidayRuleType::WeekdayOnOrAfter;
+
         if (usesMonth && (month < 1 || month > 12))
         {
             TC_LOG_ERROR("sql.sql", "`game_event_holiday_rule` holiday {} uses ruleType {} but has no valid month.", rule.HolidayId, uint32(rule.Type));
             continue;
         }
 
+        if (usesDay && day < 1)
+        {
+            TC_LOG_ERROR("sql.sql", "`game_event_holiday_rule` holiday {} uses ruleType {} but has no valid day.", rule.HolidayId, uint32(rule.Type));
+            continue;
+        }
+
+        // A month never holds more than five of any weekday, and the Darkmoon rotation only has three slots
+        if (rule.Type == EG::HolidayRuleType::NthWeekday && (rule.Occurrence < 1 || rule.Occurrence > 5))
+        {
+            TC_LOG_ERROR("sql.sql", "`game_event_holiday_rule` holiday {} is an nth weekday rule but has occurrence {}, expected 1 to 5.", rule.HolidayId, uint32(rule.Occurrence));
+            continue;
+        }
+
+        if (rule.Type == EG::HolidayRuleType::QuarterMonthFirstWeekday && rule.Occurrence > 2)
+        {
+            TC_LOG_ERROR("sql.sql", "`game_event_holiday_rule` holiday {} is a quarter month rule but has occurrence {}, expected 0 to 2.", rule.HolidayId, uint32(rule.Occurrence));
+            continue;
+        }
+
         rule.Month = std::chrono::month(usesMonth ? month : 1);
-        rule.Day = std::chrono::day(day ? day : 1);
+        rule.Day = std::chrono::day(usesDay ? day : 1);
         rule.Weekday = std::chrono::weekday(weekday);
         rule.TimeOfDay = Hours(startHour) + Minutes(startMinute);
 
@@ -274,7 +296,11 @@ void GameEventMgr::ReanchorLocalScheduleEvents()
     for (auto& [eventId, originalStart] : _localScheduleEvents)
     {
         if (!originalStart || eventId >= mGameEvent.size())
+        {
+            TC_LOG_ERROR("sql.sql", "`game_event_local_schedule` event {} does not exist in `game_event` or has no start_time. Dropping it.", eventId);
+            unusable.push_back(eventId);
             continue;
+        }
 
         GameEventData& event = mGameEvent[eventId];
         if (event.state != GAMEEVENT_NORMAL || !event.occurence)
