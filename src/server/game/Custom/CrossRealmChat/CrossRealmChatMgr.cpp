@@ -80,7 +80,7 @@ void CrossRealmChatMgr::Publish(std::string const& channelName, std::string cons
     if (!_active || text.empty() || senderName.empty())
         return;
 
-    if (!Channel::IsDefaultWorldChat(channelName))
+    if (!Channel::IsWorldChat(channelName))
         return;
 
     LoginDatabaseTransaction trans = LoginDatabase.BeginTransaction();
@@ -240,11 +240,12 @@ void CrossRealmChatMgr::AnnouncePeer(std::string const& realmName, bool connecte
     std::string const sender(CROSS_REALM_CHAT_SENDER_NAME);
 
     Broadcast(std::string(WORLD_CHAT), sender, text, CHAT_TAG_NONE);
+    Broadcast(std::string(WORLD_CHAT_ES), sender, text, CHAT_TAG_NONE);
 }
 
 /*static*/ void CrossRealmChatMgr::Broadcast(std::string const& channelName, std::string const& senderName, std::string const& text, uint8 chatTag)
 {
-    if (!Channel::IsDefaultWorldChat(channelName))
+    if (!Channel::IsWorldChat(channelName))
         return;
 
     ChannelMgr* channelMgr = ChannelMgr::ForTeam(Team::ALLIANCE);

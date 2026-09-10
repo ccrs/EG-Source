@@ -3480,8 +3480,8 @@ XPRate.MilestoneRewards.Enable = 1
 #
 #    WorldChat.Enable
 #        Description: Enables WiiZZy's World Chat System
-#        Default:     1 - (Enabled)
-#                     0 - (Disabled)
+#        Default:     0 - (Disabled)
+#                     1 - (Enabled)
 
 WorldChat.Enable = 0
 
