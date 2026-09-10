@@ -605,14 +605,14 @@ struct boss_mimiron : public BossAI
                         elevator->SetGoState(GO_STATE_READY);
                     if (Creature* worldtrigger = instance->GetCreature(DATA_MIMIRON_WORLD_TRIGGER))
                         worldtrigger->CastSpell(worldtrigger, SPELL_ELEVATOR_KNOCKBACK);
-                    events.ScheduleEvent(EVENT_VX001_ACTIVATION_5, 6s);
+                    events.ScheduleEvent(EVENT_VX001_ACTIVATION_5, 16s);
                     break;
                 case EVENT_VX001_ACTIVATION_5:
                     if (GameObject* elevator = instance->GetGameObject(DATA_MIMIRON_ELEVATOR))
                         elevator->SetGoState(GO_STATE_DESTROYED);
                     if (Creature* vx001 = me->SummonCreature(NPC_VX_001, VX001SummonPos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 120s))
                         vx001->CastSpell(vx001, SPELL_FREEZE_ANIM);
-                    events.ScheduleEvent(EVENT_VX001_ACTIVATION_6, 19s);
+                    events.ScheduleEvent(EVENT_VX001_ACTIVATION_6, 10500ms);
                     break;
                 case EVENT_VX001_ACTIVATION_6:
                     if (Unit* vx001 = instance->GetCreature(DATA_VX_001))
