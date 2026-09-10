@@ -2267,6 +2267,7 @@ void World::SetInitialWorldSettings()
     TC_LOG_INFO("server.loading", "Starting Game Event system...");
     uint32 nextGameEvent = sGameEventMgr->StartSystem();
     m_timers[WUPDATE_EVENTS].SetInterval(nextGameEvent);    //depend on next event
+    m_NextHolidayRecalc = GetLocalHourTimestamp(GameTime::GetGameTime(), 0); // EG - LoadFromDB already resolved every schedule, first recalc waits for local midnight
 
     // Delete all characters which have been deleted X days before
     Player::DeleteOldCharacters();
