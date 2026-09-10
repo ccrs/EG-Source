@@ -139,703 +139,637 @@ enum AssemblyMisc
 #define FLOOR_Z 427.28f
 #define HOVER_HEIGHT 13.0f
 
-class boss_steelbreaker : public CreatureScript
+struct boss_steelbreaker : public BossAI
 {
-    public:
-        boss_steelbreaker() : CreatureScript("boss_steelbreaker") { }
+    boss_steelbreaker(Creature* creature) : BossAI(creature, DATA_ASSEMBLY_OF_IRON)
+    {
+        Initialize();
+    }
 
-        struct boss_steelbreakerAI : public BossAI
+    void Initialize()
+    {
+        phase = 0;
+    }
+
+    uint32 phase;
+
+    void Reset() override
+    {
+        _Reset();
+        Initialize();
+        me->RemoveAllAuras();
+    }
+
+    void JustEngagedWith(Unit* who) override
+    {
+        BossAI::JustEngagedWith(who);
+        me->SetLootMode(0);
+        Talk(SAY_STEELBREAKER_AGGRO);
+        DoCast(me, SPELL_HIGH_VOLTAGE);
+        events.SetPhase(++phase);
+        events.ScheduleEvent(EVENT_BERSERK, 15min);
+        events.ScheduleEvent(EVENT_FUSION_PUNCH, 15s);
+    }
+
+    uint32 GetData(uint32 type) const override
+    {
+        if (type == DATA_PHASE_3)
+            return (phase >= 3) ? 1 : 0;
+
+        return 0;
+    }
+
+    void DoAction(int32 action) override
+    {
+        switch (action)
         {
-            boss_steelbreakerAI(Creature* creature) : BossAI(creature, DATA_ASSEMBLY_OF_IRON)
-            {
-                Initialize();
-            }
-
-            void Initialize()
-            {
-                phase = 0;
-            }
-
-            uint32 phase;
-
-            void Reset() override
-            {
-                _Reset();
-                Initialize();
-                me->RemoveAllAuras();
-            }
-
-            void JustEngagedWith(Unit* who) override
-            {
-                BossAI::JustEngagedWith(who);
-                me->SetLootMode(0);
-                Talk(SAY_STEELBREAKER_AGGRO);
-                DoCast(me, SPELL_HIGH_VOLTAGE);
+            case ACTION_SUPERCHARGE:
+                me->SetFullHealth();
+                me->AddAura(SPELL_SUPERCHARGE, me);
                 events.SetPhase(++phase);
-                events.ScheduleEvent(EVENT_BERSERK, 15min);
-                events.ScheduleEvent(EVENT_FUSION_PUNCH, 15s);
-            }
-
-            uint32 GetData(uint32 type) const override
-            {
-                if (type == DATA_PHASE_3)
-                    return (phase >= 3) ? 1 : 0;
-
-                return 0;
-            }
-
-            void DoAction(int32 action) override
-            {
-                switch (action)
-                {
-                    case ACTION_SUPERCHARGE:
-                        me->SetFullHealth();
-                        me->AddAura(SPELL_SUPERCHARGE, me);
-                        events.SetPhase(++phase);
-                        events.RescheduleEvent(EVENT_FUSION_PUNCH, 15s);
-                        if (phase >= 2)
-                            events.RescheduleEvent(EVENT_STATIC_DISRUPTION, 30s);
-                        if (phase >= 3)
-                            events.RescheduleEvent(EVENT_OVERWHELMING_POWER, 2s, 5s);
-                        if (me->GetVictim())
-                            me->GetMotionMaster()->MoveChase(me->GetVictim());
-                        break;
-                    case ACTION_ADD_CHARGE:
-                        DoCast(me, SPELL_ELECTRICAL_CHARGE, true);
-                        break;
-                }
-            }
-
-            void JustDied(Unit* /*killer*/) override
-            {
-                _JustDied();
-
-                if (instance->GetBossState(DATA_ASSEMBLY_OF_IRON) == DONE)
-                {
-                    me->ResetLootMode();
-                    if (Player* lootOwner = me->GetLootRecipient())
-                    {
-                        me->loot.clear();
-                        if (uint32 lootId = me->GetCreatureTemplate()->lootid)
-                            me->loot.FillLoot(lootId, LootTemplates_Creature, lootOwner, false, false, me->GetLootMode());
-                        me->loot.generateMoneyLoot(me->GetCreatureTemplate()->mingold, me->GetCreatureTemplate()->maxgold);
-                        if (!me->loot.isLooted())
-                            me->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
-                    }
-                    DoCastAOE(SPELL_KILL_CREDIT, true);
-                    Talk(SAY_STEELBREAKER_ENCOUNTER_DEFEATED);
-                }
-                else
-                {
-                    me->SetLootRecipient(nullptr);
-                    me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
-                    Talk(SAY_STEELBREAKER_DEATH);
-                    //DoCastAOE(SPELL_SUPERCHARGE, true);
-
-                    if (Creature* Brundir = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BRUNDIR)))
-                        if (Brundir->IsAlive())
-                            Brundir->AI()->DoAction(ACTION_SUPERCHARGE);
-
-                    if (Creature* Molgeim = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_MOLGEIM)))
-                        if (Molgeim->IsAlive())
-                            Molgeim->AI()->DoAction(ACTION_SUPERCHARGE);
-                }
-            }
-
-            void KilledUnit(Unit* who) override
-            {
-                if (who->GetTypeId() == TYPEID_PLAYER)
-                    Talk(SAY_STEELBREAKER_SLAY);
-
-                if (phase == 3)
-                    DoCast(me, SPELL_ELECTRICAL_CHARGE);
-            }
-
-            void UpdateAI(uint32 diff) override
-            {
-                if (!UpdateVictim())
-                    return;
-
-                events.Update(diff);
-
-                if (me->HasUnitState(UNIT_STATE_CASTING))
-                    return;
-
-                while (uint32 eventId = events.ExecuteEvent())
-                {
-                    switch (eventId)
-                    {
-                        case EVENT_BERSERK:
-                            Talk(SAY_STEELBREAKER_BERSERK);
-                            DoCast(SPELL_BERSERK);
-                            events.CancelEvent(EVENT_BERSERK);
-                            break;
-                        case EVENT_FUSION_PUNCH:
-                            if (me->IsWithinMeleeRange(me->GetVictim()))
-                                DoCastVictim(SPELL_FUSION_PUNCH);
-                            events.ScheduleEvent(EVENT_FUSION_PUNCH, 13s, 22s);
-                            break;
-                        case EVENT_STATIC_DISRUPTION:
-                            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.f, true))
-                                DoCast(target, SPELL_STATIC_DISRUPTION);
-                            events.ScheduleEvent(EVENT_STATIC_DISRUPTION, 20s, 40s);
-                            break;
-                        case EVENT_OVERWHELMING_POWER:
-                            Talk(SAY_STEELBREAKER_POWER);
-                            DoCastVictim(SPELL_OVERWHELMING_POWER);
-                            events.ScheduleEvent(EVENT_OVERWHELMING_POWER, RAID_MODE(60s, 35s));
-                            break;
-                    }
-
-                    if (me->HasUnitState(UNIT_STATE_CASTING))
-                        return;
-                }
-
-                DoMeleeAttackIfReady();
-            }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return GetUlduarAI<boss_steelbreakerAI>(creature);
+                events.RescheduleEvent(EVENT_FUSION_PUNCH, 15s);
+                if (phase >= 2)
+                    events.RescheduleEvent(EVENT_STATIC_DISRUPTION, 30s);
+                if (phase >= 3)
+                    events.RescheduleEvent(EVENT_OVERWHELMING_POWER, 2s, 5s);
+                if (me->GetVictim())
+                    me->GetMotionMaster()->MoveChase(me->GetVictim());
+                break;
+            case ACTION_ADD_CHARGE:
+                DoCast(me, SPELL_ELECTRICAL_CHARGE, true);
+                break;
         }
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        _JustDied();
+
+        if (instance->GetBossState(DATA_ASSEMBLY_OF_IRON) == DONE)
+        {
+            me->ResetLootMode();
+            if (Player* lootOwner = me->GetLootRecipient())
+            {
+                me->loot.clear();
+                if (uint32 lootId = me->GetCreatureTemplate()->lootid)
+                    me->loot.FillLoot(lootId, LootTemplates_Creature, lootOwner, false, false, me->GetLootMode());
+                me->loot.generateMoneyLoot(me->GetCreatureTemplate()->mingold, me->GetCreatureTemplate()->maxgold);
+                if (!me->loot.isLooted())
+                    me->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+            }
+            DoCastAOE(SPELL_KILL_CREDIT, true);
+            Talk(SAY_STEELBREAKER_ENCOUNTER_DEFEATED);
+        }
+        else
+        {
+            me->SetLootRecipient(nullptr);
+            me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+            Talk(SAY_STEELBREAKER_DEATH);
+            //DoCastAOE(SPELL_SUPERCHARGE, true);
+
+            if (Creature* Brundir = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BRUNDIR)))
+                if (Brundir->IsAlive())
+                    Brundir->AI()->DoAction(ACTION_SUPERCHARGE);
+
+            if (Creature* Molgeim = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_MOLGEIM)))
+                if (Molgeim->IsAlive())
+                    Molgeim->AI()->DoAction(ACTION_SUPERCHARGE);
+        }
+    }
+
+    void KilledUnit(Unit* who) override
+    {
+        if (who->GetTypeId() == TYPEID_PLAYER)
+            Talk(SAY_STEELBREAKER_SLAY);
+
+        if (phase == 3)
+            DoCast(me, SPELL_ELECTRICAL_CHARGE);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        while (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case EVENT_BERSERK:
+                    Talk(SAY_STEELBREAKER_BERSERK);
+                    DoCast(SPELL_BERSERK);
+                    events.CancelEvent(EVENT_BERSERK);
+                    break;
+                case EVENT_FUSION_PUNCH:
+                    if (me->IsWithinMeleeRange(me->GetVictim()))
+                        DoCastVictim(SPELL_FUSION_PUNCH);
+                    events.ScheduleEvent(EVENT_FUSION_PUNCH, 13s, 22s);
+                    break;
+                case EVENT_STATIC_DISRUPTION:
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.f, true))
+                        DoCast(target, SPELL_STATIC_DISRUPTION);
+                    events.ScheduleEvent(EVENT_STATIC_DISRUPTION, 20s, 40s);
+                    break;
+                case EVENT_OVERWHELMING_POWER:
+                    Talk(SAY_STEELBREAKER_POWER);
+                    DoCastVictim(SPELL_OVERWHELMING_POWER);
+                    events.ScheduleEvent(EVENT_OVERWHELMING_POWER, RAID_MODE(60s, 35s));
+                    break;
+            }
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+        }
+
+        DoMeleeAttackIfReady();
+    }
 };
 
-class boss_runemaster_molgeim : public CreatureScript
+struct boss_runemaster_molgeim : public BossAI
 {
-    public:
-        boss_runemaster_molgeim() : CreatureScript("boss_runemaster_molgeim") { }
+    boss_runemaster_molgeim(Creature* creature) : BossAI(creature, DATA_ASSEMBLY_OF_IRON)
+    {
+        Initialize();
+    }
 
-        struct boss_runemaster_molgeimAI : public BossAI
+    void Initialize()
+    {
+        phase = 0;
+    }
+
+    uint32 phase;
+
+    void Reset() override
+    {
+        _Reset();
+        Initialize();
+        me->RemoveAllAuras();
+    }
+
+    void JustEngagedWith(Unit* who) override
+    {
+        BossAI::JustEngagedWith(who);
+        me->SetLootMode(0);
+        Talk(SAY_MOLGEIM_AGGRO);
+        events.SetPhase(++phase);
+        events.ScheduleEvent(EVENT_BERSERK, 15min);
+        events.ScheduleEvent(EVENT_SHIELD_OF_RUNES, 30s);
+        events.ScheduleEvent(EVENT_RUNE_OF_POWER, 20s);
+    }
+
+    uint32 GetData(uint32 type) const override
+    {
+        if (type == DATA_PHASE_3)
+            return (phase >= 3) ? 1 : 0;
+
+        return 0;
+    }
+
+    void DoAction(int32 action) override
+    {
+        switch (action)
         {
-            boss_runemaster_molgeimAI(Creature* creature) : BossAI(creature, DATA_ASSEMBLY_OF_IRON)
+            case ACTION_SUPERCHARGE:
             {
-                Initialize();
-            }
-
-            void Initialize()
-            {
-                phase = 0;
-            }
-
-            uint32 phase;
-
-            void Reset() override
-            {
-                _Reset();
-                Initialize();
-                me->RemoveAllAuras();
-            }
-
-            void JustEngagedWith(Unit* who) override
-            {
-                BossAI::JustEngagedWith(who);
-                me->SetLootMode(0);
-                Talk(SAY_MOLGEIM_AGGRO);
+                me->SetFullHealth();
+                me->AddAura(SPELL_SUPERCHARGE, me);
                 events.SetPhase(++phase);
-                events.ScheduleEvent(EVENT_BERSERK, 15min);
-                events.ScheduleEvent(EVENT_SHIELD_OF_RUNES, 30s);
-                events.ScheduleEvent(EVENT_RUNE_OF_POWER, 20s);
+                events.RescheduleEvent(EVENT_SHIELD_OF_RUNES, 27s);
+                events.RescheduleEvent(EVENT_RUNE_OF_POWER, 25s);
+                if (phase >= 2)
+                    events.RescheduleEvent(EVENT_RUNE_OF_DEATH, 30s);
+                if (phase >= 3)
+                    events.RescheduleEvent(EVENT_RUNE_OF_SUMMONING, 20s, 30s);
+                if (me->GetVictim())
+                    me->GetMotionMaster()->MoveChase(me->GetVictim());
+                break;
             }
-
-            uint32 GetData(uint32 type) const override
-            {
-                if (type == DATA_PHASE_3)
-                    return (phase >= 3) ? 1 : 0;
-
-                return 0;
-            }
-
-            void DoAction(int32 action) override
-            {
-                switch (action)
-                {
-                    case ACTION_SUPERCHARGE:
-                    {
-                        me->SetFullHealth();
-                        me->AddAura(SPELL_SUPERCHARGE, me);
-                        events.SetPhase(++phase);
-                        events.RescheduleEvent(EVENT_SHIELD_OF_RUNES, 27s);
-                        events.RescheduleEvent(EVENT_RUNE_OF_POWER, 25s);
-                        if (phase >= 2)
-                            events.RescheduleEvent(EVENT_RUNE_OF_DEATH, 30s);
-                        if (phase >= 3)
-                            events.RescheduleEvent(EVENT_RUNE_OF_SUMMONING, 20s, 30s);
-                        if (me->GetVictim())
-                            me->GetMotionMaster()->MoveChase(me->GetVictim());
-                        break;
-                    }
-                }
-            }
-
-            void JustDied(Unit* /*killer*/) override
-            {
-                _JustDied();
-
-                if (instance->GetBossState(DATA_ASSEMBLY_OF_IRON) == DONE)
-                {
-                    me->ResetLootMode();
-                    if (Player* lootOwner = me->GetLootRecipient())
-                    {
-                        me->loot.clear();
-                        if (uint32 lootId = me->GetCreatureTemplate()->lootid)
-                            me->loot.FillLoot(lootId, LootTemplates_Creature, lootOwner, false, false, me->GetLootMode());
-                        me->loot.generateMoneyLoot(me->GetCreatureTemplate()->mingold, me->GetCreatureTemplate()->maxgold);
-                        if (!me->loot.isLooted())
-                            me->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
-                    }
-                    DoCastAOE(SPELL_KILL_CREDIT, true);
-                    Talk(SAY_MOLGEIM_ENCOUNTER_DEFEATED);
-                }
-                else
-                {
-                    me->SetLootRecipient(nullptr);
-                    me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
-                    Talk(SAY_MOLGEIM_DEATH);
-                    //DoCastAOE(SPELL_SUPERCHARGE, true);
-
-                    if (Creature* Brundir = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BRUNDIR)))
-                        if (Brundir->IsAlive())
-                            Brundir->AI()->DoAction(ACTION_SUPERCHARGE);
-
-                    if (Creature* Steelbreaker = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_STEELBREAKER)))
-                        if (Steelbreaker->IsAlive())
-                            Steelbreaker->AI()->DoAction(ACTION_SUPERCHARGE);
-                }
-            }
-
-            void KilledUnit(Unit* who) override
-            {
-                if (who->GetTypeId() == TYPEID_PLAYER)
-                    Talk(SAY_MOLGEIM_SLAY);
-            }
-
-            void UpdateAI(uint32 diff) override
-            {
-                if (!UpdateVictim())
-                    return;
-
-                events.Update(diff);
-
-                if (me->HasUnitState(UNIT_STATE_CASTING))
-                    return;
-
-                while (uint32 eventId = events.ExecuteEvent())
-                {
-                    switch (eventId)
-                    {
-                        case EVENT_BERSERK:
-                            Talk(SAY_MOLGEIM_BERSERK);
-                            DoCast(SPELL_BERSERK);
-                            events.CancelEvent(EVENT_BERSERK);
-                            break;
-                        case EVENT_RUNE_OF_POWER:
-                        {
-                            Unit* target = me;
-                            switch (urand(0, 2))
-                            {
-                                case 1:
-                                    if (Creature* Steelbreaker = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_STEELBREAKER)))
-                                        if (Steelbreaker->IsAlive())
-                                            target = Steelbreaker;
-                                    break;
-                                case 2:
-                                    if (Creature* Brundir = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BRUNDIR)))
-                                        if (Brundir->IsAlive())
-                                            target = Brundir;
-                                    break;
-                                default:
-                                    break;
-                            }
-                            DoCast(target, SPELL_SUMMON_RUNE_OF_POWER);
-                            events.ScheduleEvent(EVENT_RUNE_OF_POWER, 1min);
-                            break;
-                        }
-                        case EVENT_SHIELD_OF_RUNES:
-                            DoCast(me, SPELL_SHIELD_OF_RUNES);
-                            events.ScheduleEvent(EVENT_SHIELD_OF_RUNES, 27s, 34s);
-                            break;
-                        case EVENT_RUNE_OF_DEATH:
-                            Talk(SAY_MOLGEIM_RUNE_DEATH);
-                            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.f, true))
-                                DoCast(target, SPELL_RUNE_OF_DEATH);
-                            events.ScheduleEvent(EVENT_RUNE_OF_DEATH, 30s, 40s);
-                            break;
-                        case EVENT_RUNE_OF_SUMMONING:
-                            Talk(SAY_MOLGEIM_SUMMON);
-                            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.f, true))
-                                DoCast(target, SPELL_RUNE_OF_SUMMONING);
-                            events.ScheduleEvent(EVENT_RUNE_OF_SUMMONING, 30s, 45s);
-                            break;
-                    }
-
-                    if (me->HasUnitState(UNIT_STATE_CASTING))
-                        return;
-                }
-
-                DoMeleeAttackIfReady();
-            }
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return GetUlduarAI<boss_runemaster_molgeimAI>(creature);
         }
-};
+    }
 
-class boss_stormcaller_brundir : public CreatureScript
-{
-    public:
-        boss_stormcaller_brundir() : CreatureScript("boss_stormcaller_brundir") { }
+    void JustDied(Unit* /*killer*/) override
+    {
+        _JustDied();
 
-        struct boss_stormcaller_brundirAI : public BossAI
+        if (instance->GetBossState(DATA_ASSEMBLY_OF_IRON) == DONE)
         {
-            boss_stormcaller_brundirAI(Creature* creature) : BossAI(creature, DATA_ASSEMBLY_OF_IRON)
+            me->ResetLootMode();
+            if (Player* lootOwner = me->GetLootRecipient())
             {
-                Initialize();
+                me->loot.clear();
+                if (uint32 lootId = me->GetCreatureTemplate()->lootid)
+                    me->loot.FillLoot(lootId, LootTemplates_Creature, lootOwner, false, false, me->GetLootMode());
+                me->loot.generateMoneyLoot(me->GetCreatureTemplate()->mingold, me->GetCreatureTemplate()->maxgold);
+                if (!me->loot.isLooted())
+                    me->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
             }
+            DoCastAOE(SPELL_KILL_CREDIT, true);
+            Talk(SAY_MOLGEIM_ENCOUNTER_DEFEATED);
+        }
+        else
+        {
+            me->SetLootRecipient(nullptr);
+            me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+            Talk(SAY_MOLGEIM_DEATH);
+            //DoCastAOE(SPELL_SUPERCHARGE, true);
 
-            void Initialize()
+            if (Creature* Brundir = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BRUNDIR)))
+                if (Brundir->IsAlive())
+                    Brundir->AI()->DoAction(ACTION_SUPERCHARGE);
+
+            if (Creature* Steelbreaker = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_STEELBREAKER)))
+                if (Steelbreaker->IsAlive())
+                    Steelbreaker->AI()->DoAction(ACTION_SUPERCHARGE);
+        }
+    }
+
+    void KilledUnit(Unit* who) override
+    {
+        if (who->GetTypeId() == TYPEID_PLAYER)
+            Talk(SAY_MOLGEIM_SLAY);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        while (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
             {
-                phase = 0;
-            }
-
-            uint32 phase;
-
-            void Reset() override
-            {
-                _Reset();
-                Initialize();
-                me->RemoveAllAuras();
-                me->SetHover(false);
-                me->SetFloatValue(UNIT_FIELD_HOVERHEIGHT, 1.0f);
-                me->SetObjectScale(me->GetNativeObjectScale());
-                me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_INTERRUPT, false);  // Should be interruptable unless overridden by spell (Overload)
-                me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_STUN, false);       // Reset immumity, Brundir should be stunnable by default
-            }
-
-            uint32 GetData(uint32 type) const override
-            {
-                if (type == DATA_PHASE_3)
-                    return (phase >= 3) ? 1 : 0;
-
-                return 0;
-            }
-
-            void JustEngagedWith(Unit* who) override
-            {
-                BossAI::JustEngagedWith(who);
-                me->SetLootMode(0);
-                Talk(SAY_BRUNDIR_AGGRO);
-                events.SetPhase(++phase);
-                events.ScheduleEvent(EVENT_BERSERK, 15min);
-                events.ScheduleEvent(EVENT_CHAIN_LIGHTNING, 4s);
-                events.ScheduleEvent(EVENT_OVERLOAD, 60s, 120s);
-                instance->SetData(DATA_STUNNED, 1);
-            }
-
-            void AttackStart(Unit* victim) override
-            {
-                if (victim && me->Attack(victim, false))
+                case EVENT_BERSERK:
+                    Talk(SAY_MOLGEIM_BERSERK);
+                    DoCast(SPELL_BERSERK);
+                    events.CancelEvent(EVENT_BERSERK);
+                    break;
+                case EVENT_RUNE_OF_POWER:
                 {
-                    if (phase < 3)
-                        me->GetMotionMaster()->MoveChase(victim, ChaseRange(15.f, 40.0f));
-                    else
-                        me->GetMotionMaster()->MoveChase(victim);
-                }
-            }
-
-            void DoAction(int32 action) override
-            {
-                switch (action)
-                {
-                    case ACTION_SUPERCHARGE:
+                    Unit* target = me;
+                    switch (urand(0, 2))
                     {
-                        me->SetFullHealth();
-                        me->AddAura(SPELL_SUPERCHARGE, me);
-                        events.SetPhase(++phase);
-                        events.RescheduleEvent(EVENT_CHAIN_LIGHTNING, 7s, 12s);
-                        events.RescheduleEvent(EVENT_OVERLOAD, 40s, 50s);
-                        if (phase >= 2)
-                            events.RescheduleEvent(EVENT_LIGHTNING_WHIRL, 15s, 250s);
-                        if (phase >= 3)
-                        {
-                            if (Unit* victim = me->GetVictim())
-                                me->GetMotionMaster()->MoveChase(victim);
-                            DoCast(me, SPELL_STORMSHIELD);
-
-                            me->SetObjectScale(1.3f);
-                            me->SetFloatValue(UNIT_FIELD_HOVERHEIGHT, HOVER_HEIGHT);
-                            events.RescheduleEvent(EVENT_LIGHTNING_TENDRILS, 50s, 60s);
-                            me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_STUN, true); // Apply immumity to stuns
-                        }
-                        else if (me->GetVictim())
-                            me->GetMotionMaster()->MoveChase(me->GetVictim(), ChaseRange(15.f, 40.0f));
-                        break;
-                    }
-                }
-            }
-
-            void JustDied(Unit* /*killer*/) override
-            {
-                _JustDied();
-
-                if (instance->GetBossState(DATA_ASSEMBLY_OF_IRON) == DONE)
-                {
-                    me->ResetLootMode();
-                    if (Player* lootOwner = me->GetLootRecipient())
-                    {
-                        me->loot.clear();
-                        if (uint32 lootId = me->GetCreatureTemplate()->lootid)
-                            me->loot.FillLoot(lootId, LootTemplates_Creature, lootOwner, false, false, me->GetLootMode());
-                        me->loot.generateMoneyLoot(me->GetCreatureTemplate()->mingold, me->GetCreatureTemplate()->maxgold);
-                        if (!me->loot.isLooted())
-                            me->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
-                    }
-                    DoCastAOE(SPELL_KILL_CREDIT, true);
-                    Talk(SAY_BRUNDIR_ENCOUNTER_DEFEATED);
-                }
-                else
-                {
-                    me->SetLootRecipient(nullptr);
-                    me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
-                    Talk(SAY_BRUNDIR_DEATH);
-                    //DoCastAOE(SPELL_SUPERCHARGE, true);
-
-                    if (Creature* Molgeim = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_MOLGEIM)))
-                        if (Molgeim->IsAlive())
-                            Molgeim->AI()->DoAction(ACTION_SUPERCHARGE);
-
-                    if (Creature* Steelbreaker = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_STEELBREAKER)))
-                        if (Steelbreaker->IsAlive())
-                            Steelbreaker->AI()->DoAction(ACTION_SUPERCHARGE);
-                }
-            }
-
-            void KilledUnit(Unit* who) override
-            {
-                if (who->GetTypeId() == TYPEID_PLAYER)
-                    Talk(SAY_BRUNDIR_SLAY);
-            }
-
-            void MovementInform(uint32 type, uint32 id) override
-            {
-                if (type != EFFECT_MOTION_TYPE)
-                    return;
-
-                switch (id)
-                {
-                    case POINT_BRUNDIR_TAKEOFF:
-                        events.ScheduleEvent(EVENT_FLIGHT, 2s);
-                        break;
-                    case POINT_BRUNDIR_LAND:
-                        me->SetHover(false);
-                        me->SetDisableGravity(false);
-                        me->RemoveAurasDueToSpell(sSpellMgr->GetSpellIdForDifficulty(SPELL_LIGHTNING_TENDRILS, me));
-                        me->RemoveAurasDueToSpell(SPELL_LIGHTNING_TENDRILS_VISUAL);
-                        ResetThreatList();
-                        DoStartMovement(me->GetVictim());
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-            void SpellHitTarget(WorldObject* target, SpellInfo const* spellInfo) override
-            {
-                if ((target && target->GetTypeId() == TYPEID_PLAYER) && 
-                    (spellInfo->Id == SPELL_CHAIN_LIGHTNING || spellInfo->Id == SPELL_LIGHTNING_WHIRL || spellInfo->Id == SPELL_CHAIN_LIGHTNING_25 || spellInfo->Id == SPELL_LIGHTNING_WHIRL_25))
-                    instance->SetData(DATA_STUNNED, 0);
-            }
-
-            void UpdateAI(uint32 diff) override
-            {
-                if (!UpdateVictim())
-                    return;
-
-                events.Update(diff);
-
-                if (me->HasUnitState(UNIT_STATE_CASTING))
-                    return;
-
-                while (uint32 eventId = events.ExecuteEvent())
-                {
-                    switch (eventId)
-                    {
-                        case EVENT_BERSERK:
-                            Talk(SAY_BRUNDIR_BERSERK);
-                            DoCast(SPELL_BERSERK);
-                            events.CancelEvent(EVENT_BERSERK);
+                        case 1:
+                            if (Creature* Steelbreaker = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_STEELBREAKER)))
+                                if (Steelbreaker->IsAlive())
+                                    target = Steelbreaker;
                             break;
-                        case EVENT_CHAIN_LIGHTNING:
-                            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
-                                DoCast(target, SPELL_CHAIN_LIGHTNING);
-                            events.ScheduleEvent(EVENT_CHAIN_LIGHTNING, 7s, 10s);
+                        case 2:
+                            if (Creature* Brundir = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BRUNDIR)))
+                                if (Brundir->IsAlive())
+                                    target = Brundir;
                             break;
-                        case EVENT_OVERLOAD:
-                            Talk(EMOTE_BRUNDIR_OVERLOAD);
-                            Talk(SAY_BRUNDIR_SPECIAL);
-                            DoCast(SPELL_OVERLOAD);
-                            events.ScheduleEvent(EVENT_OVERLOAD, 60s, 120s);
-                            break;
-                        case EVENT_LIGHTNING_WHIRL:
-                            DoCastSelf(SPELL_LIGHTNING_WHIRL);
-                            events.ScheduleEvent(EVENT_LIGHTNING_WHIRL, 15s, 20s);
-                            break;
-                        case EVENT_LIGHTNING_TENDRILS:
-                        {
-                            me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
-                            me->AttackStop();
-                            DoCast(me, SPELL_LIGHTNING_TENDRILS);
-                            DoCast(me, SPELL_LIGHTNING_TENDRILS_VISUAL);
-
-                            float floorZ = me->GetFloorZ();
-                            me->Relocate(me->GetPositionX(), me->GetPositionY(), floorZ + HOVER_HEIGHT);
-                            me->SetHover(true);
-                            me->Relocate(me->GetPositionX(), me->GetPositionY(), floorZ);
-
-                            Talk(SAY_BRUNDIR_FLIGHT);
-                            events.DelayEvents(30s);
-                            events.ScheduleEvent(EVENT_TAKEOFF, 2500ms);
-                            events.ScheduleEvent(EVENT_ENDFLIGHT, 25s);
-                            events.ScheduleEvent(EVENT_LIGHTNING_TENDRILS, 90s);
-                            break;
-                        }
-                        case EVENT_TAKEOFF:
-                        {
-                            me->SetDisableGravity(true);
-                            Position takeoffPos(me->GetPositionX(), me->GetPositionY(), me->GetFloorZ() + HOVER_HEIGHT, me->GetOrientation());
-                            me->GetMotionMaster()->MoveTakeoff(POINT_BRUNDIR_TAKEOFF, takeoffPos, 7.0f);
-                            break;
-                        }
-                        case EVENT_FLIGHT:
-                            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
-                                me->GetMotionMaster()->MovePoint(0, target->GetPositionX(), target->GetPositionY(), FLOOR_Z + HOVER_HEIGHT, false);
-                            events.ScheduleEvent(EVENT_FLIGHT, 5s);
-                            break;
-                        case EVENT_ENDFLIGHT:
-                        {
-                            me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
-                            events.CancelEvent(EVENT_FLIGHT);
-                            events.CancelEvent(EVENT_ENDFLIGHT);
-
-                            Position landingPos(me->GetPositionX(), me->GetPositionY(), me->GetFloorZ(), me->GetOrientation());
-                            me->GetMotionMaster()->MoveLand(POINT_BRUNDIR_LAND, landingPos, 3.75f);
-                            break;
-                        }
                         default:
                             break;
                     }
-
-                    if (me->HasUnitState(UNIT_STATE_CASTING))
-                        return;
+                    DoCast(target, SPELL_SUMMON_RUNE_OF_POWER);
+                    events.ScheduleEvent(EVENT_RUNE_OF_POWER, 1min);
+                    break;
                 }
-
-                DoMeleeAttackIfReady();
+                case EVENT_SHIELD_OF_RUNES:
+                    DoCast(me, SPELL_SHIELD_OF_RUNES);
+                    events.ScheduleEvent(EVENT_SHIELD_OF_RUNES, 27s, 34s);
+                    break;
+                case EVENT_RUNE_OF_DEATH:
+                    Talk(SAY_MOLGEIM_RUNE_DEATH);
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.f, true))
+                        DoCast(target, SPELL_RUNE_OF_DEATH);
+                    events.ScheduleEvent(EVENT_RUNE_OF_DEATH, 30s, 40s);
+                    break;
+                case EVENT_RUNE_OF_SUMMONING:
+                    Talk(SAY_MOLGEIM_SUMMON);
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.f, true))
+                        DoCast(target, SPELL_RUNE_OF_SUMMONING);
+                    events.ScheduleEvent(EVENT_RUNE_OF_SUMMONING, 30s, 45s);
+                    break;
             }
-        };
 
-        CreatureAI* GetAI(Creature* creature) const override
-        {
-            return GetUlduarAI<boss_stormcaller_brundirAI>(creature);
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
         }
+
+        DoMeleeAttackIfReady();
+    }
 };
 
-class spell_shield_of_runes : public SpellScriptLoader
+struct boss_stormcaller_brundir : public BossAI
 {
-    public:
-        spell_shield_of_runes() : SpellScriptLoader("spell_shield_of_runes") { }
+    boss_stormcaller_brundir(Creature* creature) : BossAI(creature, DATA_ASSEMBLY_OF_IRON)
+    {
+        Initialize();
+    }
 
-        class spell_shield_of_runes_AuraScript : public AuraScript
+    void Initialize()
+    {
+        phase = 0;
+    }
+
+    uint32 phase;
+
+    void Reset() override
+    {
+        _Reset();
+        Initialize();
+        me->RemoveAllAuras();
+        me->SetHover(false);
+        me->SetFloatValue(UNIT_FIELD_HOVERHEIGHT, 1.0f);
+        me->SetObjectScale(me->GetNativeObjectScale());
+        me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_INTERRUPT, false);  // Should be interruptable unless overridden by spell (Overload)
+        me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_STUN, false);       // Reset immumity, Brundir should be stunnable by default
+    }
+
+    uint32 GetData(uint32 type) const override
+    {
+        if (type == DATA_PHASE_3)
+            return (phase >= 3) ? 1 : 0;
+
+        return 0;
+    }
+
+    void JustEngagedWith(Unit* who) override
+    {
+        BossAI::JustEngagedWith(who);
+        me->SetLootMode(0);
+        Talk(SAY_BRUNDIR_AGGRO);
+        events.SetPhase(++phase);
+        events.ScheduleEvent(EVENT_BERSERK, 15min);
+        events.ScheduleEvent(EVENT_CHAIN_LIGHTNING, 4s);
+        events.ScheduleEvent(EVENT_OVERLOAD, 60s, 120s);
+        instance->SetData(DATA_STUNNED, 1);
+    }
+
+    void AttackStart(Unit* victim) override
+    {
+        if (victim && me->Attack(victim, false))
         {
-            PrepareAuraScript(spell_shield_of_runes_AuraScript);
-
-            void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
-            {
-                if (aurEff->GetAmount() > 0)
-                    return;
-
-                if (Unit* caster = GetCaster())
-                    caster->CastSpell(caster, SPELL_SHIELD_OF_RUNES_BUFF, true);
-            }
-
-            void Register() override
-            {
-                 AfterEffectRemove += AuraEffectRemoveFn(spell_shield_of_runes_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
-            }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_shield_of_runes_AuraScript();
+            if (phase < 3)
+                me->GetMotionMaster()->MoveChase(victim, ChaseRange(15.f, 40.0f));
+            else
+                me->GetMotionMaster()->MoveChase(victim);
         }
+    }
+
+    void DoAction(int32 action) override
+    {
+        switch (action)
+        {
+            case ACTION_SUPERCHARGE:
+            {
+                me->SetFullHealth();
+                me->AddAura(SPELL_SUPERCHARGE, me);
+                events.SetPhase(++phase);
+                events.RescheduleEvent(EVENT_CHAIN_LIGHTNING, 7s, 12s);
+                events.RescheduleEvent(EVENT_OVERLOAD, 40s, 50s);
+                if (phase >= 2)
+                    events.RescheduleEvent(EVENT_LIGHTNING_WHIRL, 15s, 250s);
+                if (phase >= 3)
+                {
+                    if (Unit* victim = me->GetVictim())
+                        me->GetMotionMaster()->MoveChase(victim);
+                    DoCast(me, SPELL_STORMSHIELD);
+
+                    me->SetObjectScale(1.3f);
+                    me->SetFloatValue(UNIT_FIELD_HOVERHEIGHT, HOVER_HEIGHT);
+                    events.RescheduleEvent(EVENT_LIGHTNING_TENDRILS, 50s, 60s);
+                    me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_STUN, true); // Apply immumity to stuns
+                }
+                else if (me->GetVictim())
+                    me->GetMotionMaster()->MoveChase(me->GetVictim(), ChaseRange(15.f, 40.0f));
+                break;
+            }
+        }
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        _JustDied();
+
+        if (instance->GetBossState(DATA_ASSEMBLY_OF_IRON) == DONE)
+        {
+            me->ResetLootMode();
+            if (Player* lootOwner = me->GetLootRecipient())
+            {
+                me->loot.clear();
+                if (uint32 lootId = me->GetCreatureTemplate()->lootid)
+                    me->loot.FillLoot(lootId, LootTemplates_Creature, lootOwner, false, false, me->GetLootMode());
+                me->loot.generateMoneyLoot(me->GetCreatureTemplate()->mingold, me->GetCreatureTemplate()->maxgold);
+                if (!me->loot.isLooted())
+                    me->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+            }
+            DoCastAOE(SPELL_KILL_CREDIT, true);
+            Talk(SAY_BRUNDIR_ENCOUNTER_DEFEATED);
+        }
+        else
+        {
+            me->SetLootRecipient(nullptr);
+            me->RemoveDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+            Talk(SAY_BRUNDIR_DEATH);
+            //DoCastAOE(SPELL_SUPERCHARGE, true);
+
+            if (Creature* Molgeim = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_MOLGEIM)))
+                if (Molgeim->IsAlive())
+                    Molgeim->AI()->DoAction(ACTION_SUPERCHARGE);
+
+            if (Creature* Steelbreaker = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_STEELBREAKER)))
+                if (Steelbreaker->IsAlive())
+                    Steelbreaker->AI()->DoAction(ACTION_SUPERCHARGE);
+        }
+    }
+
+    void KilledUnit(Unit* who) override
+    {
+        if (who->GetTypeId() == TYPEID_PLAYER)
+            Talk(SAY_BRUNDIR_SLAY);
+    }
+
+    void MovementInform(uint32 type, uint32 id) override
+    {
+        if (type != EFFECT_MOTION_TYPE)
+            return;
+
+        switch (id)
+        {
+            case POINT_BRUNDIR_TAKEOFF:
+                events.ScheduleEvent(EVENT_FLIGHT, 2s);
+                break;
+            case POINT_BRUNDIR_LAND:
+                me->SetHover(false);
+                me->SetDisableGravity(false);
+                me->RemoveAurasDueToSpell(sSpellMgr->GetSpellIdForDifficulty(SPELL_LIGHTNING_TENDRILS, me));
+                me->RemoveAurasDueToSpell(SPELL_LIGHTNING_TENDRILS_VISUAL);
+                ResetThreatList();
+                DoStartMovement(me->GetVictim());
+                break;
+            default:
+                break;
+        }
+    }
+
+    void SpellHitTarget(WorldObject* target, SpellInfo const* spellInfo) override
+    {
+        if ((target && target->GetTypeId() == TYPEID_PLAYER) &&
+            (spellInfo->Id == SPELL_CHAIN_LIGHTNING || spellInfo->Id == SPELL_LIGHTNING_WHIRL || spellInfo->Id == SPELL_CHAIN_LIGHTNING_25 || spellInfo->Id == SPELL_LIGHTNING_WHIRL_25))
+            instance->SetData(DATA_STUNNED, 0);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        while (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case EVENT_BERSERK:
+                    Talk(SAY_BRUNDIR_BERSERK);
+                    DoCast(SPELL_BERSERK);
+                    events.CancelEvent(EVENT_BERSERK);
+                    break;
+                case EVENT_CHAIN_LIGHTNING:
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
+                        DoCast(target, SPELL_CHAIN_LIGHTNING);
+                    events.ScheduleEvent(EVENT_CHAIN_LIGHTNING, 7s, 10s);
+                    break;
+                case EVENT_OVERLOAD:
+                    Talk(EMOTE_BRUNDIR_OVERLOAD);
+                    Talk(SAY_BRUNDIR_SPECIAL);
+                    DoCast(SPELL_OVERLOAD);
+                    events.ScheduleEvent(EVENT_OVERLOAD, 60s, 120s);
+                    break;
+                case EVENT_LIGHTNING_WHIRL:
+                    DoCastSelf(SPELL_LIGHTNING_WHIRL);
+                    events.ScheduleEvent(EVENT_LIGHTNING_WHIRL, 15s, 20s);
+                    break;
+                case EVENT_LIGHTNING_TENDRILS:
+                {
+                    me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
+                    me->AttackStop();
+                    DoCast(me, SPELL_LIGHTNING_TENDRILS);
+                    DoCast(me, SPELL_LIGHTNING_TENDRILS_VISUAL);
+
+                    float floorZ = me->GetFloorZ();
+                    me->Relocate(me->GetPositionX(), me->GetPositionY(), floorZ + HOVER_HEIGHT);
+                    me->SetHover(true);
+                    me->Relocate(me->GetPositionX(), me->GetPositionY(), floorZ);
+
+                    Talk(SAY_BRUNDIR_FLIGHT);
+                    events.DelayEvents(30s);
+                    events.ScheduleEvent(EVENT_TAKEOFF, 2500ms);
+                    events.ScheduleEvent(EVENT_ENDFLIGHT, 25s);
+                    events.ScheduleEvent(EVENT_LIGHTNING_TENDRILS, 90s);
+                    break;
+                }
+                case EVENT_TAKEOFF:
+                {
+                    me->SetDisableGravity(true);
+                    Position takeoffPos(me->GetPositionX(), me->GetPositionY(), me->GetFloorZ() + HOVER_HEIGHT, me->GetOrientation());
+                    me->GetMotionMaster()->MoveTakeoff(POINT_BRUNDIR_TAKEOFF, takeoffPos, 7.0f);
+                    break;
+                }
+                case EVENT_FLIGHT:
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
+                        me->GetMotionMaster()->MovePoint(0, target->GetPositionX(), target->GetPositionY(), FLOOR_Z + HOVER_HEIGHT, false);
+                    events.ScheduleEvent(EVENT_FLIGHT, 5s);
+                    break;
+                case EVENT_ENDFLIGHT:
+                {
+                    me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
+                    events.CancelEvent(EVENT_FLIGHT);
+                    events.CancelEvent(EVENT_ENDFLIGHT);
+
+                    Position landingPos(me->GetPositionX(), me->GetPositionY(), me->GetFloorZ(), me->GetOrientation());
+                    me->GetMotionMaster()->MoveLand(POINT_BRUNDIR_LAND, landingPos, 3.75f);
+                    break;
+                }
+                default:
+                    break;
+            }
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+        }
+
+        DoMeleeAttackIfReady();
+    }
 };
 
-class spell_assembly_meltdown : public SpellScriptLoader
+class spell_shield_of_runes : public AuraScript
 {
-    public:
-        spell_assembly_meltdown() : SpellScriptLoader("spell_assembly_meltdown") { }
+    PrepareAuraScript(spell_shield_of_runes);
 
-        class spell_assembly_meltdown_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_assembly_meltdown_SpellScript);
+    void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+    {
+        if (aurEff->GetAmount() > 0)
+            return;
 
-            void HandleInstaKill(SpellEffIndex /*effIndex*/)
-            {
-                if (InstanceScript* instance = GetCaster()->GetInstanceScript())
-                    if (Creature* Steelbreaker = ObjectAccessor::GetCreature(*GetCaster(), instance->GetGuidData(DATA_STEELBREAKER)))
-                        Steelbreaker->AI()->DoAction(ACTION_ADD_CHARGE);
-            }
+        if (Unit* caster = GetCaster())
+            caster->CastSpell(caster, SPELL_SHIELD_OF_RUNES_BUFF, true);
+    }
 
-            void Register() override
-            {
-                OnEffectHitTarget += SpellEffectFn(spell_assembly_meltdown_SpellScript::HandleInstaKill, EFFECT_1, SPELL_EFFECT_INSTAKILL);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_assembly_meltdown_SpellScript();
-        }
+    void Register() override
+    {
+        AfterEffectRemove += AuraEffectRemoveFn(spell_shield_of_runes::OnRemove, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
+    }
 };
 
-class spell_assembly_rune_of_summoning : public SpellScriptLoader
+class spell_assembly_meltdown : public SpellScript
 {
-    public:
-        spell_assembly_rune_of_summoning() : SpellScriptLoader("spell_assembly_rune_of_summoning") { }
+    PrepareSpellScript(spell_assembly_meltdown);
 
-        class spell_assembly_rune_of_summoning_AuraScript : public AuraScript
-        {
-            PrepareAuraScript(spell_assembly_rune_of_summoning_AuraScript);
+    void HandleInstaKill(SpellEffIndex /*effIndex*/)
+    {
+        if (InstanceScript* instance = GetCaster()->GetInstanceScript())
+            if (Creature* Steelbreaker = ObjectAccessor::GetCreature(*GetCaster(), instance->GetGuidData(DATA_STEELBREAKER)))
+                Steelbreaker->AI()->DoAction(ACTION_ADD_CHARGE);
+    }
 
-            bool Validate(SpellInfo const* /*spell*/) override
-            {
-                return ValidateSpellInfo({ SPELL_RUNE_OF_SUMMONING_SUMMON });
-            }
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_assembly_meltdown::HandleInstaKill, EFFECT_1, SPELL_EFFECT_INSTAKILL);
+    }
+};
 
-            void HandlePeriodic(AuraEffect const* aurEff)
-            {
-                PreventDefaultAction();
-                GetTarget()->CastSpell(GetTarget(), SPELL_RUNE_OF_SUMMONING_SUMMON, { aurEff, GetTarget()->IsSummon() ? GetTarget()->ToTempSummon()->GetSummonerGUID() : ObjectGuid::Empty });
-            }
+class spell_assembly_rune_of_summoning : public AuraScript
+{
+    PrepareAuraScript(spell_assembly_rune_of_summoning);
 
-            void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-            {
-                if (TempSummon* summ = GetTarget()->ToTempSummon())
-                    summ->DespawnOrUnsummon(1ms);
-            }
+    bool Validate(SpellInfo const* /*spell*/) override
+    {
+        return ValidateSpellInfo({ SPELL_RUNE_OF_SUMMONING_SUMMON });
+    }
 
-            void Register() override
-            {
-                OnEffectPeriodic += AuraEffectPeriodicFn(spell_assembly_rune_of_summoning_AuraScript::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-                OnEffectRemove += AuraEffectRemoveFn(spell_assembly_rune_of_summoning_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
-            }
-        };
+    void HandlePeriodic(AuraEffect const* aurEff)
+    {
+        PreventDefaultAction();
+        GetTarget()->CastSpell(GetTarget(), SPELL_RUNE_OF_SUMMONING_SUMMON, { aurEff, GetTarget()->IsSummon() ? GetTarget()->ToTempSummon()->GetSummonerGUID() : ObjectGuid::Empty });
+    }
 
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_assembly_rune_of_summoning_AuraScript();
-        }
+    void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        if (TempSummon* summ = GetTarget()->ToTempSummon())
+            summ->DespawnOrUnsummon(1ms);
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_assembly_rune_of_summoning::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+        OnEffectRemove += AuraEffectRemoveFn(spell_assembly_rune_of_summoning::OnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
+    }
 };
 
 class EG_spell_brundir_lightning_tendrils_visual : public SpellScript
@@ -884,12 +818,12 @@ class achievement_assembly_i_choose_you : public AchievementCriteriaScript
 
 void AddSC_boss_assembly_of_iron()
 {
-    new boss_steelbreaker();
-    new boss_runemaster_molgeim();
-    new boss_stormcaller_brundir();
-    new spell_shield_of_runes();
-    new spell_assembly_meltdown();
-    new spell_assembly_rune_of_summoning();
+    RegisterUlduarCreatureAI(boss_steelbreaker);
+    RegisterUlduarCreatureAI(boss_runemaster_molgeim);
+    RegisterUlduarCreatureAI(boss_stormcaller_brundir);
+    RegisterSpellScript(spell_shield_of_runes);
+    RegisterSpellScript(spell_assembly_meltdown);
+    RegisterSpellScript(spell_assembly_rune_of_summoning);
     RegisterSpellScript(EG_spell_brundir_lightning_tendrils_visual);
     new achievement_assembly_i_choose_you();
 }

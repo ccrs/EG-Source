@@ -458,6 +458,17 @@ class instance_ulduar : public InstanceMapScript
                     case NPC_SANITY_WELL:
                         creature->SetReactState(REACT_PASSIVE);
                         break;
+                    case NPC_GARONA:
+                    case NPC_KING_LLANE:
+                    case NPC_THE_LICH_KING:
+                    case NPC_IMMOLATED_CHAMPION:
+                    case NPC_YSERA:
+                    case NPC_NELTHARION:
+                    case NPC_MALYGOS:
+                    case NPC_ALEXSTRASZA:
+                    case NPC_TURNED_CHAMPION:
+                        creature->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE_2);
+                        break;
 
                     // Algalon
                     //! These creatures are summoned by something else than Algalon

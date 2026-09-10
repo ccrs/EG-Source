@@ -12959,6 +12959,7 @@ void Unit::SendTeleportPacket(Position const& pos, bool teleportingTransport /*=
     // MSG_MOVE_TELEPORT_ACK is sent to self in order to trigger ACK and update the position server side
 
     MovementInfo teleportMovementInfo = m_movementInfo;
+    teleportMovementInfo.guid = GetGUID();
     teleportMovementInfo.pos.Relocate(pos);
     if (TransportBase* transportBase = GetDirectTransport())
     {

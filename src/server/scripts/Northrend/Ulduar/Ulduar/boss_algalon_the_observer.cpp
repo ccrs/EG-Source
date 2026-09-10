@@ -1294,7 +1294,7 @@ void AddSC_boss_algalon_the_observer()
     RegisterUlduarCreatureAI(npc_black_hole);
     RegisterUlduarCreatureAI(npc_collapsing_star);
     RegisterUlduarCreatureAI(npc_brann_bronzebeard_algalon);
-    RegisterGameObjectAI(go_celestial_planetarium_access);
+    RegisterUlduarGameObjectAI(go_celestial_planetarium_access);
     RegisterSpellScript(spell_algalon_phase_punch);
     RegisterSpellScript(spell_algalon_phase_constellation);
     RegisterSpellScript(spell_algalon_trigger_3_adds);

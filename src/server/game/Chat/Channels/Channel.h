@@ -185,13 +185,6 @@ class TC_GAME_API Channel
             return name == WORLD_CHAT || name == WORLD_CHAT_ES;
         }
 
-        // EG - Crossfaction World Chat
-        static bool IsDefaultWorldChat(std::string name)
-        {
-            strToLower(name);
-            return name == WORLD_CHAT;
-        }
-
         Channel(Channel const&) = delete;
         Channel(Channel&&) = delete;
         Channel& operator=(Channel const&) = delete;
