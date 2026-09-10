@@ -111,282 +111,260 @@ float const EyebeamSpawnDistanceMin = 10.0f;
 float const EyebeamSpawnDistanceMax = 30.0f;
 float const EyebeamSpawnFrontalArc  = float(M_PI) / 3.0f; // +/-60 degrees off the home facing
 
-class boss_kologarn : public CreatureScript
+struct boss_kologarn : public BossAI
 {
-    public:
-        boss_kologarn() : CreatureScript("boss_kologarn") { }
+    boss_kologarn(Creature* creature) : BossAI(creature, DATA_KOLOGARN), _left(false), _right(false)
+    {
+        me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+        me->SetControlled(true, UNIT_STATE_ROOT);
 
-        struct boss_kologarnAI : public BossAI
+        DoCast(SPELL_KOLOGARN_REDUCE_PARRY);
+        SetCombatMovement(false);
+    }
+
+    void JustEngagedWith(Unit* who) override
+    {
+        Talk(SAY_AGGRO);
+
+        events.ScheduleEvent(EVENT_MELEE_CHECK, 6s);
+        events.ScheduleEvent(EVENT_SMASH, 5s);
+        events.ScheduleEvent(EVENT_SWEEP, 19s);
+        events.ScheduleEvent(EVENT_STONE_GRIP, 25s);
+        events.ScheduleEvent(EVENT_FOCUSED_EYEBEAM, 21s);
+        events.ScheduleEvent(EVENT_ENRAGE, 10min);
+
+        if (Vehicle* vehicle = me->GetVehicleKit())
+            for (uint8 i = 0; i < 2; ++i)
+                if (Unit* arm = vehicle->GetPassenger(i))
+                    DoZoneInCombat(arm->ToCreature());
+
+        BossAI::JustEngagedWith(who);
+    }
+
+    void Reset() override
+    {
+        _Reset();
+        me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+        _eyebeamTarget.Clear();
+        me->SetFacingTo(me->GetHomePosition().GetOrientation(), true);
+    }
+
+    ObjectGuid GetGUID(int32 type) const override
+    {
+        if (type == DATA_EYEBEAM_TARGET)
+            return _eyebeamTarget;
+        return ObjectGuid::Empty;
+    }
+
+    Position const& GetEyebeamSpawnPos() const { return _eyebeamSpawnPos; }
+
+    Unit* SelectEyebeamTarget()
+    {
+        return SelectTarget(SelectTargetMethod::Random, 0, [this](Unit* unit)
         {
-            boss_kologarnAI(Creature* creature) : BossAI(creature, DATA_KOLOGARN), _left(false), _right(false)
-            {
-                me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-                me->SetControlled(true, UNIT_STATE_ROOT);
+            return DefaultTargetSelector(me, 0.0f, true, false, 0)(unit) && !unit->GetVehicle();
+        });
+    }
 
-                DoCast(SPELL_KOLOGARN_REDUCE_PARRY);
-                SetCombatMovement(false);
-            }
-
-            void JustEngagedWith(Unit* who) override
-            {
-                Talk(SAY_AGGRO);
-
-                events.ScheduleEvent(EVENT_MELEE_CHECK, 6s);
-                events.ScheduleEvent(EVENT_SMASH, 5s);
-                events.ScheduleEvent(EVENT_SWEEP, 19s);
-                events.ScheduleEvent(EVENT_STONE_GRIP, 25s);
-                events.ScheduleEvent(EVENT_FOCUSED_EYEBEAM, 21s);
-                events.ScheduleEvent(EVENT_ENRAGE, 10min);
-
-                if (Vehicle* vehicle = me->GetVehicleKit())
-                    for (uint8 i = 0; i < 2; ++i)
-                        if (Unit* arm = vehicle->GetPassenger(i))
-                            DoZoneInCombat(arm->ToCreature());
-
-                BossAI::JustEngagedWith(who);
-            }
-
-            void Reset() override
-            {
-                _Reset();
-                me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-                _eyebeamTarget.Clear();
-                me->SetFacingTo(me->GetHomePosition().GetOrientation(), true);
-            }
-
-            ObjectGuid GetGUID(int32 type) const override
-            {
-                if (type == DATA_EYEBEAM_TARGET)
-                    return _eyebeamTarget;
-                return ObjectGuid::Empty;
-            }
-
-            Position const& GetEyebeamSpawnPos() const { return _eyebeamSpawnPos; }
-
-            Unit* SelectEyebeamTarget()
-            {
-                return SelectTarget(SelectTargetMethod::Random, 0, [this](Unit* unit)
-                {
-                    return DefaultTargetSelector(me, 0.0f, true, false, 0)(unit) && !unit->GetVehicle();
-                });
-            }
-
-            void DoAction(int32 action) override
-            {
-                switch (action)
-                {
-                    case ACTION_RETARGET_EYEBEAM:
-                        if (Unit* current = ObjectAccessor::GetUnit(*me, _eyebeamTarget))
-                            if (current->IsAlive() && !current->GetVehicle())
-                                return;
-
-                        if (Unit* target = SelectEyebeamTarget())
-                            _eyebeamTarget = target->GetGUID();
-                        else
-                            _eyebeamTarget.Clear();
-                        break;
-                    case ACTION_LEFT_ARM_DIED:
-                        _left = false;
-                        Talk(SAY_LEFT_ARM_GONE);
-                        events.ScheduleEvent(EVENT_RESPAWN_LEFT_ARM, 40s);
-                        OnArmDestroyed();
-                        break;
-                    case ACTION_RIGHT_ARM_DIED:
-                        _right = false;
-                        Talk(SAY_RIGHT_ARM_GONE);
-                        events.ScheduleEvent(EVENT_RESPAWN_RIGHT_ARM, 40s);
-                        OnArmDestroyed();
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-            // Common boss-side bookkeeping when either arm is destroyed (notified by EG_npc_kologarn_arm).
-            void OnArmDestroyed()
-            {
-                if (!_left && !_right)
-                    events.ScheduleEvent(EVENT_STONE_SHOUT, 5s);
-                instance->DoStartTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, CRITERIA_DISARMED);
-            }
-
-            void JustDied(Unit* /*killer*/) override
-            {
-                Talk(SAY_DEATH);
-                DoCast(SPELL_KOLOGARN_PACIFY);
-                me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-                me->SetCorpseDelay(604800); // Prevent corpse from despawning.
-                _JustDied();
-            }
-
-            void KilledUnit(Unit* who) override
-            {
-                if (who->GetTypeId() == TYPEID_PLAYER)
-                    Talk(SAY_SLAY);
-            }
-
-            void JustSummoned(Creature* summon) override
-            {
-                switch (summon->GetEntry())
-                {
-                    case NPC_FOCUSED_EYEBEAM:
-                        summons.Summon(summon);
-                        summon->CastSpell(me, SPELL_FOCUSED_EYEBEAM_VISUAL_LEFT, true);
-                        break;
-                    case NPC_FOCUSED_EYEBEAM_RIGHT:
-                        summons.Summon(summon);
-                        summon->CastSpell(me, SPELL_FOCUSED_EYEBEAM_VISUAL_RIGHT, true);
-                        break;
-                    case NPC_LEFT_ARM:
-                    case NPC_RIGHT_ARM:
-                        BossAI::JustSummoned(summon);
-                        if (summon->GetEntry() == NPC_LEFT_ARM)
-                            _left = true;
-                        else if (summon->GetEntry() == NPC_RIGHT_ARM)
-                            _right = true;
-
-                        if (me->IsEngaged())
-                        {
-                            events.CancelEvent(EVENT_STONE_SHOUT);
-                            if (summon->GetEntry() == NPC_LEFT_ARM)
-                                events.RescheduleEvent(EVENT_SWEEP, 19s);
-                            else
-                                events.RescheduleEvent(EVENT_STONE_GRIP, 25s);
-                        }
-                        return;
-                    default:
-                        BossAI::JustSummoned(summon);
-                        return;
-                }
-
-                summon->CastSpell(summon, SPELL_FOCUSED_EYEBEAM_PERIODIC, true);
-                summon->CastSpell(summon, SPELL_FOCUSED_EYEBEAM_VISUAL, true);
-                summon->SetReactState(REACT_PASSIVE);
-            }
-
-            void UpdateAI(uint32 diff) override
-            {
-                if (!UpdateVictim())
-                    return;
-
-                events.Update(diff);
-
-                if (me->HasUnitState(UNIT_STATE_CASTING))
-                    return;
-
-                while (uint32 eventId = events.ExecuteEvent())
-                {
-                    switch (eventId)
-                    {
-                        case EVENT_MELEE_CHECK:
-                            if (!me->IsWithinMeleeRange(me->GetVictim()))
-                                DoCast(SPELL_PETRIFY_BREATH);
-                            events.ScheduleEvent(EVENT_MELEE_CHECK, 1s);
-                            break;
-                        case EVENT_SWEEP:
-                            if (_left)
-                                DoCast(me->FindNearestCreature(NPC_ARM_SWEEP_STALKER, 500.0f, true), SPELL_ARM_SWEEP, true);
-                            events.ScheduleEvent(EVENT_SWEEP, 25s);
-                            break;
-                        case EVENT_SMASH:
-                            if (_left && _right)
-                                DoCastVictim(SPELL_TWO_ARM_SMASH);
-                            else if (_left || _right)
-                                DoCastVictim(SPELL_ONE_ARM_SMASH);
-                            events.ScheduleEvent(EVENT_SMASH, 15s);
-                            break;
-                        case EVENT_STONE_SHOUT:
-                            DoCast(SPELL_STONE_SHOUT);
-                            events.ScheduleEvent(EVENT_STONE_SHOUT, 2s);
-                            break;
-                        case EVENT_ENRAGE:
-                            DoCast(SPELL_BERSERK);
-                            Talk(SAY_BERSERK);
-                            break;
-                        case EVENT_RESPAWN_LEFT_ARM:
-                        case EVENT_RESPAWN_RIGHT_ARM:
-                        {
-                            if (Vehicle* vehicle = me->GetVehicleKit())
-                            {
-                                int8 seat = eventId == EVENT_RESPAWN_LEFT_ARM ? 0 : 1;
-                                uint32 entry = eventId == EVENT_RESPAWN_LEFT_ARM ? NPC_LEFT_ARM : NPC_RIGHT_ARM;
-                                vehicle->InstallAccessory(entry, seat, true, TEMPSUMMON_MANUAL_DESPAWN, 0);
-                            }
-                            break;
-                        }
-                        case EVENT_STONE_GRIP:
-                        {
-                            if (_right)
-                            {
-                                DoCast(SPELL_STONE_GRIP);
-                                Talk(SAY_GRAB_PLAYER);
-                                Talk(EMOTE_STONE_GRIP);
-                            }
-                            events.ScheduleEvent(EVENT_STONE_GRIP, 25s);
-                            break;
-                        }
-                        case EVENT_FOCUSED_EYEBEAM:
-                            if (Unit* eyebeamTargetUnit = SelectEyebeamTarget())
-                            {
-                                _eyebeamTarget = eyebeamTargetUnit->GetGUID();
-                                float const angle = (me->GetHomePosition().GetOrientation() - me->GetOrientation()) + frand(-EyebeamSpawnFrontalArc, EyebeamSpawnFrontalArc);
-                                _eyebeamSpawnPos = me->GetFirstCollisionPosition(frand(EyebeamSpawnDistanceMin, EyebeamSpawnDistanceMax), angle);
-                                DoCast(me, SPELL_SUMMON_FOCUSED_EYEBEAM, true);
-                            }
-                            events.ScheduleEvent(EVENT_FOCUSED_EYEBEAM, 15s, 35s);
-                            break;
-                    }
-
-                    if (me->HasUnitState(UNIT_STATE_CASTING))
-                        return;
-                }
-
-                DoMeleeAttackIfReady();
-            }
-        private:
-            bool _left, _right;
-            ObjectGuid _eyebeamTarget;
-            Position _eyebeamSpawnPos;
-        };
-
-        CreatureAI* GetAI(Creature* creature) const override
+    void DoAction(int32 action) override
+    {
+        switch (action)
         {
-            return GetUlduarAI<boss_kologarnAI>(creature);
+            case ACTION_RETARGET_EYEBEAM:
+                if (Unit* current = ObjectAccessor::GetUnit(*me, _eyebeamTarget))
+                    if (current->IsAlive() && !current->GetVehicle())
+                        return;
+
+                if (Unit* target = SelectEyebeamTarget())
+                    _eyebeamTarget = target->GetGUID();
+                else
+                    _eyebeamTarget.Clear();
+                break;
+            case ACTION_LEFT_ARM_DIED:
+                _left = false;
+                Talk(SAY_LEFT_ARM_GONE);
+                events.ScheduleEvent(EVENT_RESPAWN_LEFT_ARM, 40s);
+                OnArmDestroyed();
+                break;
+            case ACTION_RIGHT_ARM_DIED:
+                _right = false;
+                Talk(SAY_RIGHT_ARM_GONE);
+                events.ScheduleEvent(EVENT_RESPAWN_RIGHT_ARM, 40s);
+                OnArmDestroyed();
+                break;
+            default:
+                break;
         }
+    }
+
+    // Common boss-side bookkeeping when either arm is destroyed (notified by EG_npc_kologarn_arm).
+    void OnArmDestroyed()
+    {
+        if (!_left && !_right)
+            events.ScheduleEvent(EVENT_STONE_SHOUT, 5s);
+        instance->DoStartTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, CRITERIA_DISARMED);
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        Talk(SAY_DEATH);
+        DoCast(SPELL_KOLOGARN_PACIFY);
+        me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+        me->SetCorpseDelay(604800); // Prevent corpse from despawning.
+        _JustDied();
+    }
+
+    void KilledUnit(Unit* who) override
+    {
+        if (who->GetTypeId() == TYPEID_PLAYER)
+            Talk(SAY_SLAY);
+    }
+
+    void JustSummoned(Creature* summon) override
+    {
+        switch (summon->GetEntry())
+        {
+            case NPC_FOCUSED_EYEBEAM:
+                summons.Summon(summon);
+                summon->CastSpell(me, SPELL_FOCUSED_EYEBEAM_VISUAL_LEFT, true);
+                break;
+            case NPC_FOCUSED_EYEBEAM_RIGHT:
+                summons.Summon(summon);
+                summon->CastSpell(me, SPELL_FOCUSED_EYEBEAM_VISUAL_RIGHT, true);
+                break;
+            case NPC_LEFT_ARM:
+            case NPC_RIGHT_ARM:
+                BossAI::JustSummoned(summon);
+                if (summon->GetEntry() == NPC_LEFT_ARM)
+                    _left = true;
+                else if (summon->GetEntry() == NPC_RIGHT_ARM)
+                    _right = true;
+
+                if (me->IsEngaged())
+                {
+                    events.CancelEvent(EVENT_STONE_SHOUT);
+                    if (summon->GetEntry() == NPC_LEFT_ARM)
+                        events.RescheduleEvent(EVENT_SWEEP, 19s);
+                    else
+                        events.RescheduleEvent(EVENT_STONE_GRIP, 25s);
+                }
+                return;
+            default:
+                BossAI::JustSummoned(summon);
+                return;
+        }
+
+        summon->CastSpell(summon, SPELL_FOCUSED_EYEBEAM_PERIODIC, true);
+        summon->CastSpell(summon, SPELL_FOCUSED_EYEBEAM_VISUAL, true);
+        summon->SetReactState(REACT_PASSIVE);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        events.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        while (uint32 eventId = events.ExecuteEvent())
+        {
+            switch (eventId)
+            {
+                case EVENT_MELEE_CHECK:
+                    if (!me->IsWithinMeleeRange(me->GetVictim()))
+                        DoCast(SPELL_PETRIFY_BREATH);
+                    events.ScheduleEvent(EVENT_MELEE_CHECK, 1s);
+                    break;
+                case EVENT_SWEEP:
+                    if (_left)
+                        DoCast(me->FindNearestCreature(NPC_ARM_SWEEP_STALKER, 500.0f, true), SPELL_ARM_SWEEP, true);
+                    events.ScheduleEvent(EVENT_SWEEP, 25s);
+                    break;
+                case EVENT_SMASH:
+                    if (_left && _right)
+                        DoCastVictim(SPELL_TWO_ARM_SMASH);
+                    else if (_left || _right)
+                        DoCastVictim(SPELL_ONE_ARM_SMASH);
+                    events.ScheduleEvent(EVENT_SMASH, 15s);
+                    break;
+                case EVENT_STONE_SHOUT:
+                    DoCast(SPELL_STONE_SHOUT);
+                    events.ScheduleEvent(EVENT_STONE_SHOUT, 2s);
+                    break;
+                case EVENT_ENRAGE:
+                    DoCast(SPELL_BERSERK);
+                    Talk(SAY_BERSERK);
+                    break;
+                case EVENT_RESPAWN_LEFT_ARM:
+                case EVENT_RESPAWN_RIGHT_ARM:
+                {
+                    if (Vehicle* vehicle = me->GetVehicleKit())
+                    {
+                        int8 seat = eventId == EVENT_RESPAWN_LEFT_ARM ? 0 : 1;
+                        uint32 entry = eventId == EVENT_RESPAWN_LEFT_ARM ? NPC_LEFT_ARM : NPC_RIGHT_ARM;
+                        vehicle->InstallAccessory(entry, seat, true, TEMPSUMMON_MANUAL_DESPAWN, 0);
+                    }
+                    break;
+                }
+                case EVENT_STONE_GRIP:
+                {
+                    if (_right)
+                    {
+                        DoCast(SPELL_STONE_GRIP);
+                        Talk(SAY_GRAB_PLAYER);
+                        Talk(EMOTE_STONE_GRIP);
+                    }
+                    events.ScheduleEvent(EVENT_STONE_GRIP, 25s);
+                    break;
+                }
+                case EVENT_FOCUSED_EYEBEAM:
+                    if (Unit* eyebeamTargetUnit = SelectEyebeamTarget())
+                    {
+                        _eyebeamTarget = eyebeamTargetUnit->GetGUID();
+                        float const angle = (me->GetHomePosition().GetOrientation() - me->GetOrientation()) + frand(-EyebeamSpawnFrontalArc, EyebeamSpawnFrontalArc);
+                        _eyebeamSpawnPos = me->GetFirstCollisionPosition(frand(EyebeamSpawnDistanceMin, EyebeamSpawnDistanceMax), angle);
+                        DoCast(me, SPELL_SUMMON_FOCUSED_EYEBEAM, true);
+                    }
+                    events.ScheduleEvent(EVENT_FOCUSED_EYEBEAM, 15s, 35s);
+                    break;
+            }
+
+            if (me->HasUnitState(UNIT_STATE_CASTING))
+                return;
+        }
+
+        DoMeleeAttackIfReady();
+    }
+private:
+    bool _left, _right;
+    ObjectGuid _eyebeamTarget;
+    Position _eyebeamSpawnPos;
 };
 
 // 63633 - Summon Rubble
-class spell_ulduar_rubble_summon : public SpellScriptLoader
+class spell_ulduar_rubble_summon : public SpellScript
 {
-    public:
-        spell_ulduar_rubble_summon() : SpellScriptLoader("spell_ulduar_rubble_summon") { }
+    PrepareSpellScript(spell_ulduar_rubble_summon);
 
-        class spell_ulduar_rubble_summonSpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_ulduar_rubble_summonSpellScript);
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        Unit* caster = GetCaster();
+        if (!caster)
+            return;
 
-            void HandleScript(SpellEffIndex /*effIndex*/)
-            {
-                Unit* caster = GetCaster();
-                if (!caster)
-                    return;
+        ObjectGuid originalCaster = caster->GetInstanceScript() ? caster->GetInstanceScript()->GetGuidData(DATA_KOLOGARN) : ObjectGuid::Empty;
+        uint32 spellId = GetEffectValue();
+        for (uint8 i = 0; i < 5; ++i)
+            caster->CastSpell(caster, spellId, originalCaster);
+    }
 
-                ObjectGuid originalCaster = caster->GetInstanceScript() ? caster->GetInstanceScript()->GetGuidData(DATA_KOLOGARN) : ObjectGuid::Empty;
-                uint32 spellId = GetEffectValue();
-                for (uint8 i = 0; i < 5; ++i)
-                    caster->CastSpell(caster, spellId, originalCaster);
-            }
-
-            void Register() override
-            {
-                OnEffectHitTarget += SpellEffectFn(spell_ulduar_rubble_summonSpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_ulduar_rubble_summonSpellScript();
-        }
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_ulduar_rubble_summon::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
 };
 
 // predicate function to select non main tank target
@@ -411,302 +389,225 @@ class StoneGripTargetSelector
 };
 
 // 62166, 63981 - Stone Grip
-class spell_ulduar_stone_grip_cast_target : public SpellScriptLoader
+class spell_ulduar_stone_grip_cast_target : public SpellScript
 {
-    public:
-        spell_ulduar_stone_grip_cast_target() : SpellScriptLoader("spell_ulduar_stone_grip_cast_target") { }
+    PrepareSpellScript(spell_ulduar_stone_grip_cast_target);
 
-        class spell_ulduar_stone_grip_cast_target_SpellScript : public SpellScript
+    bool Load() override
+    {
+        if (GetCaster()->GetTypeId() != TYPEID_UNIT)
+            return false;
+        return true;
+    }
+
+    void FilterTargetsInitial(std::list<WorldObject*>& unitList)
+    {
+        // Remove "main tank" and non-player targets
+        unitList.remove_if(StoneGripTargetSelector(GetCaster()->ToCreature(), GetCaster()->GetThreatManager().GetCurrentVictim()));
+        // Maximum affected targets per difficulty mode
+        uint32 maxTargets = 1;
+        if (GetSpellInfo()->Id == 63981)
+            maxTargets = 3;
+
+        // Return a random amount of targets based on maxTargets
+        while (maxTargets < unitList.size())
         {
-            PrepareSpellScript(spell_ulduar_stone_grip_cast_target_SpellScript);
-
-            bool Load() override
-            {
-                if (GetCaster()->GetTypeId() != TYPEID_UNIT)
-                    return false;
-                return true;
-            }
-
-            void FilterTargetsInitial(std::list<WorldObject*>& unitList)
-            {
-                // Remove "main tank" and non-player targets
-                unitList.remove_if(StoneGripTargetSelector(GetCaster()->ToCreature(), GetCaster()->GetThreatManager().GetCurrentVictim()));
-                // Maximum affected targets per difficulty mode
-                uint32 maxTargets = 1;
-                if (GetSpellInfo()->Id == 63981)
-                    maxTargets = 3;
-
-                // Return a random amount of targets based on maxTargets
-                while (maxTargets < unitList.size())
-                {
-                    std::list<WorldObject*>::iterator itr = unitList.begin();
-                    advance(itr, urand(0, unitList.size()-1));
-                    unitList.erase(itr);
-                }
-
-                // For subsequent effects
-                _unitList = unitList;
-            }
-
-            void FillTargetsSubsequential(std::list<WorldObject*>& unitList)
-            {
-                unitList = _unitList;
-            }
-
-            void Register() override
-            {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_ulduar_stone_grip_cast_target_SpellScript::FilterTargetsInitial, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_ulduar_stone_grip_cast_target_SpellScript::FillTargetsSubsequential, EFFECT_1, TARGET_UNIT_SRC_AREA_ENEMY);
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_ulduar_stone_grip_cast_target_SpellScript::FillTargetsSubsequential, EFFECT_2, TARGET_UNIT_SRC_AREA_ENEMY);
-            }
-
-        private:
-            // Shared between effects
-            std::list<WorldObject*> _unitList;
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_ulduar_stone_grip_cast_target_SpellScript();
+            std::list<WorldObject*>::iterator itr = unitList.begin();
+            advance(itr, urand(0, unitList.size()-1));
+            unitList.erase(itr);
         }
+
+        // For subsequent effects
+        _unitList = unitList;
+    }
+
+    void FillTargetsSubsequential(std::list<WorldObject*>& unitList)
+    {
+        unitList = _unitList;
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_ulduar_stone_grip_cast_target::FilterTargetsInitial, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_ulduar_stone_grip_cast_target::FillTargetsSubsequential, EFFECT_1, TARGET_UNIT_SRC_AREA_ENEMY);
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_ulduar_stone_grip_cast_target::FillTargetsSubsequential, EFFECT_2, TARGET_UNIT_SRC_AREA_ENEMY);
+    }
+
+private:
+    // Shared between effects
+    std::list<WorldObject*> _unitList;
 };
 
 // 65594 - Cancel Stone Grip
-class spell_ulduar_cancel_stone_grip : public SpellScriptLoader
+class spell_ulduar_cancel_stone_grip : public SpellScript
 {
-    public:
-        spell_ulduar_cancel_stone_grip() : SpellScriptLoader("spell_ulduar_cancel_stone_grip") { }
+    PrepareSpellScript(spell_ulduar_cancel_stone_grip);
 
-        class spell_ulduar_cancel_stone_gripSpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_ulduar_cancel_stone_gripSpellScript);
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        Unit* target = GetHitUnit();
+        if (!target || !target->GetVehicle())
+            return;
 
-            void HandleScript(SpellEffIndex /*effIndex*/)
-            {
-                Unit* target = GetHitUnit();
-                if (!target || !target->GetVehicle())
-                    return;
+        SpellEffIndex effectIndexToCancel = EFFECT_0;
+        if (target->GetMap()->Is25ManRaid())
+            effectIndexToCancel = EFFECT_1;
 
-                SpellEffIndex effectIndexToCancel = EFFECT_0;
-                if (target->GetMap()->Is25ManRaid())
-                    effectIndexToCancel = EFFECT_1;
+        target->RemoveAura(GetEffectInfo(effectIndexToCancel).CalcValue());
+    }
 
-                target->RemoveAura(GetEffectInfo(effectIndexToCancel).CalcValue());
-            }
-
-            void Register() override
-            {
-                OnEffectHitTarget += SpellEffectFn(spell_ulduar_cancel_stone_gripSpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_ulduar_cancel_stone_gripSpellScript();
-        }
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_ulduar_cancel_stone_grip::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
 };
 
 // 64702 - Squeezed Lifeless
-class spell_ulduar_squeezed_lifeless : public SpellScriptLoader
+class spell_ulduar_squeezed_lifeless : public SpellScript
 {
-    public:
-        spell_ulduar_squeezed_lifeless() : SpellScriptLoader("spell_ulduar_squeezed_lifeless") { }
+    PrepareSpellScript(spell_ulduar_squeezed_lifeless);
 
-        class spell_ulduar_squeezed_lifeless_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_ulduar_squeezed_lifeless_SpellScript);
+    void HandleInstaKill(SpellEffIndex /*effIndex*/)
+    {
+        if (!GetHitPlayer() || !GetHitPlayer()->GetVehicle())
+            return;
 
-            void HandleInstaKill(SpellEffIndex /*effIndex*/)
-            {
-                if (!GetHitPlayer() || !GetHitPlayer()->GetVehicle())
-                    return;
+        //! Proper exit position does not work currently,
+        //! See documentation in void Unit::ExitVehicle(Position const* exitPosition)
+        Position pos;
+        pos.m_positionX = 1756.25f + irand(-3, 3);
+        pos.m_positionY = -8.3f + irand(-3, 3);
+        pos.m_positionZ = 448.8f;
+        pos.SetOrientation(float(M_PI));
+        GetHitPlayer()->DestroyForNearbyPlayers();
+        GetHitPlayer()->ExitVehicle(&pos);
+        GetHitPlayer()->UpdateObjectVisibility(false);
+    }
 
-                //! Proper exit position does not work currently,
-                //! See documentation in void Unit::ExitVehicle(Position const* exitPosition)
-                Position pos;
-                pos.m_positionX = 1756.25f + irand(-3, 3);
-                pos.m_positionY = -8.3f + irand(-3, 3);
-                pos.m_positionZ = 448.8f;
-                pos.SetOrientation(float(M_PI));
-                GetHitPlayer()->DestroyForNearbyPlayers();
-                GetHitPlayer()->ExitVehicle(&pos);
-                GetHitPlayer()->UpdateObjectVisibility(false);
-            }
-
-            void Register() override
-            {
-                OnEffectHitTarget += SpellEffectFn(spell_ulduar_squeezed_lifeless_SpellScript::HandleInstaKill, EFFECT_1, SPELL_EFFECT_INSTAKILL);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_ulduar_squeezed_lifeless_SpellScript();
-        }
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_ulduar_squeezed_lifeless::HandleInstaKill, EFFECT_1, SPELL_EFFECT_INSTAKILL);
+    }
 };
 
 // 64224, 64225 - Stone Grip Absorb
-class spell_ulduar_stone_grip_absorb : public SpellScriptLoader
+class spell_ulduar_stone_grip_absorb : public AuraScript
 {
-    public:
-        spell_ulduar_stone_grip_absorb() : SpellScriptLoader("spell_ulduar_stone_grip_absorb") { }
+    PrepareAuraScript(spell_ulduar_stone_grip_absorb);
 
-        class spell_ulduar_stone_grip_absorb_AuraScript : public AuraScript
-        {
-            PrepareAuraScript(spell_ulduar_stone_grip_absorb_AuraScript);
+    //! This will be called when Right Arm (vehicle) has sustained a specific amount of damage depending on instance mode
+    //! What we do here is remove all harmful aura's related and teleport to safe spot.
+    void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        if (GetTargetApplication()->GetRemoveMode() != AURA_REMOVE_BY_ENEMY_SPELL)
+            return;
 
-            //! This will be called when Right Arm (vehicle) has sustained a specific amount of damage depending on instance mode
-            //! What we do here is remove all harmful aura's related and teleport to safe spot.
-            void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-            {
-                if (GetTargetApplication()->GetRemoveMode() != AURA_REMOVE_BY_ENEMY_SPELL)
-                    return;
+        if (!GetOwner()->ToCreature())
+            return;
 
-                if (!GetOwner()->ToCreature())
-                    return;
+        uint32 rubbleStalkerEntry = (GetOwner()->GetMap()->GetDifficultyID() == DUNGEON_DIFFICULTY_NORMAL ? 33809 : 33942);
+        Creature* rubbleStalker = GetOwner()->FindNearestCreature(rubbleStalkerEntry, 200.0f, true);
+        if (rubbleStalker)
+            rubbleStalker->CastSpell(rubbleStalker, SPELL_STONE_GRIP_CANCEL, true);
+    }
 
-                uint32 rubbleStalkerEntry = (GetOwner()->GetMap()->GetDifficultyID() == DUNGEON_DIFFICULTY_NORMAL ? 33809 : 33942);
-                Creature* rubbleStalker = GetOwner()->FindNearestCreature(rubbleStalkerEntry, 200.0f, true);
-                if (rubbleStalker)
-                    rubbleStalker->CastSpell(rubbleStalker, SPELL_STONE_GRIP_CANCEL, true);
-            }
-
-            void Register() override
-            {
-                AfterEffectRemove += AuraEffectRemoveFn(spell_ulduar_stone_grip_absorb_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
-            }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_ulduar_stone_grip_absorb_AuraScript();
-        }
+    void Register() override
+    {
+        AfterEffectRemove += AuraEffectRemoveFn(spell_ulduar_stone_grip_absorb::OnRemove, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB, AURA_EFFECT_HANDLE_REAL);
+    }
 };
 
 // 62056, 63985 - Stone Grip
-class spell_ulduar_stone_grip : public SpellScriptLoader
+class spell_ulduar_stone_grip : public AuraScript
 {
-    public:
-        spell_ulduar_stone_grip() : SpellScriptLoader("spell_ulduar_stone_grip") { }
+    PrepareAuraScript(spell_ulduar_stone_grip);
 
-        class spell_ulduar_stone_grip_AuraScript : public AuraScript
-        {
-            PrepareAuraScript(spell_ulduar_stone_grip_AuraScript);
+    void OnRemoveStun(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+    {
+        if (Player* owner = GetOwner()->ToPlayer())
+            owner->RemoveAurasDueToSpell(aurEff->GetAmount());
+    }
 
-            void OnRemoveStun(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
-            {
-                if (Player* owner = GetOwner()->ToPlayer())
-                    owner->RemoveAurasDueToSpell(aurEff->GetAmount());
-            }
+    void OnRemoveVehicle(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        PreventDefaultAction();
+        Unit* caster = GetCaster();
+        if (!caster)
+            return;
 
-            void OnRemoveVehicle(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-            {
-                PreventDefaultAction();
-                Unit* caster = GetCaster();
-                if (!caster)
-                    return;
+        Position exitPosition;
+        exitPosition.m_positionX = 1750.0f;
+        exitPosition.m_positionY = -7.5f + frand(-3.0f, 3.0f);
+        exitPosition.m_positionZ = 457.9322f;
 
-                Position exitPosition;
-                exitPosition.m_positionX = 1750.0f;
-                exitPosition.m_positionY = -7.5f + frand(-3.0f, 3.0f);
-                exitPosition.m_positionZ = 457.9322f;
+        // Remove pending passengers before exiting vehicle - might cause an Uninstall
+        GetTarget()->GetVehicleKit()->RemovePendingEventsForPassenger(caster);
+        caster->_ExitVehicle(&exitPosition);
+        caster->RemoveAurasDueToSpell(GetId());
 
-                // Remove pending passengers before exiting vehicle - might cause an Uninstall
-                GetTarget()->GetVehicleKit()->RemovePendingEventsForPassenger(caster);
-                caster->_ExitVehicle(&exitPosition);
-                caster->RemoveAurasDueToSpell(GetId());
+        // Temporarily relocate player to vehicle exit dest serverside to send proper fall movement
+        // beats me why blizzard sends these 2 spline packets one after another instantly
+        Position oldPos = caster->GetPosition();
+        caster->Relocate(exitPosition);
+        caster->GetMotionMaster()->MoveFall();
+        caster->Relocate(oldPos);
+    }
 
-                // Temporarily relocate player to vehicle exit dest serverside to send proper fall movement
-                // beats me why blizzard sends these 2 spline packets one after another instantly
-                Position oldPos = caster->GetPosition();
-                caster->Relocate(exitPosition);
-                caster->GetMotionMaster()->MoveFall();
-                caster->Relocate(oldPos);
-            }
-
-            void Register() override
-            {
-                OnEffectRemove += AuraEffectRemoveFn(spell_ulduar_stone_grip_AuraScript::OnRemoveVehicle, EFFECT_0, SPELL_AURA_CONTROL_VEHICLE, AURA_EFFECT_HANDLE_REAL);
-                AfterEffectRemove += AuraEffectRemoveFn(spell_ulduar_stone_grip_AuraScript::OnRemoveStun, EFFECT_2, SPELL_AURA_MOD_STUN, AURA_EFFECT_HANDLE_REAL);
-            }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_ulduar_stone_grip_AuraScript();
-        }
+    void Register() override
+    {
+        OnEffectRemove += AuraEffectRemoveFn(spell_ulduar_stone_grip::OnRemoveVehicle, EFFECT_0, SPELL_AURA_CONTROL_VEHICLE, AURA_EFFECT_HANDLE_REAL);
+        AfterEffectRemove += AuraEffectRemoveFn(spell_ulduar_stone_grip::OnRemoveStun, EFFECT_2, SPELL_AURA_MOD_STUN, AURA_EFFECT_HANDLE_REAL);
+    }
 };
 
 // 63720, 64004 - Stone Shout
-class spell_kologarn_stone_shout : public SpellScriptLoader
+class spell_kologarn_stone_shout : public SpellScript
 {
-    public:
-        spell_kologarn_stone_shout() : SpellScriptLoader("spell_kologarn_stone_shout") { }
+    PrepareSpellScript(spell_kologarn_stone_shout);
 
-        class spell_kologarn_stone_shout_SpellScript : public SpellScript
+    void FilterTargets(std::list<WorldObject*>& targets)
+    {
+        targets.remove_if([](WorldObject* object) -> bool
         {
-            PrepareSpellScript(spell_kologarn_stone_shout_SpellScript);
+            if (object->GetTypeId() == TYPEID_PLAYER)
+                return false;
 
-            void FilterTargets(std::list<WorldObject*>& targets)
-            {
-                targets.remove_if([](WorldObject* object) -> bool
-                {
-                    if (object->GetTypeId() == TYPEID_PLAYER)
-                        return false;
+            if (Creature* creature = object->ToCreature())
+                return !creature->IsPet();
 
-                    if (Creature* creature = object->ToCreature())
-                        return !creature->IsPet();
+            return true;
+        });
+    }
 
-                    return true;
-                });
-            }
-
-            void Register() override
-            {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_kologarn_stone_shout_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_kologarn_stone_shout_SpellScript();
-        }
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_kologarn_stone_shout::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+    }
 };
 
 // 63342 - Focused Eyebeam Summon Trigger
-class spell_kologarn_summon_focused_eyebeam : public SpellScriptLoader
+class spell_kologarn_summon_focused_eyebeam : public SpellScript
 {
-    public:
-        spell_kologarn_summon_focused_eyebeam() : SpellScriptLoader("spell_kologarn_summon_focused_eyebeam") { }
+    PrepareSpellScript(spell_kologarn_summon_focused_eyebeam);
 
-        class spell_kologarn_summon_focused_eyebeam_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_kologarn_summon_focused_eyebeam_SpellScript);
+    void HandleForceCast(SpellEffIndex effIndex)
+    {
+        PreventHitDefaultEffect(effIndex);
 
-            void HandleForceCast(SpellEffIndex effIndex)
-            {
-                PreventHitDefaultEffect(effIndex);
+        if (_summoned[effIndex])
+            return;
+        _summoned[effIndex] = true;
 
-                if (_summoned[effIndex])
-                    return;
-                _summoned[effIndex] = true;
+        GetCaster()->CastSpell(GetCaster(), GetEffectInfo().TriggerSpell, true);
+    }
 
-                GetCaster()->CastSpell(GetCaster(), GetEffectInfo().TriggerSpell, true);
-            }
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_kologarn_summon_focused_eyebeam::HandleForceCast, EFFECT_0, SPELL_EFFECT_FORCE_CAST);
+        OnEffectHitTarget += SpellEffectFn(spell_kologarn_summon_focused_eyebeam::HandleForceCast, EFFECT_1, SPELL_EFFECT_FORCE_CAST);
+    }
 
-            void Register() override
-            {
-                OnEffectHitTarget += SpellEffectFn(spell_kologarn_summon_focused_eyebeam_SpellScript::HandleForceCast, EFFECT_0, SPELL_EFFECT_FORCE_CAST);
-                OnEffectHitTarget += SpellEffectFn(spell_kologarn_summon_focused_eyebeam_SpellScript::HandleForceCast, EFFECT_1, SPELL_EFFECT_FORCE_CAST);
-            }
-
-            bool _summoned[MAX_SPELL_EFFECTS] = { };
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_kologarn_summon_focused_eyebeam_SpellScript();
-        }
+    bool _summoned[MAX_SPELL_EFFECTS] = { };
 };
 
 // 63343, 63701 - Focused Eyebeam Summon (left + right)
@@ -717,7 +618,7 @@ class EG_spell_kologarn_focused_eyebeam_spawn : public SpellScript
     void OverrideSpawn(SpellDestination& dest)
     {
         if (Creature* caster = GetCaster()->ToCreature())
-            if (boss_kologarn::boss_kologarnAI* ai = CAST_AI(boss_kologarn::boss_kologarnAI, caster->AI()))
+            if (boss_kologarn* ai = CAST_AI(boss_kologarn, caster->AI()))
                 dest.Relocate(ai->GetEyebeamSpawnPos());
     }
 
@@ -729,14 +630,14 @@ class EG_spell_kologarn_focused_eyebeam_spawn : public SpellScript
 
 void AddSC_boss_kologarn()
 {
-    new boss_kologarn();
-    new spell_ulduar_rubble_summon();
-    new spell_ulduar_squeezed_lifeless();
-    new spell_ulduar_cancel_stone_grip();
-    new spell_ulduar_stone_grip_cast_target();
-    new spell_ulduar_stone_grip_absorb();
-    new spell_ulduar_stone_grip();
-    new spell_kologarn_stone_shout();
-    new spell_kologarn_summon_focused_eyebeam();
+    RegisterUlduarCreatureAI(boss_kologarn);
+    RegisterSpellScript(spell_ulduar_rubble_summon);
+    RegisterSpellScript(spell_ulduar_squeezed_lifeless);
+    RegisterSpellScript(spell_ulduar_cancel_stone_grip);
+    RegisterSpellScript(spell_ulduar_stone_grip_cast_target);
+    RegisterSpellScript(spell_ulduar_stone_grip_absorb);
+    RegisterSpellScript(spell_ulduar_stone_grip);
+    RegisterSpellScript(spell_kologarn_stone_shout);
+    RegisterSpellScript(spell_kologarn_summon_focused_eyebeam);
     RegisterSpellScript(EG_spell_kologarn_focused_eyebeam_spawn);
 }

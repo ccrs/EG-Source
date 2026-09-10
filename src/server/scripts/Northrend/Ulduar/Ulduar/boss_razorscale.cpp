@@ -1480,109 +1480,88 @@ struct npc_razorscale_devouring_flame : public ScriptedAI
     void EnterEvadeMode(EvadeReason /*why*/) override { }
 };
 
-class go_razorscale_harpoon : public GameObjectScript
+struct go_razorscale_harpoon : public GameObjectAI
 {
-public:
-    go_razorscale_harpoon() : GameObjectScript("go_razorscale_harpoon") { }
+    go_razorscale_harpoon(GameObject* go) : GameObjectAI(go) { }
 
-    struct go_razorscale_harpoonAI : public GameObjectAI
+    void Reset() override
     {
-        go_razorscale_harpoonAI(GameObject* go) : GameObjectAI(go) { }
-
-        void Reset() override
+        _scheduler.Schedule(Seconds(1), [this](TaskContext /*context*/)
         {
-            _scheduler.Schedule(Seconds(1), [this](TaskContext /*context*/)
-            {
-                if (Creature* controller = me->FindNearestCreature(NPC_RAZORSCALE_CONTROLLER, 5.0f))
-                    controller->AI()->Talk(EMOTE_HARPOON);
-
-                if (GameObject* brokenHarpoon = me->FindNearestGameObject(GO_RAZOR_BROKEN_HARPOON, 5.0f))
-                    brokenHarpoon->RemoveFromWorld();
-            });
-        }
-
-        uint32 SelectRightSpell()
-        {
-            switch (me->GetEntry())
-            {
-                case GO_RAZOR_HARPOON_1:
-                    return SPELL_HARPOON_SHOT_1;
-                case GO_RAZOR_HARPOON_2:
-                    return SPELL_HARPOON_SHOT_2;
-                case GO_RAZOR_HARPOON_3:
-                    return SPELL_HARPOON_SHOT_3;
-                case GO_RAZOR_HARPOON_4:
-                    return SPELL_HARPOON_SHOT_4;
-                default:
-                    return 0;
-            }
-        }
-
-        bool OnGossipHello(Player* /*player*/) override
-        {
-            me->SetFlag(GO_FLAG_NOT_SELECTABLE);
             if (Creature* controller = me->FindNearestCreature(NPC_RAZORSCALE_CONTROLLER, 5.0f))
-            {
-                // Prevent 2 players clicking at "same time"
-                if (controller->HasUnitState(UNIT_STATE_CASTING))
-                    return true;
+                controller->AI()->Talk(EMOTE_HARPOON);
 
-                uint32 spellId = SelectRightSpell();
-                controller->CastSpell(nullptr, spellId, true);
-            }
-
-            return true;
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            _scheduler.Update(diff);
-        }
-
-    private:
-        TaskScheduler _scheduler;
-    };
-
-    GameObjectAI* GetAI(GameObject* go) const override
-    {
-        return GetUlduarAI<go_razorscale_harpoonAI>(go);
+            if (GameObject* brokenHarpoon = me->FindNearestGameObject(GO_RAZOR_BROKEN_HARPOON, 5.0f))
+                brokenHarpoon->RemoveFromWorld();
+        });
     }
+
+    uint32 SelectRightSpell()
+    {
+        switch (me->GetEntry())
+        {
+            case GO_RAZOR_HARPOON_1:
+                return SPELL_HARPOON_SHOT_1;
+            case GO_RAZOR_HARPOON_2:
+                return SPELL_HARPOON_SHOT_2;
+            case GO_RAZOR_HARPOON_3:
+                return SPELL_HARPOON_SHOT_3;
+            case GO_RAZOR_HARPOON_4:
+                return SPELL_HARPOON_SHOT_4;
+            default:
+                return 0;
+        }
+    }
+
+    bool OnGossipHello(Player* /*player*/) override
+    {
+        me->SetFlag(GO_FLAG_NOT_SELECTABLE);
+        if (Creature* controller = me->FindNearestCreature(NPC_RAZORSCALE_CONTROLLER, 5.0f))
+        {
+            // Prevent 2 players clicking at "same time"
+            if (controller->HasUnitState(UNIT_STATE_CASTING))
+                return true;
+
+            uint32 spellId = SelectRightSpell();
+            controller->CastSpell(nullptr, spellId, true);
+        }
+
+        return true;
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        _scheduler.Update(diff);
+    }
+
+private:
+    TaskScheduler _scheduler;
 };
 
-class go_razorscale_mole_machine : public GameObjectScript
+struct go_razorscale_mole_machine : public GameObjectAI
 {
-public:
-    go_razorscale_mole_machine() : GameObjectScript("go_razorscale_mole_machine") { }
+    go_razorscale_mole_machine(GameObject* go) : GameObjectAI(go) { }
 
-    struct go_razorscale_mole_machineAI : public GameObjectAI
+    void Reset() override
     {
-        go_razorscale_mole_machineAI(GameObject* go) : GameObjectAI(go) { }
-
-        void Reset() override
+        me->SetFlag(GO_FLAG_NOT_SELECTABLE);
+        _scheduler.Schedule(Seconds(1), [this](TaskContext /*context*/)
         {
-            me->SetFlag(GO_FLAG_NOT_SELECTABLE);
-            _scheduler.Schedule(Seconds(1), [this](TaskContext /*context*/)
-            {
-                me->UseDoorOrButton();
-            });
-            _scheduler.Schedule(Seconds(10), [this](TaskContext /*context*/)
-            {
-                me->Delete();
-            });
-        }
-
-        void UpdateAI(uint32 diff) override
+            me->UseDoorOrButton();
+        });
+        _scheduler.Schedule(Seconds(10), [this](TaskContext /*context*/)
         {
-            _scheduler.Update(diff);
-        }
-
-    private:
-        TaskScheduler _scheduler;
-    };
-    GameObjectAI* GetAI(GameObject* go) const override
-    {
-        return GetUlduarAI<go_razorscale_mole_machineAI>(go);
+            me->Delete();
+        });
     }
+
+    void UpdateAI(uint32 diff) override
+    {
+        _scheduler.Update(diff);
+    }
+
+private:
+    TaskScheduler _scheduler;
 };
 
 /* 63317 - Flame Breath
@@ -1744,8 +1723,8 @@ void AddSC_boss_razorscale()
     RegisterUlduarCreatureAI(npc_darkrune_sentinel);
     RegisterUlduarCreatureAI(npc_razorscale_harpoon_fire_state);
     RegisterUlduarCreatureAI(npc_razorscale_devouring_flame);
-    new go_razorscale_harpoon();
-    new go_razorscale_mole_machine();
+    RegisterUlduarGameObjectAI(go_razorscale_harpoon);
+    RegisterUlduarGameObjectAI(go_razorscale_mole_machine);
     RegisterSpellScript(spell_razorscale_flame_breath);
     RegisterSpellScript(spell_razorscale_summon_iron_dwarves);
     RegisterSpellScript(spell_razorscale_fuse_armor);
