@@ -11,7 +11,6 @@ class WorldObject;
 
 namespace EG
 {
-
     constexpr std::chrono::year HolidayPackedDateMaxYear{ 2031 };
 
     enum class HolidayRuleType : uint8

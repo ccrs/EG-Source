@@ -5,6 +5,7 @@
 #include "Containers.h"
 #include "Creature.h"
 #include "CreatureAI.h"
+#include "DatabaseEnv.h"
 #include "DBCStores.h"
 #include "GameEventMgr.h"
 #include "GameTime.h"
