@@ -91,9 +91,6 @@ bool EG::CanEarnRealmFirst(Player const* player, AchievementEntry const* achieve
     if (player->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS) > CustomFlags::CUSTOM_FLAG_NONE)
         return false;
 
-    if (player->GetClass() == CLASS_DEATH_KNIGHT && player->HasAccountUsedXPRate())
-        return achievement->ID == ACHIEV_REALM_FIRST_LEVEL_80_DEATH_KNIGHT;
-
     return true;
 }
 
