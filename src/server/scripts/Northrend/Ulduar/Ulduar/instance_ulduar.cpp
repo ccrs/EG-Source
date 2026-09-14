@@ -709,6 +709,8 @@ class instance_ulduar : public InstanceMapScript
                             hodir->AI()->DoAction(ACTION_INITIAL_AGGRO_HODIR);
                         break;
                     case EVENT_CACHE_SHATTERED:
+                        if (GetBossState(DATA_HODIR) != IN_PROGRESS)
+                            break;
                         if (Creature* hodir = GetCreature(DATA_HODIR))
                             hodir->AI()->DoAction(ACTION_CACHE_SHATTERED);
                         if (GameObject* hodirRareCache = instance->GetGameObject(HodirRareCacheGUID))
@@ -831,6 +833,8 @@ class instance_ulduar : public InstanceMapScript
 
                             VerifyKeeperState();
                         }
+                        else if (state == FAIL)
+                            RestoreHodirRareCache();
                         break;
                     case DATA_THORIM:
                         if (state == DONE)
@@ -1264,6 +1268,8 @@ class instance_ulduar : public InstanceMapScript
                     ForceRespawnQueuedCreaturesByEntry({ NPC_SALVAGED_DEMOLISHER, NPC_SALVAGED_SIEGE_ENGINE, NPC_SALVAGED_CHOPPER });
                 if (GetBossState(DATA_ASSEMBLY_OF_IRON) == NOT_STARTED)
                     ForceRespawnQueuedCreaturesByEntry({ NPC_STEELBREAKER, NPC_MOLGEIM, NPC_BRUNDIR });
+                if (GetBossState(DATA_HODIR) != DONE)
+                    RestoreHodirRareCache();
             }
 
             void Update(uint32 diff) override
@@ -1533,6 +1539,18 @@ class instance_ulduar : public InstanceMapScript
                             break;
                     }
                 }
+            }
+
+            void RestoreHodirRareCache()
+            {
+                if (GetBossState(DATA_HODIR) == DONE)
+                    return;
+
+                std::vector<RespawnInfo const*> respawnData;
+                instance->GetRespawnInfo(respawnData, SPAWN_TYPEMASK_GAMEOBJECT);
+                for (RespawnInfo const* info : respawnData)
+                    if (info->entry == GO_HODIR_RARE_CACHE_OF_WINTER || info->entry == GO_HODIR_RARE_CACHE_OF_WINTER_HERO)
+                        instance->Respawn(info->type, info->spawnId);
             }
 
             void DespawnLeviatanVehicle(Creature* vehicleCreature)
