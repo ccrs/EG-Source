@@ -414,7 +414,7 @@ struct boss_hexlord_malacrass : public BossAI
                     _specialEvents.Repeat(15s, 20s);
                     break;
                 case EVENT_PA_HOLY_LIGHT:
-                    if (Unit* target = DoSelectLowestHpFriendly(40.0f))
+                    if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                         DoCast(target, SPELL_PA_HOLY_LIGHT);
                     _specialEvents.Repeat(10s, 15s);
                     break;
@@ -646,7 +646,7 @@ struct boss_alyson_antille : public MalacrassCompanionBaseAI
             })
             .Schedule(0s, 5s, [this](TaskContext task)
             {
-                if (Unit* target = DoSelectLowestHpFriendly(40.0f))
+                if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
                     DoCast(target, SPELL_FLASH_HEAL);
                 task.Repeat(5s, 10s);
             })
@@ -655,7 +655,7 @@ struct boss_alyson_antille : public MalacrassCompanionBaseAI
                 Unit* target = nullptr;
 
                 if (urand(0, 1))
-                    target = DoSelectLowestHpFriendly(40.0f, 0);
+                    target = me->DoFindLowestHPFriendlyInRange(40.0f);
                 else
                     target = SelectTarget(SelectTargetMethod::Random, 0);
                 if (target)

@@ -971,7 +971,7 @@ struct boss_julianne : public BossAI
                     break;
                 case EVENT_ETERNAL_AFFECTION:
                     if (!me->HasAura(SPELL_PERMANENT_FEIGN_DEATH))
-                        if (Unit* target = DoSelectLowestHpFriendly(100.0f))
+                        if (Unit* target = me->DoFindLowestHPFriendlyInRange(WorldObject::FriendlySearchOptions{ .Range = 100.0f, .IncludeSelf = false }))
                             DoCast(target, SPELL_ETERNAL_AFFECTION);
                     events.Repeat(15s, 20s);
                     break;
