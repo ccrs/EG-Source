@@ -26,6 +26,7 @@
 #include "ObjectAccessor.h"
 #include "PassiveAI.h"
 #include "Player.h"
+#include "PlayerAI.h"
 #include "ScriptedCreature.h"
 #include "ScriptMgr.h"
 #include "Spell.h"
@@ -428,6 +429,56 @@ uint32 const IllusionSpells[MAX_ILLUSION_ROOMS]
     SPELL_TELEPORT_TO_STORMWIND_ILLUSION
 };
 
+class YoggSaronCharmedPlayerAI : public SimpleCharmedPlayerAI
+{
+public:
+    YoggSaronCharmedPlayerAI(Player* player) : SimpleCharmedPlayerAI(player), _isWaiting(false) { }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (me->HasAura(SPELL_ILLUSION_ROOM) && !HasReachableTarget())
+        {
+            if (!_isWaiting)
+            {
+                _isWaiting = true;
+                me->AttackStop();
+                me->CastStop();
+                me->GetMotionMaster()->Remove(CHASE_MOTION_TYPE);
+                me->GetMotionMaster()->Remove(FOLLOW_MOTION_TYPE);
+            }
+            return;
+        }
+
+        _isWaiting = false;
+        SimpleCharmedPlayerAI::UpdateAI(diff);
+    }
+
+protected:
+    bool CanAIAttack(Unit const* who) const override
+    {
+        if (me->HasAura(SPELL_ILLUSION_ROOM) != who->HasAura(SPELL_ILLUSION_ROOM))
+            return false;
+
+        return SimpleCharmedPlayerAI::CanAIAttack(who);
+    }
+
+private:
+    bool HasReachableTarget() const
+    {
+        Creature* charmer = GetCharmer();
+        if (!charmer || !charmer->IsEngaged())
+            return false;
+
+        if (Unit* victim = me->GetVictim())
+            if (CanAIAttack(victim))
+                return true;
+
+        return SelectAttackTarget() != nullptr;
+    }
+
+    bool _isWaiting;
+};
+
 struct boss_voice_of_yogg_saron : public BossAI
 {
     boss_voice_of_yogg_saron(Creature* creature) : BossAI(creature, DATA_YOGG_SARON)
@@ -686,6 +737,11 @@ struct boss_voice_of_yogg_saron : public BossAI
         }
 
         BossAI::JustSummoned(summon);
+    }
+
+    PlayerAI* GetAIForCharmedPlayer(Player* player) override
+    {
+        return new YoggSaronCharmedPlayerAI(player);
     }
 
 private:
@@ -2486,8 +2542,8 @@ class spell_yogg_saron_induce_madness : public SpellScript    // 64059
     {
         if (Unit* target = GetHitUnit())
         {
-            target->CastSpell(target, SPELL_TELEPORT_BACK_TO_MAIN_ROOM);
             target->RemoveAurasDueToSpell(SPELL_SANITY, ObjectGuid::Empty, 0, AURA_REMOVE_BY_ENEMY_SPELL);
+            target->CastSpell(target, SPELL_TELEPORT_BACK_TO_MAIN_ROOM);
             target->RemoveAurasDueToSpell(uint32(GetEffectValue()));
         }
     }
