@@ -434,7 +434,7 @@ struct boss_fathomguard_caribdis : public FathomGuardBaseAI
                 Events.Repeat(40s, 50s);
                 break;
             case EVENT_HEALING_WAVE:
-                if (Unit* target = DoSelectLowestHpFriendly(250.0f))
+                if (Unit* target = me->DoFindLowestHPFriendlyInRange(250.0f))
                     DoCast(target, SPELL_HEALING_WAVE);
                 Events.Repeat(15s, 20s);
                 break;
