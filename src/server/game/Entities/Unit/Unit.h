@@ -1292,7 +1292,7 @@ class TC_GAME_API Unit : public WorldObject
 
         ControlList m_Controlled;
         Unit* GetFirstControlled() const;
-        void RemoveAllControlled();
+        void RemoveAllControlled(bool onDeath = false);
 
         bool IsCharmed() const { return !GetCharmerGUID().IsEmpty(); }
         bool IsCharming() const { return !GetCharmedGUID().IsEmpty(); }
@@ -1625,7 +1625,7 @@ class TC_GAME_API Unit : public WorldObject
         void ModifyAuraState(AuraStateType flag, bool apply);
         uint32 BuildAuraStateUpdateForTarget(Unit const* target) const;
         bool HasAuraState(AuraStateType flag, SpellInfo const* spellProto = nullptr, Unit const* Caster = nullptr) const;
-        void UnsummonAllTotems();
+        void UnsummonAllTotems(bool onDeath = false);
         bool IsMagnet() const;
         Unit* GetMeleeHitRedirectTarget(Unit* victim, SpellInfo const* spellInfo = nullptr);
 
