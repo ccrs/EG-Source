@@ -76,6 +76,7 @@ class TC_GAME_API WardenWin : public Warden
         void HandleHashResult(ByteBuffer &buff) override;
         void RequestChecks() override;
         void HandleCheckResult(ByteBuffer &buff) override;
+        void RunClientFunction(uint32 function);
 
         size_t DEBUG_ForceSpecificChecks(std::vector<uint16> const& checks) override;
 
