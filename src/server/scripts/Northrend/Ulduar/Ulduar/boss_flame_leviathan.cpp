@@ -1523,23 +1523,13 @@ class spell_auto_repair : public SpellScript
 
     PrepareSpellScript(spell_auto_repair);
 
-    void CheckCooldownForTarget(SpellMissInfo missInfo)
+    void FilterTargets(std::list<WorldObject*>& targets)
     {
-        if (missInfo != SPELL_MISS_NONE)
-            return;
-
-        if (GetHitUnit()->HasAuraEffect(SPELL_AUTO_REPAIR, EFFECT_2))   // Check presence of dummy aura indicating cooldown
+        targets.remove_if([](WorldObject* target)
         {
-            PreventHitEffect(EFFECT_0);
-            PreventHitDefaultEffect(EFFECT_1);
-            PreventHitDefaultEffect(EFFECT_2);
-            //! Currently this doesn't work: if we call PreventHitAura(), the existing aura will be removed
-            //! because of recent aura refreshing changes. Since removing the existing aura negates the idea
-            //! of a cooldown marker, we just let the dummy aura refresh itself without executing the other spelleffects.
-            //! The spelleffects can be executed by letting the dummy aura expire naturally.
-            //! This is a temporary solution only.
-            //PreventHitAura();
-        }
+            Unit* unit = target->ToUnit();
+            return !unit || unit->HasAura(SPELL_AUTO_REPAIR);
+        });
     }
 
     void HandleScript(SpellEffIndex /*eff*/)
@@ -1571,10 +1561,21 @@ class spell_auto_repair : public SpellScript
         instance->SetData(DATA_UNBROKEN, 0);
     }
 
+    void HandleEnergize(SpellEffIndex effIndex)
+    {
+        PreventHitDefaultEffect(effIndex);
+
+        Unit* target = GetHitUnit();
+        Powers power = Powers(GetEffectInfo().MiscValue);
+        if (uint32 maxPower = target->GetMaxPower(power))
+            target->ModifyPower(power, CalculatePct(maxPower, GetEffectValue()));
+    }
+
     void Register() override
     {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_auto_repair::FilterTargets, EFFECT_ALL, TARGET_UNIT_DEST_AREA_ENTRY);
         OnEffectHitTarget += SpellEffectFn(spell_auto_repair::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
-        BeforeHit += BeforeSpellHitFn(spell_auto_repair::CheckCooldownForTarget);
+        OnEffectHitTarget += SpellEffectFn(spell_auto_repair::HandleEnergize, EFFECT_1, SPELL_EFFECT_ENERGIZE_PCT);
     }
 };
 
