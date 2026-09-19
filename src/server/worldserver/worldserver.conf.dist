@@ -3981,6 +3981,7 @@ Appender.Server=2,2,0,Server.log,w
 Appender.GM=2,2,1,GM.log
 Appender.DBErrors=2,2,0,DBErrors.log
 
+#Appender.Traps=2,3,1,Traps.log,a
 #  Logger config values: Given a logger "name"
 #    Logger.name
 #        Description: Defines 'What to log'
@@ -4068,6 +4069,7 @@ Logger.mmaps=3,Server
 #Logger.sql.dev=3,Console Server
 #Logger.sql.driver=3,Console Server
 #Logger.warden=3,Console Server
+#Logger.traps=3,Traps
 
 #
 #    Log.Async.Enable

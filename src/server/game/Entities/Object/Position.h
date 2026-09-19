@@ -197,6 +197,16 @@ class WorldLocation : public Position
         std::string GetDebugInfo() const;
 };
 
+// EG - values WorldObject::MovePositionToFirstCollision computed while resolving the returned point
+struct FirstCollisionResult
+{
+    uint32 PathType = 0;
+    Position PathEnd;
+    bool StaticCollision = false;
+    bool DynamicCollision = false;
+    float GroundZ = 0.0f;
+};
+
 TC_GAME_API ByteBuffer& operator<<(ByteBuffer& buf, Position::ConstStreamer<Position::XY> const& streamer);
 TC_GAME_API ByteBuffer& operator>>(ByteBuffer& buf, Position::Streamer<Position::XY> const& streamer);
 TC_GAME_API ByteBuffer& operator<<(ByteBuffer& buf, Position::ConstStreamer<Position::XYZ> const& streamer);

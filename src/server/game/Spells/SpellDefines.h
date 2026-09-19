@@ -221,6 +221,8 @@ struct TC_GAME_API SpellDestination
     WorldLocation _position;
     ObjectGuid _transportGUID;
     Position _transportOffset;
+    // EG - resolved for _position by WorldObject::MovePositionToFirstCollision, cleared whenever _position moves
+    Optional<FirstCollisionResult> _collisionResult;
 };
 
 class TC_GAME_API SpellCastTargets

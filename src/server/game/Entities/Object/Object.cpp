@@ -3324,7 +3324,7 @@ void WorldObject::MovePosition(Position &pos, float dist, float angle)
     pos.SetOrientation(GetOrientation());
 }
 
-void WorldObject::MovePositionToFirstCollision(Position &pos, float dist, float angle)
+void WorldObject::MovePositionToFirstCollision(Position &pos, float dist, float angle, FirstCollisionResult* result /*= nullptr*/)
 {
     angle += GetOrientation();
     float cosAngle = std::cos(angle);
@@ -3350,6 +3350,14 @@ void WorldObject::MovePositionToFirstCollision(Position &pos, float dist, float 
     path.SetUseRaycast(true);
     path.CalculatePath(destx, desty, destz, false);
 
+    // EG - hand out how the destination was resolved
+    if (result)
+    {
+        result->PathType = path.GetPathType();
+        if (!path.GetPath().empty())
+            result->PathEnd.Relocate(path.GetPath().back().x, path.GetPath().back().y, path.GetPath().back().z);
+    }
+
     // Check for valid path types before we proceed
     if (!(path.GetPathType() & (PATHFIND_NOPATH | PATHFIND_NOT_USING_PATH | PATHFIND_FARFROMPOLY_START)))
     {
@@ -3368,6 +3376,10 @@ void WorldObject::MovePositionToFirstCollision(Position &pos, float dist, float 
             destx, desty, destz, -0.5f);
 
         destz -= halfHeight;
+
+        // EG - hand out how the destination was resolved
+        if (result)
+            result->StaticCollision = col;
 
         // Collided with static LOS object, move back to collision point
         if (col)
@@ -3396,6 +3408,13 @@ void WorldObject::MovePositionToFirstCollision(Position &pos, float dist, float 
     Trinity::NormalizeMapCoord(destx);
     Trinity::NormalizeMapCoord(desty);
     UpdateAllowedPositionZ(destx, desty, destz, &groundZ);
+
+    // EG - hand out how the destination was resolved
+    if (result)
+    {
+        result->DynamicCollision = col;
+        result->GroundZ = groundZ;
+    }
 
     pos.Relocate(destx, desty, destz, GetOrientation());
 

@@ -4038,16 +4038,53 @@ void Spell::EffectSummonObject()
         unitCaster->GetClosePoint(x, y, z, DEFAULT_PLAYER_BOUNDING_RADIUS);
 
     Map* map = unitCaster->GetMap();
+    // EG - hunter trap placement diagnostics
+    float destZ = z;
+    float anchorZ = INVALID_HEIGHT;
+    float staticFloorZ = INVALID_HEIGHT;
+    float goFloorZ = INVALID_HEIGHT;
     if (m_targets.HasDst())
     {
-        float anchorZ = std::max(z, unitCaster->GetPositionZ()) + Z_OFFSET_FIND_HEIGHT * 2.0f;
-        float floorZ = map->GetHeight(unitCaster->GetPhaseMask(), x, y, anchorZ);
+        anchorZ = std::max(z, unitCaster->GetPositionZ()) + Z_OFFSET_FIND_HEIGHT * 2.0f;
+        staticFloorZ = map->GetHeight(x, y, anchorZ);
+        goFloorZ = map->GetGameObjectFloor(unitCaster->GetPhaseMask(), x, y, anchorZ);
+        float floorZ = std::max(staticFloorZ, goFloorZ);
         if (floorZ > INVALID_HEIGHT)
             z = floorZ;
     }
+
+    // EG - hunter trap placement diagnostics
+    auto shouldLogTrapPlacement = [this]()
+    {
+        if (m_spellInfo->SpellFamilyName != SPELLFAMILY_HUNTER)
+            return false;
+
+        if (effectInfo->Effect < SPELL_EFFECT_SUMMON_OBJECT_SLOT1 || effectInfo->Effect > SPELL_EFFECT_SUMMON_OBJECT_SLOT4)
+            return false;
+
+        return sLog->ShouldLog("traps", LOG_LEVEL_INFO);
+    };
+
+    // EG - hunter trap placement diagnostics
+    auto logTrapPlacement = [&](GameObject const* summoned)
+    {
+        SpellDestination const& resolvedDest = m_destTargets[effectInfo->EffectIndex];
+        uint32 latency = unitCaster->IsPlayer() ? unitCaster->ToPlayer()->GetSession()->GetLatency() : 0;
+
+        std::string selection = "none";
+        if (Optional<FirstCollisionResult> const& collision = resolvedDest._collisionResult; collision)
+            selection = Trinity::StringFormat("path 0x{:02X} pathEnd ({:.3f}, {:.3f}, {:.3f}) staticCol {:d} dynCol {:d} groundZ {:.3f}", collision->PathType, collision->PathEnd.GetPositionX(), collision->PathEnd.GetPositionY(), collision->PathEnd.GetPositionZ(), collision->StaticCollision, collision->DynamicCollision, collision->GroundZ);
+
+        TC_LOG_INFO("traps", "spell {} slot {} entry {} go {} | caster {} ({}) map {} inst {} zone {} area {} phase {} pos ({:.3f}, {:.3f}, {:.3f}) o {:.4f} moveFlags 0x{:X} extraFlags 0x{:X} transport {} combat {:d} latency {} | select {} | hasDst {:d} destZ {:.3f} anchorZ {:.3f} staticFloorZ {:.3f} goFloorZ {:.3f} | final ({:.3f}, {:.3f}, {:.3f}) dist2d {:.3f} dz {:.3f}", m_spellInfo->Id, effectInfo->Effect - SPELL_EFFECT_SUMMON_OBJECT_SLOT1, effectInfo->MiscValue, summoned ? summoned->GetGUID().GetCounter() : 0, unitCaster->GetName(), unitCaster->GetGUID().GetCounter(), map->GetId(), map->GetInstanceId(), unitCaster->GetZoneId(), unitCaster->GetAreaId(), unitCaster->GetPhaseMask(), unitCaster->GetPositionX(), unitCaster->GetPositionY(), unitCaster->GetPositionZ(), unitCaster->GetOrientation(), unitCaster->GetUnitMovementFlags(), unitCaster->GetExtraUnitMovementFlags(), unitCaster->GetTransGUID().GetCounter(), unitCaster->IsInCombat(), latency, selection, m_targets.HasDst(), destZ, anchorZ, staticFloorZ, goFloorZ, x, y, z, unitCaster->GetExactDist2d(x, y), z - unitCaster->GetPositionZ());
+    };
+
     QuaternionData rot = QuaternionData::fromEulerAnglesZYX(unitCaster->GetOrientation(), 0.f, 0.f);
     if (!go->Create(map->GenerateLowGuid<HighGuid::GameObject>(), go_id, map, unitCaster->GetPhaseMask(), Position(x, y, z, unitCaster->GetOrientation()), rot, 255, GO_STATE_READY))
     {
+        // EG - hunter trap placement diagnostics
+        if (shouldLogTrapPlacement())
+            logTrapPlacement(nullptr);
+
         delete go;
         return;
     }
@@ -4064,6 +4101,10 @@ void Spell::EffectSummonObject()
     map->AddToMap(go);
 
     unitCaster->m_ObjectSlot[slot] = go->GetGUID();
+
+    // EG - hunter trap placement diagnostics
+    if (shouldLogTrapPlacement())
+        logTrapPlacement(go);
 }
 
 void Spell::EffectResurrect()
