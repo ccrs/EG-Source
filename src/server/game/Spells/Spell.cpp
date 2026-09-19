@@ -106,6 +106,9 @@ void SpellDestination::Relocate(Position const& pos)
         _transportOffset.RelocateOffset(offset);
     }
     _position.Relocate(pos);
+
+    // EG - resolved data no longer describes the new point
+    _collisionResult.reset();
 }
 
 void SpellDestination::RelocateOffset(Position const& offset)
@@ -114,6 +117,9 @@ void SpellDestination::RelocateOffset(Position const& offset)
         _transportOffset.RelocateOffset(offset);
 
     _position.RelocateOffset(offset);
+
+    // EG - resolved data no longer describes the new point
+    _collisionResult.reset();
 }
 
 SpellCastTargets::SpellCastTargets() : m_pitch(0), m_speed(0), m_strTarget()
@@ -518,6 +524,9 @@ void SpellCastTargets::Update(WorldObject* caster)
         {
             m_dst._position.Relocate(transport);
             m_dst._position.RelocateOffset(m_dst._transportOffset);
+
+            // EG - resolved data no longer describes the new point
+            m_dst._collisionResult.reset();
         }
     }
 }
@@ -1473,10 +1482,16 @@ void Spell::SelectImplicitCasterDestTargets(SpellEffectInfo const& spellEffectIn
             if (dist < objSize)
                 dist = objSize;
 
+            // EG - carry the data MovePositionToFirstCollision resolved for the destination
+            FirstCollisionResult collisionResult;
+
             Position pos = dest._position;
-            m_caster->MovePositionToFirstCollision(pos, dist, angle);
+            m_caster->MovePositionToFirstCollision(pos, dist, angle, &collisionResult);
 
             dest.Relocate(pos);
+
+            // EG - carry the data MovePositionToFirstCollision resolved for the destination
+            dest._collisionResult = collisionResult;
             break;
         }
     }
@@ -7404,6 +7419,9 @@ bool Spell::UpdatePointers()
         {
             dest._position.Relocate(transport);
             dest._position.RelocateOffset(dest._transportOffset);
+
+            // EG - resolved data no longer describes the new point
+            dest._collisionResult.reset();
         }
     }
 

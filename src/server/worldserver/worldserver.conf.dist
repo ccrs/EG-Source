@@ -4113,6 +4113,7 @@ Appender.GM=2,2,1,GM.log
 Appender.DBErrors=2,2,0,DBErrors.log
 
 #Appender.Transmogrification=2,2,0,Transmogrification.log
+#Appender.Traps=2,3,1,Traps.log,a
 
 #  Logger config values: Given a logger "name"
 #    Logger.name
@@ -4205,6 +4206,7 @@ Logger.realmstatus=3,Console Server
 #Logger.sql.driver=3,Console Server
 #Logger.warden=3,Console Server
 #Logger.transmogrification=3,Console Server Transmogrification
+#Logger.traps=3,Traps
 
 #
 #    Log.Async.Enable
