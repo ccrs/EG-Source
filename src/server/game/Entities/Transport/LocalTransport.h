@@ -57,6 +57,9 @@ class TC_GAME_API LocalTransport : public Transport
 
         void SetNeedDoInitialRelocation(bool val) { _needDoInitialRelocation = val; }
 
+        // Flips the GoState every interval (ms) while parked at an endpoint - 0 disables it.
+        void SetAutoCycleInterval(uint32 interval) { _autoCycleInterval = interval; _autoCycleTimer = 0; }
+
     private:
         // Pending one-time placement at the starting phase, done on the first Update.
         bool _needDoInitialRelocation;
@@ -64,6 +67,10 @@ class TC_GAME_API LocalTransport : public Transport
         bool _stopped = false;
         // Re-broadcast interval the animation phase is re-published.
         uint32 _phaseBroadcastTimer = 0;
+        // Time between automatic GoState flips, measured flip to flip - 0 when disabled.
+        uint32 _autoCycleInterval = 0;
+        // Time elapsed since the last automatic flip or since the cycle was set.
+        uint32 _autoCycleTimer = 0;
 };
 
 #endif

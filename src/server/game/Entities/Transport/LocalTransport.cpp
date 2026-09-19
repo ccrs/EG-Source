@@ -129,6 +129,17 @@ void LocalTransport::Update(uint32 diff)
     if (!pauseTime)
         pauseTime = GetGOInfo()->transport.pause;
 
+    // flip only while parked, a flip mid-leg makes the state machine below snap to the endpoint
+    if (_autoCycleInterval && pauseTime)
+    {
+        _autoCycleTimer += diff;
+        if (_stopped && _autoCycleTimer >= _autoCycleInterval)
+        {
+            _autoCycleTimer = 0;
+            SetGoState(GetGoState() == GO_STATE_READY ? GO_STATE_ACTIVE : GO_STATE_READY);
+        }
+    }
+
     bool atRest = false;
     if (pauseTime)
     {
