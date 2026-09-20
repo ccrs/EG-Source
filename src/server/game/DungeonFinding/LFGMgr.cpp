@@ -1019,9 +1019,10 @@ void LFGMgr::MakeNewGroup(LfgProposal const& proposal)
     Group* grp = !proposal.group.IsEmpty() ? sGroupMgr->GetGroupByGUID(proposal.group) : nullptr;
     ObjectGuid existingGroupGuid = grp ? grp->GetGUID() : ObjectGuid::Empty;
     uint32 previousDungeonId = !existingGroupGuid.IsEmpty() ? GetDungeon(existingGroupGuid) : 0;
-    LfgState previousState = !existingGroupGuid.IsEmpty() ? GetState(existingGroupGuid) : LFG_STATE_NONE;
+    // EG - GetState is always LFG_STATE_PROPOSAL at this point, only the latched old state tells a fresh run from a backfill
+    LfgState previousState = !existingGroupGuid.IsEmpty() ? GetOldState(existingGroupGuid) : LFG_STATE_NONE;
     bool existingLfgGroupNewRun = grp && grp->isLFGGroup() && !proposal.group.IsEmpty() && proposal.group == existingGroupGuid
-        && (proposal.isNew || previousState == LFG_STATE_FINISHED_DUNGEON || previousDungeonId != proposal.dungeonId);
+        && (previousState != LFG_STATE_DUNGEON || previousDungeonId != proposal.dungeonId);
 
     for (LfgProposalPlayerContainer::const_iterator it = proposal.players.begin(); it != proposal.players.end(); ++it)
     {
