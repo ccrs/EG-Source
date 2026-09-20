@@ -21,6 +21,7 @@
 #include "CreatureAI.h"
 #include "EventMap.h"
 #include "InstanceScript.h"
+#include "LocalTransport.h"
 #include "Map.h"
 #include "ObjectMgr.h"
 #include "Player.h"
@@ -57,6 +58,8 @@ enum SpawnGroups
     SPAWN_GROUP_ALLIANCE_ROS   = 57,
     SPAWN_GROUP_HORDE_ROS      = 58
 };
+
+static constexpr uint32 DeathwhisperElevatorCycleTime = 20000;
 
 BossBoundaryData const boundaries =
 {
@@ -174,6 +177,15 @@ class instance_icecrown_citadel : public InstanceMapScript
                     go->SetFlag(GO_FLAG_NOT_SELECTABLE);
                     go->SetGoState(GO_STATE_READY);
                 }
+            }
+
+            void SetDeathwhisperElevatorCycle(GameObject* elevator, bool cycle)
+            {
+                if (cycle)
+                    elevator->SetGoState(GO_STATE_READY);
+
+                if (elevator->ToTransport())
+                    static_cast<LocalTransport*>(elevator)->SetAutoCycleInterval(cycle ? DeathwhisperElevatorCycleTime : 0);
             }
 
             void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override
@@ -535,10 +547,7 @@ class instance_icecrown_citadel : public InstanceMapScript
                     case GO_LADY_DEATHWHISPER_ELEVATOR:
                         LadyDeathwisperElevatorGUID = go->GetGUID();
                         if (GetBossState(DATA_LADY_DEATHWHISPER) == DONE)
-                        {
-                            go->SetLevel(0);
-                            go->SetGoState(GO_STATE_READY);
-                        }
+                            SetDeathwhisperElevatorCycle(go, true);
                         break;
                     case GO_THE_SKYBREAKER_H:
                     case GO_ORGRIMS_HAMMER_A:
@@ -880,13 +889,12 @@ class instance_icecrown_citadel : public InstanceMapScript
                                 SetTeleporterState(teleporter, true);
 
                             if (GameObject* elevator = instance->GetGameObject(LadyDeathwisperElevatorGUID))
-                            {
-                                elevator->SetLevel(0);
-                                elevator->SetGoState(GO_STATE_READY);
-                            }
+                                SetDeathwhisperElevatorCycle(elevator, true);
 
                             SpawnGunship();
                         }
+                        else if (GameObject* elevator = instance->GetGameObject(LadyDeathwisperElevatorGUID))
+                            SetDeathwhisperElevatorCycle(elevator, false);
                         break;
                     }
                     case DATA_ICECROWN_GUNSHIP_BATTLE:

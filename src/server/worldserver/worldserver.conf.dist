@@ -4113,6 +4113,7 @@ Appender.GM=2,2,1,GM.log
 Appender.DBErrors=2,2,0,DBErrors.log
 
 #Appender.Transmogrification=2,2,0,Transmogrification.log
+#Appender.Traps=2,3,1,Traps.log,a
 
 #  Logger config values: Given a logger "name"
 #    Logger.name
@@ -4142,6 +4143,7 @@ Logger.mmaps=3,Server
 Logger.raf=3,Console Server
 Logger.crossrealm=3,Console Server
 Logger.realmstatus=3,Console Server
+Logger.lfg=3,Console Server
 
 #Logger.achievement=3,Console Server
 #Logger.addon=3,Console Server
@@ -4172,7 +4174,6 @@ Logger.realmstatus=3,Console Server
 #Logger.entities.vehicle=3,Console Server
 #Logger.gameevent=3,Console Server
 #Logger.guild=3,Console Server
-#Logger.lfg=3,Console Server
 #Logger.loot=3,Console Server
 #Logger.maps.script=3,Console Server
 #Logger.maps=3,Console Server
@@ -4205,6 +4206,7 @@ Logger.realmstatus=3,Console Server
 #Logger.sql.driver=3,Console Server
 #Logger.warden=3,Console Server
 #Logger.transmogrification=3,Console Server Transmogrification
+#Logger.traps=3,Traps
 
 #
 #    Log.Async.Enable

@@ -150,7 +150,7 @@ public:
             switch (type)
             {
                 case TYPE_FREE_NPC:
-                    if (data == DONE)
+                    if (data == DONE && m_auiEncounter[0] != DONE)
                         DoUseDoorOrButton(DoorCourtyardGUID);
                     m_auiEncounter[0] = data;
                     break;

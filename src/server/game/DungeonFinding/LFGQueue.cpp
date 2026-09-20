@@ -582,9 +582,9 @@ LfgCompatibility LFGQueue::CheckCompatibility(GuidList check)
         return LFG_COMPATIBLES_WITH_LESS_PLAYERS;
     }
 
-    ObjectGuid gguid = *check.begin();
     proposal.queues = check;
-    proposal.isNew = numLfgGroups != 1 || sLFGMgr->GetOldState(gguid) != LFG_STATE_DUNGEON;
+    // EG - check.front() is the newest queue entry, not the matched group, so read the state of the group that was actually matched
+    proposal.isNew = numLfgGroups != 1 || sLFGMgr->GetOldState(proposal.group) != LFG_STATE_DUNGEON;
 
     if (!sLFGMgr->AllQueued(check))
     {
