@@ -4007,6 +4007,7 @@ Logger.scripts.hotswap=3,Console Server
 Logger.sql.sql=5,Console DBErrors
 Logger.sql.updates=3,Console Server
 Logger.mmaps=3,Server
+Logger.lfg=3,Console Server
 
 #Logger.achievement=3,Console Server
 #Logger.addon=3,Console Server
@@ -4037,7 +4038,6 @@ Logger.mmaps=3,Server
 #Logger.entities.vehicle=3,Console Server
 #Logger.gameevent=3,Console Server
 #Logger.guild=3,Console Server
-#Logger.lfg=3,Console Server
 #Logger.loot=3,Console Server
 #Logger.maps.script=3,Console Server
 #Logger.maps=3,Console Server
