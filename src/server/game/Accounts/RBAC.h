@@ -752,6 +752,9 @@ enum RBACPermissions
     // IF YOU ADD NEW PERMISSIONS, ADD THEM IN MASTER BRANCH AS WELL!
     //
     // custom permissions 1000+
+    // EG - Crossfaction Arena
+    RBAC_PERM_TWO_SIDE_INTERACTION_ARENA                     = 1003,
+
     RBAC_PERM_MAX
 };
 

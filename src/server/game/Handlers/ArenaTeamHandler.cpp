@@ -25,6 +25,7 @@
 #include "ObjectMgr.h"
 #include "Opcodes.h"
 #include "Player.h"
+#include "RBAC.h"
 #include "SocialMgr.h"
 #include "World.h"
 #include "WorldPacket.h"
@@ -45,7 +46,8 @@ void WorldSession::HandleInspectArenaTeamsOpcode(WorldPacket& recvData)
     if (!GetPlayer()->IsWithinDistInMap(player, INSPECT_DISTANCE, false))
         return;
 
-    if (GetPlayer()->IsValidAttackTarget(player))
+    // EG - Crossfaction Arena: allow inspecting the other faction's arena team with the crossfaction arena permission
+    if (!HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_ARENA) && GetPlayer()->IsValidAttackTarget(player))
         return;
 
     for (uint8 i = 0; i < MAX_ARENA_SLOT; ++i)
@@ -131,7 +133,8 @@ void WorldSession::HandleArenaTeamInviteOpcode(WorldPacket& recvData)
     if (player->GetSocial()->HasIgnore(GetPlayer()->GetGUID()))
         return;
 
-    if (!sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GUILD) && player->GetTeam() != GetPlayer()->GetTeam())
+    // EG - Crossfaction Arena: allow inviting the other faction with the crossfaction arena permission
+    if (!HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_ARENA) && player->GetTeam() != GetPlayer()->GetTeam())
     {
         SendArenaTeamCommandResult(ERR_ARENA_TEAM_INVITE_SS, "", "", ERR_ARENA_TEAM_NOT_ALLIED);
         return;
@@ -182,8 +185,9 @@ void WorldSession::HandleArenaTeamAcceptOpcode(WorldPacket & /*recvData*/)
         return;
     }
 
-    // Only allow members of the other faction to join the team if cross faction interaction is enabled
-    if (!sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_GUILD) && _player->GetTeam() != sCharacterCache->GetCharacterTeamByGuid(arenaTeam->GetCaptain()))
+    // EG - Crossfaction Arena
+    // Only allow members of the other faction to join the team if cross faction arena interaction is enabled
+    if (!HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_ARENA) && _player->GetTeam() != sCharacterCache->GetCharacterTeamByGuid(arenaTeam->GetCaptain()))
     {
         SendArenaTeamCommandResult(ERR_ARENA_TEAM_CREATE_S, "", "", ERR_ARENA_TEAM_NOT_ALLIED);
         return;
