@@ -602,6 +602,7 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         virtual float GetStationaryO() const { return GetOrientation(); }
 
         float GetFloorZ() const;
+        float GetStaticFloorZ() const { return m_staticFloorZ; } // EG
         virtual float GetCollisionHeight() const { return 0.0f; }
 
         float GetMapWaterOrGroundLevel(float x, float y, float z, float* ground = nullptr) const;
