@@ -971,6 +971,7 @@ enum CustomFlags : uint16
     CUSTOM_FLAG_HARDCORE_REWARD_70 = 0x100,
     CUSTOM_FLAG_HARDCORE_REWARD_80 = 0x200,
     CUSTOM_FLAG_HARDCORE_COMPLETED = 0x400,
+    CUSTOM_FLAG_HARDCORE_RETIRED = 0x800,
 
     CUSTOM_FLAG_MILESTONE_REWARD_20 = 0x01,
     CUSTOM_FLAG_MILESTONE_REWARD_40 = 0x02,
@@ -2374,6 +2375,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         static void OfflineClearHardcoreDeath(ObjectGuid::LowType guid);
         static bool IsHardcoreCharacter(ObjectGuid guid);
         void DisableHardcore();
+        bool CanAbandonHardcore() const;
         uint32 GetHardcoreGraceSecondsLeft() const;
     protected:
         // Gamemaster whisper whitelist

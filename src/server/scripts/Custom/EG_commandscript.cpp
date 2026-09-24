@@ -86,7 +86,26 @@ public:
 
         if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
         {
-            handler->SendSysMessage("This character fell in Hardcore mode and is permanently dead.");
+            if (!player->CanAbandonHardcore())
+            {
+                handler->PSendSysMessage("This character fell in Hardcore mode and is permanently dead. Only a run that reached past level %u can be abandoned.", uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
+                return true;
+            }
+
+            if (!confirmed)
+            {
+                handler->SendSysMessage("|cffff0000=== ABANDON HARDCORE RUN ===|r");
+                handler->PSendSysMessage("You fell at level %u. Because you got past level %u you may abandon this Hardcore run instead of leaving the character dead.", uint32(player->GetLevel()), uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
+                handler->SendSysMessage("- Hardcore mode is switched off and death is no longer permanent. You will be able to resurrect at your corpse or at a spirit healer as usual.");
+                handler->SendSysMessage("- A permanent record that this character fell in Hardcore is kept. Nothing else from Hardcore is retained.");
+                handler->SendSysMessage("- Every other character setting becomes available again.");
+                handler->SendSysMessage("- Hardcore mode can never be switched back on.");
+                handler->SendSysMessage("If you are certain, type: .settings hardcore confirm");
+                return true;
+            }
+
+            player->DisableHardcore();
+            handler->SendSysMessage("|cff00ff00Hardcore run abandoned.|r Your Hardcore record is kept, all character settings are available again and you can now resurrect at your corpse or at a spirit healer.");
             return true;
         }
 
@@ -95,7 +114,7 @@ public:
             uint32 maxLevel = sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL);
             if (!sWorld->getIntConfig(CONFIG_HARDCORE_GRACE_PERIOD))
             {
-                handler->SendSysMessage("This character is in Hardcore mode and it can never be disabled.");
+                handler->PSendSysMessage("This character is in Hardcore mode and can never be retired intact. If it falls past level %u you will be able to abandon the run.", uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
                 return true;
             }
 
@@ -108,7 +127,7 @@ public:
             uint32 secondsLeft = player->GetHardcoreGraceSecondsLeft();
             if (!secondsLeft)
             {
-                handler->SendSysMessage("This character is in Hardcore mode and the window to retire it has passed. It can no longer be disabled.");
+                handler->PSendSysMessage("This character is in Hardcore mode and the window to retire it intact has passed. If it falls past level %u you will be able to abandon the run.", uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
                 return true;
             }
 
@@ -129,6 +148,12 @@ public:
             return true;
         }
 
+        if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags(CUSTOM_FLAG_HARDCORE_COMPLETED | CUSTOM_FLAG_HARDCORE_RETIRED)))
+        {
+            handler->SendSysMessage("This character already ran Hardcore mode. It can never be switched back on.");
+            return true;
+        }
+
         if (player->GetLevel() != 1)
         {
             handler->SendSysMessage("Hardcore mode can only be activated at level 1.");
@@ -144,14 +169,13 @@ public:
         if (!confirmed)
         {
             handler->SendSysMessage("|cffff0000=== HARDCORE MODE WARNING ===|r");
-            handler->SendSysMessage("Hardcore mode cannot be switched off once it is on, with a single exception:");
-            handler->SendSysMessage("- If this character dies for ANY reason, the death is PERMANENT. You will remain a ghost forever and can never be resurrected by any means.");
+            handler->SendSysMessage("Hardcore mode cannot be switched off once it is on, except on the terms below:");
+            handler->PSendSysMessage("- If this character dies at level %u or below, the death is PERMANENT. You will remain a ghost forever and can never be resurrected by any means.", uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
+            handler->PSendSysMessage("- If this character dies past level %u, you may abandon the run: Hardcore switches off, you resurrect normally and the character keeps a permanent record of the fall.", uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
             handler->SendSysMessage("- All other character settings are wiped NOW and stay disabled while Hardcore is on.");
             if (uint32 graceHours = sWorld->getIntConfig(CONFIG_HARDCORE_GRACE_PERIOD))
-                handler->PSendSysMessage("- The only way out is to survive to level %u. You then get %s of played time to retire Hardcore and return to regular play.",
+                handler->PSendSysMessage("- Survive to level %u and you get %s of played time to retire Hardcore intact and return to regular play.",
                     sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL), secsToTimeString(graceHours * HOUR, TimeFormat::ShortText).c_str());
-            else
-                handler->SendSysMessage("- There is no way out. Hardcore mode can never be removed from this character.");
             handler->SendSysMessage("If you are absolutely certain, type: .settings hardcore confirm");
             return true;
         }

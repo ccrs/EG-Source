@@ -3241,10 +3241,14 @@ Honor.Boost.Rate = 2.0
 #                     available again and death stops being permanent.
 #
 #                     The window is offered on the level-up to max level and on every login
-#                     while it lasts. Once it expires, or if the character dies at any point,
-#                     hardcore mode can never be removed.
+#                     while it lasts. Once it expires, this window can never be reopened.
+#
+#                     This window is only the intact retirement of a surviving character. A
+#                     character that FALLS past level 40 can always abandon the run instead
+#                     (".settings hardcore confirm" while dead), which also switches hardcore
+#                     off and allows a normal resurrection, but is recorded as a failed run.
 #        Default:     2 - (2 hours of played time at max level)
-#                     0 - (Disabled, hardcore can never be retired)
+#                     0 - (Disabled, no intact retirement window at max level)
 
 Hardcore.GracePeriod = 2
 

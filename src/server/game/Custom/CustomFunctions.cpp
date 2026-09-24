@@ -7,6 +7,7 @@
 #include "CellImpl.h"
 #include "Channel.h"
 #include "ChannelPackets.h"
+#include "Chat.h"
 #include "ChatPackets.h"
 #include "Containers.h"
 #include "Creature.h"
@@ -791,16 +792,28 @@ void Player::ActivateHardcore()
 
 void Player::DisableHardcore()
 {
-    if (!GetHardcoreGraceSecondsLeft())
+    bool abandoned = CanAbandonHardcore();
+    if (!abandoned && !GetHardcoreGraceSecondsLeft())
         return;
 
-    SetCustomFlags(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_COMPLETED);
+    SetCustomFlags(CustomFlagsIndex::CUSTOM_HARDCORE, abandoned ? CustomFlags::CUSTOM_FLAG_HARDCORE_RETIRED : CustomFlags::CUSTOM_FLAG_HARDCORE_COMPLETED);
     SetCustomFlags(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_NONE);
     SetCustomFlags(CustomFlagsIndex::CUSTOM_RACE_MASQUERADE, CustomFlags::CUSTOM_FLAG_NONE);
 
     _SaveCustomSettings();
 
     RefreshForcedPvPState(false);
+}
+
+bool Player::CanAbandonHardcore() const
+{
+    if (!HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE))
+        return false;
+
+    if (!HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
+        return false;
+
+    return GetLevel() > EG::HARDCORE_ABANDON_MIN_LEVEL;
 }
 
 uint32 Player::GetHardcoreGraceSecondsLeft() const
@@ -840,6 +853,13 @@ void Player::HandleHardcoreDeath(Unit* killer)
         sWorld->SendWorldText(LANG_HARDCORE_DEATH_CREATURE, GetName().c_str(), uint32(GetLevel()), killer->GetName().c_str());
     else
         sWorld->SendWorldText(LANG_HARDCORE_DEATH_GENERIC, GetName().c_str(), uint32(GetLevel()));
+
+    if (CanAbandonHardcore() && GetSession())
+    {
+        ChatHandler handler(GetSession());
+        handler.PSendSysMessage("|cffff0000You fell in Hardcore mode at level %u.|r Because you got past level %u you may abandon this run and return to regular play instead of staying dead.", uint32(GetLevel()), uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
+        handler.SendSysMessage("To abandon Hardcore, type: |cffffffff.settings hardcore|r");
+    }
 }
 
 /*static*/ bool Player::IsHardcoreCharacter(ObjectGuid guid)

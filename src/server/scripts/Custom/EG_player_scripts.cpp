@@ -4,6 +4,7 @@
 #include "ChannelMgr.h"
 #include "Chat.h"
 #include "CrossRealmChatMgr.h"
+#include "CustomFunctions.h"
 #include "DatabaseEnv.h"
 #include "Item.h"
 #include "Language.h"
@@ -300,6 +301,8 @@ class EG_Hardcore : public PlayerScript
             {
                 if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_COMPLETED))
                     handler.SendSysMessage("|cffff8000This character was levelled to max level in Hardcore mode.|r");
+                else if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_RETIRED))
+                    handler.SendSysMessage("|cffff8000This character fell in Hardcore mode and abandoned the run.|r");
 
                 return;
             }
@@ -309,7 +312,13 @@ class EG_Hardcore : public PlayerScript
                 if (player->IsAlive())
                     player->setDeathState(JUST_DIED);
 
-                handler.SendSysMessage("|cffff0000This character fell in Hardcore mode and is permanently dead.|r");
+                if (!player->CanAbandonHardcore())
+                    handler.SendSysMessage("|cffff0000This character fell in Hardcore mode and is permanently dead.|r");
+                else
+                {
+                    handler.PSendSysMessage("|cffff0000This character fell in Hardcore mode at level %u.|r Because it got past level %u you may abandon the run and return to regular play instead of staying dead.", uint32(player->GetLevel()), uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
+                    handler.SendSysMessage("To abandon Hardcore, type: |cffffffff.settings hardcore|r");
+                }
             }
             else
             {
@@ -346,7 +355,7 @@ class EG_Hardcore : public PlayerScript
                 secsToTimeString(secondsLeft, TimeFormat::ShortText).c_str());
             handler.SendSysMessage("Retiring keeps a permanent record that you levelled this character in Hardcore, unlocks every other character setting and returns you to regular play.");
             handler.SendSysMessage("To retire Hardcore now, type: |cffffffff.settings hardcore|r");
-            handler.SendSysMessage("|cffff0000If you die or let this time run out, Hardcore stays on this character forever.|r");
+            handler.SendSysMessage("|cffff0000If you let this time run out, Hardcore stays on this character: the only way out then is to fall and abandon the run, which is recorded as a failed run.|r");
         }
 
         static void GrantMilestone(Player* player, uint8 tier)
