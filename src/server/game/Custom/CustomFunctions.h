@@ -36,6 +36,8 @@ namespace EG
         HARDCORE_ABANDON_MIN_LEVEL = 40
     };
 
+    TC_GAME_API void SendHardcoreDeathMessage(Player const* player);
+
     TC_GAME_API bool IsBoostedDay();
     TC_GAME_API void SetBoostedDay(bool active);
 

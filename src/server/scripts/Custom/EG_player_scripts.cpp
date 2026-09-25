@@ -312,13 +312,7 @@ class EG_Hardcore : public PlayerScript
                 if (player->IsAlive())
                     player->setDeathState(JUST_DIED);
 
-                if (!player->CanAbandonHardcore())
-                    handler.SendSysMessage("|cffff0000This character fell in Hardcore mode and is permanently dead.|r");
-                else
-                {
-                    handler.PSendSysMessage("|cffff0000This character fell in Hardcore mode at level %u.|r Because it got past level %u you may abandon the run and return to regular play instead of staying dead.", uint32(player->GetLevel()), uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
-                    handler.SendSysMessage("To abandon Hardcore, type: |cffffffff.settings hardcore|r");
-                }
+                EG::SendHardcoreDeathMessage(player);
             }
             else
             {

@@ -4468,8 +4468,7 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
     // EG - Hardcore
     if (HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
     {
-        if (GetSession())
-            ChatHandler(GetSession()).SendSysMessage("|cffff0000You died in Hardcore mode. This death is permanent.|r");
+        EG::SendHardcoreDeathMessage(this);
         return;
     }
 

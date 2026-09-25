@@ -26,6 +26,7 @@
 #include "Chat.h"
 #include "Common.h"
 #include "Creature.h"
+#include "CustomFunctions.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
 #include "DisableMgr.h"
@@ -776,7 +777,7 @@ void WorldSession::HandleHearthAndResurrect(WorldPackets::Battleground::HearthAn
     // EG - Hardcore
     if (_player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
     {
-        ChatHandler(this).SendSysMessage("|cffff0000You died in Hardcore mode. This death is permanent.|r");
+        EG::SendHardcoreDeathMessage(_player);
         return;
     }
 

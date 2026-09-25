@@ -18,10 +18,10 @@
 #include "WorldSession.h"
 #include "Battleground.h"
 #include "BattlegroundMgr.h"
-#include "Chat.h"
 #include "Common.h"
 #include "Creature.h"
 #include "CreatureAI.h"
+#include "CustomFunctions.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
 #include "GossipDef.h"
@@ -207,7 +207,7 @@ void WorldSession::HandleSpiritHealerActivateOpcode(WorldPacket& recvData)
     // EG - Hardcore
     if (GetPlayer()->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
     {
-        ChatHandler(this).SendSysMessage("|cffff0000You died in Hardcore mode. This death is permanent.|r");
+        EG::SendHardcoreDeathMessage(GetPlayer());
         return;
     }
 

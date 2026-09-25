@@ -27,6 +27,7 @@
 #include "Corpse.h"
 #include "Creature.h"
 #include "CreatureAI.h"
+#include "CustomFunctions.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
 #include "GameObject.h"
@@ -553,7 +554,7 @@ void WorldSession::HandleReclaimCorpse(WorldPackets::Misc::ReclaimCorpse& /*pack
     // EG - Hardcore
     if (_player->HasCustomFlag(CustomFlagsIndex::CUSTOM_HARDCORE, CustomFlags::CUSTOM_FLAG_HARDCORE_DEAD))
     {
-        ChatHandler(this).SendSysMessage("|cffff0000You died in Hardcore mode. This death is permanent.|r");
+        EG::SendHardcoreDeathMessage(_player);
         return;
     }
 

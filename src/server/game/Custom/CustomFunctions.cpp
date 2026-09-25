@@ -854,12 +854,23 @@ void Player::HandleHardcoreDeath(Unit* killer)
     else
         sWorld->SendWorldText(LANG_HARDCORE_DEATH_GENERIC, GetName().c_str(), uint32(GetLevel()));
 
-    if (CanAbandonHardcore() && GetSession())
+    EG::SendHardcoreDeathMessage(this);
+}
+
+void EG::SendHardcoreDeathMessage(Player const* player)
+{
+    if (!player->GetSession())
+        return;
+
+    ChatHandler handler(player->GetSession());
+    if (!player->CanAbandonHardcore())
     {
-        ChatHandler handler(GetSession());
-        handler.PSendSysMessage("|cffff0000You fell in Hardcore mode at level %u.|r Because you got past level %u you may abandon this run and return to regular play instead of staying dead.", uint32(GetLevel()), uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
-        handler.SendSysMessage("To abandon Hardcore, type: |cffffffff.settings hardcore|r");
+        handler.SendSysMessage("|cffff0000You died in Hardcore mode. This death is permanent.|r");
+        return;
     }
+
+    handler.PSendSysMessage("|cffff0000You fell in Hardcore mode at level %u.|r Because you got past level %u you may abandon this run and return to regular play instead of staying dead.", uint32(player->GetLevel()), uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
+    handler.SendSysMessage("To abandon Hardcore, type: |cffffffff.settings hardcore|r");
 }
 
 /*static*/ bool Player::IsHardcoreCharacter(ObjectGuid guid)
