@@ -3,6 +3,7 @@ DELETE FROM `disables` WHERE (`sourceType` = 2) AND (`entry` IN (249,603,631,632
 DELETE FROM `disables` WHERE (`sourceType` = 8) AND (`entry` IN (249,603,631,632,649,650,658,668,724));
 INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, `comment`) VALUES
 (2, 249, 3, '', '', "Onyxia\'s Lair"),
+(2, 603, 3, '', '', 'Ulduar'),
 (2, 631, 15, '', '', 'Icecrown Citadel'),
 (2, 632, 3, '', '', 'The Forge of Souls'),
 (2, 649, 15, '', '', 'Trial of the Crusader'),
@@ -11,6 +12,7 @@ INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, 
 (2, 668, 3, '', '', 'Halls of Reflection'),
 (2, 724, 15, '', '', 'Ruby Sanctum'),
 (8, 249, 3, '', '', "Onyxia\'s Lair"),
+(8, 603, 3, '', '', 'Ulduar'),
 (8, 631, 15, '', '', 'Icecrown Citadel'),
 (8, 632, 3, '', '', 'The Forge of Souls'),
 (8, 649, 15, '', '', 'Trial of the Crusader'),
@@ -19,8 +21,12 @@ INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, 
 (8, 668, 3, '', '', 'Halls of Reflection'),
 (8, 724, 15, '', '', 'Ruby Sanctum');
 
-DELETE FROM `disables` WHERE (`sourceType` = 1) AND (`entry` IN (24589,24590));
+DELETE FROM `disables` WHERE (`sourceType` = 1) AND (`entry` IN (24585,24586,24587,24588,24589,24590));
 INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, `comment`) VALUES
+(1, 24585, 0, '', '', 'Flame Leviathan Must Die!'),
+(1, 24586, 0, '', '', 'Razorscale Must Die!'),
+(1, 24587, 0, '', '', 'Ignis the Furnace Master Must Die!'),
+(1, 24588, 0, '', '', 'XT-002 Deconstructor Must Die!'),
 (1, 24589, 0, '', '', 'Lord Jaraxxus Must Die!'),
 (1, 24590, 0, '', '', 'Lord Marrowgar Must Die!');
 
@@ -55,6 +61,25 @@ UPDATE `quest_template` SET `RewardItem1` = 40753 WHERE (`ID` = 13248);
 UPDATE `quest_template` SET `RewardItem1` = 40753 WHERE (`ID` = 13247);
 UPDATE `quest_template` SET `RewardItem1` = 40753 WHERE (`ID` = 13246);
 UPDATE `quest_template` SET `RewardItem1` = 40753 WHERE (`ID` = 13245);
+
+-- Only one Proof of Demise daily is offered per day
+DELETE FROM `quest_pool_members` WHERE `questId` IN (13245,13246,13247,13248,13249,13250,13251,13252,13253,13254,13255,13256,14199);
+DELETE FROM `quest_pool_template` WHERE `poolId` = 5800;
+INSERT INTO `quest_pool_template` (`poolId`, `numActive`, `description`) VALUES
+(5800, 1, 'Proof of Demise dailies');
+INSERT INTO `quest_pool_members` (`questId`, `poolId`, `poolIndex`, `description`) VALUES
+(13245, 5800, 0, 'Ingvar the Plunderer'),
+(13246, 5800, 1, 'Keristrasza'),
+(13247, 5800, 2, 'Ley-Guardian Eregos'),
+(13248, 5800, 3, 'King Ymiron'),
+(13249, 5800, 4, 'The Prophet Tharon\'ja'),
+(13250, 5800, 5, 'Gal\'darah'),
+(13251, 5800, 6, 'Mal\'Ganis'),
+(13252, 5800, 7, 'Sjonnir The Ironshaper'),
+(13253, 5800, 8, 'Loken'),
+(13254, 5800, 9, 'Anub\'arak'),
+(13255, 5800, 10, 'Herald Volazj'),
+(13256, 5800, 11, 'Cyanigosa');
 
 DELETE FROM `creature_queststarter` WHERE `id` = 20735;
 INSERT INTO `creature_queststarter` (`id`, `quest`) VALUES
