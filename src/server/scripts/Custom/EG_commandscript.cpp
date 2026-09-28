@@ -553,11 +553,13 @@ public:
 
         // EG - Hardcore
         uint16 preservedHardcore = 0;
+        uint16 preservedRealmFirstBlock = 0;
         if (Player* player = target->GetConnectedPlayer())
         {
             preservedHardcore = player->GetCustomFlags(CustomFlagsIndex::CUSTOM_HARDCORE);
+            preservedRealmFirstBlock = player->GetCustomFlags(CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK);
             for (uint16 i = 0; i < static_cast<uint16>(CustomFlagsIndex::CUSTOM_FLAGS_MAX); ++i)
-                if (i != CustomFlagsIndex::CUSTOM_HARDCORE)
+                if (i != CustomFlagsIndex::CUSTOM_HARDCORE && i != CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK)
                     player->SetCustomFlags(CustomFlagsIndex(i), CustomFlags::CUSTOM_FLAG_NONE);
 
             if (preservedHardcore & CustomFlags::CUSTOM_FLAG_HARDCORE_ACTIVE)
@@ -576,6 +578,10 @@ public:
                 if (tokens.size() > CustomFlagsIndex::CUSTOM_HARDCORE)
                     if (Optional<uint16> value = Trinity::StringTo<uint16>(tokens[CustomFlagsIndex::CUSTOM_HARDCORE]))
                         preservedHardcore = *value;
+
+                if (tokens.size() > CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK)
+                    if (Optional<uint16> value = Trinity::StringTo<uint16>(tokens[CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK]))
+                        preservedRealmFirstBlock = *value;
             }
         }
 
@@ -585,6 +591,8 @@ public:
         {
             if (i == CustomFlagsIndex::CUSTOM_HARDCORE)
                 data << preservedHardcore << ' ';
+            else if (i == CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK)
+                data << preservedRealmFirstBlock << ' ';
             else if (preservedHardcoreActive && i == CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS)
                 data << uint16(CUSTOM_FLAG_TRANSMOG_HIDE | CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY) << ' ';
             else if (preservedHardcoreActive && i == CustomFlagsIndex::CUSTOM_RACE_MASQUERADE)
