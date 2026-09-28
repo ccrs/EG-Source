@@ -1607,7 +1607,8 @@ void World::LoadConfigSettings(bool reload)
     m_bool_configs[CONFIG_WORLD_CHAT] = sConfigMgr->GetBoolDefault("WorldChat.Enable", false);
 
     // EG - Realm first history retired by a realm merge
-    EG::LoadRealmFirstRetiredOrigins(sConfigMgr->GetStringDefault("RealmFirst.RetiredOriginRealms", ""));
+    if (!reload)
+        EG::LoadRealmFirstRetiredOrigins(sConfigMgr->GetStringDefault("RealmFirst.RetiredOriginRealms", ""));
 
     // Allow 5-man parties to use raid warnings
     m_bool_configs[CONFIG_CHAT_PARTY_RAID_WARNINGS] = sConfigMgr->GetBoolDefault("PartyRaidWarnings", false);
