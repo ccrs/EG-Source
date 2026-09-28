@@ -51,29 +51,29 @@ namespace
         std::span<PoolItem const> Items;
     };
 
-    // Epic gems
-    constexpr PoolItem EPIC_GEMS_ITEMS[] =
+    // Rare gems
+    constexpr PoolItem RARE_GEMS_ITEMS[] =
     {
-        { 36919, 1, 2 }, // Cardinal Ruby
-        { 36922, 1, 2 }, // King's Amber
-        { 36925, 1, 2 }, // Majestic Zircon
-        { 36928, 1, 2 }, // Dreadstone
-        { 36931, 1, 2 }, // Ametrine
-        { 36934, 1, 2 }, // Eye of Zul
+        { 36918, 1, 2 }, // Scarlet Ruby
+        { 36921, 1, 2 }, // Autumn's Glow
+        { 36924, 1, 2 }, // Sky Sapphire
+        { 36927, 1, 2 }, // Twilight Opal
+        { 36930, 1, 2 }, // Monarch Topaz
+        { 36933, 1, 2 }, // Forest Emerald
     };
 
     // Craft materials
     constexpr PoolItem CRAFT_COMMON_ITEMS[] =
     {
-        { 42253, 1, 10 }, // Iceweb Spider Silk
-        { 36860, 1, 10 }, // Eternal Fire
-        { 35622, 1, 10 }, // Eternal Water
-        { 35623, 1, 10 }, // Eternal Air
-        { 35625, 1, 10 }, // Eternal Life
-        { 35627, 1, 10 }, // Eternal Shadow
-        { 38558, 1, 5 }, // Nerubian Chitin
-        { 34055, 1, 5 }, // Greater Cosmic Essence
-        { 34052, 1, 5 }, // Dream Shard
+        { 42253, 1, 5 }, // Iceweb Spider Silk
+        { 36860, 1, 5 }, // Eternal Fire
+        { 35622, 1, 5 }, // Eternal Water
+        { 35623, 1, 5 }, // Eternal Air
+        { 35625, 1, 5 }, // Eternal Life
+        { 35627, 1, 5 }, // Eternal Shadow
+        { 38558, 1, 3 }, // Nerubian Chitin
+        { 34054, 1, 5 }, // Infinite Dust
+        { 34052, 1, 2 }, // Dream Shard
     };
 
     // Craft materials - uncommon
@@ -123,7 +123,7 @@ namespace
     // ---- Pool registry ----
     constexpr LootPool POOLS[] =
     {
-        { "Epic Gems", 8.25f, false, false, EPIC_GEMS_ITEMS },
+        { "Rare Gems", 8.25f, false, false, RARE_GEMS_ITEMS },
         { "Craft Materials", 20.0f, true, false, CRAFT_COMMON_ITEMS },
         { "Craft Materials (Uncommon)", 20.0f, false, false, CRAFT_UNCOMMON_ITEMS },
         { "Craft Materials (Rare)", 8.25f, false, false, CRAFT_RARE_ITEMS },
