@@ -153,7 +153,8 @@ void LoadDisables()
                 switch (mapEntry->InstanceType)
                 {
                     case MAP_COMMON:
-                        if (flags)
+                        // EG
+                        if (flags & ~DUNGEON_STATUSFLAG_ALLOW_OTHER_ORIGIN_REALM)
                             isFlagInvalid = true;
                         break;
                     case MAP_INSTANCE:
@@ -164,7 +165,8 @@ void LoadDisables()
                             flags -= RAID_STATUSFLAG_10MAN_HEROIC;
                         if (flags & RAID_STATUSFLAG_25MAN_HEROIC && !GetMapDifficultyData(entry, RAID_DIFFICULTY_25MAN_HEROIC))
                             flags -= RAID_STATUSFLAG_25MAN_HEROIC;
-                        if (!flags)
+                        // EG
+                        if (!(flags & ~DUNGEON_STATUSFLAG_ALLOW_OTHER_ORIGIN_REALM))
                             isFlagInvalid = true;
                         break;
                     case MAP_BATTLEGROUND:
@@ -358,6 +360,10 @@ bool IsDisabledFor(DisableType type, uint32 entry, WorldObject const* ref, uint8
         case DISABLE_TYPE_LFG_MAP:
             if (Player const* player = ref->ToPlayer())
             {
+                // EG
+                if ((itr->second.flags & DUNGEON_STATUSFLAG_ALLOW_OTHER_ORIGIN_REALM) && player->IsMigratedCharacter())
+                    return false;
+
                 MapEntry const* mapEntry = sMapStore.LookupEntry(entry);
                 if (mapEntry->IsDungeon())
                 {
