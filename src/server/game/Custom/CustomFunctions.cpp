@@ -40,6 +40,7 @@
 #include "Pet.h"
 #include "Player.h"
 #include "PlayerTaxi.h"
+#include "Realm.h"
 #include "ScriptedCreature.h"
 #include "SharedDefines.h"
 #include "SmartAI.h"
@@ -437,6 +438,8 @@ void Player::_LoadCustomSettings(PreparedQueryResult result)
             _customFlags[itr] = temp;
         }
     }
+
+    _originRealmId = fields[1].GetUInt8();
 }
 
 void Player::_LoadTransmogrifications(PreparedQueryResult result)
@@ -637,10 +640,14 @@ void Player::_SaveCustomSettings()
     for (uint16 value : _customFlags)
         data << value << ' ';
 
+    if (!_originRealmId)
+        _originRealmId = uint8(realm.Id.Realm);
+
     if (CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_CUSTOM_SETTINGS))
     {
         stmt->setUInt32(0, GetGUID().GetCounter());
         stmt->setString(1, data.str());
+        stmt->setUInt8(2, _originRealmId);
         CharacterDatabase.Execute(stmt);
     }
 }
@@ -686,6 +693,11 @@ bool Player::HasCustomFlag(CustomFlagsIndex const i, CustomFlags const f) const
         return true;
 
     return false;
+}
+
+bool Player::IsMigratedCharacter() const
+{
+    return _originRealmId != 0 && uint32(_originRealmId) != realm.Id.Realm;
 }
 
 void Player::SetCustomFlags(CustomFlagsIndex const i, CustomFlags const f)

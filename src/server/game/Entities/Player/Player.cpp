@@ -346,6 +346,7 @@ Player::Player(WorldSession* session): Unit(true)
 
     // EG - Custom
     _customFlags = {};
+    _originRealmId = 0;
 
     _masqueradeRace = RACE_NONE;
     _masqueradeRaceDirty = false;

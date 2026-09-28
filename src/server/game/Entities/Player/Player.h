@@ -2350,6 +2350,10 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void RemoveCustomFlag(CustomFlagsIndex const index, CustomFlags const flag);
         uint16 GetCustomFlags(CustomFlagsIndex const index) const;
 
+        // EG - Origin realm
+        uint8 GetOriginRealmId() const { return _originRealmId; }
+        bool IsMigratedCharacter() const;
+
         bool HasTransmogrifications() const { return !_transmogrificationMap.empty(); }
         uint32 GetTransmogrificationEntry(ObjectGuid itemGUID) const;
         bool EraseTransmogrificationEntry(ObjectGuid itemGUID);
@@ -2706,6 +2710,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void _LoadAccountCharacters(PreparedQueryResult result);
 
         std::array<uint16, CUSTOM_FLAGS_MAX> _customFlags;
+        uint8 _originRealmId;
 
         std::unordered_map<ObjectGuid, uint32> _transmogrificationMap;
         std::unordered_map<uint8, uint32> _transmogrificationHideMap;
