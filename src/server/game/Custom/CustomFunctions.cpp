@@ -58,6 +58,7 @@
 #include "World.h"
 #include "WorldSession.h"
 #include <algorithm>
+#include <cmath>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -1738,6 +1739,28 @@ void WorldSession::SendWorldChannelInvite()
         notify.SenderGuid = ObjectGuid::Create<HighGuid::Player>(WORLD_CHAT_INVITER_GUID);
         player->GetSession()->SendPacket(notify.Write());
     }, 5s);
+}
+
+void InstanceScript::EnforceItemLevelCap()
+{
+    AccessRequirement const* ar = sObjectMgr->GetAccessRequirement(instance->GetId(), instance->GetDifficultyID());
+    if (!ar || !ar->item_level_max)
+        return;
+
+    std::vector<Player*> violators;
+    for (MapReference const& ref : instance->GetPlayers())
+        if (Player* player = ref.GetSource())
+            if (!player->IsGameMaster() && player->GetAverageItemLevel() > float(ar->item_level_max))
+                violators.push_back(player);
+
+    for (Player* player : violators)
+    {
+        TC_LOG_INFO("scripts", "InstanceScript: removing {} from map {} instance {}, average item level {} exceeds the cap of {}.",
+            player->GetName(), instance->GetId(), instance->GetInstanceId(), uint32(std::ceil(player->GetAverageItemLevel())), ar->item_level_max);
+
+        ChatHandler(player->GetSession()).PSendSysMessage(LANG_INSTANCE_ILVL_MAX, ar->item_level_max, uint32(std::ceil(player->GetAverageItemLevel())));
+        player->TeleportTo(player->m_homebindMapId, player->m_homebindX, player->m_homebindY, player->m_homebindZ, 0.0f);
+    }
 }
 
 void InstanceScript::ForceRespawnQueuedCreaturesByEntry(std::vector<uint32> const& entries)

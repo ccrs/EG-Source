@@ -1908,6 +1908,9 @@ LfgLockMap const LFGMgr::GetLockedDungeons(ObjectGuid guid)
         {
             if (ar->item_level && player->GetAverageItemLevel() < ar->item_level)
                 lockStatus = LFG_LOCKSTATUS_TOO_LOW_GEAR_SCORE;
+            // EG
+            else if (ar->item_level_max && player->GetAverageItemLevel() > float(ar->item_level_max))
+                lockStatus = LFG_LOCKSTATUS_TOO_HIGH_GEAR_SCORE;
             else if (ar->achievement && !player->HasAchieved(ar->achievement))
                 lockStatus = LFG_LOCKSTATUS_MISSING_ACHIEVEMENT;
             else if (player->GetTeam() == ALLIANCE && ar->quest_A && !player->GetQuestRewardStatus(ar->quest_A))

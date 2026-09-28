@@ -371,6 +371,10 @@ bool InstanceScript::SetBossState(uint32 id, EncounterState state)
             bossInfo->state = state;
             SaveToDB();
 
+            // EG
+            if (state == IN_PROGRESS)
+                EnforceItemLevelCap();
+
             // EG - PvE tournament: final boss state settled, complete only if every encounter is DONE, reject otherwise
             if (state == DONE && sTournamentMgr->IsRunFinalizing(instance->GetInstanceId()))
             {

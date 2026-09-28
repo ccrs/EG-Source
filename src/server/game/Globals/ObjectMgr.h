@@ -461,6 +461,7 @@ struct AccessRequirement
     uint8  levelMin;
     uint8  levelMax;
     uint16 item_level;
+    uint16 item_level_max; // EG - max average equipped item level, 0 = no cap
     uint32 item;
     uint32 item2;
     uint32 quest_A;

@@ -7230,7 +7230,7 @@ void ObjectMgr::LoadAccessRequirements()
     _accessRequirementStore.clear();                                  // need for reload case
 
     //                                               0      1           2          3          4           5      6             7             8                      9     10
-    QueryResult result = WorldDatabase.Query("SELECT mapid, difficulty, level_min, level_max, item_level, item, item2, quest_done_A, quest_done_H, completed_achievement, quest_failed_text FROM access_requirement");
+    QueryResult result = WorldDatabase.Query("SELECT mapid, difficulty, level_min, level_max, item_level, item, item2, quest_done_A, quest_done_H, completed_achievement, quest_failed_text, item_level_max FROM access_requirement");
 
     if (!result)
     {
@@ -7262,6 +7262,7 @@ void ObjectMgr::LoadAccessRequirements()
         ar->quest_H = fields[8].GetUInt32();
         ar->achievement = fields[9].GetUInt32();
         ar->questFailedText = fields[10].GetString();
+        ar->item_level_max = fields[11].GetUInt16(); // EG
 
         if (ar->item)
         {

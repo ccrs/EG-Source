@@ -19057,6 +19057,14 @@ bool Player::Satisfy(AccessRequirement const* ar, uint32 target_map, bool report
             if (!leader || !leader->HasAchieved(ar->achievement))
                 missingAchievement = ar->achievement;
 
+        // EG
+        if (ar->item_level_max && GetAverageItemLevel() > float(ar->item_level_max))
+        {
+            if (report)
+                GetSession()->SendAreaTriggerMessage(GetSession()->GetTrinityString(LANG_INSTANCE_ILVL_MAX), ar->item_level_max, uint32(std::ceil(GetAverageItemLevel())));
+            return false;
+        }
+
         Difficulty target_difficulty = group ? group->GetDifficultyID(mapEntry) : GetDifficultyID(mapEntry);
         MapDifficultyEntry const* mapDiff = GetDownscaledMapDifficultyData(target_map, target_difficulty);
         if (LevelMin || LevelMax || missingItem || missingQuest || missingAchievement)
