@@ -65,6 +65,7 @@
 namespace
 {
     bool BoostedDayActive = false;
+    std::set<uint32> RealmFirstRetiredOrigins;
 }
 
 bool EG::IsBoostedDay()
@@ -77,10 +78,33 @@ void EG::SetBoostedDay(bool active)
     BoostedDayActive = active;
 }
 
+void EG::LoadRealmFirstRetiredOrigins(std::string const& originRealmIds)
+{
+    RealmFirstRetiredOrigins.clear();
+
+    for (std::string_view token : Trinity::Tokenize(originRealmIds, ',', false))
+        if (Optional<uint32> originRealmId = Trinity::StringTo<uint32>(token))
+            if (*originRealmId)
+                RealmFirstRetiredOrigins.insert(*originRealmId);
+}
+
+bool EG::IsRealmFirstRetiredOrigin(uint32 originRealmId)
+{
+    return originRealmId && RealmFirstRetiredOrigins.find(originRealmId) != RealmFirstRetiredOrigins.end();
+}
+
+std::set<uint32> const& EG::GetRealmFirstRetiredOrigins()
+{
+    return RealmFirstRetiredOrigins;
+}
+
 bool EG::CanEarnRealmFirst(Player const* player, AchievementEntry const* achievement)
 {
     if (achievement->Flags != ACHIEVEMENT_FLAG_REALM_FIRST_REACH)
         return true;
+
+    if (IsRealmFirstRetiredOrigin(player->GetOriginRealmId()))
+        return false;
 
     if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK, CustomFlags::CUSTOM_FLAG_REALM_FIRST_BLOCKED))
         return false;
@@ -706,11 +730,6 @@ bool Player::HasCustomFlag(CustomFlagsIndex const i, CustomFlags const f) const
         return true;
 
     return false;
-}
-
-bool Player::IsMigratedCharacter() const
-{
-    return _originRealmId != 0 && uint32(_originRealmId) != realm.Id.Realm;
 }
 
 void Player::SetCustomFlags(CustomFlagsIndex const i, CustomFlags const f)

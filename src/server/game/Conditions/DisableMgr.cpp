@@ -179,6 +179,24 @@ void LoadDisables()
                     TC_LOG_ERROR("sql.sql", "Disable flags for map {} are invalid, skipped.", entry);
                     continue;
                 }
+
+                // EG - params_0 lists the origin realm ids this disable still admits
+                if (flags & DUNGEON_STATUSFLAG_ALLOW_OTHER_ORIGIN_REALM)
+                {
+                    for (std::string_view originStr : Trinity::Tokenize(params_0, ',', true))
+                    {
+                        if (Optional<uint32> originRealmId = Trinity::StringTo<uint32>(originStr))
+                            data.params[0].insert(*originRealmId);
+                        else
+                            TC_LOG_ERROR("sql.sql", "Disable origin realm '{}' for map {} is invalid, skipped.", std::string(originStr), entry);
+                    }
+
+                    if (data.params[0].empty())
+                    {
+                        TC_LOG_ERROR("sql.sql", "Map {} is flagged to admit other origin realms but params_0 lists none, disable applies to everyone.", entry);
+                        data.flags &= ~DUNGEON_STATUSFLAG_ALLOW_OTHER_ORIGIN_REALM;
+                    }
+                }
                 break;
             }
             case DISABLE_TYPE_BATTLEGROUND:
@@ -361,7 +379,8 @@ bool IsDisabledFor(DisableType type, uint32 entry, WorldObject const* ref, uint8
             if (Player const* player = ref->ToPlayer())
             {
                 // EG
-                if ((itr->second.flags & DUNGEON_STATUSFLAG_ALLOW_OTHER_ORIGIN_REALM) && player->IsMigratedCharacter())
+                if ((itr->second.flags & DUNGEON_STATUSFLAG_ALLOW_OTHER_ORIGIN_REALM) &&
+                    itr->second.params[0].find(player->GetOriginRealmId()) != itr->second.params[0].end())
                     return false;
 
                 MapEntry const* mapEntry = sMapStore.LookupEntry(entry);

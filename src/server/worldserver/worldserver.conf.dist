@@ -3496,6 +3496,13 @@ XPRate.MilestoneRewards.Enable = 1
 
 WorldChat.Enable = 0
 
+#    RealmFirst.RetiredOriginRealms
+#        Description: Comma separated list of origin realm ids (character_extended.originRealmId)
+#        Example:     RealmFirst.RetiredOriginRealms = "2"
+#        Default:     "" - (Disabled, stock realm first behaviour)
+
+RealmFirst.RetiredOriginRealms = ""
+
 #
 #    Arena1v1.Enable
 #        Description: Enable the custom 1v1 arena bracket.

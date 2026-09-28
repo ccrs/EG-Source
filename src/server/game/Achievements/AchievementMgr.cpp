@@ -2591,7 +2591,27 @@ void AchievementGlobalMgr::LoadCompletedAchievements()
             if (achievement->Flags & (ACHIEVEMENT_FLAG_REALM_FIRST_REACH | ACHIEVEMENT_FLAG_REALM_FIRST_KILL))
                 _allCompletedAchievements[achievement->ID] = SystemTimePoint::min();
 
-    QueryResult result = CharacterDatabase.Query("SELECT achievement FROM character_achievement GROUP BY achievement");
+    // EG - a retired origin realm's realm first history must not lock the achievement for anyone else
+    std::string achievementQuery = "SELECT achievement FROM character_achievement GROUP BY achievement";
+    std::set<uint32> const& retiredOrigins = EG::GetRealmFirstRetiredOrigins();
+    if (!retiredOrigins.empty())
+    {
+        std::string retiredList;
+        for (uint32 originRealmId : retiredOrigins)
+        {
+            if (!retiredList.empty())
+                retiredList += ',';
+            retiredList += std::to_string(originRealmId);
+        }
+
+        achievementQuery = "SELECT ca.achievement FROM character_achievement ca "
+            "LEFT JOIN character_extended ce ON ce.guid = ca.guid "
+            "WHERE IFNULL(ce.originRealmId, 0) NOT IN (" + retiredList + ") GROUP BY ca.achievement";
+
+        TC_LOG_INFO("server.loading", "Realm first history from origin realm(s) {} is retired and does not lock achievements.", retiredList);
+    }
+
+    QueryResult result = CharacterDatabase.Query(achievementQuery.c_str());
 
     if (!result)
     {

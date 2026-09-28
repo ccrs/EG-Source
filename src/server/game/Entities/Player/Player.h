@@ -2355,7 +2355,6 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
 
         // EG - Origin realm
         uint8 GetOriginRealmId() const { return _originRealmId; }
-        bool IsMigratedCharacter() const;
 
         bool HasTransmogrifications() const { return !_transmogrificationMap.empty(); }
         uint32 GetTransmogrificationEntry(ObjectGuid itemGUID) const;

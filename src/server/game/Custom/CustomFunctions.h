@@ -22,6 +22,8 @@
 #include "Object.h"
 #include "SharedDefines.h"
 #include <chrono>
+#include <set>
+#include <string>
 #include <vector>
 
 class Group;
@@ -41,6 +43,10 @@ namespace EG
 
     TC_GAME_API bool IsBoostedDay();
     TC_GAME_API void SetBoostedDay(bool active);
+
+    TC_GAME_API void LoadRealmFirstRetiredOrigins(std::string const& originRealmIds);
+    TC_GAME_API bool IsRealmFirstRetiredOrigin(uint32 originRealmId);
+    TC_GAME_API std::set<uint32> const& GetRealmFirstRetiredOrigins();
 
     TC_GAME_API bool CanEarnRealmFirst(Player const* player, AchievementEntry const* achievement);
 
