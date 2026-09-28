@@ -77,6 +77,19 @@ void EG::SetBoostedDay(bool active)
     BoostedDayActive = active;
 }
 
+bool EG::CanEarnRealmFirst(Player const* player, AchievementEntry const* achievement)
+{
+    if (achievement->Flags != ACHIEVEMENT_FLAG_REALM_FIRST_REACH)
+        return true;
+
+    if (player->HasCustomFlag(CustomFlagsIndex::CUSTOM_REALM_FIRST_BLOCK, CustomFlags::CUSTOM_FLAG_REALM_FIRST_BLOCKED))
+        return false;
+
+    if (player->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS) > CustomFlags::CUSTOM_FLAG_NONE)
+        return false;
+
+    return true;
+}
 
 void Creature::ProcessDelayedLOSEntries()
 {

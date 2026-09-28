@@ -21,6 +21,7 @@
 #include "Battleground.h"
 #include "CellImpl.h"
 #include "ChatTextBuilder.h"
+#include "CustomFunctions.h"
 #include "DatabaseEnv.h"
 #include "DBCEnums.h"
 #include "DisableMgr.h"
@@ -1520,10 +1521,9 @@ void AchievementMgr::CompletedAchievement(AchievementEntry const* achievement)
     if (m_player->IsGameMaster() || m_player->GetSession()->HasPermission(rbac::RBAC_PERM_CANNOT_EARN_ACHIEVEMENTS))
         return;
 
-    // EG - Disable First Reach if used XP rate command (pure reach only, not realm-first raid kills which carry the reach bit too)
-    if (achievement->Flags == ACHIEVEMENT_FLAG_REALM_FIRST_REACH)
-        if (m_player->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS) > CustomFlags::CUSTOM_FLAG_NONE)
-            return;
+    // EG - realm first eligibility under the XP rate system
+    if (!EG::CanEarnRealmFirst(m_player, achievement))
+        return;
 
     if (achievement->Flags & ACHIEVEMENT_FLAG_COUNTER || HasAchieved(achievement->ID))
         return;
@@ -1698,10 +1698,9 @@ bool AchievementMgr::CanUpdateCriteria(AchievementCriteriaEntry const* criteria,
         if (GetPlayer()->GetSession()->HasPermission(rbac::RBAC_PERM_CANNOT_EARN_REALM_FIRST_ACHIEVEMENTS))
             return false;
 
-    // EG - Disable First Reach if used XP rate command (pure reach only, not realm-first raid kills which carry the reach bit too)
-    if (achievement->Flags == ACHIEVEMENT_FLAG_REALM_FIRST_REACH)
-        if (GetPlayer()->GetCustomFlags(CustomFlagsIndex::CUSTOM_XPRATE_FLAGS) > CustomFlags::CUSTOM_FLAG_NONE)
-            return false;
+    // EG - realm first eligibility under the XP rate system
+    if (!EG::CanEarnRealmFirst(GetPlayer(), achievement))
+        return false;
 
     // don't update already completed criteria
     if (IsCompletedCriteria(criteria, achievement))

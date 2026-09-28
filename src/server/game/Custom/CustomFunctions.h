@@ -28,6 +28,7 @@ class Group;
 class Player;
 class Unit;
 class WorldObject;
+struct AchievementEntry;
 
 namespace EG
 {
@@ -40,6 +41,8 @@ namespace EG
 
     TC_GAME_API bool IsBoostedDay();
     TC_GAME_API void SetBoostedDay(bool active);
+
+    TC_GAME_API bool CanEarnRealmFirst(Player const* player, AchievementEntry const* achievement);
 
     constexpr std::chrono::year HolidayPackedDateMaxYear{ 2031 };
 
