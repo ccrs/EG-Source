@@ -32,6 +32,7 @@ void AddSC_EG_priest_spell_scripts();
 void AddSC_EG_achievement_scripts();
 void AddSC_EG_areatrigger_scripts();
 void AddSC_EG_commandscript();
+void AddSC_EG_event_scripts();
 void AddSC_EG_go_scripts();
 void AddSC_EG_player_scripts();
 void AddSC_EG_tournament_commandscript();
@@ -57,6 +58,7 @@ void AddCustomScripts()
     AddSC_EG_achievement_scripts();
     AddSC_EG_areatrigger_scripts();
     AddSC_EG_commandscript();
+    AddSC_EG_event_scripts();
     AddSC_EG_go_scripts();
     AddSC_EG_player_scripts();
     AddSC_EG_tournament_commandscript();
