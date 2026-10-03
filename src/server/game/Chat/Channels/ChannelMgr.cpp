@@ -85,6 +85,8 @@ ChannelMgr::~ChannelMgr()
             continue;
         }
 
+        wstrToLower(channelName); // EG - match the lowercased key used by every channel lookup
+
         auto [itr, isNew] = mgr->_customChannels.try_emplace(std::move(channelName));
         if (!isNew)
         {
