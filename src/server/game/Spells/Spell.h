@@ -400,7 +400,13 @@ class TC_GAME_API Spell
         uint32 m_castItemEntry;
         uint8 m_cast_count;
         bool m_fromClient;
-        uint32 m_glyphIndex;
+        union
+        {
+            // Alternate names for this value
+            uint32 GlyphSlot;
+
+            uint32 Data;
+        } m_misc;
         SpellCastTargets m_targets;
 
         void AddComboPointGain(Unit* target, int8 amount)
@@ -456,6 +462,7 @@ class TC_GAME_API Spell
         int32 GetPowerCost() const { return m_powerCost; }
 
         bool UpdatePointers();                              // must be used at call Spell code after time delay (non triggered spell cast/update spell call/etc)
+        void UpdateOriginalCasterPointer();
 
         void CleanupTargetList();
 

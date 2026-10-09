@@ -75,7 +75,7 @@ namespace WorldPackets
         class Emote final : public ServerPacket
         {
         public:
-            Emote() : ServerPacket(SMSG_EMOTE, 4 + 8) { }
+            explicit Emote() : ServerPacket(SMSG_EMOTE, 4 + 8) { }
 
             WorldPacket const* Write() override;
 
@@ -111,7 +111,7 @@ namespace WorldPackets
         class EmoteClient final : public ClientPacket
         {
         public:
-            EmoteClient(WorldPacket&& packet) : ClientPacket(CMSG_EMOTE, std::move(packet)) { }
+            explicit EmoteClient(WorldPacket&& packet) : ClientPacket(CMSG_EMOTE, std::move(packet)) { }
 
             void Read() override;
 
@@ -121,7 +121,7 @@ namespace WorldPackets
         class ChatServerMessage final : public ServerPacket
         {
         public:
-            ChatServerMessage() : ServerPacket(SMSG_CHAT_SERVER_MESSAGE, 4 + 20) { }
+            explicit ChatServerMessage() : ServerPacket(SMSG_CHAT_SERVER_MESSAGE, 4 + 20) { }
 
             WorldPacket const* Write() override;
 
