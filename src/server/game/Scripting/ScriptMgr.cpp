@@ -1509,6 +1509,11 @@ void ScriptMgr::OnMapUpdate(Map* map, uint32 diff)
 {
     ASSERT(map);
 
+    // EG - WorldZoneScript update runs with the map its zones belong to
+    FOR_SCRIPTS(WorldZoneScript, itr, end)
+        if (itr->second->GetMapId() == map->GetId())
+            itr->second->OnUpdate(map, diff);
+
     SCR_MAP_BGN(WorldMapScript, map, itr, end, entry, IsWorldMap);
         itr->second->OnUpdate(map, diff);
     SCR_MAP_END;
@@ -1524,6 +1529,46 @@ void ScriptMgr::OnMapUpdate(Map* map, uint32 diff)
 
 #undef SCR_MAP_BGN
 #undef SCR_MAP_END
+
+// EG - WorldZoneScript lookup for WorldObject::SetZoneScript
+ZoneScript* ScriptMgr::GetWorldZoneScript(uint32 mapId, uint32 zoneId, uint32 phaseMask)
+{
+    FOR_SCRIPTS(WorldZoneScript, itr, end)
+        if (itr->second->GetMapId() == mapId && (itr->second->GetPhaseMask() & phaseMask) && itr->second->HasZone(zoneId))
+            return itr->second;
+
+    return nullptr;
+}
+
+// EG - WorldZoneScript player enter hook
+void ScriptMgr::OnPlayerEnterWorldZone(Player* player, uint32 zoneId)
+{
+    ASSERT(player);
+
+    FOR_SCRIPTS(WorldZoneScript, itr, end)
+        if (itr->second->HasZone(zoneId))
+            itr->second->OnPlayerEnter(player, zoneId);
+}
+
+// EG - WorldZoneScript player leave hook
+void ScriptMgr::OnPlayerLeaveWorldZone(Player* player, uint32 zoneId)
+{
+    ASSERT(player);
+
+    FOR_SCRIPTS(WorldZoneScript, itr, end)
+        if (itr->second->HasZone(zoneId))
+            itr->second->OnPlayerLeave(player, zoneId);
+}
+
+// EG - WorldZoneScript initial world states
+void ScriptMgr::FillWorldZoneInitialWorldStates(Player* player, uint32 zoneId, WorldPackets::WorldState::InitWorldStates& packet)
+{
+    ASSERT(player);
+
+    FOR_SCRIPTS(WorldZoneScript, itr, end)
+        if (itr->second->HasZone(zoneId))
+            itr->second->FillInitialWorldStates(player, packet);
+}
 
 InstanceScript* ScriptMgr::CreateInstanceData(InstanceMap* map)
 {
@@ -2301,6 +2346,34 @@ WorldMapScript::WorldMapScript(char const* name, uint32 mapId)
     ScriptRegistry<WorldMapScript>::Instance()->AddScript(this);
 }
 
+// EG - WorldZoneScript
+WorldZoneScript::WorldZoneScript(char const* name, uint32 mapId, std::vector<uint32> zoneIds, uint32 phaseMask)
+    : ScriptObject(name), _mapId(mapId), _zoneIds(std::move(zoneIds)), _phaseMask(phaseMask)
+{
+    ScriptRegistry<WorldZoneScript>::Instance()->AddScript(this);
+}
+
+bool WorldZoneScript::HasZone(uint32 zoneId) const
+{
+    return std::find(_zoneIds.begin(), _zoneIds.end(), zoneId) != _zoneIds.end();
+}
+
+void WorldZoneScript::OnPlayerEnter(Player* /*player*/, uint32 /*zoneId*/)
+{
+}
+
+void WorldZoneScript::OnPlayerLeave(Player* /*player*/, uint32 /*zoneId*/)
+{
+}
+
+void WorldZoneScript::FillInitialWorldStates(Player* /*player*/, WorldPackets::WorldState::InitWorldStates& /*packet*/)
+{
+}
+
+void WorldZoneScript::OnUpdate(Map* /*map*/, uint32 /*diff*/)
+{
+}
+
 InstanceMapScript::InstanceMapScript(char const* name, uint32 mapId)
     : ScriptObject(name), MapScript(sMapStore.LookupEntry(mapId))
 {
@@ -2820,6 +2893,7 @@ template class TC_GAME_API ScriptRegistry<ServerScript>;
 template class TC_GAME_API ScriptRegistry<WorldScript>;
 template class TC_GAME_API ScriptRegistry<FormulaScript>;
 template class TC_GAME_API ScriptRegistry<WorldMapScript>;
+template class TC_GAME_API ScriptRegistry<WorldZoneScript>; // EG
 template class TC_GAME_API ScriptRegistry<InstanceMapScript>;
 template class TC_GAME_API ScriptRegistry<BattlegroundMapScript>;
 template class TC_GAME_API ScriptRegistry<ItemScript>;

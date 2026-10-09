@@ -39,6 +39,7 @@
 #include "PathGenerator.h"
 #include "Player.h"
 #include "ReputationMgr.h"
+#include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
 #include "SpellMgr.h"
 #include "StringConvert.h"
@@ -1993,6 +1994,10 @@ void WorldObject::SetZoneScript()
             m_zoneScript = battlefield;
         else
             m_zoneScript = sOutdoorPvPMgr->GetZoneScript(GetZoneId());
+
+        // EG - fall back to a WorldZoneScript sharing a phase with this object
+        if (!m_zoneScript)
+            m_zoneScript = sScriptMgr->GetWorldZoneScript(map->GetId(), GetZoneId(), GetPhaseMask());
     }
 }
 
