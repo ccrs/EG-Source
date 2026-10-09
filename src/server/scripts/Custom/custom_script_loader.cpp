@@ -31,6 +31,7 @@ void AddSC_EG_priest_spell_scripts();
 
 void AddSC_EG_achievement_scripts();
 void AddSC_EG_areatrigger_scripts();
+void AddSC_EG_battle_for_undercity();
 void AddSC_EG_commandscript();
 void AddSC_EG_event_scripts();
 void AddSC_EG_go_scripts();
@@ -57,6 +58,7 @@ void AddCustomScripts()
 
     AddSC_EG_achievement_scripts();
     AddSC_EG_areatrigger_scripts();
+    AddSC_EG_battle_for_undercity();
     AddSC_EG_commandscript();
     AddSC_EG_event_scripts();
     AddSC_EG_go_scripts();
