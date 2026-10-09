@@ -439,6 +439,12 @@ enum PlayerFieldByte2Flags
     PLAYER_FIELD_BYTE2_INVISIBILITY_GLOW    = 0x40
 };
 
+enum PlayerFieldKillsOffsets
+{
+    PLAYER_FIELD_KILLS_OFFSET_TODAY_KILLS     = 0,
+    PLAYER_FIELD_KILLS_OFFSET_YESTERDAY_KILLS = 1
+};
+
 enum MirrorTimerType
 {
     FATIGUE_TIMER      = 0,
@@ -1559,6 +1565,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void SendInitialActionButtons() const { SendActionButtons(1); }
         void SendActionButtons(uint32 state) const;
         bool IsActionButtonDataValid(uint8 button, uint32 action, uint8 type) const;
+        void SetMultiActionBars(uint8 mask) { SetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_ACTION_BAR_TOGGLES, mask); }
 
         PvPInfo pvpInfo;
         void InitPvP();
@@ -1939,7 +1946,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void UpdateEquipSpellsAtFormChange();
         void CastItemCombatSpell(DamageInfo const& damageInfo);
         void CastItemCombatSpell(DamageInfo const& damageInfo, Item* item, ItemTemplate const* proto);
-        void CastItemUseSpell(Item* item, uint32 spellId, SpellCastTargets const& targets, uint8 cast_count, uint32 glyphIndex);
+        void CastItemUseSpell(Item* item, uint32 spellId, SpellCastTargets const& targets, uint8 cast_count, uint32 misc);
 
         void SendEquipmentSetList();
         void SetEquipmentSet(EquipmentSetInfo::EquipmentSetData const& eqset);

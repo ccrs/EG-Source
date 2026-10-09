@@ -275,10 +275,10 @@ void WorldSession::HandleOpenWrappedItemCallback(uint16 pos, ObjectGuid itemGuid
     uint32 entry = fields[0].GetUInt32();
     uint32 flags = fields[1].GetUInt32();
 
-    item->SetGuidValue(ITEM_FIELD_GIFTCREATOR, ObjectGuid::Empty);
+    item->SetGiftCreator(ObjectGuid::Empty);
     item->SetEntry(entry);
-    item->SetUInt32Value(ITEM_FIELD_FLAGS, flags);
-    item->SetUInt32Value(ITEM_FIELD_MAXDURABILITY, item->GetTemplate()->MaxDurability);
+    item->ReplaceAllItemFlags(ItemFieldFlags(flags));
+    item->SetMaxDurability(item->GetTemplate()->MaxDurability);
     item->SetState(ITEM_CHANGED, GetPlayer());
 
     GetPlayer()->SaveInventoryAndGoldToDB(trans);
@@ -408,7 +408,7 @@ void WorldSession::HandleCancelAuraOpcode(WorldPackets::Spells::CancelAura& canc
     if (spellInfo->IsChanneled())
     {
         if (Spell* curSpell = _player->GetCurrentSpell(CURRENT_CHANNELED_SPELL))
-            if (curSpell->m_spellInfo->Id == cancelAura.SpellID)
+            if (curSpell->GetSpellInfo()->Id == cancelAura.SpellID)
                 _player->InterruptSpell(CURRENT_CHANNELED_SPELL);
         return;
     }
@@ -419,7 +419,6 @@ void WorldSession::HandleCancelAuraOpcode(WorldPackets::Spells::CancelAura& canc
     if (!spellInfo->IsPositive() || spellInfo->IsPassive())
         return;
 
-    // maybe should only remove one buff when there are multiple?
     _player->RemoveOwnedAura(cancelAura.SpellID, ObjectGuid::Empty, 0, AURA_REMOVE_BY_CANCEL);
 
     // If spell being removed is a resource tracker, see if player was tracking both (herbs / minerals) and remove the other
@@ -576,7 +575,6 @@ void WorldSession::HandleSpellClick(WorldPacket& recvData)
 
 void WorldSession::HandleMirrorImageDataRequest(WorldPacket& recvData)
 {
-    TC_LOG_DEBUG("network", "WORLD: CMSG_GET_MIRRORIMAGE_DATA");
     ObjectGuid guid;
     recvData >> guid;
 

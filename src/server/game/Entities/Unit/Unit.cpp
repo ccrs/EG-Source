@@ -45,6 +45,7 @@
 #include "Item.h"
 #include "Log.h"
 #include "LootMgr.h"
+#include "MiscPackets.h"
 #include "MotionMaster.h"
 #include "MovementGenerator.h"
 #include "MovementPackets.h"
@@ -10423,7 +10424,7 @@ void Unit::ResumeMovement(uint32 timer/* = 0*/, uint8 slot/* = 0*/)
 
 bool Unit::IsSitState() const
 {
-    uint8 s = GetStandState();
+    UnitStandStateType s = GetStandState();
     return
         s == UNIT_STAND_STATE_SIT_CHAIR        || s == UNIT_STAND_STATE_SIT_LOW_CHAIR  ||
         s == UNIT_STAND_STATE_SIT_MEDIUM_CHAIR || s == UNIT_STAND_STATE_SIT_HIGH_CHAIR ||
@@ -10432,7 +10433,7 @@ bool Unit::IsSitState() const
 
 bool Unit::IsStandState() const
 {
-    uint8 s = GetStandState();
+    UnitStandStateType s = GetStandState();
     return !IsSitState() && s != UNIT_STAND_STATE_SLEEP && s != UNIT_STAND_STATE_KNEEL;
 }
 
@@ -10445,9 +10446,8 @@ void Unit::SetStandState(UnitStandStateType state)
 
     if (GetTypeId() == TYPEID_PLAYER)
     {
-        WorldPacket data(SMSG_STANDSTATE_UPDATE, 1);
-        data << (uint8)state;
-        ToPlayer()->SendDirectMessage(&data);
+        WorldPackets::Misc::StandStateUpdate packet(state);
+        ToPlayer()->SendDirectMessage(packet.Write());
     }
 }
 
