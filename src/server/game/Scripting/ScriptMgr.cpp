@@ -1535,7 +1535,7 @@ ZoneScript* ScriptMgr::GetWorldZoneScript(uint32 mapId, uint32 zoneId, uint32 ph
 {
     FOR_SCRIPTS(WorldZoneScript, itr, end)
         if (itr->second->GetMapId() == mapId && (itr->second->GetPhaseMask() & phaseMask) && itr->second->HasZone(zoneId))
-            return itr->second;
+            return itr->second.get();
 
     return nullptr;
 }

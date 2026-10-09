@@ -22,7 +22,7 @@
 #include "ObjectGuid.h"
 #include "Tuples.h"
 #include "Types.h"
-#include "ZoneScript.h" // EG - WorldZoneScript base
+#include "ZoneScript.h"
 #include <memory>
 #include <vector>
 
