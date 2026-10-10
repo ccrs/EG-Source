@@ -22,6 +22,7 @@
 #include "ObjectGuid.h"
 #include "Tuples.h"
 #include "Types.h"
+#include "ZoneScript.h"
 #include <memory>
 #include <vector>
 
@@ -74,6 +75,7 @@ struct MapEntry;
 struct Position;
 
 namespace Trinity::ChatCommands { struct ChatCommandBuilder; }
+namespace WorldPackets::WorldState { class InitWorldStates; } // EG - WorldZoneScript::FillInitialWorldStates
 
 enum BattlegroundTypeId : uint32;
 enum ContentLevels : uint8;
@@ -351,6 +353,38 @@ class TC_GAME_API BattlegroundMapScript : public ScriptObject, public MapScript<
     protected:
 
         explicit BattlegroundMapScript(char const* name, uint32 mapId);
+};
+
+// EG - ZoneScript for open world zones, attached only to objects that share a phase with it
+class TC_GAME_API WorldZoneScript : public ScriptObject, public ZoneScript
+{
+    protected:
+
+        WorldZoneScript(char const* name, uint32 mapId, std::vector<uint32> zoneIds, uint32 phaseMask);
+
+    public:
+
+        uint32 GetMapId() const { return _mapId; }
+        uint32 GetPhaseMask() const { return _phaseMask; }
+        bool HasZone(uint32 zoneId) const;
+
+        // Called when a player enters one of the zones, after zone dependent auras were updated.
+        virtual void OnPlayerEnter(Player* player, uint32 zoneId);
+
+        // Called when a player leaves one of the zones, including logout and map change.
+        virtual void OnPlayerLeave(Player* player, uint32 zoneId);
+
+        // Called while the initial world states of one of the zones are built for a player.
+        virtual void FillInitialWorldStates(Player* player, WorldPackets::WorldState::InitWorldStates& packet);
+
+        // Called on every update of the map the zones belong to.
+        virtual void OnUpdate(Map* map, uint32 diff);
+
+    private:
+
+        uint32 _mapId;
+        std::vector<uint32> _zoneIds;
+        uint32 _phaseMask;
 };
 
 class TC_GAME_API ItemScript : public ScriptObject
@@ -919,6 +953,13 @@ class TC_GAME_API ScriptMgr
         void OnPlayerEnterMap(Map* map, Player* player);
         void OnPlayerLeaveMap(Map* map, Player* player);
         void OnMapUpdate(Map* map, uint32 diff);
+
+    public: /* WorldZoneScript */ // EG
+
+        ZoneScript* GetWorldZoneScript(uint32 mapId, uint32 zoneId, uint32 phaseMask);
+        void OnPlayerEnterWorldZone(Player* player, uint32 zoneId);
+        void OnPlayerLeaveWorldZone(Player* player, uint32 zoneId);
+        void FillWorldZoneInitialWorldStates(Player* player, uint32 zoneId, WorldPackets::WorldState::InitWorldStates& packet);
 
     public: /* InstanceMapScript */
 

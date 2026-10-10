@@ -6860,6 +6860,7 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea)
     {
         sOutdoorPvPMgr->HandlePlayerLeaveZone(this, oldZone);
         sBattlefieldMgr->HandlePlayerLeaveZone(this, oldZone);
+        sScriptMgr->OnPlayerLeaveWorldZone(this, oldZone); // EG - WorldZoneScript leave hook
     }
 
     // group update
@@ -6931,6 +6932,7 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea)
     {
         sOutdoorPvPMgr->HandlePlayerEnterZone(this, newZone);
         sBattlefieldMgr->HandlePlayerEnterZone(this, newZone);
+        sScriptMgr->OnPlayerEnterWorldZone(this, newZone); // EG - WorldZoneScript enter hook
         SendInitWorldStates(newZone, newArea);              // only if really enters to new zone, not just area change, works strange...
         if (Guild* guild = GetGuild())
             guild->UpdateMemberData(this, GUILD_MEMBER_DATA_ZONEID, newZone);
@@ -9140,6 +9142,8 @@ void Player::SendInitWorldStates(uint32 zoneId, uint32 areaId)
         default:
             break;
     }
+
+    sScriptMgr->FillWorldZoneInitialWorldStates(this, zoneId, packet); // EG - WorldZoneScript initial world states
 
     SendDirectMessage(packet.Write());
     SendBGWeekendWorldStates();
