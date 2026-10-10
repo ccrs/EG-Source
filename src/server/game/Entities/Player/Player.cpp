@@ -7913,7 +7913,7 @@ void Player::CastItemCombatSpell(DamageInfo const& damageInfo, Item* item, ItemT
     }
 }
 
-void Player::CastItemUseSpell(Item* item, uint32 spellId, SpellCastTargets const& targets, uint8 cast_count, uint32 misc)
+void Player::CastItemUseSpell(Item* item, uint32 spellId, SpellCastTargets const& targets, uint8 castCount, uint32 misc)
 {
     SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
     if (!spellInfo)
@@ -7951,7 +7951,7 @@ void Player::CastItemUseSpell(Item* item, uint32 spellId, SpellCastTargets const
     Spell* spell = new Spell(this, spellInfo, TRIGGERED_NONE);
     spell->m_fromClient = true;
     spell->m_CastItem = item;
-    spell->m_cast_count = cast_count; // set count of casts
+    spell->m_cast_count = castCount; // set count of casts
     spell->m_misc.Data = misc;
     spell->prepare(targets);
 }
@@ -13292,18 +13292,16 @@ void Player::SendEquipError(InventoryResult msg, Item const* item1 /*= nullptr*/
     SendDirectMessage(failure.Write());
 }
 
-void Player::SendBuyError(BuyResult msg, Creature* creature, uint32 item, uint32 param) const
+void Player::SendBuyError(BuyResult msg, Creature const* creature, uint32 vendorslot) const
 {
-    WorldPacket data(SMSG_BUY_FAILED, (8+4+4+1));
-    data << (creature ? creature->GetGUID() : ObjectGuid::Empty);
-    data << uint32(item);
-    if (param > 0)
-        data << uint32(param);
-    data << uint8(msg);
-    SendDirectMessage(&data);
+    WorldPackets::Item::BuyFailed packet;
+    packet.VendorGUID = creature ? creature->GetGUID() : ObjectGuid::Empty;
+    packet.Muid = vendorslot + 1;
+    packet.Reason = msg;
+    SendDirectMessage(packet.Write());
 }
 
-void Player::SendSellError(SellResult msg, Creature* creature, ObjectGuid guid, uint32 param) const
+void Player::SendSellError(SellResult msg, Creature const* creature, ObjectGuid guid, uint32 param) const
 {
     WorldPacket data(SMSG_SELL_ITEM, (8+8+(4)+1));  // last check 2.0.10
     data << (creature ? creature->GetGUID() : ObjectGuid::Empty);
@@ -14293,7 +14291,7 @@ void Player::OnGossipSelect(WorldObject* source, uint32 gossipListId, uint32 men
     int32 cost = int32(item->BoxMoney);
     if (!HasEnoughMoney(cost))
     {
-        SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, nullptr, 0, 0);
+        SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, nullptr, 0);
         PlayerTalkClass->SendCloseGossip();
         return;
     }
@@ -18036,7 +18034,15 @@ void Player::LoadCorpse(PreparedQueryResult result)
 
 void Player::_LoadInventory(PreparedQueryResult result, uint32 timeDiff)
 {
-    //QueryResult* result = CharacterDatabase.PQuery("SELECT data, text, bag, slot, item, item_template FROM character_inventory JOIN item_instance ON character_inventory.item = item_instance.guid WHERE character_inventory.guid = '{}' ORDER BY bag, slot", GetGUID().GetCounter());
+    //           0          1            2                3      4         5        6      7             8                 9          10          11    12
+    // SELECT guid, itemEntry, creatorGuid, giftCreatorGuid, count, duration, charges, flags, enchantments, randomPropertyId, durability, playedTime, text,
+    //         13    14
+    //        bag, slot
+    // FROM character_inventory ci
+    // JOIN item_instance ii ON ci.item = ii.guid
+    // WHERE ci.guid = ?
+    // ORDER BY bag ASC, slot ASC
+
     //NOTE: the "order by `bag`" is important because it makes sure
     //the bagMap is filled before items in the bags are loaded
     //NOTE2: the "order by `slot`" is needed because mainhand weapons are (wrongly?)
@@ -18058,8 +18064,8 @@ void Player::_LoadInventory(PreparedQueryResult result, uint32 timeDiff)
             Field* fields = result->Fetch();
             if (Item* item = _LoadItem(trans, zoneId, timeDiff, fields))
             {
-                ObjectGuid bagGuid = fields[11].GetUInt32() ? ObjectGuid::Create<HighGuid::Item>(fields[11].GetUInt32()) : ObjectGuid::Empty;
-                uint8 slot = fields[12].GetUInt8();
+                ObjectGuid bagGuid = fields[13].GetUInt32() ? ObjectGuid::Create<HighGuid::Item>(fields[13].GetUInt32()) : ObjectGuid::Empty;
+                uint8 slot = fields[14].GetUInt8();
 
                 InventoryResult err = EQUIP_ERR_OK;
                 // Item is not in bag
@@ -18168,8 +18174,8 @@ void Player::_LoadInventory(PreparedQueryResult result, uint32 timeDiff)
 Item* Player::_LoadItem(CharacterDatabaseTransaction trans, uint32 zoneId, uint32 timeDiff, Field* fields)
 {
     Item* item = nullptr;
-    ObjectGuid::LowType itemGuid  = fields[13].GetUInt32();
-    uint32 itemEntry = fields[14].GetUInt32();
+    ObjectGuid::LowType itemGuid = fields[0].GetUInt32();
+    uint32 itemEntry = fields[1].GetUInt32();
     if (ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemEntry))
     {
         bool remove = false;
@@ -18298,8 +18304,8 @@ Item* Player::_LoadItem(CharacterDatabaseTransaction trans, uint32 zoneId, uint3
 // load mailed item which should receive current player
 Item* Player::_LoadMailedItem(ObjectGuid const& playerGuid, Player* player, uint32 mailId, Mail* mail, Field* fields)
 {
-    ObjectGuid::LowType itemGuid = fields[11].GetUInt32();
-    uint32 itemEntry = fields[12].GetUInt32();
+    ObjectGuid::LowType itemGuid = fields[0].GetUInt32();
+    uint32 itemEntry = fields[1].GetUInt32();
 
     ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemEntry);
     if (!proto)
@@ -21609,12 +21615,12 @@ inline bool Player::_StoreOrEquipNewItem(uint32 vendorslot, uint32 item, uint8 c
     {
         uint32 new_count = pVendor->UpdateVendorItemCurrentCount(crItem, count);
 
-        WorldPacket data(SMSG_BUY_ITEM, (8+4+4+4));
-        data << pVendor->GetGUID();
-        data << uint32(vendorslot + 1);                   // numbered from 1 at client
-        data << int32(crItem->maxcount > 0 ? new_count : 0xFFFFFFFF);
-        data << uint32(stacks);
-        SendDirectMessage(&data);
+        WorldPackets::Item::BuySucceeded packet;
+        packet.VendorGUID = pVendor->GetGUID();
+        packet.Muid = vendorslot + 1;
+        packet.NewQuantity = crItem->maxcount > 0 ? new_count : 0xFFFFFFFF;
+        packet.QuantityBought = count;
+        SendDirectMessage(packet.Write());
 
         SendNewItem(it, count, true, false, false);
 
@@ -21651,13 +21657,13 @@ bool Player::BuyItemFromVendorSlot(ObjectGuid vendorguid, uint32 vendorslot, uin
     ItemTemplate const* pProto = sObjectMgr->GetItemTemplate(item);
     if (!pProto)
     {
-        SendBuyError(BUY_ERR_CANT_FIND_ITEM, nullptr, item, 0);
+        SendBuyError(BUY_ERR_CANT_FIND_ITEM, nullptr, vendorslot);
         return false;
     }
 
     if (!(pProto->GetAllowableClass() & GetClassMask()) && pProto->GetBonding() == BIND_WHEN_PICKED_UP && !IsGameMaster())
     {
-        SendBuyError(BUY_ERR_CANT_FIND_ITEM, nullptr, item, 0);
+        SendBuyError(BUY_ERR_CANT_FIND_ITEM, nullptr, vendorslot);
         return false;
     }
 
@@ -21669,7 +21675,7 @@ bool Player::BuyItemFromVendorSlot(ObjectGuid vendorguid, uint32 vendorslot, uin
     {
         TC_LOG_DEBUG("network", "Player::BuyItemFromVendorSlot: Vendor ({}) not found or player '{}' ({}) can't interact with him.",
             vendorguid.ToString(), GetName(), GetGUID().ToString());
-        SendBuyError(BUY_ERR_DISTANCE_TOO_FAR, nullptr, item, 0);
+        SendBuyError(BUY_ERR_DISTANCE_TOO_FAR, nullptr, vendorslot);
         return false;
     }
 
@@ -21677,20 +21683,20 @@ bool Player::BuyItemFromVendorSlot(ObjectGuid vendorguid, uint32 vendorslot, uin
     {
         TC_LOG_DEBUG("condition", "Player::BuyItemFromVendorSlot: Player '{}' ({}) doesn't meed conditions for creature (Entry: {}, Item: {})",
             GetName(), GetGUID().ToString(), creature->GetEntry(), item);
-        SendBuyError(BUY_ERR_CANT_FIND_ITEM, creature, item, 0);
+        SendBuyError(BUY_ERR_CANT_FIND_ITEM, creature, vendorslot);
         return false;
     }
 
     VendorItemData const* vItems = creature->GetVendorItems();
     if (!vItems || vItems->Empty())
     {
-        SendBuyError(BUY_ERR_CANT_FIND_ITEM, creature, item, 0);
+        SendBuyError(BUY_ERR_CANT_FIND_ITEM, creature, vendorslot);
         return false;
     }
 
     if (vendorslot >= vItems->GetItemCount())
     {
-        SendBuyError(BUY_ERR_CANT_FIND_ITEM, creature, item, 0);
+        SendBuyError(BUY_ERR_CANT_FIND_ITEM, creature, vendorslot);
         return false;
     }
 
@@ -21698,7 +21704,7 @@ bool Player::BuyItemFromVendorSlot(ObjectGuid vendorguid, uint32 vendorslot, uin
     // store diff item (cheating)
     if (!crItem || crItem->item != item)
     {
-        SendBuyError(BUY_ERR_CANT_FIND_ITEM, creature, item, 0);
+        SendBuyError(BUY_ERR_CANT_FIND_ITEM, creature, vendorslot);
         return false;
     }
 
@@ -21707,14 +21713,14 @@ bool Player::BuyItemFromVendorSlot(ObjectGuid vendorguid, uint32 vendorslot, uin
     {
         if (creature->GetVendorItemCurrentCount(crItem) < pProto->GetBuyCount() * count)
         {
-            SendBuyError(BUY_ERR_ITEM_ALREADY_SOLD, creature, item, 0);
+            SendBuyError(BUY_ERR_ITEM_ALREADY_SOLD, creature, vendorslot);
             return false;
         }
     }
 
     if (pProto->GetRequiredReputationFaction() && (uint32(GetReputationRank(pProto->GetRequiredReputationFaction())) < pProto->GetRequiredReputationRank()))
     {
-        SendBuyError(BUY_ERR_REPUTATION_REQUIRE, creature, item, 0);
+        SendBuyError(BUY_ERR_REPUTATION_REQUIRE, creature, vendorslot);
         return false;
     }
 
@@ -21778,7 +21784,7 @@ bool Player::BuyItemFromVendorSlot(ObjectGuid vendorguid, uint32 vendorslot, uin
 
         if (!HasEnoughMoney(price))
         {
-            SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, creature, item, 0);
+            SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, creature, vendorslot);
             return false;
         }
     }
