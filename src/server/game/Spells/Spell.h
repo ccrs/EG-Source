@@ -32,6 +32,7 @@ namespace WorldPackets
 {
     namespace Spells
     {
+        struct SpellCastRequest;
         struct SpellTargetData;
         struct SpellAmmo;
         struct SpellCastData;

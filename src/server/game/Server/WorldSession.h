@@ -249,6 +249,8 @@ namespace WorldPackets
     {
         class AutoEquipItem;
         class AutoStoreBagItem;
+        class BuyItem;
+        class BuyItemInSlot;
         class BuyBackItem;
         class DestroyItem;
         class GetItemPurchaseData;
@@ -319,6 +321,7 @@ namespace WorldPackets
     namespace NPC
     {
         class Hello;
+        class GossipSelectOption;
         class TrainerBuySpell;
     }
 
@@ -381,6 +384,7 @@ namespace WorldPackets
         class CancelCast;
         class CastSpell;
         class PetCastSpell;
+        class UseItem;
         class SetActionButton;
     }
 
@@ -656,9 +660,6 @@ class TC_GAME_API WorldSession
         void SendCancelTrade(TradeStatus status);
 
         void SendPetitionQueryOpcode(ObjectGuid petitionguid);
-
-        // Spell
-        void HandleClientCastFlags(WorldPacket& recvPacket, uint8 castFlags, SpellCastTargets& targets);
 
         // Pet
         void SendQueryPetNameResponse(ObjectGuid guid, uint32 petnumber);
@@ -965,7 +966,7 @@ class TC_GAME_API WorldSession
         void HandleTrainerBuySpellOpcode(WorldPackets::NPC::TrainerBuySpell& packet);
         void HandlePetitionShowListOpcode(WorldPacket& recvPacket);
         void HandleGossipHelloOpcode(WorldPackets::NPC::Hello& packet);
-        void HandleGossipSelectOptionOpcode(WorldPacket& recvPacket);
+        void HandleGossipSelectOptionOpcode(WorldPackets::NPC::GossipSelectOption& packet);
         void HandleSpiritHealerActivateOpcode(WorldPacket& recvPacket);
         void HandleNpcTextQueryOpcode(WorldPackets::Query::QueryNPCText& packet);
         void HandleBinderActivateOpcode(WorldPackets::NPC::Hello& packet);
@@ -1022,8 +1023,8 @@ class TC_GAME_API WorldSession
         void HandleAutoEquipItemOpcode(WorldPackets::Item::AutoEquipItem& autoEquipItem);
         void HandleItemQuerySingleOpcode(WorldPackets::Query::QueryItemSingle& query);
         void HandleSellItemOpcode(WorldPackets::Item::SellItem& packet);
-        void HandleBuyItemInSlotOpcode(WorldPacket& recvPacket);
-        void HandleBuyItemOpcode(WorldPacket& recvPacket);
+        void HandleBuyItemInSlotOpcode(WorldPackets::Item::BuyItemInSlot& packet);
+        void HandleBuyItemOpcode(WorldPackets::Item::BuyItem& packet);
         void HandleListInventoryOpcode(WorldPackets::NPC::Hello& packet);
         void HandleAutoStoreBagItemOpcode(WorldPackets::Item::AutoStoreBagItem& packet);
         void HandleReadItem(WorldPacket& recvPacket);
@@ -1036,7 +1037,7 @@ class TC_GAME_API WorldSession
         void HandleAttackStopOpcode(WorldPackets::Combat::AttackStop& packet);
         void HandleSetSheathedOpcode(WorldPackets::Combat::SetSheathed& packet);
 
-        void HandleUseItemOpcode(WorldPacket& recvPacket);
+        void HandleUseItemOpcode(WorldPackets::Spells::UseItem& packet);
         void HandleOpenItemOpcode(WorldPacket& recvPacket);
         void HandleOpenWrappedItemCallback(uint16 pos, ObjectGuid itemGuid, PreparedQueryResult result);
         void HandleCastSpellOpcode(WorldPackets::Spells::CastSpell& castRequest);

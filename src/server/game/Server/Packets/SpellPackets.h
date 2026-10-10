@@ -244,6 +244,20 @@ namespace WorldPackets
             SpellCastRequest Cast;
         };
 
+        class UseItem final : public ClientPacket
+        {
+        public:
+            explicit UseItem(WorldPacket&& packet) : ClientPacket(CMSG_USE_ITEM, std::move(packet)) { }
+
+            void Read() override;
+
+            uint8 PackSlot = 0;
+            uint8 Slot = 0;
+            ObjectGuid CastItem;
+            SpellCastRequest Cast;
+            uint32 Misc = 0;
+        };
+
         struct SpellMissStatus
         {
             ObjectGuid TargetGUID;
@@ -410,6 +424,18 @@ namespace WorldPackets
             WorldPacket const* Write() override;
 
             uint32 SpellID = 0;
+        };
+
+        class CooldownEvent final : public ServerPacket
+        {
+        public:
+            explicit CooldownEvent() : ServerPacket(SMSG_COOLDOWN_EVENT, 4 + 8) { }
+            explicit CooldownEvent(ObjectGuid casterGuid, int32 spellId) : ServerPacket(SMSG_COOLDOWN_EVENT, 4 + 8), SpellID(spellId), CasterGUID(casterGuid) { }
+
+            WorldPacket const* Write() override;
+
+            int32 SpellID = 0;
+            ObjectGuid CasterGUID;
         };
 
         class PlaySpellVisualKit final : public ServerPacket
