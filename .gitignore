@@ -1,5 +1,6 @@
 
 build*/
+[Oo]bj/
 .directory
 .mailmap
 *.orig
@@ -9,6 +10,7 @@ build*/
 *.kdev*
 .DS_Store
 CMakeLists.txt.user
+CMakeSettings.json
 *.bak
 *.patch
 *.diff
