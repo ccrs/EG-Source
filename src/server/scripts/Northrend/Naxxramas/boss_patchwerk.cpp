@@ -50,11 +50,12 @@ enum PatchwerkEvents
     EVENT_SLIME
 };
 
-enum Misc
+enum PatchwerkMisc
 {
-    ACHIEV_MAKE_QUICK_WERK_OF_HIM_STARTING_EVENT  = 10286,
-    NPC_SLUDGE_BELCHER = 16029
+    ACHIEV_MAKE_QUICK_WERK_OF_HIM_STARTING_EVENT  = 10286
 };
+
+constexpr std::string_view PatchwerkAssistStringId = "PatchwerkAssist";
 
 enum HatefulThreatAmounts
 {
@@ -93,10 +94,11 @@ struct boss_patchwerk : public BossAI
         events.ScheduleEvent(EVENT_HATEFUL, 3600ms);
         events.ScheduleEvent(EVENT_BERSERK, 6min);
 
-        std::list<Creature*> aliveSludgeBelchers;
-        me->GetCreatureListWithOptionsInGrid(aliveSludgeBelchers, 250.f, FindCreatureOptions{ .CreatureId = NPC_SLUDGE_BELCHER, .IsAlive = true });
-        for (Creature* current : aliveSludgeBelchers)
-            current->EngageWithTarget(who);
+        // EG - trash spawns pulled into the fight when Patchwerk is engaged
+        std::list<Creature*> assistTrash;
+        me->GetCreatureListWithOptionsInGrid(assistTrash, 350.0f, { .StringId = PatchwerkAssistStringId, .IsAlive = true });
+        for (Creature* trash : assistTrash)
+            trash->EngageWithTarget(who);
 
         instance->DoStartTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, ACHIEV_MAKE_QUICK_WERK_OF_HIM_STARTING_EVENT);
     }
