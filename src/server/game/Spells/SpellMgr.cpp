@@ -5276,6 +5276,16 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->_GetEffect(EFFECT_0).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
     });
 
+    // Engineering dragonlings summon as guardians
+    ApplySpellFix({
+        4073, // Mechanical Dragonling
+        12749, // Mithril Mechanical Dragonling
+        19804 // Arcanite Dragonling
+    }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).MiscValueB = 1581;
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];
