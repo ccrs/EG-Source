@@ -5318,7 +5318,20 @@ void Spell::SummonGuardian(SpellEffectInfo const& spellEffectInfo, uint32 entry,
         if (ItemTemplate const* proto = m_CastItem->GetTemplate())
             if (proto->GetRequiredSkill() == SKILL_ENGINEERING)
                 if (uint16 skill202 = unitCaster->ToPlayer()->GetSkillValue(SKILL_ENGINEERING))
-                    level = skill202 / 5;
+                    level = std::min<uint16>(skill202 / 5, DEFAULT_MAX_LEVEL); // EG
+
+    // EG - summon levels seen in sniffs
+    switch (m_spellInfo->Id)
+    {
+        case 12749: // Mithril Mechanical Dragonling
+            level = 50;
+            break;
+        case 19804: // Arcanite Dragonling
+            level = 60;
+            break;
+        default:
+            break;
+    }
 
     float radius = 5.0f;
     int32 duration = m_spellInfo->GetDuration();
