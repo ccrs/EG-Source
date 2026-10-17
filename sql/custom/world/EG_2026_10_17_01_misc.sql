@@ -51,3 +51,5 @@ INSERT INTO `creature_formations` (`leaderGUID`, `memberGUID`, `dist`, `angle`, 
 (128089, 128102, 0, 0, 3, 0, 0); -- West hall surgery pack (north) - Surgical Assistant
 
 UPDATE `creature` SET `StringId` = 'PatchwerkAssist' WHERE `guid` IN (97718, 97736, 97747, 128080, 128082, 128083, 62040, 128078, 128079, 128068, 128069, 62035, 62744, 62746, 128085, 128086, 128091, 62745, 128094, 128095, 128096, 62244, 62743, 128087, 128088, 128092, 62273, 128097, 128098, 128099, 62041, 62242, 128089, 128090, 128093, 62228, 128100, 128101, 128102);
+
+UPDATE `creature_template` SET `flags_extra` = `flags_extra` | 8192 WHERE `entry` = 16697; -- Void Zone: CREATURE_FLAG_EXTRA_CANNOT_ENTER_COMBAT
