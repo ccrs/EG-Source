@@ -1985,7 +1985,10 @@ EG::SetRaceMasqueradeSetting::SetRaceMasqueradeSetting(Player* owner, Races sele
 bool EG::SetRaceMasqueradeSetting::Execute(uint64, uint32)
 {
     if (!_owner->IsInWorld())
+    {
+        _owner->m_Events.AddEvent(this, _owner->m_Events.CalculateTime(100ms));
         return false;
+    }
 
     _owner->SetMasqueradeRace(_selectedRace);
     return true;
@@ -1997,8 +2000,9 @@ EG::CleanRaceMasquerade::CleanRaceMasquerade(Player* owner) : _owner(owner)
 
 bool EG::CleanRaceMasquerade::Execute(uint64, uint32)
 {
-    if (!_owner->CleanMasqueradeRaceValue())
-        return false;
+    if (_owner->CleanMasqueradeRaceValue())
+        return true;
 
-    return true;
+    _owner->m_Events.AddEvent(this, _owner->m_Events.CalculateTime(100ms));
+    return false;
 }
