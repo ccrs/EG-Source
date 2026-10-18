@@ -23,6 +23,9 @@
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "InstanceScript.h"
+#include "MotionMaster.h"
+#include "MovementTypedefs.h"
+#include "PathGenerator.h"
 #include "Player.h"
 #include "Spell.h"
 #include "SpellAuraEffects.h"
@@ -610,6 +613,63 @@ class EG_spell_stonebark_petrified_bark : public AuraScript
     }
 };
 
+// 57731 - Web Grab
+class EG_spell_hadronox_web_grab : public SpellScript
+{
+    PrepareSpellScript(EG_spell_hadronox_web_grab);
+
+    Position GetPullPosition(Unit* caster, Unit* target) const
+    {
+        Position pullPosition = caster->GetPosition();
+
+        PathGenerator path(caster);
+        path.CalculatePath(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ());
+        if (path.GetPathType() & (PATHFIND_SHORTCUT | PATHFIND_NOPATH | PATHFIND_NOT_USING_PATH | PATHFIND_FARFROMPOLY_START))
+            return pullPosition;
+
+        float const maxDistSq = caster->GetCombatReach() * caster->GetCombatReach();
+        for (G3D::Vector3 const& point : path.GetPath())
+        {
+            if (caster->GetExactDistSq(point.x, point.y, point.z) > maxDistSq)
+                break;
+
+            pullPosition.Relocate(point.x, point.y, point.z);
+        }
+
+        return pullPosition;
+    }
+
+    void HandlePull(SpellEffIndex effIndex)
+    {
+        PreventHitDefaultEffect(effIndex);
+
+        Unit* caster = GetCaster();
+        Unit* target = GetHitUnit();
+        if (!caster || !target)
+            return;
+
+        Position const pullPosition = GetPullPosition(caster, target);
+        float const dist = target->GetExactDist(pullPosition);
+        if (dist < 0.001f)
+            return;
+
+        float const speedXY = GetEffectInfo().MiscValue ? GetEffectInfo().MiscValue / 10.0f : 30.0f;
+        float const speedZ = (2 * speedXY * speedXY * (pullPosition.GetPositionZ() - target->GetPositionZ()) + Movement::gravity * dist * dist) / (2 * speedXY * dist);
+        if (!std::isfinite(speedZ))
+            return;
+
+        if (target->GetTypeId() == TYPEID_UNIT)
+            target->GetMotionMaster()->MoveJump(pullPosition, speedXY, speedZ);
+        else
+            target->JumpTo(speedXY, speedZ, true, pullPosition);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_hadronox_web_grab::HandlePull, EFFECT_0, SPELL_EFFECT_PULL_TOWARDS);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
@@ -633,4 +693,5 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_arachnopod_damaged);
     RegisterSpellScript(EG_spell_brightleaf_unstable_sun_beam_forced);
     RegisterSpellScript(EG_spell_stonebark_petrified_bark);
+    RegisterSpellScript(EG_spell_hadronox_web_grab);
 }
