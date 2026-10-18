@@ -121,7 +121,6 @@ void WorldSession::HandleUseItemOpcode(WorldPackets::Spells::UseItem& packet)
 
     SpellCastTargets targets(user, packet.Cast);
 
-    // EG - apply the movement stop sent with trajectory item casts, as the cast spell handler does
     if (packet.Cast.MissileTrajectory && packet.Cast.MissileTrajectory->MoveUpdate)
         HandleMovementOpcode(MSG_MOVE_STOP, *packet.Cast.MissileTrajectory->MoveUpdate);
 
