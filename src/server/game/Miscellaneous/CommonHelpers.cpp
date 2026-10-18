@@ -25,6 +25,7 @@
 #include "Player.h"
 #include "SharedDefines.h"
 #include "UnitAI.h"
+#include <algorithm>
 
 enum PlayerSpecializationIconicSpellIds
 {
@@ -364,11 +365,16 @@ bool Trinity::Helpers::Events::SetAggresiveStateEvent::Execute(uint64 /*time*/, 
     return true;
 }
 
-Trinity::Helpers::Events::GenericEvent::GenericEvent(WorldObject* owner, std::function<bool(WorldObject*)>&& func) : _owner(owner), _func(std::move(func)) { };
+Trinity::Helpers::Events::GenericEvent::GenericEvent(WorldObject* owner, std::function<bool(WorldObject*)>&& func, Milliseconds retryDelay) : _owner(owner), _func(std::move(func)), _retryDelay(std::max(retryDelay, 1ms)) { };
 
 bool Trinity::Helpers::Events::GenericEvent::Execute(uint64, uint32)
 {
     if (!_owner)
         return true;
-    return _func(_owner);
+
+    if (_func(_owner))
+        return true;
+
+    _owner->m_Events.AddEvent(this, _owner->m_Events.CalculateTime(_retryDelay));
+    return false;
 }
