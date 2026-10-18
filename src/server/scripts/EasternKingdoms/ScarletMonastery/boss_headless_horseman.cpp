@@ -214,7 +214,6 @@ struct npc_headless_horseman_head : public PassiveAI
     void JustReachedHome() override
     {
         me->GetMotionMaster()->Clear();
-        me->SetFullHealth();
         HandleInitialSetup();
         PassiveAI::JustReachedHome();
     }
@@ -400,6 +399,7 @@ struct boss_headless_horseman : public ScriptedAI
     void JustReachedHome() override
     {
         HandleInitialSetup();
+        DoCastSelf(SPELL_HEADLESS_HORSEMAN_C_BODY_STAGE_1);
         me->SetReactState(REACT_AGGRESSIVE);
         ScriptedAI::JustReachedHome();
     }
