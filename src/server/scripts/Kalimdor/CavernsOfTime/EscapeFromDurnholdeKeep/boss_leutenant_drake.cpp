@@ -48,7 +48,6 @@ enum DrakeEvents
     EVENT_FRIGHTENING_SHOUT
 };
 
-// Patrol loop around the keep exterior, ending back at spawn. Last entry equals spawn position.
 static Position const DrakeWaypoints[] =
 {
     { 2125.84f, 88.2535f, 54.8830f },
@@ -94,6 +93,12 @@ struct boss_lieutenant_drake : public BossAI
     {
         BossAI::Reset();
         _justAppeared = false;
+    }
+
+    void JustReachedHome() override
+    {
+        BossAI::JustReachedHome();
+        me->setActive(true);
         StartPatrol();
     }
 

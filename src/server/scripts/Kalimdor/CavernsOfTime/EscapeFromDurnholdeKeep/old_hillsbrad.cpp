@@ -115,7 +115,6 @@ enum ThrallTexts
     SAY_TH_LEAVE_COMBAT
 };
 
-// Must be declared before npc_thrall_old_hillsbrad since Thrall calls Talk on Taretha's AI
 enum TarethaTexts
 {
     SAY_TA_FREE = 0,
@@ -145,13 +144,11 @@ enum ThrallPaths
 
 enum ThrallMisc
 {
-    // Equipment display items
     THRALL_WEAPON_ITEM = 927,
     THRALL_SHIELD_ITEM = 2129,
     THRALL_MODEL_UNEQUIPPED = 17292,
     THRALL_MODEL_EQUIPPED = 18165,
 
-    // NPC entries
     ENTRY_ARMORER = 18764,
     ENTRY_SKARLOC = 17862,
     ENTRY_EPOCH = 18096,
@@ -181,7 +178,6 @@ enum ThrallMisc
     NPC_INN_PROTECTOR = 23180,
     NPC_INN_LOOKOUT = 23178,
 
-    // Gossip menus and items
     GOSSIP_ID_START = 9568,
     GOSSIP_ID_SKARLOC1 = 9614,
     GOSSIP_ID_SKARLOC2 = 9579,
@@ -197,7 +193,6 @@ enum ThrallMisc
 constexpr float ThrallSpeedRun = 1.0f;
 constexpr float ThrallSpeedMount = 1.6f;
 
-// Epoch Hunter arrival position — outside the inn in Tarren Mill
 static Position const EpochSpawnPos = { 2639.13f, 698.55f, 65.43f, 4.59f };
 
 struct npc_thrall_old_hillsbrad : public EscortAI
@@ -299,7 +294,6 @@ struct npc_thrall_old_hillsbrad : public EscortAI
                     }
                 }
                 else
-                    // Wipe recovery: Skarloc already dead, skip straight to mount-ride gossip
                     instance->SetData(TYPE_THRALL_EVENT, OH_ESCORT_HORSE_RIDE);
                 break;
             case 31:
@@ -358,7 +352,6 @@ struct npc_thrall_old_hillsbrad : public EscortAI
                 Talk(SAY_TH_MEET_TARETHA);
                 SetEscortPaused(true);
                 instance->SetData(TYPE_THRALL_EVENT, OH_ESCORT_EPOCH_HUNTER);
-                // Gossip to progress is on Taretha, not Thrall; no gossip flag needed here
                 break;
             case 96:
                 Talk(SAY_TH_EPOCH_WONDER);
@@ -367,7 +360,6 @@ struct npc_thrall_old_hillsbrad : public EscortAI
                 Talk(SAY_TH_EPOCH_KILL_TARETHA);
                 break;
             case 104:
-                // Epoch arrives immune to watch the fight; wave 1 spawns immediately after
                 if (instance->GetBossState(DATA_EPOCH_HUNTER) != DONE)
                 {
                     me->SummonCreature(ENTRY_EPOCH, EpochSpawnPos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5min);
@@ -378,9 +370,6 @@ struct npc_thrall_old_hillsbrad : public EscortAI
                     me->SummonCreature(NPC_INFINITE_SLAYER, 2629.36f, 658.43f, 55.17f, 1.54f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
                     SetEscortPaused(true);
                 }
-                break;
-            case 105:
-                // Reached after Epoch dies via ACTION_RESUME_ESCORT; passes through in normal flow
                 break;
             case 106:
             {
@@ -396,7 +385,6 @@ struct npc_thrall_old_hillsbrad : public EscortAI
                 break;
             }
             case 108:
-                // End of escort — Thrall disappears into his future
                 me->SetVisible(false);
                 break;
         }
@@ -405,9 +393,8 @@ struct npc_thrall_old_hillsbrad : public EscortAI
     void Reset() override
     {
         _events.Reset();
+        _combatEvents.Reset();
         _lowHp = false;
-        // Only called on full respawn (not during mid-escort evade; EscortAI::EnterEvadeMode
-        // skips Reset() when STATE_ESCORT_ESCORTING is set and moves to ReturnToLastPoint instead)
         _hadMount = false;
         _epochWave = 0;
         _infiniteAlive = 0;
@@ -428,7 +415,6 @@ struct npc_thrall_old_hillsbrad : public EscortAI
     {
         bool wasReturning = (type == POINT_MOTION_TYPE) && HasEscortState(STATE_ESCORT_RETURNING);
         EscortAI::MovementInform(type, id);
-        // Re-mount after returning from mid-escort combat if Thrall was mounted before the fight
         if (wasReturning && !HasEscortState(STATE_ESCORT_RETURNING) && _hadMount)
             DoMount();
     }
@@ -439,8 +425,9 @@ struct npc_thrall_old_hillsbrad : public EscortAI
         if (me->IsMounted())
             DoUnmount();
 
-        _events.ScheduleEvent(EVENT_STRIKE, 5s, 8s);
-        _events.ScheduleEvent(EVENT_SHIELD_BLOCK, 15s, 20s);
+        _combatEvents.Reset();
+        _combatEvents.ScheduleEvent(EVENT_STRIKE, 5s, 8s);
+        _combatEvents.ScheduleEvent(EVENT_SHIELD_BLOCK, 15s, 20s);
     }
 
     void JustSummoned(Creature* summoned) override
@@ -524,10 +511,10 @@ struct npc_thrall_old_hillsbrad : public EscortAI
                 case EVENT_SPAWN_WAVE_2:
                     _epochWave = 2;
                     _infiniteAlive = 4;
-                    me->SummonCreature(NPC_INFINITE_DEFILER,  2633.50f, 653.40f, 55.40f, 1.57f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
+                    me->SummonCreature(NPC_INFINITE_DEFILER, 2633.50f, 653.40f, 55.40f, 1.57f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
                     me->SummonCreature(NPC_INFINITE_SABOTEOR, 2637.90f, 660.20f, 55.19f, 1.55f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
-                    me->SummonCreature(NPC_INFINITE_SLAYER,   2627.10f, 656.30f, 55.13f, 1.54f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
-                    me->SummonCreature(NPC_INFINITE_SLAYER,   2642.80f, 658.10f, 55.28f, 1.61f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
+                    me->SummonCreature(NPC_INFINITE_SLAYER, 2627.10f, 656.30f, 55.13f, 1.54f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
+                    me->SummonCreature(NPC_INFINITE_SLAYER, 2642.80f, 658.10f, 55.28f, 1.61f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30s);
                     break;
                 case EVENT_EPOCH_ENGAGE:
                     if (Creature* epoch = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_EPOCH_HUNTER)))
@@ -544,6 +531,8 @@ struct npc_thrall_old_hillsbrad : public EscortAI
         if (!UpdateVictim())
             return;
 
+        _combatEvents.Update(diff);
+
         if (!_lowHp && HealthBelowPct(20))
         {
             Talk(SAY_TH_RANDOM_LOW_HP);
@@ -553,17 +542,17 @@ struct npc_thrall_old_hillsbrad : public EscortAI
         if (me->HasUnitState(UNIT_STATE_CASTING))
             return;
 
-        while (uint32 eventId = _events.ExecuteEvent())
+        while (uint32 eventId = _combatEvents.ExecuteEvent())
         {
             switch (eventId)
             {
                 case EVENT_STRIKE:
                     DoCastVictim(SPELL_STRIKE);
-                    _events.Repeat(5s, 8s);
+                    _combatEvents.Repeat(5s, 8s);
                     break;
                 case EVENT_SHIELD_BLOCK:
                     DoCastSelf(SPELL_SHIELD_BLOCK);
-                    _events.Repeat(15s, 20s);
+                    _combatEvents.Repeat(15s, 20s);
                     break;
                 default:
                     break;
@@ -615,7 +604,6 @@ struct npc_thrall_old_hillsbrad : public EscortAI
         switch (action)
         {
             case GOSSIP_ACTION_INFO_DEF + 1:
-                // Start the escort from prison
                 CloseGossipMenuFor(player);
                 Talk(SAY_TH_START_EVENT_PART1);
                 LoadPath(PATH_ESCORT_THRALL);
@@ -624,20 +612,17 @@ struct npc_thrall_old_hillsbrad : public EscortAI
                 SetDespawnAtFar(false);
                 break;
             case GOSSIP_ACTION_INFO_DEF + 2:
-                // Post-Skarloc: first gossip step
                 InitGossipMenuFor(player, GOSSIP_ITEM_SKARLOC2_MID);
                 AddGossipItemFor(player, GOSSIP_ITEM_SKARLOC2_MID, GOSSIP_ITEM_DEFAULT_OP, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 20);
                 SendGossipMenuFor(player, GOSSIP_ID_SKARLOC2, me->GetGUID());
                 break;
             case GOSSIP_ACTION_INFO_DEF + 20:
-                // Post-Skarloc: second step — mount ride begins
                 SendGossipMenuFor(player, GOSSIP_ID_SKARLOC3, me->GetGUID());
                 me->SummonCreature(SKARLOC_MOUNT, 2038.81f, 270.26f, 63.20f, 5.41f, TEMPSUMMON_TIMED_DESPAWN, 12s);
                 Talk(SAY_TH_START_EVENT_PART2);
                 StartWP();
                 break;
             case GOSSIP_ACTION_INFO_DEF + 3:
-                // Continue from Tarren Mill gate
                 CloseGossipMenuFor(player);
                 StartWP();
                 break;
@@ -647,6 +632,7 @@ struct npc_thrall_old_hillsbrad : public EscortAI
 
 private:
     EventMap _events;
+    EventMap _combatEvents;
     bool _hadMount;
     bool _lowHp;
     uint8 _epochWave;
@@ -732,7 +718,6 @@ struct npc_taretha : public EscortAI
             CloseGossipMenuFor(player);
             me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
 
-            // Resume Thrall's walk toward the Epoch Hunter confrontation at WP 104
             if (Creature* thrall = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_THRALL)))
                 thrall->AI()->DoAction(ACTION_RESUME_ESCORT);
         }

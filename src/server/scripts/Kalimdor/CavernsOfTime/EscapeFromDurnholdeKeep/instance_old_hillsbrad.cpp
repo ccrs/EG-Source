@@ -23,6 +23,7 @@
 #include "Map.h"
 #include "Player.h"
 #include "ScriptMgr.h"
+#include "TemporarySummon.h"
 
 enum OHInstanceMisc
 {
@@ -37,7 +38,6 @@ enum OHInstanceMisc
     EVENT_BARREL_FIRE = 11111
 };
 
-// Maps each barrel's DB spawn GUID to its paired Roaring Flame DB spawn GUID.
 static std::unordered_map<uint32, uint32> const BarrelFlameGuids =
 {
     { 30242, 30289 },
@@ -120,18 +120,19 @@ public:
 
                     ++BarrelCount;
                     DoUpdateWorldState(WORLD_STATE_OH, BarrelCount);
+                    SaveToDB();
 
                     TC_LOG_DEBUG("scripts", "Instance Old Hillsbrad: barrel count {}", BarrelCount);
 
                     if (BarrelCount == 5)
                     {
-                        // Give all players quest credit for the diversion
                         Map::PlayerList const& players = instance->GetPlayers();
                         for (auto const& ref : players)
                             if (Player* player = ref.GetSource())
                                 player->KilledMonsterCredit(LODGE_QUEST_TRIGGER);
 
-                        instance->SummonCreature(NPC_DRAKE, { 2128.43f, 71.01f, 64.42f, 1.74f }, nullptr, 0);
+                        if (TempSummon* drake = instance->SummonCreature(NPC_DRAKE, { 2128.43f, 71.01f, 64.42f, 1.74f }, nullptr, 0))
+                            drake->setActive(true);
                     }
                     break;
                 }
@@ -139,15 +140,16 @@ public:
                 {
                     if (data == OH_ESCORT_DEATH_EVENT)
                     {
-                        // Always reset to beginning; the escort recovers naturally via boss state checks
+                        // A wipe restarts the escort at the prison, bosses already DONE are not summoned again
                         ThrallEscortState = OH_ESCORT_PRISON_TO_SKARLOC;
+                        SaveToDB();
                         TC_LOG_DEBUG("scripts", "Instance Old Hillsbrad: Thrall escort reset after wipe.");
                         return;
                     }
 
                     ThrallEscortState = OHThrallEscortStates(data);
+                    SaveToDB();
 
-                    // Only set Thrall's gossip flag for states where the player must interact with him
                     if (data == OH_ESCORT_HORSE_RIDE || data == OH_ESCORT_BARN_TO_TARETHA)
                     {
                         if (Creature* thrall = instance->GetCreature(ThrallGUID))
@@ -202,11 +204,10 @@ public:
             ThrallEscortState = OHThrallEscortStates(std::min(escortState, uint32(OH_ESCORT_FINISHED)));
             BarrelCount = std::min(barrelCount, 5u);
 
-            // Temp summons don't persist across reloads. Re-summon Drake if barrels
-            // were completed but he was never killed, otherwise players are softlocked
-            // (all barrels locked via GetData == DONE, Drake gone, Thrall unreachable).
+            // Drake is a temp summon, a reload after the barrels would softlock the escort without him
             if (BarrelCount >= 5 && GetBossState(DATA_LIEUTENANT_DRAKE) != DONE)
-                instance->SummonCreature(NPC_DRAKE, { 2128.43f, 71.01f, 64.42f, 1.74f }, nullptr, 0);
+                if (TempSummon* drake = instance->SummonCreature(NPC_DRAKE, { 2128.43f, 71.01f, 64.42f, 1.74f }, nullptr, 0))
+                    drake->setActive(true);
         }
     };
 };
