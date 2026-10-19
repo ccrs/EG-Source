@@ -25,6 +25,7 @@
 #include "InstanceScript.h"
 #include "MotionMaster.h"
 #include "MovementTypedefs.h"
+#include "ObjectAccessor.h"
 #include "PathGenerator.h"
 #include "Player.h"
 #include "Spell.h"
@@ -32,6 +33,7 @@
 #include "SpellInfo.h"
 #include "SpellMgr.h"
 #include "SpellScript.h"
+#include "TemporarySummon.h"
 #include "Unit.h"
 
 // 45775 - Cosmetic - Divine Shield Blue
@@ -670,6 +672,96 @@ class EG_spell_hadronox_web_grab : public SpellScript
     }
 };
 
+enum AzureRingCaptainMisc
+{
+    NPC_AZURE_RING_CAPTAIN = 28236,
+
+    DATA_ARCANE_BEAM_TARGET = 1, // npc_azure_ring_captain::GetGUID in boss_varos.cpp
+    DATA_ARCANE_BEAM
+};
+
+// 51014 - Summon Arcane Beam
+class EG_spell_varos_summon_arcane_beam : public SpellScript
+{
+    PrepareSpellScript(EG_spell_varos_summon_arcane_beam);
+
+    bool Load() override
+    {
+        return GetCaster()->GetTypeId() == TYPEID_UNIT;
+    }
+
+    void FilterTargets(std::list<WorldObject*>& targets)
+    {
+        ObjectGuid const targetGuid = GetCaster()->ToCreature()->AI()->GetGUID(DATA_ARCANE_BEAM_TARGET);
+        targets.remove_if([targetGuid](WorldObject* target)
+        {
+            return target->GetGUID() != targetGuid;
+        });
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(EG_spell_varos_summon_arcane_beam::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+    }
+};
+
+// 51022 - Arcane Beam Spawn Trigger
+class EG_spell_varos_arcane_beam_spawn_trigger : public SpellScript
+{
+    PrepareSpellScript(EG_spell_varos_arcane_beam_spawn_trigger);
+
+    bool Load() override
+    {
+        return GetCaster()->GetTypeId() == TYPEID_UNIT && GetCaster()->ToCreature()->IsSummon();
+    }
+
+    void SelectCaptain(WorldObject*& target)
+    {
+        target = nullptr;
+        WorldObject* summoner = GetCaster()->ToCreature()->ToTempSummon()->GetSummoner();
+        if (!summoner)
+            return;
+
+        std::list<Creature*> captains;
+        summoner->GetCreatureListWithOptionsInGrid(captains, 150.0f, { .CreatureId = NPC_AZURE_RING_CAPTAIN, .IsAlive = true });
+        for (Creature* captain : captains)
+            if (captain->IsAIEnabled() && captain->AI()->GetGUID(DATA_ARCANE_BEAM_TARGET) == summoner->GetGUID())
+                target = captain;
+    }
+
+    void HandleForceCast(SpellEffIndex /*effIndex*/)
+    {
+        GetHitCreature()->AI()->SetGUID(GetCaster()->GetGUID(), DATA_ARCANE_BEAM);
+    }
+
+    void Register() override
+    {
+        OnObjectTargetSelect += SpellObjectTargetSelectFn(EG_spell_varos_arcane_beam_spawn_trigger::SelectCaptain, EFFECT_0, TARGET_UNIT_NEARBY_ENTRY);
+        OnEffectHitTarget += SpellEffectFn(EG_spell_varos_arcane_beam_spawn_trigger::HandleForceCast, EFFECT_0, SPELL_EFFECT_FORCE_CAST);
+    }
+};
+
+// 51024 - Arcane Beam Visual
+class EG_spell_varos_arcane_beam_visual : public SpellScript
+{
+    PrepareSpellScript(EG_spell_varos_arcane_beam_visual);
+
+    bool Load() override
+    {
+        return GetCaster()->GetTypeId() == TYPEID_UNIT;
+    }
+
+    void SelectBeam(WorldObject*& target)
+    {
+        target = ObjectAccessor::GetCreature(*GetCaster(), GetCaster()->ToCreature()->AI()->GetGUID(DATA_ARCANE_BEAM));
+    }
+
+    void Register() override
+    {
+        OnObjectTargetSelect += SpellObjectTargetSelectFn(EG_spell_varos_arcane_beam_visual::SelectBeam, EFFECT_0, TARGET_UNIT_NEARBY_ENTRY);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
@@ -694,4 +786,7 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_brightleaf_unstable_sun_beam_forced);
     RegisterSpellScript(EG_spell_stonebark_petrified_bark);
     RegisterSpellScript(EG_spell_hadronox_web_grab);
+    RegisterSpellScript(EG_spell_varos_summon_arcane_beam);
+    RegisterSpellScript(EG_spell_varos_arcane_beam_spawn_trigger);
+    RegisterSpellScript(EG_spell_varos_arcane_beam_visual);
 }

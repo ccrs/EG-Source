@@ -15,16 +15,16 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "oculus.h"
 #include "InstanceScript.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
-#include "oculus.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "SpellInfo.h"
 #include "SpellScript.h"
 
-enum Says
+enum VarosSays
 {
     SAY_AGGRO           = 0,
     SAY_AZURE           = 1,
@@ -32,7 +32,7 @@ enum Says
     SAY_DEATH           = 3
 };
 
-enum Spells
+enum VarosSpells
 {
     SPELL_ENERGIZE_CORES_VISUAL                   = 62136,
     SPELL_ENERGIZE_CORES                          = 50785, //Damage 5938 to 6562, effec2 Triggers 54069, effect3 Triggers 56251
@@ -42,12 +42,17 @@ enum Spells
     SPELL_CALL_AZURE_RING_CAPTAIN_4               = 51008, //Effect    Send Event (18455)*/
     SPELL_CALL_AMPLIFY_MAGIC                      = 51054,
 
-    SPELL_ICE_BEAM                                = 49549,
     SPELL_ARCANE_BEAM_PERIODIC                    = 51019,
-    SPELL_SUMMON_ARCANE_BEAM                      = 51017
+    SPELL_SUMMON_ARCANE_BEAM                      = 51014
 };
 
-enum Events
+enum AzureRingCaptainMisc
+{
+    DATA_ARCANE_BEAM_TARGET = 1,
+    DATA_ARCANE_BEAM
+};
+
+enum VarosEvents
 {
     EVENT_ENERGIZE_CORES = 1,
     EVENT_CALL_AZURE,
@@ -175,6 +180,8 @@ struct npc_azure_ring_captain : public ScriptedAI
     void Initialize()
     {
         targetGUID.Clear();
+        _beamGUID.Clear();
+        _castingBeam = false;
     }
 
     void Reset() override
@@ -187,13 +194,23 @@ struct npc_azure_ring_captain : public ScriptedAI
         me->SetReactState(REACT_AGGRESSIVE);
     }
 
-    void SpellHitTarget(WorldObject* target, SpellInfo const* spellInfo) override
+    ObjectGuid GetGUID(int32 id) const override
     {
-        if (spellInfo->Id == SPELL_ICE_BEAM)
+        switch (id)
         {
-            target->CastSpell(target, SPELL_SUMMON_ARCANE_BEAM, true);
-            me->DespawnOrUnsummon();
+            case DATA_ARCANE_BEAM_TARGET:
+                return _castingBeam && _beamGUID.IsEmpty() ? targetGUID : ObjectGuid::Empty;
+            case DATA_ARCANE_BEAM:
+                return _beamGUID;
+            default:
+                return ObjectGuid::Empty;
         }
+    }
+
+    void SetGUID(ObjectGuid const& guid, int32 id) override
+    {
+        if (id == DATA_ARCANE_BEAM)
+            _beamGUID = guid;
     }
 
     void UpdateAI(uint32 /*diff*/) override
@@ -211,9 +228,9 @@ struct npc_azure_ring_captain : public ScriptedAI
             return;
 
         me->GetMotionMaster()->MoveIdle();
-
-        if (Unit* target = ObjectAccessor::GetUnit(*me, targetGUID))
-            DoCast(target, SPELL_ICE_BEAM);
+        _castingBeam = true;
+        DoCastSelf(SPELL_SUMMON_ARCANE_BEAM);
+        me->DespawnOrUnsummon(12s);
     }
 
     void DoAction(int32 action) override
@@ -223,7 +240,7 @@ struct npc_azure_ring_captain : public ScriptedAI
             case ACTION_CALL_DRAGON_EVENT:
                 if (Creature* varos = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VAROS)))
                 {
-                    if (Unit* victim = varos->AI()->SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* victim = varos->AI()->SelectTarget(SelectTargetMethod::Random, 0, 0.f, true))
                     {
                         me->SetReactState(REACT_PASSIVE);
                         me->SetWalk(false);
@@ -237,6 +254,8 @@ struct npc_azure_ring_captain : public ScriptedAI
 
 private:
     ObjectGuid targetGUID;
+    ObjectGuid _beamGUID;
+    bool _castingBeam;
     InstanceScript* instance;
 };
 
