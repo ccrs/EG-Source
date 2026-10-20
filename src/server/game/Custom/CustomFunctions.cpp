@@ -1557,7 +1557,7 @@ void WorldObject::UpdateWorldZoneScript()
     if (m_zoneScript && !dynamic_cast<WorldZoneScript*>(m_zoneScript))
         return;
 
-    if (sBattlefieldMgr->GetBattlefieldToZoneId(GetZoneId()) || sOutdoorPvPMgr->GetZoneScript(GetZoneId()))
+    if (sBattlefieldMgr->GetBattlefield(GetZoneId()) || sOutdoorPvPMgr->GetZoneScript(GetZoneId()))
         return;
 
     ZoneScript* zoneScript = sScriptMgr->GetWorldZoneScript(map->GetId(), GetZoneId(), GetPhaseMask());
