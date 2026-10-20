@@ -434,20 +434,16 @@ bool LFGMgr::TryFinishDungeonFromCurrentInstance(Group* group)
         if (!instance)
             continue;
 
-        DungeonEncounterList const* encounters = sObjectMgr->GetDungeonEncounterList(map->GetId(), map->GetDifficultyID());
-        if (!encounters)
-            continue;
-
         uint32 completedMask = instance->GetCompletedEncounterMask();
-        for (auto const& encounter : *encounters)
+        for (DungeonEncounter const& encounter : sObjectMgr->GetDungeonEncounterList(map->GetId(), map->GetDifficultyID()))
         {
-            if (!encounter->lastEncounterDungeon)
+            if (!encounter.lastEncounterDungeon)
                 continue;
 
-            if (encounter->lastEncounterDungeon != storedDungeonId)
+            if (encounter.lastEncounterDungeon != storedDungeonId)
                 continue;
 
-            if (!(completedMask & (uint32(1) << encounter->dbcEntry->Bit)))
+            if (!(completedMask & (uint32(1) << encounter.dbcEntry->Bit)))
                 continue;
 
             TC_LOG_DEBUG("lfg.dungeon.finish", "Recovering missed finished-dungeon state for group {} dungeon {} from instance {} completed mask {}", gguid.ToString(), storedDungeonId, instanceMap->GetInstanceId(), completedMask);
