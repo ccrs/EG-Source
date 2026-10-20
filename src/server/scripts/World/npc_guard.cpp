@@ -117,7 +117,8 @@ struct npc_guard_generic : public GuardAI
         _combatScheduler.SetValidator([this]
         {
             return !me->HasUnitState(UNIT_STATE_CASTING);
-        }).Schedule(Seconds(1), [this](TaskContext meleeContext)
+        })
+        .Schedule(Seconds(1), [this](TaskContext meleeContext)
         {
             Unit* victim = me->GetVictim();
             if (!me->isAttackReady() || !me->IsWithinMeleeRange(victim))
@@ -138,7 +139,8 @@ struct npc_guard_generic : public GuardAI
             me->AttackerStateUpdate(victim);
             me->resetAttackTimer();
             meleeContext.Repeat();
-        }).Schedule(Seconds(5), [this](TaskContext spellContext)
+        })
+        .Schedule(Seconds(5), [this](TaskContext spellContext)
         {
             bool healing = false;
             SpellInfo const* spellInfo = nullptr;

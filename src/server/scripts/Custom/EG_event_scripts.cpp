@@ -155,7 +155,8 @@ struct EG_npc_brewfest_dark_iron_attack_generator : public ScriptedAI
 
                         if (verse < SAY_HERALD_VERSE_LAST)
                             song.Repeat(28s);
-                    }).Schedule(1500ms, GROUP_MOLE_MACHINES, [this](TaskContext moleMachine)
+                    })
+                    .Schedule(1500ms, GROUP_MOLE_MACHINES, [this](TaskContext moleMachine)
                     {
                         float const distance = frand(MoleMachineMinDistance, MoleMachineMaxDistance);
                         float const angle = frand(0.0f, 2.0f * float(M_PI));
@@ -173,7 +174,8 @@ struct EG_npc_brewfest_dark_iron_attack_generator : public ScriptedAI
                         }
 
                         moleMachine.Repeat(3s);
-                    }).Schedule(5s, GROUP_ATTACK, [this](TaskContext shout)
+                    })
+                    .Schedule(5s, GROUP_ATTACK, [this](TaskContext shout)
                     {
                         std::vector<Creature*> barkers;
                         me->GetCreatureListWithOptionsInGrid(barkers, BarkerSearchRange, BarkerOptions);
@@ -192,7 +194,8 @@ struct EG_npc_brewfest_dark_iron_attack_generator : public ScriptedAI
                         }
 
                         shout.Repeat(12s);
-                    }).Schedule(1s, GROUP_ATTACK, [this](TaskContext kegCheck)
+                    })
+                    .Schedule(1s, GROUP_ATTACK, [this](TaskContext kegCheck)
                     {
                         bool const anyKegAlive = std::any_of(_kegGUIDs.begin(), _kegGUIDs.end(), [this](ObjectGuid const& guid)
                         {
@@ -207,10 +210,12 @@ struct EG_npc_brewfest_dark_iron_attack_generator : public ScriptedAI
                         }
 
                         kegCheck.Repeat();
-                    }).Schedule(280s, GROUP_ATTACK, [](TaskContext stopSpawning)
+                    })
+                    .Schedule(280s, GROUP_ATTACK, [](TaskContext stopSpawning)
                     {
                         stopSpawning.CancelGroup(GROUP_MOLE_MACHINES);
-                    }).Schedule(300s, GROUP_ATTACK, [this](TaskContext attackEnd)
+                    })
+                    .Schedule(300s, GROUP_ATTACK, [this](TaskContext attackEnd)
                     {
                         EndAttack(attackEnd, true);
                     });

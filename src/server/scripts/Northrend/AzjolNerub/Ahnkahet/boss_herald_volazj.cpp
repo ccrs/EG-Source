@@ -514,7 +514,8 @@ struct npc_twisted_visage : public ScriptedAI
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_MORTAL_STRIKE);
                                 mortalStrike.Repeat(MAIN_MELEE_TIMER_REPEAT);
-                            }).Schedule(10s, 15s, [this](TaskContext harmstring)
+                            })
+                            .Schedule(10s, 15s, [this](TaskContext harmstring)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_HAMSTRING);
                                 harmstring.Repeat(7s, 15s);
@@ -531,7 +532,8 @@ struct npc_twisted_visage : public ScriptedAI
                                 }
                                 else
                                     intercept.Repeat(1s);
-                            }).Schedule(MAIN_MELEE_TIMER, [this](TaskContext bloodthirst)
+                            })
+                            .Schedule(MAIN_MELEE_TIMER, [this](TaskContext bloodthirst)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_BLOODTHIRST);
                                 bloodthirst.Repeat(MAIN_MELEE_TIMER_REPEAT);
@@ -542,7 +544,8 @@ struct npc_twisted_visage : public ScriptedAI
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_THUNDER_CLAP);
                                 thunderClap.Repeat(10s, 20s);
-                            }).Schedule(MAIN_MELEE_TIMER, [this](TaskContext devastate)
+                            })
+                            .Schedule(MAIN_MELEE_TIMER, [this](TaskContext devastate)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_DEVASTATE);
                                 devastate.Repeat(MAIN_MELEE_TIMER_REPEAT);
@@ -558,7 +561,8 @@ struct npc_twisted_visage : public ScriptedAI
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_CONSECRATION);
                                 consecration.Repeat(10s, 20s);
-                            }).Schedule(5s, 10s, [this](TaskContext avengersShield)
+                            })
+                            .Schedule(5s, 10s, [this](TaskContext avengersShield)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_AVENGER__S_SHIELD);
                                 avengersShield.Repeat(10s, 20s);
@@ -570,10 +574,12 @@ struct npc_twisted_visage : public ScriptedAI
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_CONSECRATION);
                                 consecration.Repeat(10s, 20s);
-                            }).Schedule(2s, [this](TaskContext /*sealCommand*/)
+                            })
+                            .Schedule(2s, [this](TaskContext /*sealCommand*/)
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_SEAL_OF_COMMAND);
-                            }).Schedule(MAIN_MELEE_TIMER, [this](TaskContext judgementLight)
+                            })
+                            .Schedule(MAIN_MELEE_TIMER, [this](TaskContext judgementLight)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_JUDGEMENT_OF_LIGHT);
                                 judgementLight.Repeat(MAIN_MELEE_TIMER_REPEAT);
@@ -586,7 +592,8 @@ struct npc_twisted_visage : public ScriptedAI
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_SHOOT);
                         shoot.Repeat(5s, 10s);
-                    }).Schedule(5s, 10s, [this](TaskContext disengage)
+                    })
+                    .Schedule(5s, 10s, [this](TaskContext disengage)
                     {
                         if (me->IsWithinCombatRange(me->GetVictim(), 4.0f))
                         {
@@ -603,7 +610,8 @@ struct npc_twisted_visage : public ScriptedAI
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_EVISCERATE);
                         eviscerate.Repeat(10s, 25s);
-                    }).Schedule(MAIN_MELEE_TIMER, [this](TaskContext sinisterStrike)
+                    })
+                    .Schedule(MAIN_MELEE_TIMER, [this](TaskContext sinisterStrike)
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_SINISTER_STRIKE);
                         sinisterStrike.Repeat(MAIN_MELEE_TIMER_REPEAT);
@@ -617,7 +625,8 @@ struct npc_twisted_visage : public ScriptedAI
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_SHADOW_WORD_PAIN);
                                 shadowWordPain.Repeat(10s, 20s);
-                            }).Schedule(MAIN_CAST_TIMER, [this](TaskContext mindFlay)
+                            })
+                            .Schedule(MAIN_CAST_TIMER, [this](TaskContext mindFlay)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_MIND_FLAY);
                                 mindFlay.Repeat(MAIN_CAST_TIMER_REPEAT);
@@ -633,7 +642,8 @@ struct npc_twisted_visage : public ScriptedAI
                                 }
                                 else
                                     renew.Repeat(1s);
-                            }).Schedule(4s, [this](TaskContext greaterHeal)
+                            })
+                            .Schedule(4s, [this](TaskContext greaterHeal)
                             {
                                 if (Unit* target = me->DoFindLowestHPFriendlyInRange(WorldObject::FriendlySearchOptions{ .Range = 40.f, .ExcludedEntries = { NPC_HERALD_VOLAZJ } }))
                                 {
@@ -656,7 +666,8 @@ struct npc_twisted_visage : public ScriptedAI
                         }
                         else
                             deathGrip.Repeat(1s);
-                    }).Schedule(MAIN_MELEE_TIMER, [this](TaskContext plagueStrike)
+                    })
+                    .Schedule(MAIN_MELEE_TIMER, [this](TaskContext plagueStrike)
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_PLAGUE_STRIKE);
                         plagueStrike.Repeat(MAIN_MELEE_TIMER_REPEAT);
@@ -671,7 +682,8 @@ struct npc_twisted_visage : public ScriptedAI
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_THUNDERSTORM);
                                 thunderstorm.Repeat(5s, 20s);
-                            }).Schedule(MAIN_CAST_TIMER, [this](TaskContext lightningBolt)
+                            })
+                            .Schedule(MAIN_CAST_TIMER, [this](TaskContext lightningBolt)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_LIGHTNING_BOLT);
                                 lightningBolt.Repeat(MAIN_CAST_TIMER_REPEAT);
@@ -694,7 +706,8 @@ struct npc_twisted_visage : public ScriptedAI
                                 }
                                 else
                                     earthShield.Repeat(1s);
-                            }).Schedule(4s, [this](TaskContext healingWave)
+                            })
+                            .Schedule(4s, [this](TaskContext healingWave)
                             {
                                 if (Unit* target = me->DoFindLowestHPFriendlyInRange(WorldObject::FriendlySearchOptions{ .Range = 40.f, .ExcludedEntries = { NPC_HERALD_VOLAZJ } }))
                                 {
@@ -712,7 +725,8 @@ struct npc_twisted_visage : public ScriptedAI
                     {
                         DoCastSelf(SPELL_TWISTED_VISAGE_FROST_NOVA);
                         frostNova.Repeat(10s, 20s);
-                    }).Schedule(MAIN_CAST_TIMER, [this](TaskContext fireball)
+                    })
+                    .Schedule(MAIN_CAST_TIMER, [this](TaskContext fireball)
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_FIREBALL);
                         fireball.Repeat(MAIN_CAST_TIMER_REPEAT);
@@ -723,7 +737,8 @@ struct npc_twisted_visage : public ScriptedAI
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_CORRUPTION);
                         corruption.Repeat(5s, 20s);
-                    }).Schedule(MAIN_CAST_TIMER, [this](TaskContext shadowBolt)
+                    })
+                    .Schedule(MAIN_CAST_TIMER, [this](TaskContext shadowBolt)
                     {
                         DoCastVictim(SPELL_TWISTED_VISAGE_SHADOW_BOLT);
                         shadowBolt.Repeat(MAIN_CAST_TIMER_REPEAT);
@@ -737,7 +752,8 @@ struct npc_twisted_visage : public ScriptedAI
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_MOONFIRE);
                                 moonfire.Repeat(5s, 10s);
-                            }).Schedule(MAIN_CAST_TIMER, [this](TaskContext wrath)
+                            })
+                            .Schedule(MAIN_CAST_TIMER, [this](TaskContext wrath)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_WRATH);
                                 wrath.Repeat(MAIN_CAST_TIMER_REPEAT);
@@ -748,11 +764,13 @@ struct npc_twisted_visage : public ScriptedAI
                             {
                                 DoCastSelf(SPELL_TWISTED_VISAGE_CAT_FORM, true);
                                 DoCastSelf(SPELL_TWISTED_VISAGE_INVISIBILITY_AND_STEALTH_DETECTION, true);
-                            }).Schedule(MAIN_MELEE_TIMER, [this](TaskContext mangle)
+                            })
+                            .Schedule(MAIN_MELEE_TIMER, [this](TaskContext mangle)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_MANGLE);
                                 mangle.Repeat(MAIN_MELEE_TIMER_REPEAT);
-                            }).Schedule(10s, [this](TaskContext rip)
+                            })
+                            .Schedule(10s, [this](TaskContext rip)
                             {
                                 DoCastVictim(SPELL_TWISTED_VISAGE_RIP);
                                 rip.Repeat(10s, 20s);
@@ -769,7 +787,8 @@ struct npc_twisted_visage : public ScriptedAI
                                 }
                                 else
                                     lifebloom.Repeat(1s);
-                            }).Schedule(4s, [this](TaskContext nourish)
+                            })
+                            .Schedule(4s, [this](TaskContext nourish)
                             {
                                 if (Unit* target = me->DoFindLowestHPFriendlyInRange(WorldObject::FriendlySearchOptions{ .Range = 40.f, .ExcludedEntries = { NPC_HERALD_VOLAZJ } }))
                                 {

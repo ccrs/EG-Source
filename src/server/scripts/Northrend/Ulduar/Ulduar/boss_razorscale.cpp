@@ -1238,7 +1238,8 @@ struct npc_razorscale_spawner : public ScriptedAI
             Schedule(Seconds(1), [this](TaskContext /*context*/)
         {
             DoCastSelf(SPELL_SUMMON_MOLE_MACHINE);
-        }).Schedule(Seconds(6), [this](TaskContext /*context*/)
+        })
+        .Schedule(Seconds(6), [this](TaskContext /*context*/)
         {
             DoCastSelf(SummonMinionsSpells[urand(0, 3)]);
         });

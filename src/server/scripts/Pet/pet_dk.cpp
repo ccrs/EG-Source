@@ -167,7 +167,8 @@ struct npc_pet_dk_rune_weapon : ScriptedAI
                 if (Unit* target = ObjectAccessor::GetUnit(*me, _targetGUID))
                     me->EngageWithTarget(target);
             }
-        }).Schedule(6s, [this](TaskContext visual)
+        })
+        .Schedule(6s, [this](TaskContext visual)
         {
             // Cast every 6 seconds
             DoCastSelf(SPELL_DK_DANCING_RUNE_WEAPON_VISUAL, true);

@@ -773,7 +773,8 @@ struct npc_flame_bunny : public PassiveAI
         _scheduler.Schedule(1s, [this](TaskContext /*context*/)
         {
             DoCastSelf(SPELL_HEADLESS_HORSEMAN_BURNING_COSMETIC_BASE);
-        }).Schedule(3s, [this](TaskContext grow)
+        })
+        .Schedule(3s, [this](TaskContext grow)
         {
             DoCastSelf(SPELL_HEADLESS_HORSEMAN_FIRE_SIZE_BIG);
             if (grow.GetRepeatCounter() < 2)
