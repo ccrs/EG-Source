@@ -27,7 +27,12 @@
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
 #include "TemporarySummon.h"
+#include "Timer.h"
 #include "WorldStatePackets.h"
+#include <algorithm>
+#include <array>
+#include <map>
+#include <set>
 
 enum TheLightOfDawnMisc
 {
@@ -49,17 +54,29 @@ enum TheLightOfDawnMisc
     SPELL_TIRION_CHARGE = 53705,
     SPELL_SOUL_RELEASE = 41542,
     SPELL_TELEPORT_VISUAL = 52233,
+    SPELL_HERO_AGGRO_AURA = 53627,
+    SPELL_THE_LIGHT_OF_DAWN_DAMAGE_LOSS = 53645,
+    SPELL_CLEAVE = 53631,
+    SPELL_HEROIC_LEAP = 53625,
+    SPELL_HOLY_LIGHT = 37979,
+    SPELL_FIREBALL = 20678,
+    SPELL_WRATH = 21807,
+    SPELL_REJUVENATION = 20664,
+    SPELL_TRANQUILITY = 25817,
+    SPELL_THUNDER = 53630,
+    SPELL_CHAIN_HEAL = 33642,
 
     NPC_HIGHLORD_DARION_MOGRAINE = 29173,
     NPC_HIGHLORD_TIRION_FORDRING = 29175,
     NPC_KORFAX_CHAMPION_OF_THE_LIGHT = 29176,
     NPC_COMMANDER_ELIGOR_DAWNBRINGER = 29177,
     NPC_LORD_MAXWELL_TYROSUS = 29178,
+    NPC_LEONID_BARTHALOMEW_THE_REVERED = 29179,
+    NPC_DUKE_NICHOLAS_ZVERENHOFF = 29180,
     NPC_RAYNE = 29181,
     NPC_RIMBLAT_EARTHSHATTER = 29182,
     NPC_DEFENDER_OF_THE_LIGHT = 29174,
     NPC_THE_LICH_KING = 29183,
-    NPC_RAMPAGING_ABOMINATION = 29186,
     NPC_FLESH_BEHEMOTH = 29190,
     NPC_KOLTIRA_DEATHWEAVER = 29199,
     NPC_THASSARIAN = 29200,
@@ -73,10 +90,13 @@ enum TheLightOfDawnMisc
 
     EQUIP_ASHBRINGER = 13262,
 
+    SAY_DARION_STAND_READY = 0,
+    SAY_DARION_SKY_WEEPS = 1,
     SAY_DARION_HEAR_THE_CALL = 3,
     SAY_DARION_RISE = 4,
     SAY_DARION_SKIES_TURN_RED = 5,
     SAY_DARION_BATTLE = 8,
+    SAY_DARION_DEFEAT = 9,
     SAY_DARION_STAND_DOWN = 26,
     SAY_DARION_SAVE_YOUR_BREATH = 30,
     SAY_DARION_FATHER = 32,
@@ -108,6 +128,8 @@ enum TheLightOfDawnMisc
     SAY_TIRION_ARGENT_CRUSADE = 66,
     EMOTE_TIRION_GASPS = 79,
     EMOTE_TIRION_CHARGES = 83,
+
+    EMOTE_CHAMPION_FALLS_UNCONSCIOUS = 0,
 
     SAY_KORFAX_SCOURGE_APPROACH = 6,
 
@@ -148,21 +170,47 @@ enum TheLightOfDawnMisc
     GOSSIP_MENU_LIGHT_OF_DAWN = 9795,
     GOSSIP_OPTION_START_BATTLE = 0,
 
+    WORLD_STATE_FORCES_LIGHT = 3590,
+    WORLD_STATE_FORCES_SCOURGE = 3591,
+    WORLD_STATE_FORCES_SHOW = 3592,
+    WORLD_STATE_COUNTDOWN_SHOW = 3603,
+    WORLD_STATE_COUNTDOWN_TIME = 3604,
     WORLD_STATE_BATTLE_BEGUN = 3605,
+
+    MAX_FORCES_LIGHT = 300,
+    MAX_FORCES_SCOURGE = 10000,
+    DEFENDERS_KILLED_TO_END = 100,
+
+    EVENT_STATE_NOT_STARTED = 0,
+    EVENT_STATE_COUNTDOWN,
+    EVENT_STATE_INTRO,
+    EVENT_STATE_BATTLE,
+    EVENT_STATE_OUTRO,
 
     MAP_SCARLET_ENCLAVE = 609,
     ZONE_THE_SCARLET_ENCLAVE = 4298,
     PHASE_CHAPTER_IV_EPILOGUE = 128,
 
-    DATA_EVENT_IN_PROGRESS = 1,
+    SUMMON_GROUP_ARMY_FIRST = 0,
+    SUMMON_GROUP_ARMY_LAST = 4,
+    SUMMON_GROUP_DAWN = 5,
+
+    DATA_EVENT_STATE = 1,
     DATA_KOLTIRA_DEATHWEAVER,
     DATA_ORBAZ_BLOODBANE,
     DATA_THASSARIAN,
+    DATA_FLESH_BEHEMOTH_1,
+    DATA_FLESH_BEHEMOTH_2,
+
+    ACTION_REVIVE_CHAMPION = 1,
+    ACTION_COUNTDOWN_FINISHED,
+    ACTION_BATTLE_LOST,
 
     POINT_BATTLEFIELD = 1,
     POINT_CHAPEL,
 
-    GROUP_BATTLE = 1
+    GROUP_BATTLE = 1,
+    GROUP_YELLS
 };
 
 Position const DarionBattlefieldPos = { 2319.24f, -5266.49f, 82.825f };
@@ -172,7 +220,8 @@ Position const DarionChargePos = { 2281.46f, -5263.01f, 81.164f };
 Position const DarionKickedPos = { 2257.48f, -5296.7f, 82.165f };
 Position const DarionThrowPos = { 2261.24f, -5294.98f, 82.167f };
 
-Position const DawnSpawnCenterPos = { 2296.335f, -5285.409f, 85.170f };
+Position const DarionLeashPos = { 2280.159f, -5263.561f, 81.15f };
+Position const OrbazFleePos = { 2169.1f, -5227.1f, 82.59f };
 Position const LightOfDawnPos = { 2283.896f, -5287.914f, 83.066f };
 
 Position const TirionSpawnPos = { 2281.335f, -5300.409f, 85.170f, 1.528f };
@@ -207,13 +256,15 @@ Position const LichKingForwardPos = { 2281.523f, -5261.058f, 80.877f };
 Position const LichKingKnockedPos = { 2272.709f, -5255.552f, 78.226f };
 Position const LichKingRecoverPos = { 2273.972f, -5257.676f, 78.862f };
 
-std::pair<uint32, uint8> const ScourgeArmy[] =
+Position const OutroDefenderPos[] =
 {
-    { NPC_VOLATILE_GHOUL, 10 },
-    { NPC_RAMPAGING_ABOMINATION, 3 },
-    { NPC_WARRIOR_OF_THE_FROZEN_WASTES, 3 },
-    { NPC_FLESH_BEHEMOTH, 2 }
+    { 2276.66f, -5273.60f, 81.86f, 5.14f },
+    { 2272.11f, -5279.08f, 82.01f, 5.69f },
+    { 2285.11f, -5276.73f, 82.08f, 4.23f },
+    { 2290.06f, -5286.41f, 82.51f, 3.16f }
 };
+
+std::array<uint32, 8> const DawnForces = { NPC_DEFENDER_OF_THE_LIGHT, NPC_KORFAX_CHAMPION_OF_THE_LIGHT, NPC_COMMANDER_ELIGOR_DAWNBRINGER, NPC_LORD_MAXWELL_TYROSUS, NPC_LEONID_BARTHALOMEW_THE_REVERED, NPC_DUKE_NICHOLAS_ZVERENHOFF, NPC_RAYNE, NPC_RIMBLAT_EARTHSHATTER };
 
 // 29173 - Highlord Darion Mograine
 struct npc_highlord_darion_mograine : public ScriptedAI
@@ -222,71 +273,210 @@ struct npc_highlord_darion_mograine : public ScriptedAI
 
     bool OnGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
     {
-        if (menuId != GOSSIP_MENU_LIGHT_OF_DAWN || gossipListId != GOSSIP_OPTION_START_BATTLE || _eventInProgress || !player->PlayerTalkClass->GetGossipMenu().GetItem(gossipListId))
+        ZoneScript* zoneScript = me->GetZoneScript();
+        if (!zoneScript || menuId != GOSSIP_MENU_LIGHT_OF_DAWN || gossipListId != GOSSIP_OPTION_START_BATTLE || _eventInProgress || !player->PlayerTalkClass->GetGossipMenu().GetItem(gossipListId))
             return false;
 
         CloseGossipMenuFor(player);
 
         _eventInProgress = true;
         me->setActive(true);
-        me->ReplaceAllNpcFlags(UNIT_NPC_FLAG_NONE);
+        me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+        Talk(SAY_DARION_STAND_READY);
 
-        if (ZoneScript* zoneScript = me->GetZoneScript())
-        {
-            zoneScript->SetData(DATA_EVENT_IN_PROGRESS, 1);
-            _koltiraGUID = zoneScript->GetGuidData(DATA_KOLTIRA_DEATHWEAVER);
-            _orbazGUID = zoneScript->GetGuidData(DATA_ORBAZ_BLOODBANE);
-            _thassarianGUID = zoneScript->GetGuidData(DATA_THASSARIAN);
-        }
+        zoneScript->SetData(DATA_EVENT_STATE, EVENT_STATE_COUNTDOWN);
+        _koltiraGUID = zoneScript->GetGuidData(DATA_KOLTIRA_DEATHWEAVER);
+        _orbazGUID = zoneScript->GetGuidData(DATA_ORBAZ_BLOODBANE);
+        _thassarianGUID = zoneScript->GetGuidData(DATA_THASSARIAN);
+        _behemothGUIDs = { zoneScript->GetGuidData(DATA_FLESH_BEHEMOTH_1), zoneScript->GetGuidData(DATA_FLESH_BEHEMOTH_2) };
 
-        _scheduler.Schedule(3s, [this](TaskContext /*context*/)
+        _scheduler.Schedule(240s, [this](TaskContext /*context*/)
         {
-            Talk(SAY_DARION_HEAR_THE_CALL);
-        })
-        .Schedule(13s, [this](TaskContext /*context*/)
-        {
-            Talk(SAY_DARION_RISE);
-        })
-        .Schedule(16s, [this](TaskContext context)
-        {
-            uint32 index = context.GetRepeatCounter();
-            for (auto const& [entry, count] : ScourgeArmy)
-            {
-                if (index < count)
-                {
-                    DoCastSelf(SPELL_SHAKE_CAMERA);
-                    SummonScourge(entry, me->GetPosition());
-                    context.Repeat(500ms);
-                    return;
-                }
-
-                index -= count;
-            }
-        })
-        .Schedule(27s, [this](TaskContext /*context*/)
-        {
-            Talk(SAY_DARION_SKIES_TURN_RED);
-        })
-        .Schedule(32s, [this](TaskContext /*context*/)
-        {
-            float const marchAngle = me->GetAbsoluteAngle(DarionBattlefieldPos);
-
-            GuidVector marchers(_summons.begin(), _summons.end());
-            marchers.insert(marchers.end(), { _koltiraGUID, _orbazGUID, _thassarianGUID });
-            for (ObjectGuid const& guid : marchers)
-            {
-                if (Creature* marcher = ObjectAccessor::GetCreature(*me, guid))
-                {
-                    marcher->SetWalk(false);
-                    marcher->GetMotionMaster()->MoveFormation(me, me->GetExactDist2d(marcher), Position::NormalizeOrientation(me->GetAbsoluteAngle(marcher) - marchAngle), 0, 0);
-                }
-            }
-
-            me->SetWalk(false);
-            me->GetMotionMaster()->MovePoint(POINT_BATTLEFIELD, DarionBattlefieldPos);
+            Talk(SAY_DARION_SKY_WEEPS);
         });
 
         return true;
+    }
+
+    void DoAction(int32 action) override
+    {
+        switch (action)
+        {
+            case ACTION_COUNTDOWN_FINISHED:
+                me->ReplaceAllNpcFlags(UNIT_NPC_FLAG_NONE);
+                Talk(SAY_DARION_HEAR_THE_CALL);
+
+                _scheduler.Schedule(8s, [this](TaskContext context)
+                {
+                    uint8 const wave = uint8(context.GetRepeatCounter());
+                    if (!wave)
+                        Talk(SAY_DARION_RISE);
+
+                    DoCastSelf(SPELL_SHAKE_CAMERA);
+                    me->SummonCreatureGroup(SUMMON_GROUP_ARMY_FIRST + wave);
+                    if (SUMMON_GROUP_ARMY_FIRST + wave < SUMMON_GROUP_ARMY_LAST)
+                        context.Repeat(4s);
+                })
+                .Schedule(32s, [this](TaskContext /*context*/)
+                {
+                    Talk(SAY_DARION_SKIES_TURN_RED);
+                })
+                .Schedule(35s, [this](TaskContext /*context*/)
+                {
+                    for (ObjectGuid const& guid : _summons)
+                        if (Creature* summon = ObjectAccessor::GetCreature(*me, guid))
+                            summon->HandleEmoteCommand(EMOTE_ONESHOT_BATTLE_ROAR);
+                })
+                .Schedule(37500ms, [this](TaskContext /*context*/)
+                {
+                    DoCastSelf(SPELL_THE_MIGHT_OF_MOGRAINE, true);
+                    DoCastSelf(SPELL_HERO_AGGRO_AURA, true);
+
+                    float const marchAngle = me->GetAbsoluteAngle(DarionBattlefieldPos);
+                    for (ObjectGuid const& guid : GetMarcherGUIDs())
+                    {
+                        if (Creature* marcher = ObjectAccessor::GetCreature(*me, guid))
+                        {
+                            marcher->SetWalk(false);
+                            marcher->GetMotionMaster()->MoveFormation(me, me->GetExactDist2d(marcher), Position::NormalizeOrientation(me->GetAbsoluteAngle(marcher) - marchAngle), 0, 0);
+                        }
+                    }
+
+                    me->SetWalk(false);
+                    me->GetMotionMaster()->MovePoint(POINT_BATTLEFIELD, DarionBattlefieldPos);
+                });
+                break;
+            case ACTION_BATTLE_LOST:
+            {
+                DoCastSelf(SPELL_THE_LIGHT_OF_DAWN_DAMAGE_LOSS, true);
+
+                if (TempSummon* tirion = me->SummonCreature(NPC_HIGHLORD_TIRION_FORDRING, TirionSpawnPos, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 20min))
+                {
+                    tirion->SetFaction(me->GetFaction());
+                    tirion->AI()->Talk(SAY_TIRION_CANNOT_WIN);
+                }
+
+                _scheduler.CancelGroup(GROUP_YELLS);
+                _scheduler.Schedule(1s, GROUP_YELLS, [this](TaskContext context)
+                {
+                    Talk(SAY_DARION_DEFEAT);
+                    if (!me->IsWithinDist2d(&DarionLeashPos, 75.0f))
+                        me->GetMotionMaster()->MovePoint(0, DarionLeashPos);
+                    context.Repeat(5s, 7s);
+                })
+                .Schedule(10s, [this](TaskContext /*context*/)
+                {
+                    _battleInProgress = false;
+                    _summons.DespawnEntry(NPC_DEFENDER_OF_THE_LIGHT);
+                })
+                .Schedule(20s, [this](TaskContext context)
+                {
+                    context.CancelGroup(GROUP_BATTLE).CancelGroup(GROUP_YELLS);
+
+                    me->RemoveAllAuras();
+                    me->CombatStop(true);
+                    me->SetImmuneToNPC(true);
+                    if (IsEngaged())
+                        EngagementOver();
+                    me->GetMotionMaster()->Clear();
+
+                    for (uint32 entry : { NPC_VOLATILE_GHOUL, NPC_WARRIOR_OF_THE_FROZEN_WASTES, NPC_LEONID_BARTHALOMEW_THE_REVERED, NPC_DUKE_NICHOLAS_ZVERENHOFF, NPC_RAYNE, NPC_RIMBLAT_EARTHSHATTER })
+                        _summons.DespawnEntry(entry);
+
+                    for (ObjectGuid const& guid : _behemothGUIDs)
+                        if (Creature* behemoth = ObjectAccessor::GetCreature(*me, guid))
+                            behemoth->DespawnOrUnsummon(0s, 30s);
+
+                    std::pair<ObjectGuid, Position> const retreats[] = { { _korfaxGUID, KorfaxRetreatPos }, { _maxwellGUID, MaxwellRetreatPos }, { _eligorGUID, EligorRetreatPos } };
+                    for (auto const& [guid, pos] : retreats)
+                    {
+                        if (Creature* champion = ObjectAccessor::GetCreature(*me, guid))
+                        {
+                            champion->AI()->DoAction(ACTION_REVIVE_CHAMPION);
+                            champion->SetFaction(me->GetFaction());
+                            champion->AI()->EnterEvadeMode();
+                            champion->SetWalk(false);
+                            champion->GetMotionMaster()->MovePoint(0, pos);
+                        }
+                    }
+
+                    for (ObjectGuid const& guid : { _koltiraGUID, _thassarianGUID })
+                    {
+                        if (Creature* hero = ObjectAccessor::GetCreature(*me, guid))
+                        {
+                            if (!hero->IsAlive())
+                                continue;
+
+                            hero->AI()->EnterEvadeMode();
+                            hero->Dismount();
+                            hero->GetMotionMaster()->Clear();
+                        }
+                    }
+
+                    if (Creature* orbaz = ObjectAccessor::GetCreature(*me, _orbazGUID))
+                    {
+                        if (orbaz->IsAlive())
+                        {
+                            orbaz->AI()->Talk(EMOTE_ORBAZ_FLEES);
+                            orbaz->AI()->EnterEvadeMode();
+                            orbaz->GetMotionMaster()->Clear();
+                            orbaz->SetWalk(false);
+                            orbaz->GetMotionMaster()->MovePoint(0, OrbazFleePos);
+                        }
+
+                        orbaz->DespawnOrUnsummon(7s, 30s);
+                    }
+
+                    for (Position const& pos : OutroDefenderPos)
+                    {
+                        if (TempSummon* defender = me->SummonCreature(NPC_DEFENDER_OF_THE_LIGHT, pos, TEMPSUMMON_MANUAL_DESPAWN))
+                        {
+                            defender->SetFaction(me->GetFaction());
+                            defender->SetReactState(REACT_PASSIVE);
+                            defender->SetImmuneToAll(true);
+                            defender->SetEmoteState(EMOTE_STATE_READY1H);
+                            _outroDefenderGUIDs.push_back(defender->GetGUID());
+                        }
+                    }
+                })
+                .Schedule(22s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* koltira = ObjectAccessor::GetCreature(*me, _koltiraGUID))
+                    {
+                        if (koltira->IsAlive())
+                        {
+                            koltira->SetWalk(true);
+                            koltira->CastSpell(koltira, SPELL_THE_LIGHT_OF_DAWN, true);
+                            koltira->GetMotionMaster()->MoveCharge(KoltiraRetreatPos.GetPositionX(), KoltiraRetreatPos.GetPositionY(), KoltiraRetreatPos.GetPositionZ(), 4.0f, 0, true);
+                        }
+                    }
+                })
+                .Schedule(23s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* thassarian = ObjectAccessor::GetCreature(*me, _thassarianGUID))
+                    {
+                        if (thassarian->IsAlive())
+                        {
+                            thassarian->SetWalk(true);
+                            thassarian->CastSpell(thassarian, SPELL_THE_LIGHT_OF_DAWN, true);
+                            thassarian->GetMotionMaster()->MoveCharge(ThassarianRetreatPos.GetPositionX(), ThassarianRetreatPos.GetPositionY(), ThassarianRetreatPos.GetPositionZ(), 4.0f, 0, true);
+                        }
+                    }
+                })
+                .Schedule(24s, [this](TaskContext /*context*/)
+                {
+                    me->SetWalk(true);
+                    DoCastSelf(SPELL_THE_LIGHT_OF_DAWN, true);
+                    me->GetMotionMaster()->MoveCharge(DarionChapelPos.GetPositionX(), DarionChapelPos.GetPositionY(), DarionChapelPos.GetPositionZ(), 4.0f, POINT_CHAPEL, true);
+
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->AI()->Talk(SAY_TIRION_BRING_THEM);
+                });
+                break;
+            }
+            default:
+                break;
+        }
     }
 
     void MovementInform(uint32 type, uint32 id) override
@@ -301,17 +491,19 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                 _battleInProgress = true;
                 me->Dismount();
                 me->SetImmuneToNPC(false);
-                DoCastSelf(SPELL_THE_MIGHT_OF_MOGRAINE, true);
+                if (ZoneScript* zoneScript = me->GetZoneScript())
+                    zoneScript->SetData(DATA_EVENT_STATE, EVENT_STATE_BATTLE);
 
-                for (ObjectGuid const& guid : { _koltiraGUID, _orbazGUID, _thassarianGUID })
-                    if (Creature* hero = ObjectAccessor::GetCreature(*me, guid))
-                        hero->Dismount();
+                for (ObjectGuid const& guid : GetMarcherGUIDs())
+                {
+                    if (Creature* marcher = ObjectAccessor::GetCreature(*me, guid))
+                    {
+                        marcher->Dismount();
+                        marcher->GetMotionMaster()->MoveIdle();
+                    }
+                }
 
-                for (uint8 i = 0; i < 30; ++i)
-                    SummonDawn(NPC_DEFENDER_OF_THE_LIGHT);
-
-                for (uint32 entry : { NPC_RIMBLAT_EARTHSHATTER, NPC_KORFAX_CHAMPION_OF_THE_LIGHT, NPC_LORD_MAXWELL_TYROSUS, NPC_COMMANDER_ELIGOR_DAWNBRINGER, NPC_RAYNE })
-                    SummonDawn(entry);
+                me->SummonCreatureGroup(SUMMON_GROUP_DAWN);
 
                 if (Creature* korfax = ObjectAccessor::GetCreature(*me, _korfaxGUID))
                     korfax->AI()->Talk(SAY_KORFAX_SCOURGE_APPROACH);
@@ -323,14 +515,16 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                     std::vector<Creature*> scourge = { me };
                     std::vector<Creature*> dawn;
 
-                    for (ObjectGuid const& guid : { _koltiraGUID, _orbazGUID, _thassarianGUID })
+                    GuidVector scourgeChampions = { _koltiraGUID, _orbazGUID, _thassarianGUID };
+                    scourgeChampions.insert(scourgeChampions.end(), _behemothGUIDs.begin(), _behemothGUIDs.end());
+                    for (ObjectGuid const& guid : scourgeChampions)
                     {
-                        if (Creature* hero = ObjectAccessor::GetCreature(*me, guid))
+                        if (Creature* champion = ObjectAccessor::GetCreature(*me, guid))
                         {
-                            if (hero->IsAlive())
+                            if (champion->IsAlive())
                             {
-                                hero->Dismount();
-                                scourge.push_back(hero);
+                                champion->Dismount();
+                                scourge.push_back(champion);
                             }
                         }
                     }
@@ -339,7 +533,7 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                     {
                         if (Creature* summon = ObjectAccessor::GetCreature(*me, guid))
                         {
-                            if (!summon->IsAlive())
+                            if (!summon->IsAlive() || summon->HasUnitFlag(UNIT_FLAG_UNINTERACTIBLE))
                                 continue;
 
                             if (summon->GetFaction() == FACTION_UNDEAD_SCOURGE_3)
@@ -360,95 +554,37 @@ struct npc_highlord_darion_mograine : public ScriptedAI
 
                     context.Repeat(5s);
                 })
-                .Schedule(1s, 6s, GROUP_BATTLE, [this](TaskContext context)
+                .Schedule(1s, GROUP_BATTLE, [this](TaskContext context)
                 {
                     DoCastSelf(SPELL_ANTI_MAGIC_ZONE);
-                    context.Repeat(25s, 30s);
+                    context.Repeat(35s, 40s);
                 })
-                .Schedule(5s, 10s, GROUP_BATTLE, [this](TaskContext context)
+                .Schedule(1s, GROUP_BATTLE, [this](TaskContext context)
                 {
                     DoCastVictim(SPELL_DEATH_STRIKE);
-                    context.Repeat(5s, 10s);
+                    context.Repeat(10s, 15s);
                 })
-                .Schedule(5s, 10s, GROUP_BATTLE, [this](TaskContext context)
+                .Schedule(5s, GROUP_BATTLE, [this](TaskContext context)
                 {
-                    DoCastSelf(SPELL_DEATHS_EMBRACE);
-                    context.Repeat(5s, 10s);
+                    DoCastVictim(SPELL_DEATHS_EMBRACE);
+                    context.Repeat(50s, 60s);
                 })
-                .Schedule(5s, 10s, GROUP_BATTLE, [this](TaskContext context)
+                .Schedule(5s, GROUP_BATTLE, [this](TaskContext context)
                 {
                     DoCastVictim(SPELL_ICY_TOUCH);
-                    context.Repeat(5s, 10s);
+                    context.Repeat(25s);
                 })
-                .Schedule(5s, 10s, GROUP_BATTLE, [this](TaskContext context)
+                .Schedule(6s, GROUP_BATTLE, [this](TaskContext context)
                 {
                     DoCastSelf(SPELL_UNHOLY_BLIGHT);
-                    context.Repeat(5s, 10s);
+                    context.Repeat(65s, 75s);
                 })
-                .Schedule(15s, GROUP_BATTLE, [this](TaskContext context)
+                .Schedule(15s, GROUP_YELLS, [this](TaskContext context)
                 {
                     Talk(SAY_DARION_BATTLE);
+                    if (!me->IsWithinDist2d(&DarionLeashPos, 75.0f))
+                        me->GetMotionMaster()->MovePoint(0, DarionLeashPos);
                     context.Repeat(15s, 20s);
-                })
-                .Schedule(295s, GROUP_BATTLE, [this](TaskContext /*context*/)
-                {
-                    if (TempSummon* tirion = me->SummonCreature(NPC_HIGHLORD_TIRION_FORDRING, TirionSpawnPos, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 20min))
-                    {
-                        tirion->SetFaction(me->GetFaction());
-                        tirion->AI()->Talk(SAY_TIRION_CANNOT_WIN);
-                    }
-                })
-                .Schedule(300s, GROUP_BATTLE, [this](TaskContext context)
-                {
-                    _battleInProgress = false;
-                    context.CancelGroup(GROUP_BATTLE);
-
-                    me->RemoveAllAuras();
-                    me->CombatStop(true);
-                    me->SetImmuneToNPC(true);
-                    EngagementOver();
-
-                    for (uint32 entry : { NPC_VOLATILE_GHOUL, NPC_RAMPAGING_ABOMINATION, NPC_WARRIOR_OF_THE_FROZEN_WASTES, NPC_FLESH_BEHEMOTH, NPC_DEFENDER_OF_THE_LIGHT, NPC_RIMBLAT_EARTHSHATTER, NPC_RAYNE })
-                        _summons.DespawnEntry(entry);
-
-                    std::pair<ObjectGuid, Position> const retreats[] = { { _korfaxGUID, KorfaxRetreatPos }, { _maxwellGUID, MaxwellRetreatPos }, { _eligorGUID, EligorRetreatPos }, { _koltiraGUID, KoltiraRetreatPos }, { _thassarianGUID, ThassarianRetreatPos } };
-                    for (auto const& [guid, pos] : retreats)
-                    {
-                        if (Creature* retreating = ObjectAccessor::GetCreature(*me, guid))
-                        {
-                            if (!retreating->IsAlive())
-                                continue;
-
-                            retreating->SetFaction(me->GetFaction());
-                            retreating->AI()->EnterEvadeMode();
-                            retreating->Dismount();
-                            retreating->SetWalk(false);
-                            retreating->GetMotionMaster()->MovePoint(0, pos);
-                        }
-                    }
-
-                    for (ObjectGuid const& guid : { _koltiraGUID, _thassarianGUID })
-                        if (Creature* hero = ObjectAccessor::GetCreature(*me, guid))
-                            if (hero->IsAlive())
-                                hero->CastSpell(hero, SPELL_THE_LIGHT_OF_DAWN, true);
-
-                    if (Creature* orbaz = ObjectAccessor::GetCreature(*me, _orbazGUID))
-                    {
-                        if (orbaz->IsAlive())
-                        {
-                            orbaz->AI()->Talk(EMOTE_ORBAZ_FLEES);
-                            orbaz->AI()->EnterEvadeMode();
-                        }
-
-                        orbaz->DespawnOrUnsummon(5s, 30s);
-                    }
-
-                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
-                        tirion->AI()->Talk(SAY_TIRION_BRING_THEM);
-
-                    DoCastSelf(SPELL_THE_LIGHT_OF_DAWN, true);
-                    me->SetWalk(false);
-                    me->GetMotionMaster()->MovePoint(POINT_CHAPEL, DarionChapelPos);
                 });
                 break;
             }
@@ -649,7 +785,6 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                         lichKing->AI()->Talk(SAY_LICH_KING_PATHETIC);
                     }
 
-                    me->SetStandState(UNIT_STAND_STATE_DEAD);
                     me->GetMotionMaster()->MoveJump(DarionKickedPos, 20.0f, 10.0f);
                 })
                 .Schedule(190s, [this](TaskContext /*context*/)
@@ -692,21 +827,14 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                         return;
 
                     _chargerGUIDs = { _korfaxGUID, _maxwellGUID, _eligorGUID };
-                    for (uint32 entry : { NPC_DEFENDER_OF_THE_LIGHT, NPC_RIMBLAT_EARTHSHATTER })
-                    {
-                        if (TempSummon* charger = me->SummonCreature(entry, me->GetRandomPoint(TirionSpawnPos, 5.0f), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 10s))
-                        {
-                            charger->SetFaction(me->GetFaction());
-                            _chargerGUIDs.push_back(charger->GetGUID());
-                        }
-                    }
-
+                    _chargerGUIDs.insert(_chargerGUIDs.end(), _outroDefenderGUIDs.begin(), _outroDefenderGUIDs.end());
                     for (ObjectGuid const& guid : _chargerGUIDs)
                     {
                         if (Creature* charger = ObjectAccessor::GetCreature(*me, guid))
                         {
+                            Position const strikePos = lichKing->GetNearPosition(3.0f, lichKing->GetRelativeAngle(charger));
                             charger->SetEmoteState(EMOTE_STATE_ATTACK_UNARMED);
-                            charger->GetMotionMaster()->MoveCharge(lichKing->GetPositionX(), lichKing->GetPositionY(), lichKing->GetPositionZ());
+                            charger->GetMotionMaster()->MoveCharge(strikePos.GetPositionX(), strikePos.GetPositionY(), strikePos.GetPositionZ());
                         }
                     }
 
@@ -929,14 +1057,14 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                         if (Creature* hero = ObjectAccessor::GetCreature(*me, guid))
                             hero->DespawnOrUnsummon(0s, 30s);
 
-                    for (uint32 entry : { NPC_KORFAX_CHAMPION_OF_THE_LIGHT, NPC_LORD_MAXWELL_TYROSUS, NPC_COMMANDER_ELIGOR_DAWNBRINGER })
+                    for (uint32 entry : { NPC_KORFAX_CHAMPION_OF_THE_LIGHT, NPC_LORD_MAXWELL_TYROSUS, NPC_COMMANDER_ELIGOR_DAWNBRINGER, NPC_DEFENDER_OF_THE_LIGHT })
                         _summons.DespawnEntry(entry);
 
                     if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
                         tirion->DespawnOrUnsummon(3min);
 
                     if (ZoneScript* zoneScript = me->GetZoneScript())
-                        zoneScript->SetData(DATA_EVENT_IN_PROGRESS, 0);
+                        zoneScript->SetData(DATA_EVENT_STATE, EVENT_STATE_NOT_STARTED);
 
                     me->ReplaceAllNpcFlags(UNIT_NPC_FLAG_QUESTGIVER);
                     me->DespawnOrUnsummon(3min, 10s);
@@ -978,6 +1106,11 @@ struct npc_highlord_darion_mograine : public ScriptedAI
             default:
                 break;
         }
+
+        if (summon->GetEntry() == NPC_VOLATILE_GHOUL || summon->GetEntry() == NPC_WARRIOR_OF_THE_FROZEN_WASTES)
+            summon->SetFaction(FACTION_UNDEAD_SCOURGE_3);
+        else if (_battleInProgress && std::find(DawnForces.begin(), DawnForces.end(), summon->GetEntry()) != DawnForces.end())
+            summon->SetFaction(FACTION_SCARLET_CRUSADE);
     }
 
     void SummonedCreatureDespawn(Creature* summon) override
@@ -990,10 +1123,16 @@ struct npc_highlord_darion_mograine : public ScriptedAI
         if (!_battleInProgress)
             return;
 
-        if (summon->GetFaction() == FACTION_UNDEAD_SCOURGE_3)
-            SummonScourge(summon->GetEntry(), DarionBattlefieldPos);
-        else if (summon->GetFaction() == FACTION_SCARLET_CRUSADE)
-            SummonDawn(summon->GetEntry());
+        if (summon->GetFaction() != FACTION_SCARLET_CRUSADE && summon->GetFaction() != FACTION_UNDEAD_SCOURGE_3)
+            return;
+
+        uint32 const entry = summon->GetEntry();
+        Position const pos = summon->GetPosition();
+        _scheduler.Schedule(3s, GROUP_BATTLE, [this, entry, pos](TaskContext /*context*/)
+        {
+            if (_battleInProgress)
+                me->SummonCreature(entry, pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 3s);
+        });
     }
 
     void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo*/) override
@@ -1012,21 +1151,17 @@ struct npc_highlord_darion_mograine : public ScriptedAI
     {
         _scheduler.Update(diff);
 
-        if (_battleInProgress && UpdateVictim())
+        if (!me->IsImmuneToNPC() && UpdateVictim())
             DoMeleeAttackIfReady();
     }
 
 private:
-    void SummonScourge(uint32 entry, Position const& center)
+    GuidVector GetMarcherGUIDs()
     {
-        if (TempSummon* summon = me->SummonCreature(entry, me->GetRandomPoint(center, 20.0f), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 20min))
-            summon->SetFaction(FACTION_UNDEAD_SCOURGE_3);
-    }
-
-    void SummonDawn(uint32 entry)
-    {
-        if (TempSummon* summon = me->SummonCreature(entry, me->GetRandomPoint(DawnSpawnCenterPos, 15.0f), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 20min))
-            summon->SetFaction(FACTION_SCARLET_CRUSADE);
+        GuidVector marchers(_summons.begin(), _summons.end());
+        marchers.insert(marchers.end(), { _koltiraGUID, _orbazGUID, _thassarianGUID });
+        marchers.insert(marchers.end(), _behemothGUIDs.begin(), _behemothGUIDs.end());
+        return marchers;
     }
 
     TaskScheduler _scheduler;
@@ -1041,6 +1176,8 @@ private:
     ObjectGuid _alexandrosGUID;
     ObjectGuid _youngDarionGUID;
     ObjectGuid _lichKingGUID;
+    GuidVector _behemothGUIDs;
+    GuidVector _outroDefenderGUIDs;
     GuidVector _chargerGUIDs;
     bool _eventInProgress;
     bool _battleInProgress;
@@ -1053,11 +1190,171 @@ struct npc_the_lich_king_tirion_dawn : public PassiveAI
     npc_the_lich_king_tirion_dawn(Creature* creature) : PassiveAI(creature) { }
 };
 
+// 29176 - Korfax, Champion of the Light
+// 29177 - Commander Eligor Dawnbringer
+// 29178 - Lord Maxwell Tyrosus
+// 29179 - Leonid Barthalomew the Revered
+// 29180 - Duke Nicholas Zverenhoff
+// 29181 - Rayne
+// 29182 - Rimblat Earthshatter
+struct npc_light_of_dawn_champion : public ScriptedAI
+{
+    npc_light_of_dawn_champion(Creature* creature) : ScriptedAI(creature), _downPending(false), _downed(false) { }
+
+    void Reset() override
+    {
+        _scheduler.CancelAll();
+    }
+
+    void JustEngagedWith(Unit* /*who*/) override
+    {
+        switch (me->GetEntry())
+        {
+            case NPC_KORFAX_CHAMPION_OF_THE_LIGHT:
+                _scheduler.Schedule(10s, 20s, [this](TaskContext context)
+                {
+                    DoCastVictim(SPELL_CLEAVE);
+                    context.Repeat(10s);
+                })
+                .Schedule(10s, 20s, [this](TaskContext context)
+                {
+                    DoCastVictim(SPELL_HEROIC_LEAP);
+                    context.Repeat(10s);
+                });
+                break;
+            case NPC_COMMANDER_ELIGOR_DAWNBRINGER:
+                _scheduler.Schedule(1s, [this](TaskContext context)
+                {
+                    Unit* friendly = me->DoFindLowestHPFriendlyInRange(40.0f);
+                    if (friendly && friendly->GetHealthPct() <= 20.0f)
+                    {
+                        DoCast(friendly, SPELL_HOLY_LIGHT);
+                        context.Repeat(5s, 10s);
+                    }
+                    else
+                        context.Repeat(1s);
+                });
+                break;
+            case NPC_RAYNE:
+                _scheduler.Schedule(10s, 20s, [this](TaskContext context)
+                {
+                    DoCastVictim(SPELL_FIREBALL);
+                    context.Repeat(10s, 20s);
+                })
+                .Schedule(10s, 20s, [this](TaskContext context)
+                {
+                    DoCastVictim(SPELL_WRATH);
+                    context.Repeat(10s, 20s);
+                })
+                .Schedule(1s, [this](TaskContext context)
+                {
+                    Unit* friendly = me->DoFindLowestHPFriendlyInRange(40.0f);
+                    if (friendly && friendly->GetHealthPct() <= 20.0f)
+                    {
+                        DoCast(friendly, SPELL_REJUVENATION);
+                        DoCastSelf(SPELL_TRANQUILITY);
+                        context.Repeat(5s, 10s);
+                    }
+                    else
+                        context.Repeat(1s);
+                });
+                break;
+            case NPC_RIMBLAT_EARTHSHATTER:
+                _scheduler.Schedule(10s, 20s, [this](TaskContext context)
+                {
+                    DoCastVictim(SPELL_THUNDER);
+                    context.Repeat(10s);
+                })
+                .Schedule(1s, [this](TaskContext context)
+                {
+                    Unit* friendly = me->DoFindLowestHPFriendlyInRange(40.0f);
+                    if (friendly && friendly->GetHealthPct() <= 20.0f)
+                    {
+                        DoCast(friendly, SPELL_CHAIN_HEAL);
+                        context.Repeat(5s, 10s);
+                    }
+                    else
+                        context.Repeat(1s);
+                });
+                break;
+            default:
+                break;
+        }
+    }
+
+    void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo*/) override
+    {
+        uint32 const minHealth = me->CountPctFromMaxHealth(1);
+        if (me->GetHealth() <= minHealth + damage)
+            damage = me->GetHealth() > minHealth ? me->GetHealth() - minHealth : 0;
+
+        if (!_downed && me->HealthBelowPctDamaged(3, damage))
+            _downPending = true;
+    }
+
+    void DoAction(int32 action) override
+    {
+        if (action != ACTION_REVIVE_CHAMPION)
+            return;
+
+        _downPending = false;
+        if (_downed)
+        {
+            _downed = false;
+            me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+            me->SetImmuneToAll(false);
+            me->SetStandState(UNIT_STAND_STATE_STAND);
+            me->SetEmoteState(EMOTE_ONESHOT_NONE);
+        }
+
+        me->SetFullHealth();
+    }
+
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        if (!_downed)
+            ScriptedAI::EnterEvadeMode(why);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (_downPending)
+        {
+            _downPending = false;
+            _downed = true;
+            _scheduler.CancelAll();
+            me->InterruptNonMeleeSpells(false);
+            me->SetImmuneToAll(true);
+            if (IsEngaged())
+                EngagementOver();
+            me->GetMotionMaster()->Clear();
+            me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+            me->SetStandState(UNIT_STAND_STATE_DEAD);
+            me->SetEmoteState(EMOTE_STATE_DEAD);
+            Talk(EMOTE_CHAMPION_FALLS_UNCONSCIOUS);
+            return;
+        }
+
+        if (_downed)
+            return;
+
+        _scheduler.Update(diff);
+
+        if (UpdateVictim())
+            DoMeleeAttackIfReady();
+    }
+
+private:
+    TaskScheduler _scheduler;
+    bool _downPending;
+    bool _downed;
+};
+
 // 4298 - Plaguelands: The Scarlet Enclave
 class zone_the_scarlet_enclave : public WorldZoneScript
 {
 public:
-    zone_the_scarlet_enclave() : WorldZoneScript("zone_the_scarlet_enclave", MAP_SCARLET_ENCLAVE, { ZONE_THE_SCARLET_ENCLAVE }, PHASE_CHAPTER_IV_EPILOGUE), _eventInProgress(false), _worldStateChanged(false), _abortPending(false) { }
+    zone_the_scarlet_enclave() : WorldZoneScript("zone_the_scarlet_enclave", MAP_SCARLET_ENCLAVE, { ZONE_THE_SCARLET_ENCLAVE }, PHASE_CHAPTER_IV_EPILOGUE), _worldStates({ { WORLD_STATE_FORCES_LIGHT, 0 }, { WORLD_STATE_FORCES_SCOURGE, 0 }, { WORLD_STATE_FORCES_SHOW, 0 }, { WORLD_STATE_COUNTDOWN_SHOW, 0 }, { WORLD_STATE_COUNTDOWN_TIME, 0 }, { WORLD_STATE_BATTLE_BEGUN, 0 } }), _eventState(EVENT_STATE_NOT_STARTED), _defendersKilled(0), _scourgeKilled(0), _abortPending(false) { }
 
     void OnCreatureCreate(Creature* creature) override
     {
@@ -1082,6 +1379,12 @@ public:
             case NPC_THASSARIAN:
                 _thassarianGUID = creature->GetGUID();
                 break;
+            case NPC_FLESH_BEHEMOTH:
+                if (_behemothGUIDs[0].IsEmpty())
+                    _behemothGUIDs[0] = creature->GetGUID();
+                else if (_behemothGUIDs[1].IsEmpty())
+                    _behemothGUIDs[1] = creature->GetGUID();
+                break;
             default:
                 break;
         }
@@ -1095,12 +1398,8 @@ public:
         if (guid == _darionGUID)
         {
             _darionGUID.Clear();
-            if (_eventInProgress)
-            {
-                _eventInProgress = false;
-                _worldStateChanged = true;
+            if (_eventState != EVENT_STATE_NOT_STARTED)
                 _abortPending = true;
-            }
         }
         else if (guid == _koltiraGUID)
             _koltiraGUID.Clear();
@@ -1108,6 +1407,33 @@ public:
             _orbazGUID.Clear();
         else if (guid == _thassarianGUID)
             _thassarianGUID.Clear();
+        else if (guid == _behemothGUIDs[0])
+            _behemothGUIDs[0].Clear();
+        else if (guid == _behemothGUIDs[1])
+            _behemothGUIDs[1].Clear();
+    }
+
+    void OnUnitDeath(Unit* unit) override
+    {
+        if (_eventState != EVENT_STATE_BATTLE || !_eventSummonGUIDs.contains(unit->GetGUID()))
+            return;
+
+        switch (unit->GetEntry())
+        {
+            case NPC_DEFENDER_OF_THE_LIGHT:
+                ++_defendersKilled;
+                SetWorldState(WORLD_STATE_FORCES_LIGHT, MAX_FORCES_LIGHT - std::min<uint32>(_defendersKilled, MAX_FORCES_LIGHT));
+                if (_defendersKilled >= DEFENDERS_KILLED_TO_END)
+                    LoseBattle(ObjectAccessor::GetCreature(*unit, _darionGUID));
+                break;
+            case NPC_VOLATILE_GHOUL:
+            case NPC_WARRIOR_OF_THE_FROZEN_WASTES:
+                ++_scourgeKilled;
+                SetWorldState(WORLD_STATE_FORCES_SCOURGE, MAX_FORCES_SCOURGE - std::min<uint32>(_scourgeKilled, MAX_FORCES_SCOURGE));
+                break;
+            default:
+                break;
+        }
     }
 
     ObjectGuid GetGuidData(uint32 type) const override
@@ -1120,6 +1446,10 @@ public:
                 return _orbazGUID;
             case DATA_THASSARIAN:
                 return _thassarianGUID;
+            case DATA_FLESH_BEHEMOTH_1:
+                return _behemothGUIDs[0];
+            case DATA_FLESH_BEHEMOTH_2:
+                return _behemothGUIDs[1];
             default:
                 return ObjectGuid::Empty;
         }
@@ -1127,24 +1457,50 @@ public:
 
     void SetData(uint32 type, uint32 value) override
     {
-        if (type != DATA_EVENT_IN_PROGRESS || _eventInProgress == (value != 0))
+        if (type != DATA_EVENT_STATE || value == _eventState)
             return;
 
-        _eventInProgress = value != 0;
-        _worldStateChanged = true;
+        _eventState = value;
+        switch (_eventState)
+        {
+            case EVENT_STATE_NOT_STARTED:
+                _eventTimer.Reset(0s);
+                for (auto const& worldState : _worldStates)
+                    SetWorldState(worldState.first, 0);
+                break;
+            case EVENT_STATE_COUNTDOWN:
+                _defendersKilled = 0;
+                _scourgeKilled = 0;
+                _eventTimer.Reset(5min);
+                SetWorldState(WORLD_STATE_FORCES_SHOW, 1);
+                SetWorldState(WORLD_STATE_FORCES_LIGHT, MAX_FORCES_LIGHT);
+                SetWorldState(WORLD_STATE_FORCES_SCOURGE, MAX_FORCES_SCOURGE);
+                SetWorldState(WORLD_STATE_COUNTDOWN_SHOW, 1);
+                SetWorldState(WORLD_STATE_COUNTDOWN_TIME, 5);
+                break;
+            case EVENT_STATE_BATTLE:
+                _eventTimer.Reset(5min);
+                break;
+            default:
+                break;
+        }
     }
 
     void FillInitialWorldStates(Player* player, WorldPackets::WorldState::InitWorldStates& packet) override
     {
-        if (player->InSamePhase(GetPhaseMask()))
-            packet.Worldstates.emplace_back(WORLD_STATE_BATTLE_BEGUN, _eventInProgress ? 1 : 0);
+        if (!player->InSamePhase(GetPhaseMask()))
+            return;
+
+        for (auto const& [worldStateId, value] : _worldStates)
+            packet.Worldstates.emplace_back(worldStateId, value);
     }
 
-    void OnUpdate(Map* map, uint32 /*diff*/) override
+    void OnUpdate(Map* map, uint32 diff) override
     {
         if (_abortPending)
         {
             _abortPending = false;
+            SetData(DATA_EVENT_STATE, EVENT_STATE_NOT_STARTED);
 
             GuidUnorderedSet const summonGUIDs = std::move(_eventSummonGUIDs);
             _eventSummonGUIDs.clear();
@@ -1152,29 +1508,77 @@ public:
                 if (Creature* summon = map->GetCreature(guid))
                     summon->DespawnOrUnsummon();
 
-            for (ObjectGuid const& guid : { _koltiraGUID, _orbazGUID, _thassarianGUID })
-                if (Creature* hero = map->GetCreature(guid))
-                    hero->DespawnOrUnsummon(0s, 5s);
+            for (ObjectGuid const& guid : { _koltiraGUID, _orbazGUID, _thassarianGUID, _behemothGUIDs[0], _behemothGUIDs[1] })
+                if (Creature* champion = map->GetCreature(guid))
+                    champion->DespawnOrUnsummon(0s, 5s);
         }
 
-        if (_worldStateChanged)
+        _eventTimer.Update(diff);
+        switch (_eventState)
         {
-            _worldStateChanged = false;
-            for (MapReference const& ref : map->GetPlayers())
-                if (Player* player = ref.GetSource())
-                    if (HasZone(player->GetZoneId()) && player->InSamePhase(GetPhaseMask()))
-                        player->SendUpdateWorldState(WORLD_STATE_BATTLE_BEGUN, _eventInProgress ? 1 : 0);
+            case EVENT_STATE_COUNTDOWN:
+                SetWorldState(WORLD_STATE_COUNTDOWN_TIME, uint32((_eventTimer.GetExpiry() + 1min - 1ms) / 1min));
+                if (_eventTimer.Expired())
+                {
+                    _eventTimer.Reset(0s);
+                    _eventState = EVENT_STATE_INTRO;
+                    SetWorldState(WORLD_STATE_COUNTDOWN_SHOW, 0);
+                    SetWorldState(WORLD_STATE_BATTLE_BEGUN, 1);
+                    if (Creature* darion = map->GetCreature(_darionGUID))
+                        darion->AI()->DoAction(ACTION_COUNTDOWN_FINISHED);
+                }
+                break;
+            case EVENT_STATE_BATTLE:
+                if (_eventTimer.Expired())
+                    LoseBattle(map->GetCreature(_darionGUID));
+                break;
+            default:
+                break;
         }
+
+        if (_changedWorldStates.empty())
+            return;
+
+        for (MapReference const& ref : map->GetPlayers())
+            if (Player* player = ref.GetSource())
+                if (HasZone(player->GetZoneId()) && player->InSamePhase(GetPhaseMask()))
+                    for (uint32 worldStateId : _changedWorldStates)
+                        player->SendUpdateWorldState(worldStateId, _worldStates[worldStateId]);
+
+        _changedWorldStates.clear();
     }
 
 private:
+    void SetWorldState(uint32 worldStateId, uint32 value)
+    {
+        auto itr = _worldStates.find(worldStateId);
+        if (itr == _worldStates.end() || itr->second == value)
+            return;
+
+        itr->second = value;
+        _changedWorldStates.insert(worldStateId);
+    }
+
+    void LoseBattle(Creature* darion)
+    {
+        _eventState = EVENT_STATE_OUTRO;
+        _eventTimer.Reset(0s);
+        if (darion)
+            darion->AI()->DoAction(ACTION_BATTLE_LOST);
+    }
+
     ObjectGuid _darionGUID;
     ObjectGuid _koltiraGUID;
     ObjectGuid _orbazGUID;
     ObjectGuid _thassarianGUID;
+    std::array<ObjectGuid, 2> _behemothGUIDs;
     GuidUnorderedSet _eventSummonGUIDs;
-    bool _eventInProgress;
-    bool _worldStateChanged;
+    std::map<uint32, uint32> _worldStates;
+    std::set<uint32> _changedWorldStates;
+    TimeTracker _eventTimer;
+    uint32 _eventState;
+    uint32 _defendersKilled;
+    uint32 _scourgeKilled;
     bool _abortPending;
 };
 
@@ -1182,5 +1586,6 @@ void AddSC_the_scarlet_enclave_c5()
 {
     RegisterCreatureAI(npc_highlord_darion_mograine);
     RegisterCreatureAI(npc_the_lich_king_tirion_dawn);
+    RegisterCreatureAI(npc_light_of_dawn_champion);
     new zone_the_scarlet_enclave();
 }
