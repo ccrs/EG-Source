@@ -91,6 +91,7 @@ enum HeadlessHorsemanSpells
     SPELL_HEADLESS_HORSEMAN_C_SUMMONING_RHYME_AURA         = 42879,
     SPELL_HEADLESS_HORSEMAN_C_SUMMONING_RHYME_SHAKE_MEDIUM = 42909,
     SPELL_HEADLESS_HORSEMAN_C_SUMMONING_RHYME_SHAKE_SMALL  = 42910,
+    SPELL_CLEAR_ALL_DEBUFFS                                = 34098,
 
     // Pumpkin
     SPELL_PUMPKIN_LIFE_CYCLE                               = 42280,
@@ -137,7 +138,8 @@ enum HeadlessActions
     ACTION_HEAD_START_HEAD_PHASE_DELAYED,
     ACTION_HEAD_STOP_HEAD_PHASE,
     ACTION_PUMPKIN_KEEP_SPROUTING,
-    ACTION_PUMPKIN_TRANSFORM
+    ACTION_PUMPKIN_TRANSFORM,
+    ACTION_HEAD_MOVE_RANDOM
 };
 
 enum HeadlessHorsemanMisc
@@ -232,9 +234,38 @@ struct npc_headless_horseman_head : public PassiveAI
                 ScheduleHeadAction(ACTION_HEAD_START_HEAD_PHASE_DELAYED, 1s);
                 break;
             case ACTION_HEAD_START_HEAD_PHASE_DELAYED:
-                HandleStartPhase();
+                me->RemoveAurasDueToSpell(SPELL_HEADLESS_HORSEMAN_C_HEAD_STUN);
+                DoCastSelf(SPELL_HEADLESS_HORSEMAN_C_HEAD_VISUAL, true);
+                me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                ScheduleHeadAction(ACTION_HEAD_MOVE_RANDOM, 1s);
+
+                switch (_phase)
+                {
+                    case PHASE_1:
+                        DoCastSelf(SPELL_HEADLESS_HORSEMAN_C_HEAD_PERIODIC, true);
+                        break;
+                    case PHASE_2:
+                        DoCastSelf(SPELL_HEADLESS_HORSEMAN_C_HEAD_PERIODIC, true);
+                        DoCastSelf(SPELL_HEADLESS_HORSEMAN_SPEAKS, true);
+                        DoCastSelf(SPELL_HEADLESS_HORSEMAN_C_COMMAND_REQUEST_BODY, true);
+                        Talk(SAY_REQUEST_BODY);
+                        break;
+                    case PHASE_3:
+                        _canDie = true;
+                        DoCastSelf(SPELL_HEADLESS_HORSEMAN_SPEAKS, true);
+                        DoCastSelf(SPELL_HEADLESS_HORSEMAN_C_COMMAND_REQUEST_BODY, true);
+                        Talk(SAY_REQUEST_BODY);
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            case ACTION_HEAD_MOVE_RANDOM:
+                if (!me->HasUnitFlag(UNIT_FLAG_UNINTERACTIBLE))
+                    me->GetMotionMaster()->MoveRandom(30.0f);
                 break;
             case ACTION_HEAD_STOP_HEAD_PHASE:
+                DoCastSelf(SPELL_CLEAR_ALL_DEBUFFS, true);
                 DoCastSelf(SPELL_HEADLESS_HORSEMAN_C_HEAD_STUN);
                 me->RemoveAurasDueToSpell(SPELL_HEADLESS_HORSEMAN_C_HEAD_VISUAL);
                 if (Creature* horseman = _instance->GetCreature(DATA_HEADLESS_HORSEMAN))
@@ -294,35 +325,6 @@ struct npc_headless_horseman_head : public PassiveAI
 
         if (Unit* target = ObjectAccessor::GetUnit(*me, guid))
             DoCast(target, SPELL_HEADLESS_HORSEMAN_C_SUMMONING_RHYME_AURA, true);
-    }
-
-    void HandleStartPhase()
-    {
-        me->RemoveAurasDueToSpell(SPELL_HEADLESS_HORSEMAN_C_HEAD_STUN);
-        DoCastSelf(SPELL_HEADLESS_HORSEMAN_C_HEAD_VISUAL, true);
-        me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-        me->GetMotionMaster()->MoveRandom(30.0f);
-
-        switch (_phase)
-        {
-            case PHASE_1:
-                DoCastSelf(SPELL_HEADLESS_HORSEMAN_C_HEAD_PERIODIC, true);
-                break;
-            case PHASE_2:
-                DoCastSelf(SPELL_HEADLESS_HORSEMAN_C_HEAD_PERIODIC, true);
-                DoCastSelf(SPELL_HEADLESS_HORSEMAN_SPEAKS, true);
-                DoCastSelf(SPELL_HEADLESS_HORSEMAN_C_COMMAND_REQUEST_BODY, true);
-                Talk(SAY_REQUEST_BODY);
-                break;
-            case PHASE_3:
-                _canDie = true;
-                DoCastSelf(SPELL_HEADLESS_HORSEMAN_SPEAKS, true);
-                DoCastSelf(SPELL_HEADLESS_HORSEMAN_C_COMMAND_REQUEST_BODY, true);
-                Talk(SAY_REQUEST_BODY);
-                break;
-            default:
-                break;
-        }
     }
 
     void JustDied(Unit* /*killer*/) override
@@ -528,18 +530,6 @@ struct boss_headless_horseman : public ScriptedAI
         _events.ScheduleEvent(EVENT_START_NEXT_HEADLESS_PHASE, 1ms, 0, nextPhase);
     }
 
-    void SchedulePhase2Events()
-    {
-        _events.ScheduleEvent(EVENT_CONFLAGRATE, 5s, 0, PHASE_2);
-        _events.ScheduleEvent(EVENT_HORSEMAN_CLEAVE, 16s, 0, PHASE_2);
-    }
-
-    void SchedulePhase3Events()
-    {
-        _events.ScheduleEvent(EVENT_SUMMON_PUMPKIN, 1s, 0, PHASE_3);
-        _events.ScheduleEvent(EVENT_HORSEMAN_CLEAVE, 9s, 0, PHASE_3);
-    }
-
     void MovementInform(uint32 type, uint32 id) override
     {
         if (type != POINT_MOTION_TYPE && type != EFFECT_MOTION_TYPE)
@@ -599,12 +589,14 @@ struct boss_headless_horseman : public ScriptedAI
                     if (_events.IsInPhase(PHASE_2))
                     {
                         DoCastSelf(SPELL_HEADLESS_HORSEMAN_C_BODY_STAGE_2);
-                        SchedulePhase2Events();
+                        _events.ScheduleEvent(EVENT_CONFLAGRATE, 5s, 0, PHASE_2);
+                        _events.ScheduleEvent(EVENT_HORSEMAN_CLEAVE, 16s, 0, PHASE_2);
                     }
                     else if (_events.IsInPhase(PHASE_3))
                     {
                         DoCastSelf(SPELL_HEADLESS_HORSEMAN_C_BODY_STAGE_3);
-                        SchedulePhase3Events();
+                        _events.ScheduleEvent(EVENT_SUMMON_PUMPKIN, 1s, 0, PHASE_3);
+                        _events.ScheduleEvent(EVENT_HORSEMAN_CLEAVE, 9s, 0, PHASE_3);
                     }
 
                     if (Unit* target = SelectTarget(SelectTargetMethod::MaxThreat))
@@ -897,7 +889,7 @@ class spell_headless_horseman_head_reposition : public SpellScript
 
     void HandleScriptEffect(SpellEffIndex /*effIndex*/)
     {
-        Position random = GetCaster()->GetRandomNearPosition(30.0f);
+        Position random = GetCaster()->GetFirstCollisionPosition(frand(20.0f, 40.0f), frand(0.0f, 2.0f * float(M_PI)));
         GetHitUnit()->NearTeleportTo(random, false);
     }
 
