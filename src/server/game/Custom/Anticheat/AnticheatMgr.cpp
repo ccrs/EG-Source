@@ -18,6 +18,7 @@
 #include "AnticheatMgr.h"
 #include "AccountMgr.h"
 #include "Battleground.h"
+#include "ChatPackets.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
 #include "GameObject.h"
@@ -1395,9 +1396,7 @@ void AnticheatMgr::_NotifyGameMasters(Player* player, std::string text, uint32 t
 
 void AnticheatMgr::_NotifyGameMasters(std::string text)
 {
-    WorldPacket data(SMSG_NOTIFICATION, (text.size() + 1));
-    data << text;
-    sWorld->SendGlobalGMMessage(&data);
+    sWorld->SendGlobalGMMessage(WorldPackets::Chat::PrintNotification(text).Write());
 }
 
 void AnticheatMgr::_LogInfo(Player* player, std::string text)

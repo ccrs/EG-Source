@@ -404,9 +404,7 @@ public:
                 if (pet->IsPet())
                     if (Unit* owner = pet->ToPet()->GetOwner())
                     {
-                        float ownerBonus = 0.0f;
-
-                        ownerBonus = CalculatePct(owner->GetStat(STAT_INTELLECT), 30);
+                        int32 const ownerBonus = CalculatePct(owner->GetStat(STAT_INTELLECT), 30);
 
                         amount += ownerBonus;
                         _tempBonus = ownerBonus;
@@ -457,8 +455,7 @@ public:
                 if (pet->IsPet())
                     if (Unit* owner = pet->ToPet()->GetOwner())
                     {
-                        float ownerBonus = 0.0f;
-                        ownerBonus = CalculatePct(owner->GetArmor(), 35);
+                        int32 const ownerBonus = CalculatePct(owner->GetArmor(), 35);
                         amount += ownerBonus;
                     }
         }
@@ -469,8 +466,7 @@ public:
                 if (pet->IsPet())
                     if (Unit* owner = pet->ToPet()->GetOwner())
                     {
-                        float ownerBonus = 0.0f;
-                        ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_FIRE), 40);
+                        int32 const ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_FIRE), 40);
                         amount += ownerBonus;
                     }
         }
@@ -516,8 +512,7 @@ public:
                 if (pet->IsPet())
                     if (Unit* owner = pet->ToPet()->GetOwner())
                     {
-                        float ownerBonus = 0.0f;
-                        ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_FROST), 40);
+                        int32 const ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_FROST), 40);
                         amount += ownerBonus;
                     }
         }
@@ -528,8 +523,7 @@ public:
                 if (pet->IsPet())
                     if (Unit* owner = pet->ToPet()->GetOwner())
                     {
-                        float ownerBonus = 0.0f;
-                        ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_ARCANE), 40);
+                        int32 const ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_ARCANE), 40);
                         amount += ownerBonus;
                     }
         }
@@ -540,8 +534,7 @@ public:
                 if (pet->IsPet())
                     if (Unit* owner = pet->ToPet()->GetOwner())
                     {
-                        float ownerBonus = 0.0f;
-                        ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_NATURE), 40);
+                        int32 const ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_NATURE), 40);
                         amount += ownerBonus;
                     }
         }
@@ -582,8 +575,7 @@ public:
                 if (pet->IsPet())
                     if (Unit* owner = pet->ToPet()->GetOwner())
                     {
-                        float ownerBonus = 0.0f;
-                        ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_SHADOW), 40);
+                        int32 const ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_SHADOW), 40);
                         amount += ownerBonus;
                     }
         }
@@ -918,7 +910,6 @@ public:
                     if (Unit* owner = pet->ToPet()->GetOwner())
                     {
                         float mod = 0.45f;
-                        float ownerBonus = 0.0f;
 
                         PetSpellMap::const_iterator itr = (pet->ToPet()->m_spells.find(62758)); // Wild Hunt rank 1
                         if (itr == pet->ToPet()->m_spells.end())
@@ -930,8 +921,7 @@ public:
                             AddPct(mod, spellInfo->GetEffect(EFFECT_0).CalcValue());
                         }
 
-                        ownerBonus = owner->GetStat(STAT_STAMINA)*mod;
-
+                        int32 const ownerBonus = owner->GetStat(STAT_STAMINA) * mod;
                         amount += ownerBonus;
                     }
         }
@@ -1055,10 +1045,7 @@ public:
                 if (!owner)
                     return;
 
-                float ownerBonus = 0.0f;
-
-                ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_FROST), 40);
-
+                int32 const ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_FROST), 40);
                 amount += ownerBonus;
             }
         }
@@ -1074,10 +1061,7 @@ public:
                 if (!owner)
                     return;
 
-                float ownerBonus = 0.0f;
-
-                ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_FIRE), 40);
-
+                int32 const ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_FIRE), 40);
                 amount += ownerBonus;
             }
         }
@@ -1093,10 +1077,7 @@ public:
                 if (!owner)
                     return;
 
-                float ownerBonus = 0.0f;
-
-                ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_NATURE), 40);
-
+                int32 const ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_NATURE), 40);
                 amount += ownerBonus;
             }
         }
@@ -1142,10 +1123,7 @@ public:
                 if (!owner)
                     return;
 
-                float ownerBonus = 0.0f;
-
-                ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_SHADOW), 40);
-
+                int32 const ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_SHADOW), 40);
                 amount += ownerBonus;
             }
         }
@@ -1161,10 +1139,7 @@ public:
                 if (!owner)
                     return;
 
-                float ownerBonus = 0.0f;
-
-                ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_ARCANE), 40);
-
+                int32 const ownerBonus = CalculatePct(owner->GetResistance(SPELL_SCHOOL_ARCANE), 40);
                 amount += ownerBonus;
             }
         }
@@ -1180,10 +1155,7 @@ public:
                 if (!owner)
                     return;
 
-                float ownerBonus = 0.0f;
-
-                ownerBonus = CalculatePct(owner->GetArmor(), 35);
-
+                int32 const ownerBonus = CalculatePct(owner->GetArmor(), 35);
                 amount += ownerBonus;
             }
         }

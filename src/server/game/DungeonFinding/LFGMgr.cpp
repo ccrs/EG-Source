@@ -56,7 +56,7 @@ LFGDungeonData::LFGDungeonData() : id(0), name(), map(0), type(0), expansion(0),
 }
 
 LFGDungeonData::LFGDungeonData(LFGDungeonEntry const* dbc) : id(dbc->ID), name(dbc->Name[0]), map(dbc->MapID),
-    type(dbc->TypeID), expansion(uint8(dbc->ExpansionLevel)), group(uint8(dbc->GroupID)),
+    type(uint8(dbc->TypeID)), expansion(uint8(dbc->ExpansionLevel)), group(uint8(dbc->GroupID)),
     minlevel({ uint8(dbc->MinLevel), uint8(dbc->MinLevel), uint8(dbc->MinLevel) }),
     maxlevel({ uint8(dbc->MaxLevel), uint8(dbc->MaxLevel), uint8(dbc->MaxLevel) }),
     difficulty(Difficulty(dbc->Difficulty)), seasonal((dbc->Flags & LFG_FLAG_SEASONAL) != 0), x(0.0f), y(0.0f), z(0.0f), o(0.0f)
@@ -438,20 +438,16 @@ bool LFGMgr::TryFinishDungeonFromCurrentInstance(Group* group)
         if (!instance)
             continue;
 
-        DungeonEncounterList const* encounters = sObjectMgr->GetDungeonEncounterList(map->GetId(), map->GetDifficultyID());
-        if (!encounters)
-            continue;
-
         uint32 completedMask = instance->GetCompletedEncounterMask();
-        for (auto const& encounter : *encounters)
+        for (DungeonEncounter const& encounter : sObjectMgr->GetDungeonEncounterList(map->GetId(), map->GetDifficultyID()))
         {
-            if (!encounter->lastEncounterDungeon)
+            if (!encounter.lastEncounterDungeon)
                 continue;
 
-            if (encounter->lastEncounterDungeon != storedDungeonId)
+            if (encounter.lastEncounterDungeon != storedDungeonId)
                 continue;
 
-            if (!(completedMask & (uint32(1) << encounter->dbcEntry->Bit)))
+            if (!(completedMask & (uint32(1) << encounter.dbcEntry->Bit)))
                 continue;
 
             TC_LOG_DEBUG("lfg.dungeon.finish", "Recovering missed finished-dungeon state for group {} dungeon {} from instance {} completed mask {}", gguid.ToString(), storedDungeonId, instanceMap->GetInstanceId(), completedMask);

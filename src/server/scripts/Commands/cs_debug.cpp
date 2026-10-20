@@ -243,7 +243,7 @@ public:
 
     static bool HandleDebugSendSellErrorCommand(ChatHandler* handler, SellResult error)
     {
-        handler->GetPlayer()->SendSellError(error, nullptr, ObjectGuid::Empty, 0);
+        handler->GetPlayer()->SendSellError(error, nullptr, ObjectGuid::Empty);
         return true;
     }
 
