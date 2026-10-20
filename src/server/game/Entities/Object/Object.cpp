@@ -3445,6 +3445,8 @@ void WorldObject::SetPhaseMask(uint32 newPhaseMask, bool update)
 {
     m_phaseMask = newPhaseMask;
 
+    UpdateWorldZoneScript(); // EG
+
     if (update && IsInWorld())
         UpdateObjectVisibility();
 }

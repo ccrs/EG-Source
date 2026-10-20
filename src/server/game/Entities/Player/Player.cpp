@@ -1896,6 +1896,7 @@ void Player::RemoveFromWorld()
             m_session->DoLootRelease(lootGuid);
         sOutdoorPvPMgr->HandlePlayerLeaveZone(this, m_zoneUpdateId);
         sBattlefieldMgr->HandlePlayerLeaveZone(this, m_zoneUpdateId);
+        sScriptMgr->OnPlayerLeaveWorldZone(this, m_zoneUpdateId); // EG
     }
 
     // Remove items from world before self - player must be found in Item::RemoveFromObjectUpdate
@@ -22428,6 +22429,9 @@ void Player::SetPhaseMask(uint32 newPhaseMask, bool update)
 
     if (Unit* vehicle = GetVehicleRoot())
         vehicle->SetPhaseMask(newPhaseMask, update);
+
+    if (IsInWorld())
+        sScriptMgr->OnPlayerChangeWorldZonePhase(this, m_zoneUpdateId, m_areaUpdateId); // EG
 
     if (update)
         UpdateObjectVisibility();

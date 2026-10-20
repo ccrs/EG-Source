@@ -1530,7 +1530,6 @@ void ScriptMgr::OnMapUpdate(Map* map, uint32 diff)
 #undef SCR_MAP_BGN
 #undef SCR_MAP_END
 
-// EG - WorldZoneScript lookup for WorldObject::SetZoneScript
 ZoneScript* ScriptMgr::GetWorldZoneScript(uint32 mapId, uint32 zoneId, uint32 phaseMask)
 {
     FOR_SCRIPTS(WorldZoneScript, itr, end)
@@ -1540,33 +1539,58 @@ ZoneScript* ScriptMgr::GetWorldZoneScript(uint32 mapId, uint32 zoneId, uint32 ph
     return nullptr;
 }
 
-// EG - WorldZoneScript player enter hook
 void ScriptMgr::OnPlayerEnterWorldZone(Player* player, uint32 zoneId)
 {
     ASSERT(player);
 
     FOR_SCRIPTS(WorldZoneScript, itr, end)
-        if (itr->second->HasZone(zoneId))
-            itr->second->OnPlayerEnter(player, zoneId);
+        if (itr->second->GetMapId() == player->GetMapId() && itr->second->HasZone(zoneId) && player->InSamePhase(itr->second->GetPhaseMask()))
+            itr->second->HandlePlayerEnter(player, zoneId);
 }
 
-// EG - WorldZoneScript player leave hook
 void ScriptMgr::OnPlayerLeaveWorldZone(Player* player, uint32 zoneId)
 {
     ASSERT(player);
 
     FOR_SCRIPTS(WorldZoneScript, itr, end)
-        if (itr->second->HasZone(zoneId))
-            itr->second->OnPlayerLeave(player, zoneId);
+        if (itr->second->GetMapId() == player->GetMapId() && itr->second->HasZone(zoneId))
+            itr->second->HandlePlayerLeave(player, zoneId);
 }
 
-// EG - WorldZoneScript initial world states
+void ScriptMgr::OnPlayerChangeWorldZonePhase(Player* player, uint32 zoneId, uint32 areaId)
+{
+    ASSERT(player);
+
+    bool entered = false;
+    FOR_SCRIPTS(WorldZoneScript, itr, end)
+    {
+        WorldZoneScript* script = itr->second.get();
+        if (script->GetMapId() != player->GetMapId() || !script->HasZone(zoneId))
+            continue;
+
+        bool const inPhase = player->InSamePhase(script->GetPhaseMask());
+        if (inPhase == script->HasPlayer(player->GetGUID()))
+            continue;
+
+        if (inPhase)
+        {
+            script->HandlePlayerEnter(player, zoneId);
+            entered = true;
+        }
+        else
+            script->HandlePlayerLeave(player, zoneId);
+    }
+
+    if (entered)
+        player->SendInitWorldStates(zoneId, areaId);
+}
+
 void ScriptMgr::FillWorldZoneInitialWorldStates(Player* player, uint32 zoneId, WorldPackets::WorldState::InitWorldStates& packet)
 {
     ASSERT(player);
 
     FOR_SCRIPTS(WorldZoneScript, itr, end)
-        if (itr->second->HasZone(zoneId))
+        if (itr->second->HasZone(zoneId) && itr->second->HasPlayer(player->GetGUID()))
             itr->second->FillInitialWorldStates(player, packet);
 }
 
@@ -2350,12 +2374,36 @@ WorldMapScript::WorldMapScript(char const* name, uint32 mapId)
 WorldZoneScript::WorldZoneScript(char const* name, uint32 mapId, std::vector<uint32> zoneIds, uint32 phaseMask)
     : ScriptObject(name), _mapId(mapId), _zoneIds(std::move(zoneIds)), _phaseMask(phaseMask)
 {
+    MapEntry const* mapEntry = sMapStore.LookupEntry(mapId);
+    if (!mapEntry)
+        TC_LOG_ERROR("scripts", "Invalid WorldZoneScript {} for {}; no such map ID.", name, mapId);
+    else if (mapEntry->Instanceable())
+        TC_LOG_ERROR("scripts", "WorldZoneScript {} for map {} is invalid, the map is instanceable.", name, mapId);
+
     ScriptRegistry<WorldZoneScript>::Instance()->AddScript(this);
 }
 
 bool WorldZoneScript::HasZone(uint32 zoneId) const
 {
     return std::find(_zoneIds.begin(), _zoneIds.end(), zoneId) != _zoneIds.end();
+}
+
+void WorldZoneScript::HandlePlayerEnter(Player* player, uint32 zoneId)
+{
+    if (!_players.insert(player->GetGUID()).second)
+        return;
+
+    OnPlayerEnter(player, zoneId);
+}
+
+void WorldZoneScript::HandlePlayerLeave(Player* player, uint32 zoneId)
+{
+    if (!_players.erase(player->GetGUID()))
+        return;
+
+    OnPlayerLeave(player, zoneId);
+    if (!player->GetSession()->PlayerLogout())
+        SendRemoveWorldStates(player);
 }
 
 void WorldZoneScript::OnPlayerEnter(Player* /*player*/, uint32 /*zoneId*/)
@@ -2367,6 +2415,10 @@ void WorldZoneScript::OnPlayerLeave(Player* /*player*/, uint32 /*zoneId*/)
 }
 
 void WorldZoneScript::FillInitialWorldStates(Player* /*player*/, WorldPackets::WorldState::InitWorldStates& /*packet*/)
+{
+}
+
+void WorldZoneScript::SendRemoveWorldStates(Player* /*player*/)
 {
 }
 

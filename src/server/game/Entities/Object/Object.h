@@ -459,6 +459,7 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         //used to check all object's GetMap() calls when object is not in world!
 
         void SetZoneScript();
+        void UpdateWorldZoneScript(); // EG
         void ClearZoneScript();
         ZoneScript* GetZoneScript() const { return m_zoneScript; }
 

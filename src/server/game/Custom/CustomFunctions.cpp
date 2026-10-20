@@ -1,6 +1,7 @@
 #include "CustomFunctions.h"
 #include "InstanceSaveMgr.h"
 #include "InstanceScript.h"
+#include "BattlefieldMgr.h"
 #include "CellImpl.h"
 #include "Containers.h"
 #include "Creature.h"
@@ -8,6 +9,7 @@
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
 #include "GameEventMgr.h"
+#include "GameObject.h"
 #include "GameTime.h"
 #include "GenericMovementGenerator.h"
 #include "GridNotifiers.h"
@@ -28,8 +30,10 @@
 #include "ObjectAccessor.h"
 #include "ObjectGuid.h"
 #include "Optional.h"
+#include "OutdoorPvPMgr.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "SmartAI.h"
 #include "Spell.h"
 #include "SpellMgr.h"
@@ -762,6 +766,44 @@ bool WorldObject::IsWithinLOSInMap(Position const* reference, WorldObject const*
         GetHitSpherePointFor({ reference->GetPositionX(), reference->GetPositionY(), reference->GetPositionZ() + obj->GetCollisionHeight() }, x, y, z);
 
     return GetMap()->isInLineOfSight(x, y, z, ox, oy, oz, GetPhaseMask(), checks, ignoreFlags);
+}
+
+void WorldObject::UpdateWorldZoneScript()
+{
+    if (GetTypeId() != TYPEID_UNIT && GetTypeId() != TYPEID_GAMEOBJECT)
+        return;
+
+    Map* map = FindMap();
+    if (!map || map->Instanceable())
+        return;
+
+    if (m_zoneScript && !dynamic_cast<WorldZoneScript*>(m_zoneScript))
+        return;
+
+    if (sBattlefieldMgr->GetBattlefieldToZoneId(GetZoneId()) || sOutdoorPvPMgr->GetZoneScript(GetZoneId()))
+        return;
+
+    ZoneScript* zoneScript = sScriptMgr->GetWorldZoneScript(map->GetId(), GetZoneId(), GetPhaseMask());
+    if (zoneScript == m_zoneScript)
+        return;
+
+    if (IsInWorld() && m_zoneScript)
+    {
+        if (Creature* creature = ToCreature())
+            m_zoneScript->OnCreatureRemove(creature);
+        else if (GameObject* gameObject = ToGameObject())
+            m_zoneScript->OnGameObjectRemove(gameObject);
+    }
+
+    m_zoneScript = zoneScript;
+
+    if (IsInWorld() && m_zoneScript)
+    {
+        if (Creature* creature = ToCreature())
+            m_zoneScript->OnCreatureCreate(creature);
+        else if (GameObject* gameObject = ToGameObject())
+            m_zoneScript->OnGameObjectCreate(gameObject);
+    }
 }
 
 bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
