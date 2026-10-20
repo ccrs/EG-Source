@@ -24,3 +24,11 @@ INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_
 (28239, 0, 0, 0, 11, 0, 100, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 'Arcane Beam - On Respawn - Disable Auto Attack'),
 (28239, 0, 1, 0, 11, 0, 100, 0, 0, 0, 0, 0, 0, 11, 51022, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 'Arcane Beam - On Respawn - Cast Arcane Beam Spawn Trigger'),
 (28239, 0, 2, 0, 11, 0, 100, 0, 0, 0, 0, 0, 0, 123, 1000000, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 0, 'Arcane Beam - On Respawn - Add Threat To Summoner');
+
+UPDATE `creature_template` SET `modelid3` = 0 WHERE `entry` = 29174; -- Defender of the Light: display 26059 has no NPC item displays (naked human)
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 15 AND `SourceGroup` = 9795 AND `SourceEntry` = 0;
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES
+(15, 9795, 0, 0, 0, 9, 0, 12801, 0, 0, 0, 0, 0, '', 'Highlord Darion Mograine - Show gossip option if player has taken quest The Light of Dawn');
+
+DELETE FROM `waypoint_data` WHERE `id` = 233386;

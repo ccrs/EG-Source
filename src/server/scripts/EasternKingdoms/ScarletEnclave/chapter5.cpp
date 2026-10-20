@@ -16,1586 +16,1171 @@
  */
 
 #include "ScriptMgr.h"
-#include "Creature.h"
+#include "Containers.h"
 #include "GameObject.h"
 #include "Map.h"
+#include "MapReference.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "PassiveAI.h"
 #include "Player.h"
-#include "ScriptedEscortAI.h"
+#include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
-#include "SpellInfo.h"
-#include "SpellScript.h"
 #include "TemporarySummon.h"
+#include "WorldStatePackets.h"
 
-
-enum mograine
+enum TheLightOfDawnMisc
 {
-    ENCOUNTER_DK_NUMBER               = 5,  // how many player queue to start the quest, or -
-    ENCOUNTER_DK_TIMER                = 10, // *every 5 minutes. These have to be done in instance data
-    ENCOUNTER_DEFENDER_NUMBER         = 30, // how many of defender
-    ENCOUNTER_EARTHSHATTER_NUMBER     = 1, // how many of earthshatter
-    ENCOUNTER_ABOMINATION_NUMBER      = 3,  // how many of abomination
-    ENCOUNTER_BEHEMOTH_NUMBER         = 2,  // how many of behemoth
-    ENCOUNTER_GHOUL_NUMBER            = 10, // how many of ghoul
-    ENCOUNTER_WARRIOR_NUMBER          = 3,  // how many of warrior
+    SPELL_THE_MIGHT_OF_MOGRAINE = 53642,
+    SPELL_THE_LIGHT_OF_DAWN = 53658,
+    SPELL_THE_LIGHT_OF_DAWN_CREDIT = 53606,
+    SPELL_SHAKE_CAMERA = 33271,
+    SPELL_ANTI_MAGIC_ZONE = 52893,
+    SPELL_DEATH_STRIKE = 53639,
+    SPELL_DEATHS_EMBRACE = 53635,
+    SPELL_ICY_TOUCH = 49723,
+    SPELL_UNHOLY_BLIGHT = 53640,
+    SPELL_ALEXANDROS_MOGRAINE_SPAWN = 53667,
+    SPELL_SOUL_FEAST_ALEXANDROS = 53677,
+    SPELL_MOGRAINE_CHARGE = 53679,
+    SPELL_SOUL_FEAST_TIRION = 53685,
+    SPELL_ASHBRINGER = 53701,
+    SPELL_REBIRTH_OF_THE_ASHBRINGER = 53702,
+    SPELL_TIRION_CHARGE = 53705,
+    SPELL_SOUL_RELEASE = 41542,
+    SPELL_TELEPORT_VISUAL = 52233,
 
-    WORLD_STATE_REMAINS               = 3592,
-    WORLD_STATE_COUNTDOWN             = 3603,
-    WORLD_STATE_EVENT_BEGIN           = 3605,
+    NPC_HIGHLORD_DARION_MOGRAINE = 29173,
+    NPC_HIGHLORD_TIRION_FORDRING = 29175,
+    NPC_KORFAX_CHAMPION_OF_THE_LIGHT = 29176,
+    NPC_COMMANDER_ELIGOR_DAWNBRINGER = 29177,
+    NPC_LORD_MAXWELL_TYROSUS = 29178,
+    NPC_RAYNE = 29181,
+    NPC_RIMBLAT_EARTHSHATTER = 29182,
+    NPC_DEFENDER_OF_THE_LIGHT = 29174,
+    NPC_THE_LICH_KING = 29183,
+    NPC_RAMPAGING_ABOMINATION = 29186,
+    NPC_FLESH_BEHEMOTH = 29190,
+    NPC_KOLTIRA_DEATHWEAVER = 29199,
+    NPC_THASSARIAN = 29200,
+    NPC_ORBAZ_BLOODBANE = 29204,
+    NPC_WARRIOR_OF_THE_FROZEN_WASTES = 29206,
+    NPC_VOLATILE_GHOUL = 29219,
+    NPC_HIGHLORD_ALEXANDROS_MOGRAINE = 29227,
+    NPC_DARION_MOGRAINE = 29228,
 
-    SAY_LIGHT_OF_DAWN01               = 0, // pre text
-    SAY_LIGHT_OF_DAWN02               = 1,
-    SAY_LIGHT_OF_DAWN03               = 2,
-    SAY_LIGHT_OF_DAWN04               = 3, // intro
-    SAY_LIGHT_OF_DAWN05               = 4,
-    SAY_LIGHT_OF_DAWN06               = 5,
-    SAY_LIGHT_OF_DAWN07               = 6, // During the fight - Korfax, Champion of the Light
-    SAY_LIGHT_OF_DAWN08               = 7, // Lord Maxwell Tyrosus
-    SAY_LIGHT_OF_DAWN09               = 8, // Highlord Darion Mograine
-    SAY_LIGHT_OF_DAWN25               = 24, // After the fight
-    SAY_LIGHT_OF_DAWN26               = 25, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN27               = 26, // Highlord Darion Mograine
-    SAY_LIGHT_OF_DAWN28               = 27, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN29               = 28, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN30               = 29, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN31               = 30, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN32               = 31, // Highlord Alexandros Mograine
-    SAY_LIGHT_OF_DAWN33               = 32, // Highlord Darion Mograine
-    SAY_LIGHT_OF_DAWN34               = 33, // Highlord Darion Mograine
-    SAY_LIGHT_OF_DAWN35               = 34, // Darion Mograine
-    SAY_LIGHT_OF_DAWN36               = 35, // Darion Mograine
-    SAY_LIGHT_OF_DAWN37               = 36, // Highlord Alexandros Mograine
-    SAY_LIGHT_OF_DAWN38               = 37, // Darion Mograine
-    SAY_LIGHT_OF_DAWN39               = 38, // Highlord Alexandros Mograine
-    SAY_LIGHT_OF_DAWN40               = 39, // Darion Mograine
-    SAY_LIGHT_OF_DAWN41               = 40, // Highlord Alexandros Mograine
-    SAY_LIGHT_OF_DAWN42               = 41, // Highlord Alexandros Mograine
-    SAY_LIGHT_OF_DAWN43               = 42, // The Lich King
-    SAY_LIGHT_OF_DAWN44               = 43, // Highlord Darion Mograine
-    SAY_LIGHT_OF_DAWN45               = 44, // The Lich King
-    SAY_LIGHT_OF_DAWN46               = 45, // The Lich King
-    SAY_LIGHT_OF_DAWN47               = 46, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN48               = 47, // The Lich King
-    SAY_LIGHT_OF_DAWN49               = 48, // The Lich King
-    SAY_LIGHT_OF_DAWN50               = 49, // Lord Maxwell Tyrosus
-    SAY_LIGHT_OF_DAWN51               = 50, // The Lich King
-    SAY_LIGHT_OF_DAWN52               = 51, // Highlord Darion Mograine
-    SAY_LIGHT_OF_DAWN53               = 52, // Highlord Darion Mograine
-    SAY_LIGHT_OF_DAWN54               = 53, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN55               = 54, // The Lich King
-    SAY_LIGHT_OF_DAWN56               = 55, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN57               = 56, // The Lich King
-    SAY_LIGHT_OF_DAWN58               = 57, // The Lich King
-    SAY_LIGHT_OF_DAWN59               = 58, // The Lich King
-    SAY_LIGHT_OF_DAWN60               = 59, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN61               = 60, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN62               = 61, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN63               = 62, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN64               = 63, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN65               = 64, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN66               = 65, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN67               = 66, // Highlord Tirion Fordring
-    SAY_LIGHT_OF_DAWN68               = 67, // Highlord Darion Mograine
+    GO_LIGHT_OF_DAWN = 191330,
 
-    EMOTE_LIGHT_OF_DAWN01             = 68,  // Emotes
-    EMOTE_LIGHT_OF_DAWN02             = 69,
-    EMOTE_LIGHT_OF_DAWN03             = 70,
-    EMOTE_LIGHT_OF_DAWN04             = 71,
-    EMOTE_LIGHT_OF_DAWN05             = 72,
-    EMOTE_LIGHT_OF_DAWN06             = 73,
-    EMOTE_LIGHT_OF_DAWN07             = 74,
-    EMOTE_LIGHT_OF_DAWN08             = 75,
-    EMOTE_LIGHT_OF_DAWN09             = 76,
-    EMOTE_LIGHT_OF_DAWN10             = 77,
-    EMOTE_LIGHT_OF_DAWN11             = 78,
-    EMOTE_LIGHT_OF_DAWN12             = 79,
-    EMOTE_LIGHT_OF_DAWN13             = 80,
-    EMOTE_LIGHT_OF_DAWN14             = 81,
-    EMOTE_LIGHT_OF_DAWN15             = 82,
-    EMOTE_LIGHT_OF_DAWN16             = 83,
-    EMOTE_LIGHT_OF_DAWN17             = 84,
-    EMOTE_LIGHT_OF_DAWN18             = 85,
+    EQUIP_ASHBRINGER = 13262,
 
-    GO_LIGHT_OF_DAWN                  = 191330,
-    SPELL_THE_LIGHT_OF_DAWN_Q         = 53606, // quest credit
+    SAY_DARION_HEAR_THE_CALL = 3,
+    SAY_DARION_RISE = 4,
+    SAY_DARION_SKIES_TURN_RED = 5,
+    SAY_DARION_BATTLE = 8,
+    SAY_DARION_STAND_DOWN = 26,
+    SAY_DARION_SAVE_YOUR_BREATH = 30,
+    SAY_DARION_FATHER = 32,
+    SAY_DARION_WHAT_IS = 33,
+    SAY_DARION_BETRAYED = 43,
+    SAY_DARION_NOT_TODAY = 51,
+    SAY_DARION_TIRION = 52,
+    SAY_DARION_EBON_BLADE = 67,
+    EMOTE_DARION_KNEELS_IN_DEFEAT = 72,
+    EMOTE_DARION_ANGRY = 77,
+    EMOTE_DARION_THROWS_ASHBRINGER = 81,
+    EMOTE_DARION_COLLAPSES = 82,
 
-    // ---- Dark Knight npc --------------------
-    // Highlord Darion Mograine
-    NPC_HIGHLORD_DARION_MOGRAINE      = 29173,
-    SPELL_ANTI_MAGIC_ZONE1            = 52893,
-    SPELL_DEATH_STRIKE                = 53639,
-    SPELL_DEATH_EMBRACE               = 53635,
-    SPELL_ICY_TOUCH1                  = 49723,
-    SPELL_THE_LIGHT_OF_DAWN           = 53658,
-    SPELL_THE_MIGHT_OF_MOGRAINE       = 53642, // on players when begins
-    SPELL_UNHOLY_BLIGHT               = 53640,
-    SPELL_ALEXANDROS_MOGRAINE_SPAWN   = 53667,
-    SPELL_MOGRAINE_CHARGE             = 53679,
-    SPELL_ASHBRINGER                  = 53701,
+    SAY_TIRION_CANNOT_WIN = 24,
+    SAY_TIRION_BRING_THEM = 25,
+    SAY_TIRION_LEARNED_NOTHING = 27,
+    SAY_TIRION_YOUR_MASTER_KNOWS = 28,
+    SAY_TIRION_ANGUISH = 29,
+    SAY_TIRION_MONSTER = 46,
+    SAY_TIRION_ARTHAS = 53,
+    SAY_TIRION_YOUR_END = 55,
+    SAY_TIRION_RISE_DARION = 59,
+    SAY_TIRION_TERRIBLE_TRAGEDY = 60,
+    SAY_TIRION_REMAIN_VIGILANT = 61,
+    SAY_TIRION_MUST_ANSWER = 62,
+    SAY_TIRION_PROMISE = 63,
+    SAY_TIRION_COME_TOGETHER = 64,
+    SAY_TIRION_ICECROWN = 65,
+    SAY_TIRION_ARGENT_CRUSADE = 66,
+    EMOTE_TIRION_GASPS = 79,
+    EMOTE_TIRION_CHARGES = 83,
 
-    // Koltira Deathweaver & Orbaz Bloodbane are using the same abilities
-    NPC_KOLTIRA_DEATHWEAVER           = 29199,
-    NPC_ORBAZ_BLOODBANE               = 29204, // this guy fleed
-    NPC_THASSARIAN                    = 29200, // he also does SPELL_THE_LIGHT_OF_DAWN 53658
-    SPELL_BLOOD_STRIKE1               = 52374,
-    SPELL_DEATH_GRIP                  = 49576,
-    SPELL_ICY_TOUCH2                  = 52372,
-    SPELL_PLAGUE_STRIKE1              = 50668,
-    // all do SPELL_HERO_AGGRO_AURA    53627
+    SAY_KORFAX_SCOURGE_APPROACH = 6,
 
-    // Lich King
-    NPC_THE_LICH_KING                 = 29183, // show up at end
-    SPELL_APOCALYPSE                  = 53210,
-    SPELL_TELEPORT_VISUAL             = 52233,
-    SPELL_SOUL_FEAST_ALEX             = 53677, // on Alexandros
-    SPELL_SOUL_FEAST_TIRION           = 53685, // on Tirion
-    SPELL_ICEBOUND_VISAGE             = 53274, // not sure what is it for
-    SPELL_REBUKE                      = 53680,
+    SAY_MAXWELL_STAND_FAST = 7,
+    SAY_MAXWELL_ATTACK = 49,
 
-    // others
-    NPC_RAMPAGING_ABOMINATION         = 29186,
-    SPELL_CLEAVE1                     = 53633,
-    SPELL_SCOURGE_HOOK                = 50335,
-    SPELL_SCOURGE_AGGRO_AURA          = 53624,
+    SAY_LICH_KING_TOUCHING = 42,
+    SAY_LICH_KING_HE_IS_MINE = 44,
+    SAY_LICH_KING_PATHETIC = 45,
+    SAY_LICH_KING_YOU_WERE_RIGHT = 47,
+    SAY_LICH_KING_HOW_SIMPLE = 48,
+    SAY_LICH_KING_APOCALYPSE = 50,
+    SAY_LICH_KING_WHAT_IS_THIS = 54,
+    SAY_LICH_KING_IMPOSSIBLE = 56,
+    SAY_LICH_KING_NOT_OVER = 57,
+    SAY_LICH_KING_NEXT_WE_MEET = 58,
+    EMOTE_LICH_KING_CASTS_ON_TIRION = 78,
+    EMOTE_LICH_KING_KILLS_DEFENDERS = 80,
+    EMOTE_LICH_KING_DISAPPEARS = 84,
 
-    NPC_FLESH_BEHEMOTH                = 29190, // giant guy
-    SPELL_STOMP                       = 53634,
-    SPELL_THUNDERCLAP                 = 36706,
-    SPELL_HERO_AGGRO_AURA             = 53627,
+    EMOTE_ORBAZ_FLEES = 71,
 
-    NPC_ACHERUS_GHOUL                 = 29219, // just ghoul....
-    SPELL_GHOULPLOSION                = 53632,
+    SAY_ALEXANDROS_MY_SON = 31,
+    SAY_ALEXANDROS_MY_HOME = 36,
+    SAY_ALEXANDROS_BARELY_OF_AGE = 38,
+    SAY_ALEXANDROS_ASHBRINGER = 40,
+    SAY_ALEXANDROS_DO_NOT_FORGET = 41,
+    EMOTE_ALEXANDROS_ARRIVES = 73,
+    EMOTE_ALEXANDROS_DISAPPEARS = 76,
 
-    NPC_WARRIOR_OF_THE_FROZEN_WASTES  = 29206, // use SPELL_CLEAVE 53631
+    SAY_YOUNG_DARION_RETURNED = 34,
+    SAY_YOUNG_DARION_GONE_LONG = 35,
+    SAY_YOUNG_DARION_JOIN_THE_WAR = 37,
+    SAY_YOUNG_DARION_ON_MY_FEET = 39,
+    EMOTE_YOUNG_DARION_SHADE = 74,
+    EMOTE_YOUNG_DARION_HUGS = 75,
 
-    NPC_HIGHLORD_ALEXANDROS_MOGRAINE  = 29227, // ghost
-    NPC_DARION_MOGRAINE               = 29228, // ghost
+    GOSSIP_MENU_LIGHT_OF_DAWN = 9795,
+    GOSSIP_OPTION_START_BATTLE = 0,
 
-    // ---- Dawn npc --------------------
-    // Highlord Tirion Fordring
-    NPC_HIGHLORD_TIRION_FORDRING      = 29175,
-    EQUIP_HIGHLORD_TIRION_FORDRING    = 13262,
-    SPELL_LAY_ON_HANDS                = 53778,
-    SPELL_REBIRTH_OF_THE_ASHBRINGER   = 53702,
-    SPELL_TIRION_CHARGE               = 53705,
-    SPELL_TIRION_CHARGE_VISUAL        = 53706,
+    WORLD_STATE_BATTLE_BEGUN = 3605,
 
-    // others
-    NPC_KORFAX_CHAMPION_OF_THE_LIGHT  = 29176,
-    SPELL_CLEAVE                      = 53631,
-    SPELL_HEROIC_LEAP                 = 53625,
+    MAP_SCARLET_ENCLAVE = 609,
+    ZONE_THE_SCARLET_ENCLAVE = 4298,
+    PHASE_CHAPTER_IV_EPILOGUE = 128,
 
-    NPC_LORD_MAXWELL_TYROSUS          = 29178,
-    NPC_LEONID_BARTHALOMEW_THE_REVERED = 29179,
-    NPC_DUKE_NICHOLAS_ZVERENHOFF      = 29180,
+    DATA_EVENT_IN_PROGRESS = 1,
+    DATA_KOLTIRA_DEATHWEAVER,
+    DATA_ORBAZ_BLOODBANE,
+    DATA_THASSARIAN,
 
-    NPC_COMMANDER_ELIGOR_DAWNBRINGER  = 29177,
-    SPELL_HOLY_LIGHT2                 = 37979,
+    POINT_BATTLEFIELD = 1,
+    POINT_CHAPEL,
 
-    NPC_RAYNE                         = 29181,
-    SPELL_REJUVENATION                = 20664,
-    SPELL_STARFALL                    = 20678,
-    SPELL_TRANQUILITY                 = 25817,
-    SPELL_WRATH                       = 21807,
-
-    NPC_DEFENDER_OF_THE_LIGHT         = 29174, // also does SPELL_HEROIC_LEAP 53625
-    SPELL_HOLY_LIGHT1                 = 29427,
-    SPELL_HOLY_STRIKE                 = 53643,
-    SPELL_HOLY_WRATH                  = 53638,
-    SPELL_UPPERCUT                    = 53629,
-
-    NPC_RIMBLAT_EARTHSHATTER          = 29182,
-    SPELL_CHAIN_HEAL                  = 33642,
-    SPELL_THUNDER                     = 53630,
-
-    ACTION_START_BATTLE               = 1
+    GROUP_BATTLE = 1
 };
 
-void UpdateWorldState(Map* map, uint32 id, uint32 state)
-{
-    Map::PlayerList const& players = map->GetPlayers();
+Position const DarionBattlefieldPos = { 2319.24f, -5266.49f, 82.825f };
+Position const DarionChapelPos = { 2280.81f, -5284.09f, 82.608f };
+Position const DarionKneelPos = { 2280.73f, -5286.84f, 82.93f };
+Position const DarionChargePos = { 2281.46f, -5263.01f, 81.164f };
+Position const DarionKickedPos = { 2257.48f, -5296.7f, 82.165f };
+Position const DarionThrowPos = { 2261.24f, -5294.98f, 82.167f };
 
-    if (!players.isEmpty())
+Position const DawnSpawnCenterPos = { 2296.335f, -5285.409f, 85.170f };
+Position const LightOfDawnPos = { 2283.896f, -5287.914f, 83.066f };
+
+Position const TirionSpawnPos = { 2281.335f, -5300.409f, 85.170f, 1.528f };
+Position const TirionForwardPos = { 2283.896f, -5287.914f, 83.066f, 1.55f };
+Position const TirionChargePos = { 2281.461f, -5263.014f, 81.164f };
+Position const TirionRunPos = { 2262.277f, -5293.477f, 82.167f };
+Position const TirionApproachPos = { 2270.286f, -5287.73f, 82.262f };
+Position const TirionSpeechPos = { 2269.511f, -5288.289f, 82.225f };
+
+Position const KorfaxRetreatPos = { 2273.205f, -5288.848f, 82.617f };
+Position const KorfaxChapelPos = { 2274.739f, -5287.926f, 82.684f };
+Position const KorfaxSpeechPos = { 2253.673f, -5318.004f, 81.724f };
+Position const MaxwellRetreatPos = { 2287.028f, -5309.644f, 87.253f };
+Position const MaxwellChapelPos = { 2286.978f, -5308.025f, 86.83f };
+Position const MaxwellSpeechPos = { 2248.877f, -5307.586f, 82.166f };
+Position const EligorRetreatPos = { 2278.58f, -5316.933f, 88.319f };
+Position const EligorChapelPos = { 2278.535f, -5315.479f, 88.08f };
+Position const EligorSpeechPos = { 2259.416f, -5304.505f, 82.149f };
+
+Position const KoltiraRetreatPos = { 2289.259f, -5280.355f, 82.112f };
+Position const KoltiraChapelPos = { 2289.02f, -5281.985f, 82.207f };
+Position const ThassarianRetreatPos = { 2273.289f, -5273.675f, 81.701f };
+Position const ThassarianChapelPos = { 2273.332f, -5275.544f, 81.849f };
+
+Position const AlexandrosSpawnPos = { 2281.198f, -5257.397f, 80.224f, 4.66f };
+Position const AlexandrosForwardPos = { 2281.156f, -5259.934f, 80.647f };
+Position const YoungDarionSpawnPos = { 2281.294f, -5281.895f, 82.445f, 1.35f };
+Position const YoungDarionHugPos = { 2281.093f, -5263.013f, 81.125f };
+
+Position const LichKingSpawnPos = { 2281.313f, -5250.282f, 79.322f, 4.69f };
+Position const LichKingForwardPos = { 2281.523f, -5261.058f, 80.877f };
+Position const LichKingKnockedPos = { 2272.709f, -5255.552f, 78.226f };
+Position const LichKingRecoverPos = { 2273.972f, -5257.676f, 78.862f };
+
+std::pair<uint32, uint8> const ScourgeArmy[] =
+{
+    { NPC_VOLATILE_GHOUL, 10 },
+    { NPC_RAMPAGING_ABOMINATION, 3 },
+    { NPC_WARRIOR_OF_THE_FROZEN_WASTES, 3 },
+    { NPC_FLESH_BEHEMOTH, 2 }
+};
+
+// 29173 - Highlord Darion Mograine
+struct npc_highlord_darion_mograine : public ScriptedAI
+{
+    npc_highlord_darion_mograine(Creature* creature) : ScriptedAI(creature), _summons(me), _eventInProgress(false), _battleInProgress(false) { }
+
+    bool OnGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
     {
-        for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+        if (menuId != GOSSIP_MENU_LIGHT_OF_DAWN || gossipListId != GOSSIP_OPTION_START_BATTLE || _eventInProgress || !player->PlayerTalkClass->GetGossipMenu().GetItem(gossipListId))
+            return false;
+
+        CloseGossipMenuFor(player);
+
+        _eventInProgress = true;
+        me->setActive(true);
+        me->ReplaceAllNpcFlags(UNIT_NPC_FLAG_NONE);
+
+        if (ZoneScript* zoneScript = me->GetZoneScript())
         {
-            if (Player* player = itr->GetSource())
-                player->SendUpdateWorldState(id, state);
+            zoneScript->SetData(DATA_EVENT_IN_PROGRESS, 1);
+            _koltiraGUID = zoneScript->GetGuidData(DATA_KOLTIRA_DEATHWEAVER);
+            _orbazGUID = zoneScript->GetGuidData(DATA_ORBAZ_BLOODBANE);
+            _thassarianGUID = zoneScript->GetGuidData(DATA_THASSARIAN);
         }
+
+        _scheduler.Schedule(3s, [this](TaskContext /*context*/)
+        {
+            Talk(SAY_DARION_HEAR_THE_CALL);
+        })
+        .Schedule(13s, [this](TaskContext /*context*/)
+        {
+            Talk(SAY_DARION_RISE);
+        })
+        .Schedule(16s, [this](TaskContext context)
+        {
+            uint32 index = context.GetRepeatCounter();
+            for (auto const& [entry, count] : ScourgeArmy)
+            {
+                if (index < count)
+                {
+                    DoCastSelf(SPELL_SHAKE_CAMERA);
+                    SummonScourge(entry, me->GetPosition());
+                    context.Repeat(500ms);
+                    return;
+                }
+
+                index -= count;
+            }
+        })
+        .Schedule(27s, [this](TaskContext /*context*/)
+        {
+            Talk(SAY_DARION_SKIES_TURN_RED);
+        })
+        .Schedule(32s, [this](TaskContext /*context*/)
+        {
+            float const marchAngle = me->GetAbsoluteAngle(DarionBattlefieldPos);
+
+            GuidVector marchers(_summons.begin(), _summons.end());
+            marchers.insert(marchers.end(), { _koltiraGUID, _orbazGUID, _thassarianGUID });
+            for (ObjectGuid const& guid : marchers)
+            {
+                if (Creature* marcher = ObjectAccessor::GetCreature(*me, guid))
+                {
+                    marcher->SetWalk(false);
+                    marcher->GetMotionMaster()->MoveFormation(me, me->GetExactDist2d(marcher), Position::NormalizeOrientation(me->GetAbsoluteAngle(marcher) - marchAngle), 0, 0);
+                }
+            }
+
+            me->SetWalk(false);
+            me->GetMotionMaster()->MovePoint(POINT_BATTLEFIELD, DarionBattlefieldPos);
+        });
+
+        return true;
     }
-}
 
-Position const LightofDawnLoc[] =
-{
-    {2281.335f, -5300.409f, 85.170f, 0},     // 0 Tirion Fordring loc
-    {2283.896f, -5287.914f, 83.066f, 1.55f}, // 1 Tirion Fordring loc2
-    {2281.461f, -5263.014f, 81.164f, 0},     // 2 Tirion charges
-    {2262.277f, -5293.477f, 82.167f, 0},     // 3 Tirion run
-    {2270.286f, -5287.73f, 82.262f, 0},      // 4 Tirion relocate
-    {2269.511f, -5288.289f, 82.225f, 0},     // 5 Tirion forward
-    {2262.277f, -5293.477f, 82.167f, 0},     // 6 Tirion runs to Darion
-    {2270.286f, -5287.73f, 82.262f, 0},
-    {2269.511f, -5288.289f, 82.225f, 0},
-    {2273.205f, -5288.848f, 82.617f, 0},     // 9 Korfax loc1
-    {2274.739f, -5287.926f, 82.684f, 0},     // 10 Korfax loc2
-    {2253.673f, -5318.004f, 81.724f, 0},     // 11 Korfax kicked
-    {2287.028f, -5309.644f, 87.253f, 0},     // 12 Maxwell loc1
-    {2286.978f, -5308.025f, 86.83f, 0},      // 13 Maxwell loc2
-    {2248.877f, -5307.586f, 82.166f, 0},     // 14 maxwell kicked
-    {2278.58f, -5316.933f, 88.319f, 0},      // 15 Eligor loc1
-    {2278.535f, -5315.479f, 88.08f, 0},      // 16 Eligor loc2
-    {2259.416f, -5304.505f, 82.149f, 0},     // 17 eligor kicked
-    {2289.259f, -5280.355f, 82.112f, 0},     // 18 Koltira loc1
-    {2289.02f, -5281.985f, 82.207f, 0},      // 19 Koltira loc2
-    {2273.289f, -5273.675f, 81.701f, 0},     // 20 Thassarian loc1
-    {2273.332f, -5275.544f, 81.849f, 0},     // 21 Thassarian loc2
-    {2281.198f, -5257.397f, 80.224f, 4.66f}, // 22 Alexandros loc1
-    {2281.156f, -5259.934f, 80.647f, 0},     // 23 Alexandros loc2
-    {2281.294f, -5281.895f, 82.445f, 1.35f}, // 24 Darion loc1
-    {2281.093f, -5263.013f, 81.125f, 0},     // 25 Darion loc1
-    {2281.313f, -5250.282f, 79.322f, 4.69f}, // 26 Lich King spawns
-    {2281.523f, -5261.058f, 80.877f, 0},     // 27 Lich king move forwards
-    {2272.709f, -5255.552f, 78.226f, 0},     // 28 Lich king kicked
-    {2273.972f, -5257.676f, 78.862f, 0},     // 29 Lich king moves forward
-};
-
-static constexpr uint32 PATH_ESCORT_MOGRAINE = 233386;
-
-class npc_highlord_darion_mograine : public CreatureScript
-{
-public:
-    npc_highlord_darion_mograine() : CreatureScript("npc_highlord_darion_mograine") { }
-
-    struct npc_highlord_darion_mograineAI : public EscortAI
+    void MovementInform(uint32 type, uint32 id) override
     {
-        npc_highlord_darion_mograineAI(Creature* creature) : EscortAI(creature)
-        {
-            SetDespawnAtFar(false);
-            SetDespawnAtEnd(false);
-        }
+        if (type != POINT_MOTION_TYPE)
+            return;
 
-        void Reset() override
+        switch (id)
         {
-            if (!HasEscortState(STATE_ESCORT_ESCORTING))
+            case POINT_BATTLEFIELD:
             {
-                inBattle = false;
-                step = 0;
-                phaseTimer = 3000;
-                fightDuration = 300000; // 5 minutes
-                summonCounter = 0;
+                _battleInProgress = true;
+                me->Dismount();
+                me->SetImmuneToNPC(false);
+                DoCastSelf(SPELL_THE_MIGHT_OF_MOGRAINE, true);
 
-                antiMagicZoneTimer = urand(1000, 6000);
-                deathStrikeTimer = urand(5000, 10000);
-                deathEmbraceTimer = urand(5000, 10000);
-                icyTouchTimer = urand(5000, 10000);
-                unholyBlightTimer = urand(5000, 10000);
+                for (ObjectGuid const& guid : { _koltiraGUID, _orbazGUID, _thassarianGUID })
+                    if (Creature* hero = ObjectAccessor::GetCreature(*me, guid))
+                        hero->Dismount();
 
-                fightSpeechTimer = 15000;
-                spawnCheckTimer = 1000;
-                targetCheckTimer = 10000;
+                for (uint8 i = 0; i < 30; ++i)
+                    SummonDawn(NPC_DEFENDER_OF_THE_LIGHT);
 
-                me->SetStandState(UNIT_STAND_STATE_STAND);
-                me->Mount(25279);
-                me->SetVisible(true);
-                me->SetRespawnTime(1 * MINUTE * IN_MILLISECONDS);
+                for (uint32 entry : { NPC_RIMBLAT_EARTHSHATTER, NPC_KORFAX_CHAMPION_OF_THE_LIGHT, NPC_LORD_MAXWELL_TYROSUS, NPC_COMMANDER_ELIGOR_DAWNBRINGER, NPC_RAYNE })
+                    SummonDawn(entry);
 
-                UpdateWorldState(me->GetMap(), WORLD_STATE_REMAINS, 0);
-                //UpdateWorldState(me->GetMap(), WORLD_STATE_COUNTDOWN, 0);
-                UpdateWorldState(me->GetMap(), WORLD_STATE_EVENT_BEGIN, 0);
+                if (Creature* korfax = ObjectAccessor::GetCreature(*me, _korfaxGUID))
+                    korfax->AI()->Talk(SAY_KORFAX_SCOURGE_APPROACH);
+                if (Creature* maxwell = ObjectAccessor::GetCreature(*me, _maxwellGUID))
+                    maxwell->AI()->Talk(SAY_MAXWELL_STAND_FAST);
 
-                if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                    temp->DespawnOrUnsummon();
-                if (Creature* temp = ObjectAccessor::GetCreature(*me, korfaxGUID))
-                    temp->DespawnOrUnsummon();
-                if (Creature* temp = ObjectAccessor::GetCreature(*me, maxwellGUID))
-                    temp->DespawnOrUnsummon();
-                if (Creature* temp = ObjectAccessor::GetCreature(*me, eligorGUID))
-                    temp->DespawnOrUnsummon();
-                if (Creature* temp = ObjectAccessor::GetCreature(*me, rayneGUID))
-                    temp->DespawnOrUnsummon();
-
-                tirionGUID.Clear();
-                korfaxGUID.Clear();
-                maxwellGUID.Clear();
-                eligorGUID.Clear();
-                rayneGUID.Clear();
-
-                for (uint8 i = 0; i < ENCOUNTER_DEFENDER_NUMBER; ++i)
+                _scheduler.Schedule(1s, GROUP_BATTLE, [this](TaskContext context)
                 {
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, defenderGUIDs[i]))
-                        temp->DespawnOrUnsummon();
-                    defenderGUIDs[i].Clear();
-                }
-                for (uint8 i = 0; i < ENCOUNTER_EARTHSHATTER_NUMBER; ++i)
-                {
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, earthshatterGUIDs[i]))
-                        temp->DespawnOrUnsummon();
-                    earthshatterGUIDs[i].Clear();
-                }
+                    std::vector<Creature*> scourge = { me };
+                    std::vector<Creature*> dawn;
 
-                if (Creature* temp = ObjectAccessor::GetCreature(*me, koltiraGUID))
-                    temp->Respawn();
-                if (Creature* temp = ObjectAccessor::GetCreature(*me, orbazGUID))
-                    temp->Respawn();
-                if (Creature* temp = ObjectAccessor::GetCreature(*me, thassarianGUID))
-                    temp->Respawn();
-                if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                    temp->Respawn();
-
-                koltiraGUID.Clear();
-                orbazGUID.Clear();
-                thassarianGUID.Clear();
-                lichKingGUID.Clear();
-                for (uint8 i = 0; i < ENCOUNTER_ABOMINATION_NUMBER; ++i)
-                {
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, abominationGUIDs[i]))
-                        temp->DespawnOrUnsummon();
-                    abominationGUIDs[i].Clear();
-                }
-                for (uint8 i = 0; i < ENCOUNTER_BEHEMOTH_NUMBER; ++i)
-                {
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, behemothGUIDs[i]))
-                        temp->DespawnOrUnsummon();
-                    behemothGUIDs[i].Clear();
-                }
-                for (uint8 i = 0; i < ENCOUNTER_GHOUL_NUMBER; ++i)
-                {
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, ghoulGUIDs[i]))
-                        temp->DespawnOrUnsummon();
-                    ghoulGUIDs[i].Clear();
-                }
-                for (uint8 i = 0; i < ENCOUNTER_WARRIOR_NUMBER; ++i)
-                {
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, warriorGUIDs[i]))
-                        temp->DespawnOrUnsummon();
-                    warriorGUIDs[i].Clear();
-                }
-            }
-        }
-
-        void DoAction(int32 action) override
-        {
-            switch (action)
-            {
-                case ACTION_START_BATTLE:
-                    step = 1;
-                    Start(true);
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
-        {
-            switch (waypointId)
-            {
-                case 0:
-                    me->SetWalk(false);
-                    SetEscortPaused(true);
-                    break;
-                case 1:
-                    SetEscortPaused(true);
-                    SpawnNPC();
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, korfaxGUID))
-                        temp->AI()->Talk(SAY_LIGHT_OF_DAWN07);
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, maxwellGUID))
-                        temp->AI()->Talk(SAY_LIGHT_OF_DAWN08);
-
-                    for (uint8 i = 0; i < ENCOUNTER_GHOUL_NUMBER; ++i)
-                        NPCChangeTarget(ghoulGUIDs[i]);
-                    for (uint8 i = 0; i < ENCOUNTER_WARRIOR_NUMBER; ++i)
-                        NPCChangeTarget(warriorGUIDs[i]);
-                    for (uint8 i = 0; i < ENCOUNTER_ABOMINATION_NUMBER; ++i)
-                        NPCChangeTarget(abominationGUIDs[i]);
-                    for (uint8 i = 0; i < ENCOUNTER_BEHEMOTH_NUMBER; ++i)
-                        NPCChangeTarget(behemothGUIDs[i]);
-                    NPCChangeTarget(koltiraGUID);
-                    NPCChangeTarget(orbazGUID);
-                    NPCChangeTarget(thassarianGUID);
-
-                    me->Dismount();
-                    me->CastSpell(me, SPELL_THE_MIGHT_OF_MOGRAINE, true); // need to fix, on player only
-
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, koltiraGUID))
-                        temp->Dismount();
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, thassarianGUID))
-                        temp->Dismount();
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, orbazGUID))
-                        temp->Dismount();
-
-                    inBattle = true;
-                    break;
-                case 2:
-                    me->SetWalk(true);
-                    DoCast(me, SPELL_THE_LIGHT_OF_DAWN);
-                    break;
-                case 3:
-                {
-                    Talk(EMOTE_LIGHT_OF_DAWN05);
-                    if (me->HasAura(SPELL_THE_LIGHT_OF_DAWN))
-                        me->RemoveAurasDueToSpell(SPELL_THE_LIGHT_OF_DAWN);
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, koltiraGUID))
+                    for (ObjectGuid const& guid : { _koltiraGUID, _orbazGUID, _thassarianGUID })
                     {
-                        if (temp->HasAura(SPELL_THE_LIGHT_OF_DAWN))
-                            temp->RemoveAurasDueToSpell(SPELL_THE_LIGHT_OF_DAWN);
-                        temp->SetWalk(true);
-                        temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[19]);
-                    }
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, thassarianGUID))
-                    {
-                        if (temp->HasAura(SPELL_THE_LIGHT_OF_DAWN))
-                            temp->RemoveAurasDueToSpell(SPELL_THE_LIGHT_OF_DAWN);
-                        temp->SetWalk(true);
-                        temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[21]);
-                    }
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, korfaxGUID))
-                    {
-                        temp->SetWalk(true);
-                        temp->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_READY2H);
-                        temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[10]);
-                    }
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, maxwellGUID))
-                    {
-                        temp->SetWalk(true);
-                        temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[13]);
-                    }
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, eligorGUID))
-                    {
-                        temp->SetWalk(true);
-                        temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[16]);
-                    }
-                    JumpToNextStep(10000);
-                    break;
-                }
-                case 4:
-                    Talk(SAY_LIGHT_OF_DAWN27);
-                    me->SetStandState(UNIT_STAND_STATE_KNEEL);
-
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, koltiraGUID))
-                        temp->SetStandState(UNIT_STAND_STATE_KNEEL);
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, thassarianGUID))
-                        temp->SetStandState(UNIT_STAND_STATE_KNEEL);
-                    SetEscortPaused(true);
-                    break;
-                case 5:
-                    Talk(SAY_LIGHT_OF_DAWN33);
-                    SetEscortPaused(true);
-                    break;
-                case 6:
-                    SetEscortPaused(true);
-                    me->HandleEmoteCommand(EMOTE_ONESHOT_SPECIALATTACK1H);
-                    JumpToNextStep(1000);
-                    break;
-                case 7:
-                    SetEscortPaused(true);
-                    JumpToNextStep(2000);
-                    break;
-                case 8:
-                    me->SetVirtualItem(0, uint32(EQUIP_UNEQUIP));
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                        me->CastSpell(temp, SPELL_ASHBRINGER, true);
-                    Talk(EMOTE_LIGHT_OF_DAWN14);
-                    SetEscortPaused(true);
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        void EnterEvadeMode(EvadeReason why) override
-        {
-            if (!inBattle) //do not reset self if we are in battle
-                EscortAI::EnterEvadeMode(why);
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            EscortAI::UpdateAI(diff);
-
-            if (!inBattle)
-            {
-                if (phaseTimer <= diff)
-                {
-                    // ******* Before battle *****************************************************************
-                    switch (step)
-                    {
-                        case 0:  // countdown
-                            //UpdateWorldState(me->GetMap(), WORLD_STATE_COUNTDOWN, 1);
-                            break;
-                        case 1:  // just delay
-                            //UpdateWorldState(me->GetMap(), WORLD_STATE_REMAINS, 1);
-                            UpdateWorldState(me->GetMap(), WORLD_STATE_COUNTDOWN, 0);
-                            UpdateWorldState(me->GetMap(), WORLD_STATE_EVENT_BEGIN, 1);
-                            me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
-                            JumpToNextStep(3000);
-                            break;
-                        case 2:
-                            Talk(SAY_LIGHT_OF_DAWN04);
-                            if (Creature* pKoltira = GetClosestCreatureWithEntry(me, NPC_KOLTIRA_DEATHWEAVER, 50.0f))
-                            {
-                                if (!pKoltira->IsAlive())
-                                    pKoltira->Respawn();
-                                koltiraGUID = pKoltira->GetGUID();
-                            }
-                            if (Creature* pOrbaz = GetClosestCreatureWithEntry(me, NPC_ORBAZ_BLOODBANE, 50.0f))
-                            {
-                                if (!pOrbaz->IsAlive())
-                                    pOrbaz->Respawn();
-                                orbazGUID = pOrbaz->GetGUID();
-                            }
-                            if (Creature* pThassarian = GetClosestCreatureWithEntry(me, NPC_THASSARIAN, 50.0f))
-                            {
-                                if (!pThassarian->IsAlive())
-                                    pThassarian->Respawn();
-                                thassarianGUID = pThassarian->GetGUID();
-                            }
-                            JumpToNextStep(10000);
-                            break;
-                        case 3: // rise
-                            Talk(SAY_LIGHT_OF_DAWN05);
-                            JumpToNextStep(3000);
-                            break;
-                        case 4: // summon ghoul
-                            // Dunno whats the summon spell, so workaround
-                            DoCast(me, 33271); // shack effect
-                            phaseTimer = 500;
-                            if (summonCounter < ENCOUNTER_GHOUL_NUMBER)
-                            {
-                                Unit* temp = me->SummonCreature(NPC_ACHERUS_GHOUL, (me->GetPositionX() - 20) + rand32() % 40, (me->GetPositionY() - 20) + rand32() % 40, me->GetPositionZ(), 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 5min);
-                                temp->SetWalk(false);
-                                temp->SetFaction(FACTION_UNDEAD_SCOURGE_3);
-                                ghoulGUIDs[summonCounter] = temp->GetGUID();
-                                ++summonCounter;
-                            }
-                            else
-                            {
-                                summonCounter = 0;
-                                ++step;
-                            }
-                            break;
-                        case 5: // summon abomination
-                            DoCast(me, 33271); // shack effect
-                            phaseTimer = 500;
-                            if (summonCounter < ENCOUNTER_ABOMINATION_NUMBER)
-                            {
-                                Unit* temp = me->SummonCreature(NPC_RAMPAGING_ABOMINATION, (me->GetPositionX() - 20) + rand32() % 40, (me->GetPositionY() - 20) + rand32() % 40, me->GetPositionZ(), 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 5min);
-                                temp->SetWalk(false);
-                                temp->SetFaction(FACTION_UNDEAD_SCOURGE_3);
-                                abominationGUIDs[summonCounter] = temp->GetGUID();
-                                ++summonCounter;
-                            }
-                            else
-                            {
-                                summonCounter = 0;
-                                ++step;
-                            }
-                            break;
-                        case 6: // summon warrior
-                            DoCast(me, 33271); // shack effect
-                            phaseTimer = 500;
-                            if (summonCounter < ENCOUNTER_WARRIOR_NUMBER)
-                            {
-                                Unit* temp = me->SummonCreature(NPC_WARRIOR_OF_THE_FROZEN_WASTES, (me->GetPositionX() - 20) + rand32() % 40, (me->GetPositionY() - 20) + rand32() % 40, me->GetPositionZ(), 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 5min);
-                                temp->SetWalk(false);
-                                temp->SetFaction(FACTION_UNDEAD_SCOURGE_3);
-                                warriorGUIDs[summonCounter] = temp->GetGUID();
-                                ++summonCounter;
-                            }
-                            else
-                            {
-                                summonCounter = 0;
-                                ++step;
-                            }
-                            break;
-                        case 7: // summon warrior
-                            DoCast(me, 33271); // shack effect
-                            phaseTimer = 500;
-                            if (summonCounter < ENCOUNTER_BEHEMOTH_NUMBER)
-                            {
-                                Unit* temp = me->SummonCreature(NPC_FLESH_BEHEMOTH, (me->GetPositionX() - 20) + rand32() % 40, (me->GetPositionY() - 20) + rand32() % 40, me->GetPositionZ(), 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 5min);
-                                temp->SetWalk(false);
-                                temp->SetFaction(FACTION_UNDEAD_SCOURGE_3);
-                                behemothGUIDs[summonCounter] = temp->GetGUID();
-                                ++summonCounter;
-                            }
-                            else
-                            {
-                                summonCounter = 0;
-                                ++step;
-                            }
-                            break;
-                        case 8: // summon announce
-                            Talk(SAY_LIGHT_OF_DAWN06);
-                            JumpToNextStep(5000);
-                            break;
-                        case 9: // charge begins
-                            SetEscortPaused(false);
-                            me->SetWalk(false);
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, koltiraGUID))
-                            {
-                                temp->SetWalk(false);
-                                temp->GetMotionMaster()->MoveFormation(me, temp->GetDistance(me), temp->GetAbsoluteAngle(me), 0, 0);
-                            }
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, orbazGUID))
-                            {
-                                temp->SetWalk(false);
-                                temp->GetMotionMaster()->MoveFormation(me, temp->GetDistance(me), temp->GetAbsoluteAngle(me), 0, 0);
-                            }
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, thassarianGUID))
-                            {
-                                temp->SetWalk(false);
-                                temp->GetMotionMaster()->MoveFormation(me, temp->GetDistance(me), temp->GetAbsoluteAngle(me), 0, 0);
-                            }
-                            for (uint8 i = 0; i < ENCOUNTER_ABOMINATION_NUMBER; ++i)
-                                if (Creature* temp = ObjectAccessor::GetCreature(*me, abominationGUIDs[i]))
-                                    temp->GetMotionMaster()->MoveFormation(me, temp->GetDistance(me), temp->GetAbsoluteAngle(me), 0, 0);
-                            for (uint8 i = 0; i < ENCOUNTER_BEHEMOTH_NUMBER; ++i)
-                                if (Creature* temp = ObjectAccessor::GetCreature(*me, behemothGUIDs[i]))
-                                    temp->GetMotionMaster()->MoveFormation(me, temp->GetDistance(me), temp->GetAbsoluteAngle(me), 0, 0);
-                            for (uint8 i = 0; i < ENCOUNTER_GHOUL_NUMBER; ++i)
-                                if (Creature* temp = ObjectAccessor::GetCreature(*me, ghoulGUIDs[i]))
-                                    temp->GetMotionMaster()->MoveFormation(me, temp->GetDistance(me), temp->GetAbsoluteAngle(me), 0, 0);
-                            for (uint8 i = 0; i < ENCOUNTER_WARRIOR_NUMBER; ++i)
-                                if (Creature* temp = ObjectAccessor::GetCreature(*me, warriorGUIDs[i]))
-                                    temp->GetMotionMaster()->MoveFormation(me, temp->GetDistance(me), temp->GetAbsoluteAngle(me), 0, 0);
-                            JumpToNextStep(5000);
-                            break;
-                        // ******* After battle *****************************************************************
-                        case 11: // Tirion starts to speak
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                            {
-                                temp->Dismount();
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN28);
-                            }
-                            JumpToNextStep(21000);
-                            break;
-                        case 12:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, koltiraGUID))
-                                temp->Dismount();
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, thassarianGUID))
-                                temp->Dismount();
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN29);
-                            JumpToNextStep(13000);
-                            break;
-                        case 13:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN30);
-                            JumpToNextStep(13000);
-                            break;
-                        case 14:
-                            me->SetStandState(UNIT_STAND_STATE_STAND);
-                            Talk(SAY_LIGHT_OF_DAWN31);
-                            JumpToNextStep(7000);
-                            break;
-                        case 15: // summon gate
-                            if (Creature* temp = me->SummonCreature(NPC_HIGHLORD_ALEXANDROS_MOGRAINE, LightofDawnLoc[22], TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 5min))
-                            {
-                                temp->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-                                temp->CastSpell(temp, SPELL_ALEXANDROS_MOGRAINE_SPAWN, true);
-                                temp->AI()->Talk(EMOTE_LIGHT_OF_DAWN06);
-                                alexandrosGUID = temp->GetGUID();
-                            }
-                            JumpToNextStep(4000);
-                            break;
-                        case 16: // Alexandros out
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, alexandrosGUID))
-                            {
-                                temp->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-                                temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[23]);
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN32);
-                            }
-                            SetEscortPaused(false); // makes darion turns back
-                            JumpToNextStep(5000);
-                            break;
-                        case 17:
-                            me->SetStandState(UNIT_STAND_STATE_KNEEL);
-                            Talk(SAY_LIGHT_OF_DAWN34);
-                            JumpToNextStep(5000);
-                            break;
-                        case 18: // Darion's spirit out
-                            if (Creature* temp = me->SummonCreature(NPC_DARION_MOGRAINE, LightofDawnLoc[24], TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 5min))
-                            {
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN35);
-                                temp->SetWalk(false);
-                                darionGUID = temp->GetGUID();
-                            }
-                            JumpToNextStep(4000);
-                            break;
-                        case 19: // runs to father
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, darionGUID))
-                            {
-                                temp->AI()->Talk(EMOTE_LIGHT_OF_DAWN07);
-                                temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[25]);
-                            }
-                            JumpToNextStep(4000);
-                            break;
-                        case 20:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, darionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN36);
-                            JumpToNextStep(4000);
-                            break;
-                        case 21:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, darionGUID))
-                                temp->AI()->Talk(EMOTE_LIGHT_OF_DAWN08);
-                            JumpToNextStep(4000);
-                            break;
-                        case 22:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, alexandrosGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN37);
-                            JumpToNextStep(8000);
-                            break;
-                        case 23:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, darionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN38);
-                            JumpToNextStep(8000);
-                            break;
-                        case 24:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, alexandrosGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN39);
-
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID)) // Tirion moves forward here
-                                temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[1]);
-
-                            JumpToNextStep(15000);
-                            break;
-                        case 25:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, darionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN40);
-                            JumpToNextStep(11000);
-                            break;
-                        case 26:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, alexandrosGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN41);
-                            JumpToNextStep(5000);
-                            break;
-                        case 27:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, darionGUID))
-                                temp->KillSelf();
-                            JumpToNextStep(24000);
-                            break;
-                        case 28:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, alexandrosGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN42);
-                            JumpToNextStep(6000);
-                            break;
-                        case 29: // lich king spawns
-                            if (Creature* temp = me->SummonCreature(NPC_THE_LICH_KING, LightofDawnLoc[26], TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 5min))
-                            {
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN43);
-                                lichKingGUID = temp->GetGUID();
-                                if (Unit* pAlex = ObjectAccessor::GetCreature(*me, alexandrosGUID))
-                                    temp->CastSpell(pAlex, SPELL_SOUL_FEAST_ALEX, false);
-                            }
-                            JumpToNextStep(2000);
-                            break;
-                        case 30:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, alexandrosGUID)) // just hide him
-                            {
-                                temp->AI()->Talk(EMOTE_LIGHT_OF_DAWN09);
-                                temp->SetVisible(false);
-                            }
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                            {
-                                temp->InterruptNonMeleeSpells(false);
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN45);
-                            }
-                            JumpToNextStep(3000);
-                            break;
-                        case 31:
-                            me->SetStandState(UNIT_STAND_STATE_STAND);
-                            Talk(EMOTE_LIGHT_OF_DAWN10);
-                            Talk(SAY_LIGHT_OF_DAWN44);
-                            JumpToNextStep(3000);
-                            break;
-                        case 32:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                                temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[27]);
-                            JumpToNextStep(6000);
-                            break;
-                        case 33: // Darion supports to jump to lich king here
-                            if (ObjectAccessor::GetCreature(*me, lichKingGUID))
-                                DoCast(me, SPELL_MOGRAINE_CHARGE); // jumping charge
-                            // doesn't make it looks well, so workarounds, Darion charges, looks better
-                            me->SetSpeedRate(MOVE_RUN, 3.0f);
-                            me->SetWalk(false);
-                            SetEscortPaused(false);
-                            JumpToNextStep(0);
-                            break;
-                        case 35: // Lich king counterattacks
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                            {
-                                temp->HandleEmoteCommand(EMOTE_ONESHOT_KICK);
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN46);
-                            }
-                            me->SetSpeedRate(MOVE_RUN, 6.0f);
-                            me->SetStandState(UNIT_STAND_STATE_DEAD);
-                            SetEscortPaused(false); // Darion got kicked by lich king
-                            JumpToNextStep(0);
-                            break;
-                        case 37: // Lich king counterattacks
-                            me->SetStandState(UNIT_STAND_STATE_KNEEL);
-                            JumpToNextStep(3000);
-                            break;
-                        case 38:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN47);
-                            JumpToNextStep(8000);
-                            break;
-                        case 39:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN48);
-                            JumpToNextStep(15000);
-                            break;
-                        case 40:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN49);
-                            JumpToNextStep(17000);
-                            break;
-                        case 41: // Lich king - Apocalypse
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                            {
-                                temp->AI()->Talk(EMOTE_LIGHT_OF_DAWN11);
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN51);
-                                if (Creature* pTirion = ObjectAccessor::GetCreature(*me, tirionGUID))
-                                {
-                                    pTirion->SetStandState(UNIT_STAND_STATE_KNEEL);
-                                    //temp->CastSpell(pTirion, SPELL_APOCALYPSE, false); // not working
-                                    temp->CastSpell(pTirion, SPELL_SOUL_FEAST_TIRION, false);
-                                    pTirion->AI()->Talk(EMOTE_LIGHT_OF_DAWN12);
-                                }
-                            }
-                            JumpToNextStep(3000);
-                            break;
-                        case 42: // Maxwell yells for attack
-                            {
-                                Position lichPosition = { 0.0f, 0.0f, 0.0f, 0.0f };
-                                if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                                    lichPosition = temp->GetPosition();
-
-                                if (lichPosition.GetPositionX() != 0.0f)
-                                {
-                                    if (TempSummon* temp = me->SummonCreature(NPC_DEFENDER_OF_THE_LIGHT, LightofDawnLoc[0].GetPositionWithOffset({ float(rand32() % 10), float(rand32() % 10), 0.0f, 0.0f }), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 10s))
-                                    {
-                                        temp->SetFaction(me->GetFaction());
-                                        temp->SetEmoteState(EMOTE_STATE_ATTACK_UNARMED);
-                                        temp->GetMotionMaster()->MoveCharge(lichPosition.GetPositionX(), lichPosition.GetPositionY(), lichPosition.GetPositionZ());
-                                        defenderGUIDs[0] = temp->GetGUID();
-                                    }                                    
-                                    if (TempSummon* temp = me->SummonCreature(NPC_RIMBLAT_EARTHSHATTER, LightofDawnLoc[0].GetPositionWithOffset({ float(rand32() % 10), float(rand32() % 10), 0.0f, 0.0f }), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 10s))
-                                    {
-                                        temp->SetFaction(me->GetFaction());
-                                        temp->SetEmoteState(EMOTE_STATE_ATTACK_UNARMED);
-                                        temp->GetMotionMaster()->MoveCharge(lichPosition.GetPositionX(), lichPosition.GetPositionY(), lichPosition.GetPositionZ());
-                                        earthshatterGUIDs[0] = temp->GetGUID();
-                                    }
-                                    if (Creature* temp = ObjectAccessor::GetCreature(*me, maxwellGUID))
-                                    {
-                                        temp->SetEmoteState(EMOTE_STATE_ATTACK_UNARMED);
-                                        temp->GetMotionMaster()->MoveCharge(lichPosition.GetPositionX(), lichPosition.GetPositionY(), lichPosition.GetPositionZ());
-                                        temp->AI()->Talk(SAY_LIGHT_OF_DAWN50);
-                                    }
-                                    if (Creature* temp = ObjectAccessor::GetCreature(*me, korfaxGUID))
-                                    {
-                                        temp->SetEmoteState(EMOTE_STATE_ATTACK_UNARMED);
-                                        temp->HandleEmoteCommand(EMOTE_STATE_ATTACK_UNARMED);
-                                        temp->GetMotionMaster()->MoveCharge(lichPosition.GetPositionX(), lichPosition.GetPositionY(), lichPosition.GetPositionZ());
-                                    }
-                                    if (Creature* temp = ObjectAccessor::GetCreature(*me, eligorGUID))
-                                    {
-                                        temp->SetEmoteState(EMOTE_STATE_ATTACK_UNARMED);
-                                        temp->GetMotionMaster()->MoveCharge(lichPosition.GetPositionX(), lichPosition.GetPositionY(), lichPosition.GetPositionZ());
-                                    }
-                                }
-                            }
-                            JumpToNextStep(6000);
-                            break;
-                        case 43: // They all got kicked
-                            if (Creature* lich = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                            {
-                                lich->AI()->Talk(EMOTE_LIGHT_OF_DAWN13);
-
-                                if (Creature* temp = ObjectAccessor::GetCreature(*me, maxwellGUID))
-                                {
-                                    temp->SetEmoteState(EMOTE_ONESHOT_NONE);
-                                    temp->SetStandState(UNIT_STAND_STATE_DEAD);
-                                    temp->GetMotionMaster()->MoveKnockbackFrom(lich->GetPositionX(), lich->GetPositionY(), 6.0f, 12.0f);
-                                }
-                                if (Creature* temp = ObjectAccessor::GetCreature(*me, korfaxGUID))
-                                {
-                                    temp->SetEmoteState(EMOTE_ONESHOT_NONE);
-                                    temp->SetStandState(UNIT_STAND_STATE_DEAD);
-                                    temp->GetMotionMaster()->MoveKnockbackFrom(lich->GetPositionX(), lich->GetPositionY(), 6.0f, 12.0f);
-                                }
-                                if (Creature* temp = ObjectAccessor::GetCreature(*me, eligorGUID))
-                                {
-                                    temp->SetEmoteState(EMOTE_ONESHOT_NONE);
-                                    temp->SetStandState(UNIT_STAND_STATE_DEAD);
-                                    temp->GetMotionMaster()->MoveKnockbackFrom(lich->GetPositionX(), lich->GetPositionY(), 6.0f, 12.0f);
-                                }
-                                if (Creature* temp = ObjectAccessor::GetCreature(*me, defenderGUIDs[0]))
-                                {
-                                    temp->SetStandState(UNIT_STAND_STATE_DEAD);
-                                    temp->GetMotionMaster()->MoveKnockbackFrom(lich->GetPositionX(), lich->GetPositionY(), 6.0f, 12.0f);
-                                }
-                                if (Creature* temp = ObjectAccessor::GetCreature(*me, earthshatterGUIDs[0]))
-                                {
-                                    temp->SetStandState(UNIT_STAND_STATE_DEAD);
-                                    temp->GetMotionMaster()->MoveKnockbackFrom(lich->GetPositionX(), lich->GetPositionY(), 6.0f, 12.0f);
-                                }
-                            }
-                            JumpToNextStep(3000);
-                            break;
-                        case 44:
-                            JumpToNextStep(1000);
-                            break;
-                        case 45:
-                            Talk(SAY_LIGHT_OF_DAWN52);
-                            JumpToNextStep(5000);
-                            break;
-                        case 46: // Darion stand up, "not today"
-                            me->SetSpeedRate(MOVE_RUN, 1.0f);
-                            me->SetWalk(true);
-                            me->SetStandState(UNIT_STAND_STATE_STAND);
-                            Talk(SAY_LIGHT_OF_DAWN53);
-                            SetEscortPaused(false); // Darion throws sword
-                            JumpToNextStep(7000);
-                            break;
-                        case 47: // Ashbringer rebirth
-                            me->SetStandState(UNIT_STAND_STATE_KNEEL);
-                            Talk(EMOTE_LIGHT_OF_DAWN15);
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                            {
-                                temp->SetStandState(UNIT_STAND_STATE_STAND);
-                                temp->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, uint32(EQUIP_HIGHLORD_TIRION_FORDRING));
-                                temp->CastSpell(temp, SPELL_REBIRTH_OF_THE_ASHBRINGER, false);
-                            }
-                            JumpToNextStep(1000);
-                            break;
-                        case 48:
-                            me->SummonGameObject(GO_LIGHT_OF_DAWN, 2283.896f, -5287.914f, 83.066f, 0.f, QuaternionData(), 30s);
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                            {
-                                if (temp->HasAura(SPELL_REBIRTH_OF_THE_ASHBRINGER))
-                                    temp->RemoveAurasDueToSpell(SPELL_REBIRTH_OF_THE_ASHBRINGER);
-                                temp->CastSpell(temp, 41542, false); // workarounds, light expoded, makes it cool
-                                temp->HandleEmoteCommand(EMOTE_ONESHOT_ROAR);
-                            }
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                                temp->InterruptNonMeleeSpells(false);
-                            JumpToNextStep(2500);
-                            break;
-                        case 49:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN54);
-                            JumpToNextStep(4000);
-                            break;
-                        case 50:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN55);
-                            JumpToNextStep(5000);
-                            break;
-                        case 51:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN56);
-                            JumpToNextStep(1000);
-                            break;
-                        case 52: // Tiron charges
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                            {
-                                temp->AI()->Talk(EMOTE_LIGHT_OF_DAWN16);
-                                temp->CastSpell(temp, SPELL_TIRION_CHARGE, false); // jumping charge
-                                temp->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_READY2H);
-                                temp->SetSpeedRate(MOVE_RUN, 3.0f); // workarounds, make Tirion still running
-                                temp->SetWalk(false);
-                                temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[2]);
-                                if (Creature* lktemp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                                    lktemp->Relocate(LightofDawnLoc[28]); // workarounds, he should kick back by Tirion, but here we relocate him
-                            }
-                            JumpToNextStep(1500);
-                            break;
-                        case 53:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN57);
-                            JumpToNextStep(1000);
-                            break;
-                        case 54:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                            {
-                                temp->SetSpeedRate(MOVE_RUN, 1.0f);
-                                me->SetWalk(true);
-                                temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[29]); // 26
-                            }
-                            JumpToNextStep(4000);
-                            break;
-                        case 55:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                                temp->SetStandState(UNIT_STAND_STATE_KNEEL);
-                            JumpToNextStep(2000);
-                            break;
-                        case 56:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                                temp->SetStandState(UNIT_STAND_STATE_STAND);
-                            JumpToNextStep(1500);
-                            break;
-                        case 57:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN58);
-                            JumpToNextStep(10000);
-                            break;
-                        case 58:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN59);
-                            JumpToNextStep(10000);
-                            break;
-                        case 59:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID))
-                                temp->CastSpell(temp, SPELL_TELEPORT_VISUAL, false);
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID)) // Tirion runs to Darion
-                            {
-                                temp->SetEmoteState(EMOTE_ONESHOT_NONE);
-                                temp->SetSpeedRate(MOVE_RUN, 1.0f);
-                                temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[6]);
-                            }
-                            JumpToNextStep(2500);
-                            break;
-                        case 60:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, lichKingGUID)) // Lich king disappears here
-                            {
-                                temp->AI()->Talk(EMOTE_LIGHT_OF_DAWN17);
-                                temp->KillSelf();
-                            }
-                            JumpToNextStep(10000);
-                            break;
-                        case 61:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, maxwellGUID))
-                            {
-                                temp->SetStandState(UNIT_STAND_STATE_STAND);
-                                temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[14]);
-                            }
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, korfaxGUID))
-                            {
-                                temp->SetStandState(UNIT_STAND_STATE_STAND);
-                                temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[11]);
-                            }
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, eligorGUID))
-                            {
-                                temp->SetStandState(UNIT_STAND_STATE_STAND);
-                                temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[17]);
-                            }
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN60);
-                            JumpToNextStep(3000);
-                            break;
-                        case 62:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                            {
-                                temp->SetWalk(true);
-                                temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[7]);
-                            }
-                            JumpToNextStep(5500);
-                            break;
-                        case 63:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                            {
-                                temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[8]);
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN61);
-                            }
-                            JumpToNextStep(15000);
-                            break;
-                        case 64:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN62);
-                            JumpToNextStep(7000);
-                            break;
-                        case 65:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN63);
-                            JumpToNextStep(10000);
-                            break;
-                        case 66:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN64);
-                            JumpToNextStep(11000);
-                            break;
-                        case 67:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN65);
-                            JumpToNextStep(10000);
-                            break;
-                        case 68:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN66);
-                            JumpToNextStep(8000);
-                            break;
-                        case 69:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                                temp->AI()->Talk(SAY_LIGHT_OF_DAWN67);
-                            JumpToNextStep(10000);
-                            break;
-                        case 70:
-                            me->SetStandState(UNIT_STAND_STATE_STAND);
-                            Talk(SAY_LIGHT_OF_DAWN68);
-                            JumpToNextStep(10000);
-                            break;
-                        case 71:
+                        if (Creature* hero = ObjectAccessor::GetCreature(*me, guid))
                         {
-                            std::list<Player*> players;
-                            me->GetPlayerListInGrid(players, 100.0f);
-                            for (Player* player : players)
-                                player->CastSpell(player, SPELL_THE_LIGHT_OF_DAWN_Q, true);
-
-                            JumpToNextStep(1000);
-                            break;
+                            if (hero->IsAlive())
+                            {
+                                hero->Dismount();
+                                scourge.push_back(hero);
+                            }
                         }
-                        case 72:
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, koltiraGUID))
-                                temp->DespawnOrUnsummon();
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, orbazGUID))
-                                temp->DespawnOrUnsummon();
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, thassarianGUID))
-                                temp->DespawnOrUnsummon();
-                            DespawnNPC(maxwellGUID);
-                            DespawnNPC(korfaxGUID);
-                            DespawnNPC(eligorGUID);
-
-                            me->SummonCreature(NPC_HIGHLORD_DARION_MOGRAINE, me->GetPosition(), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 3min);
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                                temp->DespawnOrUnsummon(3min);
-                            me->SetRespawnTime(4 * MINUTE * IN_MILLISECONDS);
-                            me->SetRespawnDelay(1 * IN_MILLISECONDS);
-                            me->DespawnOrUnsummon();
-                            break;
-                        default:
-                            break;
                     }
 
-                } else phaseTimer -= diff;
-            }
-            // ******* During battle *****************************************************************
-            else
-            {
-                if (antiMagicZoneTimer <= diff)
-                {
-                    DoCast(me, SPELL_ANTI_MAGIC_ZONE1);
-                    antiMagicZoneTimer = urand(25000, 30000);
-                }
-                else
-                    antiMagicZoneTimer -= diff;
+                    for (ObjectGuid const& guid : _summons)
+                    {
+                        if (Creature* summon = ObjectAccessor::GetCreature(*me, guid))
+                        {
+                            if (!summon->IsAlive())
+                                continue;
 
-                if (deathStrikeTimer <= diff)
+                            if (summon->GetFaction() == FACTION_UNDEAD_SCOURGE_3)
+                                scourge.push_back(summon);
+                            else if (summon->GetFaction() == FACTION_SCARLET_CRUSADE)
+                                dawn.push_back(summon);
+                        }
+                    }
+
+                    if (!dawn.empty())
+                        for (Creature* attacker : scourge)
+                            if (!attacker->GetVictim())
+                                attacker->AI()->AttackStart(Trinity::Containers::SelectRandomContainerElement(dawn));
+
+                    for (Creature* attacker : dawn)
+                        if (!attacker->GetVictim())
+                            attacker->AI()->AttackStart(Trinity::Containers::SelectRandomContainerElement(scourge));
+
+                    context.Repeat(5s);
+                })
+                .Schedule(1s, 6s, GROUP_BATTLE, [this](TaskContext context)
+                {
+                    DoCastSelf(SPELL_ANTI_MAGIC_ZONE);
+                    context.Repeat(25s, 30s);
+                })
+                .Schedule(5s, 10s, GROUP_BATTLE, [this](TaskContext context)
                 {
                     DoCastVictim(SPELL_DEATH_STRIKE);
-                    deathStrikeTimer = urand(5000, 10000);
-                }
-                else
-                    deathStrikeTimer -= diff;
-
-                if (deathEmbraceTimer <= diff)
+                    context.Repeat(5s, 10s);
+                })
+                .Schedule(5s, 10s, GROUP_BATTLE, [this](TaskContext context)
                 {
-                    DoCastVictim(SPELL_DEATH_EMBRACE);
-                    deathEmbraceTimer = urand(5000, 10000);
-                }
-                else
-                    deathEmbraceTimer -= diff;
-
-                if (icyTouchTimer <= diff)
+                    DoCastSelf(SPELL_DEATHS_EMBRACE);
+                    context.Repeat(5s, 10s);
+                })
+                .Schedule(5s, 10s, GROUP_BATTLE, [this](TaskContext context)
                 {
-                    DoCastVictim(SPELL_ICY_TOUCH1);
-                    icyTouchTimer = urand(5000, 10000);
-                }
-                else
-                    icyTouchTimer -= diff;
-
-                if (unholyBlightTimer <= diff)
+                    DoCastVictim(SPELL_ICY_TOUCH);
+                    context.Repeat(5s, 10s);
+                })
+                .Schedule(5s, 10s, GROUP_BATTLE, [this](TaskContext context)
                 {
-                    DoCastVictim(SPELL_UNHOLY_BLIGHT);
-                    unholyBlightTimer = urand(5000, 10000);
-                }
-                else
-                    unholyBlightTimer -= diff;
-
-                if (fightSpeechTimer <= diff)
+                    DoCastSelf(SPELL_UNHOLY_BLIGHT);
+                    context.Repeat(5s, 10s);
+                })
+                .Schedule(15s, GROUP_BATTLE, [this](TaskContext context)
                 {
-                    Talk(SAY_LIGHT_OF_DAWN09);
-                    fightSpeechTimer = urand(15000, 20000);
-                }
-                else
-                    fightSpeechTimer -= diff;
-
-                // Check spawns
-                if (spawnCheckTimer <= diff)
+                    Talk(SAY_DARION_BATTLE);
+                    context.Repeat(15s, 20s);
+                })
+                .Schedule(295s, GROUP_BATTLE, [this](TaskContext /*context*/)
                 {
-                    SpawnNPC();
-                    spawnCheckTimer = 1000;
-                }
-                else
-                    spawnCheckTimer -= diff;
-
-                // Check targets
-                if (targetCheckTimer <= diff)
-                {
-                    for (uint8 i = 0; i < ENCOUNTER_GHOUL_NUMBER; ++i)
-                        NPCChangeTarget(ghoulGUIDs[i]);
-                    for (uint8 i = 0; i < ENCOUNTER_WARRIOR_NUMBER; ++i)
-                        NPCChangeTarget(warriorGUIDs[i]);
-                    for (uint8 i = 0; i < ENCOUNTER_ABOMINATION_NUMBER; ++i)
-                        NPCChangeTarget(abominationGUIDs[i]);
-                    for (uint8 i = 0; i < ENCOUNTER_BEHEMOTH_NUMBER; ++i)
-                        NPCChangeTarget(behemothGUIDs[i]);
-                    NPCChangeTarget(koltiraGUID);
-                    NPCChangeTarget(orbazGUID);
-                    NPCChangeTarget(thassarianGUID);
-                    targetCheckTimer = 10000;
-                }
-                else
-                    targetCheckTimer -= diff;
-
-                // Battle end
-                if (fightDuration <= diff + 5000)
-                {
-                    if (tirionGUID.IsEmpty())
+                    if (TempSummon* tirion = me->SummonCreature(NPC_HIGHLORD_TIRION_FORDRING, TirionSpawnPos, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 20min))
                     {
-                        if (Creature* temp = me->SummonCreature(NPC_HIGHLORD_TIRION_FORDRING, LightofDawnLoc[0].GetPositionWithOffset({ 0.0f, 0.0f, 0.0f, 1.528f }), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 10min))
-                        {
-                            temp->SetFaction(me->GetFaction());
-                            temp->SetVirtualItem(0, uint32(EQUIP_UNEQUIP));
-                            temp->AI()->Talk(SAY_LIGHT_OF_DAWN25);
-                            tirionGUID = temp->GetGUID();
-                        }
+                        tirion->SetFaction(me->GetFaction());
+                        tirion->AI()->Talk(SAY_TIRION_CANNOT_WIN);
                     }
-                }
-                if (fightDuration <= diff)
+                })
+                .Schedule(300s, GROUP_BATTLE, [this](TaskContext context)
                 {
-                    inBattle = false;
-                    fightDuration = 300000;
+                    _battleInProgress = false;
+                    context.CancelGroup(GROUP_BATTLE);
+
                     me->RemoveAllAuras();
-                    me->GetThreatManager().ClearAllThreat();
                     me->CombatStop(true);
-                    me->InterruptNonMeleeSpells(false);
-                    me->SetWalk(false);
-                    for (uint8 i = 0; i < ENCOUNTER_DEFENDER_NUMBER; ++i)
-                        DespawnNPC(defenderGUIDs[i]);
-                    for (uint8 i = 0; i < ENCOUNTER_EARTHSHATTER_NUMBER; ++i)
-                        DespawnNPC(earthshatterGUIDs[i]);
-                    for (uint8 i = 0; i < ENCOUNTER_ABOMINATION_NUMBER; ++i)
-                        DespawnNPC(abominationGUIDs[i]);
-                    for (uint8 i = 0; i < ENCOUNTER_BEHEMOTH_NUMBER; ++i)
-                        DespawnNPC(behemothGUIDs[i]);
-                    for (uint8 i = 0; i < ENCOUNTER_GHOUL_NUMBER; ++i)
-                        DespawnNPC(ghoulGUIDs[i]);
-                    for (uint8 i = 0; i < ENCOUNTER_WARRIOR_NUMBER; ++i)
-                        DespawnNPC(warriorGUIDs[i]);
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, korfaxGUID))
-                    {
-                        temp->RemoveAllAuras();
-                        temp->GetThreatManager().ClearAllThreat();
-                        temp->CombatStop(true);
-                        temp->AttackStop();
-                        temp->SetFaction(me->GetFaction());
-                        temp->SetWalk(false);
-                        temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[9]);
-                    }
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, maxwellGUID))
-                    {
-                        temp->RemoveAllAuras();
-                        temp->GetThreatManager().ClearAllThreat();
-                        temp->CombatStop(true);
-                        temp->AttackStop();
-                        temp->SetFaction(me->GetFaction());
-                        temp->SetWalk(false);
-                        temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[12]);
-                    }
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, eligorGUID))
-                    {
-                        temp->RemoveAllAuras();
-                        temp->GetThreatManager().ClearAllThreat();
-                        temp->CombatStop(true);
-                        temp->AttackStop();
-                        temp->SetFaction(me->GetFaction());
-                        temp->SetWalk(false);
-                        temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[15]);
-                    }
-                    DespawnNPC(rayneGUID);
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, koltiraGUID))
-                    {
-                        temp->RemoveAllAuras();
-                        temp->GetThreatManager().ClearAllThreat();
-                        temp->CombatStop(true);
-                        temp->AttackStop();
-                        temp->SetFaction(me->GetFaction());
-                        temp->SetWalk(false);
-                        temp->Dismount();
-                        temp->ClearUnitState(UNIT_STATE_EVADE);
-                        temp->SetSpawnHealth();
-                        temp->GetMotionMaster()->MoveIdle();
-                        temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[18]);
-                        temp->CastSpell(temp, SPELL_THE_LIGHT_OF_DAWN, false);
-                    }
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, orbazGUID))
-                    {
-                        temp->RemoveAllAuras();
-                        temp->GetThreatManager().ClearAllThreat();
-                        temp->CombatStop(true);
-                        temp->AI()->Talk(EMOTE_LIGHT_OF_DAWN04);
-                        temp->Dismount();
-                        temp->ClearUnitState(UNIT_STATE_EVADE);
-                        temp->GetMotionMaster()->MoveIdle();
-                        temp->DespawnOrUnsummon(5s);
-                    }
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, thassarianGUID))
-                    {
-                        temp->RemoveAllAuras();
-                        temp->GetThreatManager().ClearAllThreat();
-                        temp->CombatStop(true);
-                        temp->AttackStop();
-                        temp->SetFaction(me->GetFaction());
-                        temp->SetWalk(false);
-                        temp->Dismount();
-                        temp->ClearUnitState(UNIT_STATE_EVADE);
-                        temp->SetSpawnHealth();
-                        temp->GetMotionMaster()->MoveIdle();
-                        temp->GetMotionMaster()->MovePoint(0, LightofDawnLoc[20]);
-                        temp->CastSpell(temp, SPELL_THE_LIGHT_OF_DAWN, false);
-                    }
-                    if (Creature* temp = ObjectAccessor::GetCreature(*me, tirionGUID))
-                        temp->AI()->Talk(SAY_LIGHT_OF_DAWN26);
-                    SetEscortPaused(false);
-                }
-                else
-                    fightDuration -= diff;
+                    me->SetImmuneToNPC(true);
+                    EngagementOver();
 
-                DoMeleeAttackIfReady();
-            }
-        }
+                    for (uint32 entry : { NPC_VOLATILE_GHOUL, NPC_RAMPAGING_ABOMINATION, NPC_WARRIOR_OF_THE_FROZEN_WASTES, NPC_FLESH_BEHEMOTH, NPC_DEFENDER_OF_THE_LIGHT, NPC_RIMBLAT_EARTHSHATTER, NPC_RAYNE })
+                        _summons.DespawnEntry(entry);
 
-        void JumpToNextStep(uint32 uiTimer)
-        {
-            phaseTimer = uiTimer;
-            ++step;
-        }
-
-        void NPCChangeTarget(ObjectGuid guid)
-        {
-            if (Creature* temp = ObjectAccessor::GetCreature(*me, guid))
-                if (temp->IsAlive())
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
-                        if (target->IsAlive())
+                    std::pair<ObjectGuid, Position> const retreats[] = { { _korfaxGUID, KorfaxRetreatPos }, { _maxwellGUID, MaxwellRetreatPos }, { _eligorGUID, EligorRetreatPos }, { _koltiraGUID, KoltiraRetreatPos }, { _thassarianGUID, ThassarianRetreatPos } };
+                    for (auto const& [guid, pos] : retreats)
+                    {
+                        if (Creature* retreating = ObjectAccessor::GetCreature(*me, guid))
                         {
-                            temp->GetThreatManager().AddThreat(target, 1000.0f);
-                            target->SetInCombatWith(temp);
-                            temp->AI()->AttackStart(target);
+                            if (!retreating->IsAlive())
+                                continue;
+
+                            retreating->SetFaction(me->GetFaction());
+                            retreating->AI()->EnterEvadeMode();
+                            retreating->Dismount();
+                            retreating->SetWalk(false);
+                            retreating->GetMotionMaster()->MovePoint(0, pos);
                         }
+                    }
+
+                    for (ObjectGuid const& guid : { _koltiraGUID, _thassarianGUID })
+                        if (Creature* hero = ObjectAccessor::GetCreature(*me, guid))
+                            if (hero->IsAlive())
+                                hero->CastSpell(hero, SPELL_THE_LIGHT_OF_DAWN, true);
+
+                    if (Creature* orbaz = ObjectAccessor::GetCreature(*me, _orbazGUID))
+                    {
+                        if (orbaz->IsAlive())
+                        {
+                            orbaz->AI()->Talk(EMOTE_ORBAZ_FLEES);
+                            orbaz->AI()->EnterEvadeMode();
+                        }
+
+                        orbaz->DespawnOrUnsummon(5s, 30s);
+                    }
+
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->AI()->Talk(SAY_TIRION_BRING_THEM);
+
+                    DoCastSelf(SPELL_THE_LIGHT_OF_DAWN, true);
+                    me->SetWalk(false);
+                    me->GetMotionMaster()->MovePoint(POINT_CHAPEL, DarionChapelPos);
+                });
+                break;
+            }
+            case POINT_CHAPEL:
+            {
+                Talk(EMOTE_DARION_KNEELS_IN_DEFEAT);
+                me->RemoveAurasDueToSpell(SPELL_THE_LIGHT_OF_DAWN);
+                me->SetWalk(true);
+                me->GetMotionMaster()->MovePoint(0, DarionKneelPos);
+
+                std::pair<ObjectGuid, Position> const gatherings[] = { { _korfaxGUID, KorfaxChapelPos }, { _maxwellGUID, MaxwellChapelPos }, { _eligorGUID, EligorChapelPos }, { _koltiraGUID, KoltiraChapelPos }, { _thassarianGUID, ThassarianChapelPos } };
+                for (auto const& [guid, pos] : gatherings)
+                {
+                    if (Creature* gathering = ObjectAccessor::GetCreature(*me, guid))
+                    {
+                        gathering->RemoveAurasDueToSpell(SPELL_THE_LIGHT_OF_DAWN);
+                        gathering->SetWalk(true);
+                        gathering->GetMotionMaster()->MovePoint(0, pos);
+                    }
+                }
+
+                if (Creature* korfax = ObjectAccessor::GetCreature(*me, _korfaxGUID))
+                    korfax->SetEmoteState(EMOTE_STATE_READY2H);
+
+                _scheduler.Schedule(1500ms, [this](TaskContext /*context*/)
+                {
+                    Talk(SAY_DARION_STAND_DOWN);
+                    me->SetStandState(UNIT_STAND_STATE_KNEEL);
+                    for (ObjectGuid const& guid : { _koltiraGUID, _thassarianGUID })
+                        if (Creature* hero = ObjectAccessor::GetCreature(*me, guid))
+                            if (hero->IsAlive())
+                                hero->SetStandState(UNIT_STAND_STATE_KNEEL);
+                })
+                .Schedule(10s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                    {
+                        tirion->Dismount();
+                        tirion->AI()->Talk(SAY_TIRION_LEARNED_NOTHING);
+                    }
+                })
+                .Schedule(31s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->AI()->Talk(SAY_TIRION_YOUR_MASTER_KNOWS);
+                })
+                .Schedule(44s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->AI()->Talk(SAY_TIRION_ANGUISH);
+                })
+                .Schedule(57s, [this](TaskContext /*context*/)
+                {
+                    me->SetStandState(UNIT_STAND_STATE_STAND);
+                    Talk(SAY_DARION_SAVE_YOUR_BREATH);
+                })
+                .Schedule(64s, [this](TaskContext /*context*/)
+                {
+                    if (TempSummon* alexandros = me->SummonCreature(NPC_HIGHLORD_ALEXANDROS_MOGRAINE, AlexandrosSpawnPos, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 20min))
+                    {
+                        alexandros->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                        alexandros->CastSpell(alexandros, SPELL_ALEXANDROS_MOGRAINE_SPAWN, true);
+                        alexandros->AI()->Talk(EMOTE_ALEXANDROS_ARRIVES);
+                    }
+                })
+                .Schedule(68s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* alexandros = ObjectAccessor::GetCreature(*me, _alexandrosGUID))
+                    {
+                        alexandros->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                        alexandros->GetMotionMaster()->MovePoint(0, AlexandrosForwardPos);
+                        alexandros->AI()->Talk(SAY_ALEXANDROS_MY_SON);
+                    }
+
+                    me->GetMotionMaster()->MovePoint(0, DarionChapelPos);
+                })
+                .Schedule(69500ms, [this](TaskContext /*context*/)
+                {
+                    Talk(SAY_DARION_FATHER);
+                })
+                .Schedule(73s, [this](TaskContext /*context*/)
+                {
+                    me->SetStandState(UNIT_STAND_STATE_KNEEL);
+                    Talk(SAY_DARION_WHAT_IS);
+                })
+                .Schedule(78s, [this](TaskContext /*context*/)
+                {
+                    if (TempSummon* youngDarion = me->SummonCreature(NPC_DARION_MOGRAINE, YoungDarionSpawnPos, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 20min))
+                    {
+                        youngDarion->SetWalk(false);
+                        youngDarion->AI()->Talk(SAY_YOUNG_DARION_RETURNED);
+                    }
+                })
+                .Schedule(82s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* youngDarion = ObjectAccessor::GetCreature(*me, _youngDarionGUID))
+                    {
+                        youngDarion->AI()->Talk(EMOTE_YOUNG_DARION_SHADE);
+                        youngDarion->GetMotionMaster()->MovePoint(0, YoungDarionHugPos);
+                    }
+                })
+                .Schedule(86s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* youngDarion = ObjectAccessor::GetCreature(*me, _youngDarionGUID))
+                        youngDarion->AI()->Talk(SAY_YOUNG_DARION_GONE_LONG);
+                })
+                .Schedule(90s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* youngDarion = ObjectAccessor::GetCreature(*me, _youngDarionGUID))
+                        youngDarion->AI()->Talk(EMOTE_YOUNG_DARION_HUGS);
+                })
+                .Schedule(94s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* alexandros = ObjectAccessor::GetCreature(*me, _alexandrosGUID))
+                        alexandros->AI()->Talk(SAY_ALEXANDROS_MY_HOME);
+                })
+                .Schedule(102s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* youngDarion = ObjectAccessor::GetCreature(*me, _youngDarionGUID))
+                        youngDarion->AI()->Talk(SAY_YOUNG_DARION_JOIN_THE_WAR);
+                })
+                .Schedule(110s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* alexandros = ObjectAccessor::GetCreature(*me, _alexandrosGUID))
+                        alexandros->AI()->Talk(SAY_ALEXANDROS_BARELY_OF_AGE);
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->GetMotionMaster()->MovePoint(0, TirionForwardPos);
+                })
+                .Schedule(125s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* youngDarion = ObjectAccessor::GetCreature(*me, _youngDarionGUID))
+                        youngDarion->AI()->Talk(SAY_YOUNG_DARION_ON_MY_FEET);
+                })
+                .Schedule(136s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* alexandros = ObjectAccessor::GetCreature(*me, _alexandrosGUID))
+                        alexandros->AI()->Talk(SAY_ALEXANDROS_ASHBRINGER);
+                })
+                .Schedule(141s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* youngDarion = ObjectAccessor::GetCreature(*me, _youngDarionGUID))
+                        youngDarion->DespawnOrUnsummon();
+                })
+                .Schedule(165s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* alexandros = ObjectAccessor::GetCreature(*me, _alexandrosGUID))
+                        alexandros->AI()->Talk(SAY_ALEXANDROS_DO_NOT_FORGET);
+                })
+                .Schedule(171s, [this](TaskContext /*context*/)
+                {
+                    if (TempSummon* lichKing = me->SummonCreature(NPC_THE_LICH_KING, LichKingSpawnPos, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 20min))
+                    {
+                        lichKing->AI()->Talk(SAY_LICH_KING_TOUCHING);
+                        if (Creature* alexandros = ObjectAccessor::GetCreature(*me, _alexandrosGUID))
+                            lichKing->CastSpell(alexandros, SPELL_SOUL_FEAST_ALEXANDROS);
+                    }
+                })
+                .Schedule(173s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* alexandros = ObjectAccessor::GetCreature(*me, _alexandrosGUID))
+                    {
+                        alexandros->AI()->Talk(EMOTE_ALEXANDROS_DISAPPEARS);
+                        alexandros->DespawnOrUnsummon();
+                    }
+
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                    {
+                        lichKing->InterruptNonMeleeSpells(false);
+                        lichKing->AI()->Talk(SAY_LICH_KING_HE_IS_MINE);
+                    }
+                })
+                .Schedule(176s, [this](TaskContext /*context*/)
+                {
+                    me->SetStandState(UNIT_STAND_STATE_STAND);
+                    Talk(EMOTE_DARION_ANGRY);
+                    Talk(SAY_DARION_BETRAYED);
+                })
+                .Schedule(179s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                        lichKing->GetMotionMaster()->MovePoint(0, LichKingForwardPos);
+                })
+                .Schedule(185s, [this](TaskContext /*context*/)
+                {
+                    me->SetWalk(false);
+                    DoCastSelf(SPELL_MOGRAINE_CHARGE);
+                    me->GetMotionMaster()->MovePoint(0, DarionChargePos);
+                })
+                .Schedule(186s, [this](TaskContext /*context*/)
+                {
+                    me->HandleEmoteCommand(EMOTE_ONESHOT_SPECIALATTACK1H);
+                })
+                .Schedule(187s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                    {
+                        lichKing->HandleEmoteCommand(EMOTE_ONESHOT_KICK);
+                        lichKing->AI()->Talk(SAY_LICH_KING_PATHETIC);
+                    }
+
+                    me->SetStandState(UNIT_STAND_STATE_DEAD);
+                    me->GetMotionMaster()->MoveJump(DarionKickedPos, 20.0f, 10.0f);
+                })
+                .Schedule(190s, [this](TaskContext /*context*/)
+                {
+                    me->SetStandState(UNIT_STAND_STATE_KNEEL);
+                })
+                .Schedule(193s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->AI()->Talk(SAY_TIRION_MONSTER);
+                })
+                .Schedule(201s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                        lichKing->AI()->Talk(SAY_LICH_KING_YOU_WERE_RIGHT);
+                })
+                .Schedule(216s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                        lichKing->AI()->Talk(SAY_LICH_KING_HOW_SIMPLE);
+                })
+                .Schedule(233s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                    {
+                        lichKing->AI()->Talk(EMOTE_LICH_KING_CASTS_ON_TIRION);
+                        lichKing->AI()->Talk(SAY_LICH_KING_APOCALYPSE);
+                        if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        {
+                            tirion->SetStandState(UNIT_STAND_STATE_KNEEL);
+                            lichKing->CastSpell(tirion, SPELL_SOUL_FEAST_TIRION);
+                            tirion->AI()->Talk(EMOTE_TIRION_GASPS);
+                        }
+                    }
+                })
+                .Schedule(236s, [this](TaskContext /*context*/)
+                {
+                    Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID);
+                    if (!lichKing)
+                        return;
+
+                    _chargerGUIDs = { _korfaxGUID, _maxwellGUID, _eligorGUID };
+                    for (uint32 entry : { NPC_DEFENDER_OF_THE_LIGHT, NPC_RIMBLAT_EARTHSHATTER })
+                    {
+                        if (TempSummon* charger = me->SummonCreature(entry, me->GetRandomPoint(TirionSpawnPos, 5.0f), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 10s))
+                        {
+                            charger->SetFaction(me->GetFaction());
+                            _chargerGUIDs.push_back(charger->GetGUID());
+                        }
+                    }
+
+                    for (ObjectGuid const& guid : _chargerGUIDs)
+                    {
+                        if (Creature* charger = ObjectAccessor::GetCreature(*me, guid))
+                        {
+                            charger->SetEmoteState(EMOTE_STATE_ATTACK_UNARMED);
+                            charger->GetMotionMaster()->MoveCharge(lichKing->GetPositionX(), lichKing->GetPositionY(), lichKing->GetPositionZ());
+                        }
+                    }
+
+                    if (Creature* maxwell = ObjectAccessor::GetCreature(*me, _maxwellGUID))
+                        maxwell->AI()->Talk(SAY_MAXWELL_ATTACK);
+                })
+                .Schedule(242s, [this](TaskContext /*context*/)
+                {
+                    Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID);
+                    if (!lichKing)
+                        return;
+
+                    lichKing->AI()->Talk(EMOTE_LICH_KING_KILLS_DEFENDERS);
+                    for (ObjectGuid const& guid : _chargerGUIDs)
+                    {
+                        if (Creature* charger = ObjectAccessor::GetCreature(*me, guid))
+                        {
+                            charger->SetEmoteState(EMOTE_ONESHOT_NONE);
+                            charger->SetStandState(UNIT_STAND_STATE_DEAD);
+                            charger->GetMotionMaster()->MoveKnockbackFrom(lichKing->GetPositionX(), lichKing->GetPositionY(), 6.0f, 12.0f);
+                        }
+                    }
+                })
+                .Schedule(246s, [this](TaskContext /*context*/)
+                {
+                    Talk(SAY_DARION_NOT_TODAY);
+                })
+                .Schedule(251s, [this](TaskContext /*context*/)
+                {
+                    me->SetStandState(UNIT_STAND_STATE_STAND);
+                    Talk(SAY_DARION_TIRION);
+                    me->SetWalk(true);
+                    me->GetMotionMaster()->MovePoint(0, DarionThrowPos);
+                })
+                .Schedule(253s, [this](TaskContext /*context*/)
+                {
+                    me->SetVirtualItem(0, EQUIP_UNEQUIP);
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        me->CastSpell(tirion, SPELL_ASHBRINGER, true);
+                    Talk(EMOTE_DARION_THROWS_ASHBRINGER);
+                })
+                .Schedule(258s, [this](TaskContext /*context*/)
+                {
+                    me->SetStandState(UNIT_STAND_STATE_KNEEL);
+                    Talk(EMOTE_DARION_COLLAPSES);
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                    {
+                        tirion->SetStandState(UNIT_STAND_STATE_STAND);
+                        tirion->SetVirtualItem(0, EQUIP_ASHBRINGER);
+                        tirion->CastSpell(tirion, SPELL_REBIRTH_OF_THE_ASHBRINGER);
+                    }
+                })
+                .Schedule(259s, [this](TaskContext /*context*/)
+                {
+                    me->SummonGameObject(GO_LIGHT_OF_DAWN, LightOfDawnPos, QuaternionData(), 30s);
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                    {
+                        tirion->RemoveAurasDueToSpell(SPELL_REBIRTH_OF_THE_ASHBRINGER);
+                        tirion->CastSpell(tirion, SPELL_SOUL_RELEASE);
+                        tirion->HandleEmoteCommand(EMOTE_ONESHOT_ROAR);
+                    }
+
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                        lichKing->InterruptNonMeleeSpells(false);
+                })
+                .Schedule(261500ms, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->AI()->Talk(SAY_TIRION_ARTHAS);
+                })
+                .Schedule(265500ms, [this](TaskContext /*context*/)
+                {
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                        lichKing->AI()->Talk(SAY_LICH_KING_WHAT_IS_THIS);
+                })
+                .Schedule(270500ms, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->AI()->Talk(SAY_TIRION_YOUR_END);
+                })
+                .Schedule(271500ms, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                    {
+                        tirion->AI()->Talk(EMOTE_TIRION_CHARGES);
+                        tirion->CastSpell(tirion, SPELL_TIRION_CHARGE);
+                        tirion->SetEmoteState(EMOTE_STATE_READY2H);
+                        tirion->SetWalk(false);
+                        tirion->GetMotionMaster()->MovePoint(0, TirionChargePos);
+                    }
+
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                        lichKing->GetMotionMaster()->MoveJump(LichKingKnockedPos, 10.0f, 5.0f);
+                })
+                .Schedule(273s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                        lichKing->AI()->Talk(SAY_LICH_KING_IMPOSSIBLE);
+                })
+                .Schedule(274s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                        lichKing->GetMotionMaster()->MovePoint(0, LichKingRecoverPos);
+                })
+                .Schedule(278s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                        lichKing->SetStandState(UNIT_STAND_STATE_KNEEL);
+                })
+                .Schedule(280s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                        lichKing->SetStandState(UNIT_STAND_STATE_STAND);
+                })
+                .Schedule(281500ms, [this](TaskContext /*context*/)
+                {
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                        lichKing->AI()->Talk(SAY_LICH_KING_NOT_OVER);
+                })
+                .Schedule(291500ms, [this](TaskContext /*context*/)
+                {
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                        lichKing->AI()->Talk(SAY_LICH_KING_NEXT_WE_MEET);
+                })
+                .Schedule(301500ms, [this](TaskContext /*context*/)
+                {
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                        lichKing->CastSpell(lichKing, SPELL_TELEPORT_VISUAL);
+
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                    {
+                        tirion->SetEmoteState(EMOTE_ONESHOT_NONE);
+                        tirion->GetMotionMaster()->MovePoint(0, TirionRunPos);
+                    }
+                })
+                .Schedule(304s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
+                    {
+                        lichKing->AI()->Talk(EMOTE_LICH_KING_DISAPPEARS);
+                        lichKing->DespawnOrUnsummon();
+                    }
+                })
+                .Schedule(314s, [this](TaskContext /*context*/)
+                {
+                    std::pair<ObjectGuid, Position> const speechSpots[] = { { _korfaxGUID, KorfaxSpeechPos }, { _maxwellGUID, MaxwellSpeechPos }, { _eligorGUID, EligorSpeechPos } };
+                    for (auto const& [guid, pos] : speechSpots)
+                    {
+                        if (Creature* champion = ObjectAccessor::GetCreature(*me, guid))
+                        {
+                            champion->SetStandState(UNIT_STAND_STATE_STAND);
+                            champion->GetMotionMaster()->MovePoint(0, pos);
+                        }
+                    }
+
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->AI()->Talk(SAY_TIRION_RISE_DARION);
+                })
+                .Schedule(317s, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                    {
+                        tirion->SetWalk(true);
+                        tirion->GetMotionMaster()->MovePoint(0, TirionApproachPos);
+                    }
+                })
+                .Schedule(322500ms, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                    {
+                        tirion->GetMotionMaster()->MovePoint(0, TirionSpeechPos);
+                        tirion->AI()->Talk(SAY_TIRION_TERRIBLE_TRAGEDY);
+                    }
+                })
+                .Schedule(337500ms, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->AI()->Talk(SAY_TIRION_REMAIN_VIGILANT);
+                })
+                .Schedule(344500ms, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->AI()->Talk(SAY_TIRION_MUST_ANSWER);
+                })
+                .Schedule(354500ms, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->AI()->Talk(SAY_TIRION_PROMISE);
+                })
+                .Schedule(365500ms, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->AI()->Talk(SAY_TIRION_COME_TOGETHER);
+                })
+                .Schedule(375500ms, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->AI()->Talk(SAY_TIRION_ICECROWN);
+                })
+                .Schedule(383500ms, [this](TaskContext /*context*/)
+                {
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->AI()->Talk(SAY_TIRION_ARGENT_CRUSADE);
+                })
+                .Schedule(393500ms, [this](TaskContext /*context*/)
+                {
+                    me->SetStandState(UNIT_STAND_STATE_STAND);
+                    Talk(SAY_DARION_EBON_BLADE);
+                })
+                .Schedule(403500ms, [this](TaskContext /*context*/)
+                {
+                    std::vector<Player*> players;
+                    me->GetPlayerListInGrid(players, 100.0f, false);
+                    for (Player* player : players)
+                        player->CastSpell(player, SPELL_THE_LIGHT_OF_DAWN_CREDIT, true);
+                })
+                .Schedule(404500ms, [this](TaskContext /*context*/)
+                {
+                    for (ObjectGuid const& guid : { _koltiraGUID, _thassarianGUID })
+                        if (Creature* hero = ObjectAccessor::GetCreature(*me, guid))
+                            hero->DespawnOrUnsummon(0s, 30s);
+
+                    for (uint32 entry : { NPC_KORFAX_CHAMPION_OF_THE_LIGHT, NPC_LORD_MAXWELL_TYROSUS, NPC_COMMANDER_ELIGOR_DAWNBRINGER })
+                        _summons.DespawnEntry(entry);
+
+                    if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
+                        tirion->DespawnOrUnsummon(3min);
+
+                    if (ZoneScript* zoneScript = me->GetZoneScript())
+                        zoneScript->SetData(DATA_EVENT_IN_PROGRESS, 0);
+
+                    me->ReplaceAllNpcFlags(UNIT_NPC_FLAG_QUESTGIVER);
+                    me->DespawnOrUnsummon(3min, 10s);
+                });
+                break;
+            }
+            default:
+                break;
         }
-
-        void SpawnNPC()
-        {
-            Unit* temp = nullptr;
-
-            // Death
-            for (uint8 i = 0; i < ENCOUNTER_GHOUL_NUMBER; ++i)
-            {
-                temp = ObjectAccessor::GetCreature(*me, ghoulGUIDs[i]);
-                if (!temp)
-                {
-                    temp = me->SummonCreature(NPC_ACHERUS_GHOUL, LightofDawnLoc[0].GetPositionWithOffset({ float(rand32() % 30), float(rand32() % 30), 0.0f, 0.0f }), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 5min);
-                    temp->SetFaction(FACTION_UNDEAD_SCOURGE_3);
-                    ghoulGUIDs[i] = temp->GetGUID();
-                }
-            }
-            for (uint8 i = 0; i < ENCOUNTER_ABOMINATION_NUMBER; ++i)
-            {
-                temp = ObjectAccessor::GetCreature(*me, abominationGUIDs[i]);
-                if (!temp)
-                {
-                    temp = me->SummonCreature(NPC_WARRIOR_OF_THE_FROZEN_WASTES, LightofDawnLoc[0].GetPositionWithOffset({ float(rand32() % 30), float(rand32() % 30), 0.0f, 0.0f }), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 5min);
-                    temp->SetFaction(FACTION_UNDEAD_SCOURGE_3);
-                    abominationGUIDs[i] = temp->GetGUID();
-                }
-            }
-            for (uint8 i = 0; i < ENCOUNTER_WARRIOR_NUMBER; ++i)
-            {
-                temp = ObjectAccessor::GetCreature(*me, warriorGUIDs[i]);
-                if (!temp)
-                {
-                    temp = me->SummonCreature(NPC_RAMPAGING_ABOMINATION, LightofDawnLoc[0].GetPositionWithOffset({ float(rand32() % 30), float(rand32() % 30), 0.0f, 0.0f }), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 5min);
-                    temp->SetFaction(FACTION_UNDEAD_SCOURGE_3);
-                    warriorGUIDs[i] = temp->GetGUID();
-                }
-            }
-            for (uint8 i = 0; i < ENCOUNTER_BEHEMOTH_NUMBER; ++i)
-            {
-                temp = ObjectAccessor::GetCreature(*me, behemothGUIDs[i]);
-                if (!temp)
-                {
-                    temp = me->SummonCreature(NPC_FLESH_BEHEMOTH, LightofDawnLoc[0].GetPositionWithOffset({ float(rand32() % 30), float(rand32() % 30), 0.0f, 0.0f }), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 5min);
-                    temp->SetFaction(FACTION_UNDEAD_SCOURGE_3);
-                    behemothGUIDs[i] = temp->GetGUID();
-                }
-            }
-
-            // Dawn
-            for (uint8 i = 0; i < ENCOUNTER_DEFENDER_NUMBER; ++i)
-            {
-                temp = ObjectAccessor::GetCreature(*me, defenderGUIDs[i]);
-                if (!temp)
-                {
-                    temp = me->SummonCreature(NPC_DEFENDER_OF_THE_LIGHT, LightofDawnLoc[0].GetPositionWithOffset({ float(rand32() % 30), float(rand32() % 30), 0.0f, 0.0f }), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 5min);
-                    temp->SetFaction(FACTION_SCARLET_CRUSADE);
-                    AddThreat(temp, 0.0f);
-                    defenderGUIDs[i] = temp->GetGUID();
-                }
-            }
-            for (uint8 i = 0; i < ENCOUNTER_EARTHSHATTER_NUMBER; ++i)
-            {
-                temp = ObjectAccessor::GetCreature(*me, earthshatterGUIDs[i]);
-                if (!temp)
-                {
-                    temp = me->SummonCreature(NPC_RIMBLAT_EARTHSHATTER, LightofDawnLoc[0].GetPositionWithOffset({ float(rand32() % 30), float(rand32() % 30), 0.0f, 0.0f }), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 5min);
-                    temp->SetFaction(FACTION_SCARLET_CRUSADE);
-                    AddThreat(temp, 0.0f);
-                    earthshatterGUIDs[i] = temp->GetGUID();
-                }
-            }
-            temp = ObjectAccessor::GetCreature(*me, korfaxGUID);
-            if (!temp)
-            {
-                temp = me->SummonCreature(NPC_KORFAX_CHAMPION_OF_THE_LIGHT, LightofDawnLoc[0].GetPositionWithOffset({ float(rand32() % 30), float(rand32() % 30), 0.0f, 0.0f }), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 10min);
-                temp->SetFaction(FACTION_SCARLET_CRUSADE);
-                AddThreat(temp, 0.0f);
-                korfaxGUID = temp->GetGUID();
-            }
-            temp = ObjectAccessor::GetCreature(*me, maxwellGUID);
-            if (!temp)
-            {
-                temp = me->SummonCreature(NPC_LORD_MAXWELL_TYROSUS, LightofDawnLoc[0].GetPositionWithOffset({ float(rand32() % 30), float(rand32() % 30), 0.0f, 0.0f }), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 10min);
-                temp->SetFaction(FACTION_SCARLET_CRUSADE);
-                AddThreat(temp, 0.0f);
-                maxwellGUID = temp->GetGUID();
-            }
-            temp = ObjectAccessor::GetCreature(*me, eligorGUID);
-            if (!temp)
-            {
-                temp = me->SummonCreature(NPC_COMMANDER_ELIGOR_DAWNBRINGER, LightofDawnLoc[0].GetPositionWithOffset({ float(rand32() % 30), float(rand32() % 30), 0.0f, 0.0f }), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 10min);
-                temp->SetFaction(FACTION_SCARLET_CRUSADE);
-                AddThreat(temp, 0.0f);
-                eligorGUID = temp->GetGUID();
-            }
-            temp = ObjectAccessor::GetCreature(*me, rayneGUID);
-            if (!temp)
-            {
-                temp = me->SummonCreature(NPC_RAYNE, LightofDawnLoc[0].GetPositionWithOffset({ float(rand32() % 30), float(rand32() % 30), 0.0f, 0.0f }), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 5min);
-                temp->SetFaction(FACTION_SCARLET_CRUSADE);
-                AddThreat(temp, 0.0f);
-                rayneGUID = temp->GetGUID();
-            }
-        }
-
-        void DespawnNPC(ObjectGuid guid)
-        {
-            if (Creature* temp = ObjectAccessor::GetCreature(*me, guid))
-                temp->DespawnOrUnsummon();
-        }
-
-        bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
-        {
-            uint32 const action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
-            ClearGossipMenuFor(player);
-            switch (action)
-            {
-                case GOSSIP_ACTION_INFO_DEF + 1:
-                    CloseGossipMenuFor(player);
-                    step = 1;
-                    LoadPath(PATH_ESCORT_MOGRAINE);
-                    Start(true, player->GetGUID());
-                    break;
-            }
-            return true;
-        }
-
-        bool OnGossipHello(Player* player) override
-        {
-            if (me->IsQuestGiver())
-                player->PrepareQuestMenu(me->GetGUID());
-
-            if (player->GetQuestStatus(12801) == QUEST_STATUS_INCOMPLETE)
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "I am ready.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-
-            SendGossipMenuFor(player, player->GetGossipTextId(me), me->GetGUID());
-
-            return true;
-        }
-
-    private:
-        bool inBattle;
-        uint32 step;
-        uint32 phaseTimer;
-        uint32 fightDuration;
-        uint32 summonCounter;
-
-        // Darion Mograine
-        uint32 antiMagicZoneTimer;
-        uint32 deathStrikeTimer;
-        uint32 deathEmbraceTimer;
-        uint32 icyTouchTimer;
-        uint32 unholyBlightTimer;
-        uint32 fightSpeechTimer;
-        uint32 spawnCheckTimer;
-        uint32 targetCheckTimer;
-
-        // Dawn
-        ObjectGuid tirionGUID;
-        ObjectGuid alexandrosGUID;
-        ObjectGuid darionGUID;
-        ObjectGuid korfaxGUID;
-        ObjectGuid maxwellGUID;
-        ObjectGuid eligorGUID;
-        ObjectGuid rayneGUID;
-        ObjectGuid defenderGUIDs[ENCOUNTER_DEFENDER_NUMBER];
-        ObjectGuid earthshatterGUIDs[ENCOUNTER_EARTHSHATTER_NUMBER];
-
-        // Death
-        ObjectGuid koltiraGUID;
-        ObjectGuid orbazGUID;
-        ObjectGuid thassarianGUID;
-        ObjectGuid lichKingGUID;
-        ObjectGuid abominationGUIDs[ENCOUNTER_ABOMINATION_NUMBER];
-        ObjectGuid behemothGUIDs[ENCOUNTER_BEHEMOTH_NUMBER];
-        ObjectGuid ghoulGUIDs[ENCOUNTER_GHOUL_NUMBER];
-        ObjectGuid warriorGUIDs[ENCOUNTER_WARRIOR_NUMBER];
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_highlord_darion_mograineAI(creature);
     }
+
+    void JustSummoned(Creature* summon) override
+    {
+        _summons.Summon(summon);
+
+        switch (summon->GetEntry())
+        {
+            case NPC_HIGHLORD_TIRION_FORDRING:
+                _tirionGUID = summon->GetGUID();
+                break;
+            case NPC_KORFAX_CHAMPION_OF_THE_LIGHT:
+                _korfaxGUID = summon->GetGUID();
+                break;
+            case NPC_LORD_MAXWELL_TYROSUS:
+                _maxwellGUID = summon->GetGUID();
+                break;
+            case NPC_COMMANDER_ELIGOR_DAWNBRINGER:
+                _eligorGUID = summon->GetGUID();
+                break;
+            case NPC_HIGHLORD_ALEXANDROS_MOGRAINE:
+                _alexandrosGUID = summon->GetGUID();
+                break;
+            case NPC_DARION_MOGRAINE:
+                _youngDarionGUID = summon->GetGUID();
+                break;
+            case NPC_THE_LICH_KING:
+                _lichKingGUID = summon->GetGUID();
+                break;
+            default:
+                break;
+        }
+    }
+
+    void SummonedCreatureDespawn(Creature* summon) override
+    {
+        _summons.Despawn(summon);
+    }
+
+    void SummonedCreatureDies(Creature* summon, Unit* /*killer*/) override
+    {
+        if (!_battleInProgress)
+            return;
+
+        if (summon->GetFaction() == FACTION_UNDEAD_SCOURGE_3)
+            SummonScourge(summon->GetEntry(), DarionBattlefieldPos);
+        else if (summon->GetFaction() == FACTION_SCARLET_CRUSADE)
+            SummonDawn(summon->GetEntry());
+    }
+
+    void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo*/) override
+    {
+        if (damage >= me->GetHealth())
+            damage = me->GetHealth() - 1;
+    }
+
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        if (!_eventInProgress)
+            ScriptedAI::EnterEvadeMode(why);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        _scheduler.Update(diff);
+
+        if (_battleInProgress && UpdateVictim())
+            DoMeleeAttackIfReady();
+    }
+
+private:
+    void SummonScourge(uint32 entry, Position const& center)
+    {
+        if (TempSummon* summon = me->SummonCreature(entry, me->GetRandomPoint(center, 20.0f), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 20min))
+            summon->SetFaction(FACTION_UNDEAD_SCOURGE_3);
+    }
+
+    void SummonDawn(uint32 entry)
+    {
+        if (TempSummon* summon = me->SummonCreature(entry, me->GetRandomPoint(DawnSpawnCenterPos, 15.0f), TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 20min))
+            summon->SetFaction(FACTION_SCARLET_CRUSADE);
+    }
+
+    TaskScheduler _scheduler;
+    SummonList _summons;
+    ObjectGuid _koltiraGUID;
+    ObjectGuid _orbazGUID;
+    ObjectGuid _thassarianGUID;
+    ObjectGuid _tirionGUID;
+    ObjectGuid _korfaxGUID;
+    ObjectGuid _maxwellGUID;
+    ObjectGuid _eligorGUID;
+    ObjectGuid _alexandrosGUID;
+    ObjectGuid _youngDarionGUID;
+    ObjectGuid _lichKingGUID;
+    GuidVector _chargerGUIDs;
+    bool _eventInProgress;
+    bool _battleInProgress;
 };
 
-/*######
-## npc the lich king in dawn of light
-######*/
-
-class npc_the_lich_king_tirion_dawn : public CreatureScript
+// 29175 - Highlord Tirion Fordring
+// 29183 - The Lich King
+struct npc_the_lich_king_tirion_dawn : public PassiveAI
 {
-    public:
-        npc_the_lich_king_tirion_dawn() : CreatureScript("npc_the_lich_king_tirion_dawn") { }
+    npc_the_lich_king_tirion_dawn(Creature* creature) : PassiveAI(creature) { }
+};
 
-        CreatureAI* GetAI(Creature* creature) const override
+// 4298 - Plaguelands: The Scarlet Enclave
+class zone_the_scarlet_enclave : public WorldZoneScript
+{
+public:
+    zone_the_scarlet_enclave() : WorldZoneScript("zone_the_scarlet_enclave", MAP_SCARLET_ENCLAVE, { ZONE_THE_SCARLET_ENCLAVE }, PHASE_CHAPTER_IV_EPILOGUE), _eventInProgress(false), _worldStateChanged(false), _abortPending(false) { }
+
+    void OnCreatureCreate(Creature* creature) override
+    {
+        if (TempSummon const* summon = creature->ToTempSummon())
         {
-            return new npc_the_lich_king_tirion_dawnAI(creature);
+            if (!_darionGUID.IsEmpty() && summon->GetSummonerGUID() == _darionGUID)
+                _eventSummonGUIDs.insert(creature->GetGUID());
+            return;
         }
 
-        struct npc_the_lich_king_tirion_dawnAI : public PassiveAI
+        switch (creature->GetEntry())
         {
-            npc_the_lich_king_tirion_dawnAI(Creature* creature) : PassiveAI(creature) { }
-        };
+            case NPC_HIGHLORD_DARION_MOGRAINE:
+                _darionGUID = creature->GetGUID();
+                break;
+            case NPC_KOLTIRA_DEATHWEAVER:
+                _koltiraGUID = creature->GetGUID();
+                break;
+            case NPC_ORBAZ_BLOODBANE:
+                _orbazGUID = creature->GetGUID();
+                break;
+            case NPC_THASSARIAN:
+                _thassarianGUID = creature->GetGUID();
+                break;
+            default:
+                break;
+        }
+    }
+
+    void OnCreatureRemove(Creature* creature) override
+    {
+        ObjectGuid const guid = creature->GetGUID();
+        _eventSummonGUIDs.erase(guid);
+
+        if (guid == _darionGUID)
+        {
+            _darionGUID.Clear();
+            if (_eventInProgress)
+            {
+                _eventInProgress = false;
+                _worldStateChanged = true;
+                _abortPending = true;
+            }
+        }
+        else if (guid == _koltiraGUID)
+            _koltiraGUID.Clear();
+        else if (guid == _orbazGUID)
+            _orbazGUID.Clear();
+        else if (guid == _thassarianGUID)
+            _thassarianGUID.Clear();
+    }
+
+    ObjectGuid GetGuidData(uint32 type) const override
+    {
+        switch (type)
+        {
+            case DATA_KOLTIRA_DEATHWEAVER:
+                return _koltiraGUID;
+            case DATA_ORBAZ_BLOODBANE:
+                return _orbazGUID;
+            case DATA_THASSARIAN:
+                return _thassarianGUID;
+            default:
+                return ObjectGuid::Empty;
+        }
+    }
+
+    void SetData(uint32 type, uint32 value) override
+    {
+        if (type != DATA_EVENT_IN_PROGRESS || _eventInProgress == (value != 0))
+            return;
+
+        _eventInProgress = value != 0;
+        _worldStateChanged = true;
+    }
+
+    void FillInitialWorldStates(Player* player, WorldPackets::WorldState::InitWorldStates& packet) override
+    {
+        if (player->InSamePhase(GetPhaseMask()))
+            packet.Worldstates.emplace_back(WORLD_STATE_BATTLE_BEGUN, _eventInProgress ? 1 : 0);
+    }
+
+    void OnUpdate(Map* map, uint32 /*diff*/) override
+    {
+        if (_abortPending)
+        {
+            _abortPending = false;
+
+            GuidUnorderedSet const summonGUIDs = std::move(_eventSummonGUIDs);
+            _eventSummonGUIDs.clear();
+            for (ObjectGuid const& guid : summonGUIDs)
+                if (Creature* summon = map->GetCreature(guid))
+                    summon->DespawnOrUnsummon();
+
+            for (ObjectGuid const& guid : { _koltiraGUID, _orbazGUID, _thassarianGUID })
+                if (Creature* hero = map->GetCreature(guid))
+                    hero->DespawnOrUnsummon(0s, 5s);
+        }
+
+        if (_worldStateChanged)
+        {
+            _worldStateChanged = false;
+            for (MapReference const& ref : map->GetPlayers())
+                if (Player* player = ref.GetSource())
+                    if (HasZone(player->GetZoneId()) && player->InSamePhase(GetPhaseMask()))
+                        player->SendUpdateWorldState(WORLD_STATE_BATTLE_BEGUN, _eventInProgress ? 1 : 0);
+        }
+    }
+
+private:
+    ObjectGuid _darionGUID;
+    ObjectGuid _koltiraGUID;
+    ObjectGuid _orbazGUID;
+    ObjectGuid _thassarianGUID;
+    GuidUnorderedSet _eventSummonGUIDs;
+    bool _eventInProgress;
+    bool _worldStateChanged;
+    bool _abortPending;
 };
 
 void AddSC_the_scarlet_enclave_c5()
 {
-    new npc_highlord_darion_mograine();
-    new npc_the_lich_king_tirion_dawn();
+    RegisterCreatureAI(npc_highlord_darion_mograine);
+    RegisterCreatureAI(npc_the_lich_king_tirion_dawn);
+    new zone_the_scarlet_enclave();
 }
