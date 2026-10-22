@@ -43,6 +43,55 @@
 #include <algorithm>
 #include <unordered_set>
 
+bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
+{
+    if (_includeSelf && _source == unit && unit->GetHealthPct() < _hp)
+    {
+        _hp = unit->GetHealthPct();
+        return true;
+    }
+
+    if (((_playerOnly && unit->IsPlayer()) || !_playerOnly)
+        && unit->IsAlive()
+        && !unit->IsCritter()
+        && ((_source->IsInCombat() && unit->IsInCombat()) || (!_source->IsInCombat()))
+        && _source->IsValidAssistTarget(unit)
+        && _source->IsWithinDistInMap(unit, _range)
+        && _source->IsWithinLOSInMap(unit)
+        && unit->GetHealthPct() < _hp
+    )
+    {
+        _hp = unit->GetHealthPct();
+        return true;
+    }
+
+    return false;
+}
+
+bool EG::AnyFriendlyUnitInObjectRangeCheck::operator()(Unit const* unit) const
+{
+    if (_options.Alive && !unit->IsAlive())
+        return false;
+
+    if (_options.IncludeSelf && _source == unit)
+        return true;
+
+    if (unit->IsCritter())
+        return false;
+
+    if (!_options.ExcludedEntries.empty() && _options.ExcludedEntries.contains(unit->GetEntry()))
+        return false;
+
+    if (((_options.PlayerOnly && unit->IsPlayer()) || !_options.PlayerOnly)
+        && (!_source->IsUnit() || (_source->ToUnit()->IsInCombat() && unit->IsInCombat()) || (!_source->ToUnit()->IsInCombat()))
+        && _source->IsValidAssistTarget(unit)
+        && _source->IsWithinDistInMap(unit, _options.Range)
+        && _source->IsWithinLOSInMap(unit)
+    )
+        return true;
+
+    return false;
+}
 
 void Creature::ProcessDelayedLOSEntries()
 {
@@ -800,56 +849,6 @@ void WorldObject::UpdateWorldZoneScript()
         else if (GameObject* gameObject = ToGameObject())
             m_zoneScript->OnGameObjectCreate(gameObject);
     }
-}
-
-bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
-{
-    if (_includeSelf && _source == unit && unit->GetHealthPct() < _hp)
-    {
-        _hp = unit->GetHealthPct();
-        return true;
-    }
-
-    if (((_playerOnly && unit->IsPlayer()) || !_playerOnly)
-        && unit->IsAlive()
-        && !unit->IsCritter()
-        && ((_source->IsInCombat() && unit->IsInCombat()) || (!_source->IsInCombat()))
-        && _source->IsValidAssistTarget(unit)
-        && _source->IsWithinDistInMap(unit, _range)
-        && _source->IsWithinLOSInMap(unit)
-        && unit->GetHealthPct() < _hp
-    )
-    {
-        _hp = unit->GetHealthPct();
-        return true;
-    }
-
-    return false;
-}
-
-bool EG::AnyFriendlyUnitInObjectRangeCheck::operator()(Unit const* unit) const
-{
-    if (_options.Alive && !unit->IsAlive())
-        return false;
-
-    if (_options.IncludeSelf && _source == unit)
-        return true;
-
-    if (unit->IsCritter())
-        return false;
-
-    if (!_options.ExcludedEntries.empty() && _options.ExcludedEntries.contains(unit->GetEntry()))
-        return false;
-
-    if (((_options.PlayerOnly && unit->IsPlayer()) || !_options.PlayerOnly)
-        && (!_source->IsUnit() || (_source->ToUnit()->IsInCombat() && unit->IsInCombat()) || (!_source->ToUnit()->IsInCombat()))
-        && _source->IsValidAssistTarget(unit)
-        && _source->IsWithinDistInMap(unit, _options.Range)
-        && _source->IsWithinLOSInMap(unit)
-    )
-        return true;
-
-    return false;
 }
 
 void SmartAI::SetCombatMovement()
