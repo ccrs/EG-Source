@@ -21,10 +21,12 @@
 #include "Define.h"
 #include "DBCEnums.h"
 #include "Hash.h"
+#include "ObjectGuid.h" // EG
 #include <list>
 #include <map>
 #include <mutex>
 #include <unordered_map>
+#include <vector> // EG
 
 struct InstanceTemplate;
 struct MapEntry;
@@ -144,6 +146,24 @@ class TC_GAME_API InstanceSave
 
 typedef std::unordered_map<std::pair<uint32, Difficulty>, time_t /*resetTime*/> ResetTimeByMapDifficultyMap;
 
+enum InstanceMapEventType : uint8 // EG
+{
+    INSTANCE_MAP_EVENT_PLAYER_LEFT = 0,
+    INSTANCE_MAP_EVENT_NORMAL_RESET_TIME,
+    INSTANCE_MAP_EVENT_PERM_BIND,
+    INSTANCE_MAP_EVENT_PENDING_BIND
+};
+
+struct InstanceMapEvent // EG
+{
+    InstanceMapEventType Type;
+    uint32 MapId;
+    uint32 InstanceId;
+    time_t ResetTime;
+    ObjectGuid PlayerGuid;
+    std::vector<ObjectGuid> Players;
+};
+
 class TC_GAME_API InstanceSaveManager
 {
     friend class InstanceSave;
@@ -171,7 +191,7 @@ class TC_GAME_API InstanceSaveManager
             InstResetEvent() : type(0), difficulty(DUNGEON_DIFFICULTY_NORMAL), mapid(0), instanceId(0) { }
             InstResetEvent(uint8 t, uint32 _mapid, Difficulty d, uint32 _instanceid)
                 : type(t), difficulty(d), mapid(_mapid), instanceId(_instanceid) { }
-            bool operator==(InstResetEvent const& e) const { return e.instanceId == instanceId; }
+            bool operator==(InstResetEvent const& e) const { return e.mapid == mapid && e.difficulty == difficulty && e.instanceId == instanceId; } // EG
         };
         typedef std::multimap<time_t /*resetTime*/, InstResetEvent> ResetTimeQueue;
 
@@ -203,6 +223,9 @@ class TC_GAME_API InstanceSaveManager
 
         void Update();
 
+        void HandleInstanceMapEvent(InstanceMapEvent&& event); // EG
+        void ProcessInstanceMapEvents(); // EG
+
         InstanceSave* AddInstanceSave(uint32 mapId, uint32 instanceId, Difficulty difficulty, time_t resetTime,
             bool canReset, bool load = false);
         void RemoveInstanceSave(uint32 InstanceId);
@@ -223,6 +246,7 @@ class TC_GAME_API InstanceSaveManager
         void _ResetOrWarnAll(uint32 mapid, Difficulty difficulty, bool warn, time_t resetTime);
         void _ResetInstance(uint32 mapid, uint32 instanceId);
         void _ResetSave(InstanceSaveHashMap::iterator &itr);
+        void ProcessInstanceMapEvent(InstanceMapEvent const& event); // EG
         // used during global instance resets
         bool lock_instLists;
         // fast lookup by instance id
@@ -230,6 +254,8 @@ class TC_GAME_API InstanceSaveManager
         // fast lookup for reset times (always use existed functions for access/set)
         ResetTimeByMapDifficultyMap m_resetTimeByMapDifficulty;
         ResetTimeQueue m_resetTimeQueue;
+        std::mutex _instanceMapEventsLock; // EG
+        std::vector<InstanceMapEvent> _instanceMapEvents; // EG
 };
 
 #define sInstanceSaveMgr InstanceSaveManager::instance()

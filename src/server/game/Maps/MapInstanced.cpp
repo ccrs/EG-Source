@@ -60,10 +60,8 @@ void MapInstanced::Update(uint32 t)
     {
         if (i->second->CanUnload(t))
         {
-            if (!DestroyInstance(i))                             // iterator incremented
-            {
-                //m_unloadTimer
-            }
+            _pendingDestroys.push_back(i->first); // EG
+            ++i; // EG
         }
         else
         {

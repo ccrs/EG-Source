@@ -507,8 +507,7 @@ void InstanceSaveManager::ForceGlobalReset(uint32 mapId, Difficulty difficulty)
     if (!GetDownscaledMapDifficultyData(mapId, difficulty))
         return;
     // remove currently scheduled reset times
-    ScheduleReset(false, 0, InstResetEvent(1, mapId, difficulty, 0));
-    ScheduleReset(false, 0, InstResetEvent(4, mapId, difficulty, 0));
+    ScheduleReset(false, 0, InstResetEvent(1, mapId, difficulty, 0)); // EG
     // force global reset on the instance
     _ResetOrWarnAll(mapId, difficulty, false, GameTime::GetGameTime());
 }
@@ -647,15 +646,7 @@ void InstanceSaveManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficulty, b
         if (!next_reset)
             return;
 
-        // delete/promote instance binds from the DB, even if not loaded.
-        // Order matters:
-        //  1. Delete already-expired / non-permanent character binds first, so the decrement (step 3) never underflows an extendState that is already 0
-        //  2. Delete group binds
-        //  3. Decrement extendState for the surviving permanent binds
-        //  4. Delete character binds again — this catches the ones the decrement just pushed to extendState 0
-        //  5. Delete instance rows that no longer have any extendState != 0 bind
-        //     This must run after the decrement so post-decrement values decide what to keep;
-        //     running it earlier would also break the decrement's LEFT JOIN on instance
+        // delete/promote instance binds from the DB, even if not loaded
         CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
 
         CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_EXPIRED_CHAR_INSTANCE_BY_MAP_DIFF);
@@ -668,17 +659,12 @@ void InstanceSaveManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficulty, b
         stmt->setUInt8(1, uint8(difficulty));
         trans->Append(stmt);
 
-        stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_EXPIRE_CHAR_INSTANCE_BY_MAP_DIFF);
-        stmt->setUInt16(0, uint16(mapid));
-        stmt->setUInt8(1, uint8(difficulty));
-        trans->Append(stmt);
-
-        stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_EXPIRED_CHAR_INSTANCE_BY_MAP_DIFF);
-        stmt->setUInt16(0, uint16(mapid));
-        stmt->setUInt8(1, uint8(difficulty));
-        trans->Append(stmt);
-
         stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_EXPIRED_INSTANCE_BY_MAP_DIFF);
+        stmt->setUInt16(0, uint16(mapid));
+        stmt->setUInt8(1, uint8(difficulty));
+        trans->Append(stmt);
+
+        stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_EXPIRE_CHAR_INSTANCE_BY_MAP_DIFF);
         stmt->setUInt16(0, uint16(mapid));
         stmt->setUInt8(1, uint8(difficulty));
         trans->Append(stmt);
@@ -689,7 +675,10 @@ void InstanceSaveManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficulty, b
         for (InstanceSaveHashMap::iterator itr = m_instanceSaveById.begin(); itr != m_instanceSaveById.end();)
         {
             if (itr->second->GetMapId() == mapid && itr->second->GetDifficultyID() == difficulty)
+            {
+                itr->second->SetResetTime(next_reset); // EG
                 _ResetSave(itr);
+            }
             else
                 ++itr;
         }
@@ -714,6 +703,9 @@ void InstanceSaveManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficulty, b
     for (auto& [_, map] : baseMap->ToMapInstanced()->GetInstancedMaps())
     {
         InstanceMap* instanceMap = map->ToInstanceMap();
+        if (instanceMap->GetDifficultyID() != difficulty) // EG
+            continue; // EG
+
         if (warn)
         {
             if (now >= resetTime)

@@ -11262,9 +11262,7 @@ bool Unit::InitTamedPet(Pet* pet, uint8 level, uint32 spell_id)
                     // the reset time is set but not added to the scheduler
                     // until the players leave the instance
                     time_t resettime = GameTime::GetGameTime() + 2 * HOUR;
-                    if (InstanceSave* save = sInstanceSaveMgr->GetInstanceSave(creature->GetInstanceId()))
-                        if (save->GetResetTime() < resettime)
-                            save->SetResetTime(resettime);
+                    sInstanceSaveMgr->HandleInstanceMapEvent({ .Type = INSTANCE_MAP_EVENT_NORMAL_RESET_TIME, .InstanceId = creature->GetInstanceId(), .ResetTime = resettime }); // EG
                 }
             }
         }

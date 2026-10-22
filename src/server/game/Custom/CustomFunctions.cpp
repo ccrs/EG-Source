@@ -1,4 +1,5 @@
 #include "CustomFunctions.h"
+#include "InstanceSaveMgr.h"
 #include "InstanceScript.h"
 #include "BattlefieldMgr.h"
 #include "CellImpl.h"
@@ -17,6 +18,8 @@
 #include "Item.h"
 #include "ItemTemplate.h"
 #include "Map.h"
+#include "MapInstanced.h"
+#include "MapManager.h"
 #include "MotionMaster.h"
 #include "MovementInfo.h"
 #include "MoveSpline.h"
@@ -39,6 +42,7 @@
 #include "Vehicle.h"
 #include "VehicleDefines.h"
 #include "World.h"
+#include "WorldPacket.h"
 #include "WorldSession.h"
 #include <algorithm>
 #include <unordered_set>
@@ -957,6 +961,135 @@ bool WorldSession::NormalizeTransportMovementInfo(Unit* mover, MovementInfo& mov
     return true;
 }
 
+void InstanceMap::PermBindPlayers(std::vector<ObjectGuid> const& players)
+{
+    InstanceSave* save = sInstanceSaveMgr->GetInstanceSave(GetInstanceId());
+    if (!save)
+    {
+        Map* selfLookup = sMapMgr->FindMap(GetId(), GetInstanceId());
+        uint32 groupBoundInstanceId = 0;
+        for (MapRefManager::iterator itr = m_mapRefManager.begin(); itr != m_mapRefManager.end(); ++itr)
+        {
+            Player* player = itr->GetSource();
+            if (player->IsGameMaster())
+                continue;
+
+            if (Group* group = player->GetGroup())
+                if (InstanceGroupBind* bind = group->GetBoundInstance(this))
+                    if (bind->save)
+                        groupBoundInstanceId = bind->save->GetInstanceId();
+
+            break;
+        }
+
+        InstanceScript const* script = GetInstanceScript();
+        TC_LOG_ERROR("maps", "Cannot bind players to instance map (Name: {}, Entry: {}, Difficulty: {}, ID: {}) because no instance save is available! [players: {}, self-lookup: {}, group-bound-instance: {}, save-under-group-bind: {}, encounters: {}]", GetMapName(), GetId(), static_cast<uint32>(GetDifficultyID()), GetInstanceId(), GetPlayersCountExceptGMs(), selfLookup == this ? "self" : (selfLookup ? "other-map" : "null"), groupBoundInstanceId, groupBoundInstanceId ? (sInstanceSaveMgr->GetInstanceSave(groupBoundInstanceId) ? "present" : "missing") : "n/a", script ? script->GetEncounterStateNames() : "no-script");
+        return;
+    }
+
+    for (ObjectGuid const& guid : players)
+    {
+        Player* player = ObjectAccessor::FindConnectedPlayer(guid);
+        if (!player)
+            continue;
+
+        InstancePlayerBind* bind = player->GetBoundInstance(save->GetMapId(), save->GetDifficultyID());
+        if (bind && bind->perm)
+        {
+            if (bind->save && bind->save->GetInstanceId() != save->GetInstanceId())
+            {
+                TC_LOG_ERROR("maps", "Player ({}, Name: {}) is in instance map (Name: {}, Entry: {}, Difficulty: {}, ID: {}) that is being bound, but already has a save for the map on ID {}!", player->GetGUID().ToString(), player->GetName(), GetMapName(), save->GetMapId(), static_cast<uint32>(save->GetDifficultyID()), save->GetInstanceId(), bind->save->GetInstanceId());
+            }
+            else if (!bind->save)
+            {
+                TC_LOG_ERROR("maps", "Player ({}, Name: {}) is in instance map (Name: {}, Entry: {}, Difficulty: {}, ID: {}) that is being bound, but already has a bind (without associated save) for the map!", player->GetGUID().ToString(), player->GetName(), GetMapName(), save->GetMapId(), static_cast<uint32>(save->GetDifficultyID()), save->GetInstanceId());
+            }
+        }
+        else
+        {
+            player->BindToInstance(save, true);
+            WorldPacket data(SMSG_INSTANCE_SAVE_CREATED, 4);
+            data << uint32(0);
+            player->SendDirectMessage(&data);
+            player->GetSession()->SendCalendarRaidLockoutAdded(save);
+
+            // if group leader is in instance, group also gets bound
+            if (Group* group = player->GetGroup())
+                if (group->GetLeaderGUID() == player->GetGUID())
+                    group->BindToInstance(save, true);
+        }
+    }
+}
+
+void InstanceMap::UpdateEntrySnapshot()
+{
+    _entryPlayerCount = GetPlayersCountExceptGMs();
+    _entryEncounterInProgress = i_data && i_data->IsEncounterInProgress();
+}
+
+void InstanceSaveManager::HandleInstanceMapEvent(InstanceMapEvent&& event)
+{
+    if (!sMapMgr->IsUpdatingMaps())
+    {
+        ProcessInstanceMapEvent(event);
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(_instanceMapEventsLock);
+    _instanceMapEvents.push_back(std::move(event));
+}
+
+void InstanceSaveManager::ProcessInstanceMapEvents()
+{
+    std::vector<InstanceMapEvent> events;
+    {
+        std::lock_guard<std::mutex> lock(_instanceMapEventsLock);
+        events.swap(_instanceMapEvents);
+    }
+
+    for (InstanceMapEvent const& event : events)
+        ProcessInstanceMapEvent(event);
+}
+
+void InstanceSaveManager::ProcessInstanceMapEvent(InstanceMapEvent const& event)
+{
+    switch (event.Type)
+    {
+        case INSTANCE_MAP_EVENT_PLAYER_LEFT:
+            if (Map* map = sMapMgr->FindMap(event.MapId, event.InstanceId))
+                if (InstanceMap* instanceMap = map->ToInstanceMap())
+                    instanceMap->SetResetSchedule(true);
+            UnloadInstanceSave(event.InstanceId);
+            break;
+        case INSTANCE_MAP_EVENT_NORMAL_RESET_TIME:
+            if (InstanceSave* save = GetInstanceSave(event.InstanceId))
+                if (save->GetResetTime() < event.ResetTime)
+                    save->SetResetTime(event.ResetTime);
+            break;
+        case INSTANCE_MAP_EVENT_PERM_BIND:
+        {
+            Map* map = sMapMgr->FindMap(event.MapId, event.InstanceId);
+            if (InstanceMap* instanceMap = map ? map->ToInstanceMap() : nullptr)
+                instanceMap->PermBindPlayers(event.Players);
+            else
+                TC_LOG_ERROR("maps", "InstanceSaveManager::ProcessInstanceMapEvent: map {} instance {} is not loaded, {} players were not bound", event.MapId, event.InstanceId, event.Players.size());
+            break;
+        }
+        case INSTANCE_MAP_EVENT_PENDING_BIND:
+            if (Player* player = ObjectAccessor::FindConnectedPlayer(event.PlayerGuid))
+            {
+                if (player->GetPendingBindId() == event.InstanceId)
+                {
+                    player->BindToInstance();
+                    player->SetPendingBind(0, 0);
+                }
+            }
+            break;
+        default:
+            break;
+    }
+}
+
 void InstanceScript::ForceRespawnQueuedCreaturesByEntry(std::vector<uint32> const& entries)
 {
     std::vector<RespawnInfo const*> respawnData;
@@ -989,4 +1122,16 @@ void InstanceScript::ForceRespawnQueuedCreaturesByEntry(std::vector<uint32> cons
         if (!aliveExists)
             instance->Respawn(info->type, info->spawnId);
     }
+}
+
+void MapInstanced::DestroyPendingInstances()
+{
+    for (uint32 instanceId : _pendingDestroys)
+    {
+        InstancedMaps::iterator itr = m_InstancedMaps.find(instanceId);
+        if (itr != m_InstancedMaps.end())
+            DestroyInstance(itr);
+    }
+
+    _pendingDestroys.clear();
 }

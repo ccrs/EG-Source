@@ -2149,6 +2149,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void BindToInstance();
         void SetPendingBind(uint32 instanceId, uint32 bindTimer);
         bool HasPendingBind() const { return _pendingBindId > 0; }
+        uint32 GetPendingBindId() const { return _pendingBindId; } // EG
         void SendRaidInfo();
         void SendSavedInstances();
         bool Satisfy(AccessRequirement const* ar, uint32 target_map, bool report = false);
