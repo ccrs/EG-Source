@@ -179,7 +179,7 @@ struct boss_apothecary_hummel : public BossAI
         if (!players.isEmpty())
         {
             if (Group* group = players.begin()->GetSource()->GetGroup())
-                if (group->isLFGGroup())
+                if (group->isLFGGroup() && sLFGMgr->GetDungeon(group->GetGUID()) == 288) // EG
                     sLFGMgr->FinishDungeon(group->GetGUID(), 288, me->GetMap());
         }
     }

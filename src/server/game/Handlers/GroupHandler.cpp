@@ -578,6 +578,10 @@ void WorldSession::HandleGroupRaidConvertOpcode(WorldPacket & /*recvData*/)
     if (_player->InBattleground())
         return;
 
+    // EG
+    if (group->isLFGGroup())
+        return;
+
     // error handling
     if (!group->IsLeader(GetPlayer()->GetGUID()) || group->GetMembersCount() < 2)
         return;

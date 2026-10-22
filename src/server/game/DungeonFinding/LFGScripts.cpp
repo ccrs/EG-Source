@@ -41,13 +41,9 @@ void LFGPlayerScript::OnLogout(Player* player)
     if (!sLFGMgr->isOptionEnabled(LFG_OPTION_ENABLE_DUNGEON_FINDER | LFG_OPTION_ENABLE_RAID_BROWSER))
         return;
 
-    if (!player->GetGroup())
-    {
-        player->GetSession()->SendLfgLfrList(false);
-        sLFGMgr->LeaveLfg(player->GetGUID());
-    }
-    else if (player->GetSession()->PlayerDisconnected())
-        sLFGMgr->LeaveLfg(player->GetGUID(), true);
+    // EG - grouped players leave the queue on logout too, their dungeon state is kept
+    player->GetSession()->SendLfgLfrList(false);
+    sLFGMgr->LeaveLfg(player->GetGUID(), player->GetGroup() != nullptr);
 }
 
 void LFGPlayerScript::OnLogin(Player* player, bool /*loginFirst*/)
@@ -148,6 +144,9 @@ void LFGGroupScript::OnAddMember(Group* group, ObjectGuid guid)
 
         if (gstate == LFG_STATE_QUEUED)
             sLFGMgr->LeaveLfg(gguid);
+        // EG - join during role check or proposal
+        else if ((gstate == LFG_STATE_ROLECHECK || gstate == LFG_STATE_PROPOSAL) && !sLFGMgr->IsFormingGroup())
+            sLFGMgr->LeaveLfg(gguid);
     }
 
     sLFGMgr->SetGroup(guid, gguid);
@@ -178,6 +177,8 @@ void LFGGroupScript::OnRemoveMember(Group* group, ObjectGuid guid, RemoveMethod 
         return;
     }
 
+    sLFGMgr->OnBootMemberRemoved(gguid, guid); // EG
+
     LfgState state = sLFGMgr->GetState(gguid);
 
     // If group is being formed after proposal success do nothing more
@@ -190,6 +191,12 @@ void LFGGroupScript::OnRemoveMember(Group* group, ObjectGuid guid, RemoveMethod 
     }
 
     sLFGMgr->LeaveLfg(guid);
+
+    // EG - the leaver does not keep the dungeon state a backfill restored
+    LfgState leaverState = sLFGMgr->GetState(guid);
+    if (leaverState == LFG_STATE_DUNGEON || leaverState == LFG_STATE_FINISHED_DUNGEON)
+        sLFGMgr->LeaveLfg(guid);
+
     sLFGMgr->SetGroup(guid, ObjectGuid::Empty);
     uint8 players = sLFGMgr->RemovePlayerFromGroup(gguid, guid);
 
@@ -198,7 +205,9 @@ void LFGGroupScript::OnRemoveMember(Group* group, ObjectGuid guid, RemoveMethod 
 
     if (Player* player = ObjectAccessor::FindPlayer(guid))
     {
-        if (method == GROUP_REMOVEMETHOD_LEAVE && state == LFG_STATE_DUNGEON &&
+        // EG - a backfill queue does not finish the dungeon
+        bool inDungeon = state == LFG_STATE_DUNGEON || ((state == LFG_STATE_QUEUED || state == LFG_STATE_ROLECHECK || state == LFG_STATE_PROPOSAL) && sLFGMgr->GetOldState(gguid) == LFG_STATE_DUNGEON);
+        if (method == GROUP_REMOVEMETHOD_LEAVE && inDungeon &&
             players >= LFG_GROUP_KICK_VOTES_NEEDED)
             player->CastSpell(player, LFG_SPELL_DUNGEON_DESERTER, true);
         else if (method == GROUP_REMOVEMETHOD_KICK_LFG)

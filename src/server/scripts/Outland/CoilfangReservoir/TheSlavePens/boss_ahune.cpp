@@ -283,7 +283,7 @@ struct boss_ahune : public BossAI
         if (!players.isEmpty())
         {
             if (Group* group = players.begin()->GetSource()->GetGroup())
-                if (group->isLFGGroup())
+                if (group->isLFGGroup() && sLFGMgr->GetDungeon(group->GetGUID()) == LFG_DUNGEON_ID_AHUNE) // EG
                     sLFGMgr->FinishDungeon(group->GetGUID(), LFG_DUNGEON_ID_AHUNE, me->GetMap());
         }
 

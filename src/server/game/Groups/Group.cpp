@@ -1716,7 +1716,7 @@ void Group::SendUpdateToPlayer(Player const* player, MemberSlot const* slot /*= 
     if (isLFGGroup())
     {
         data << uint8(sLFGMgr->GetState(m_guid) == lfg::LFG_STATE_FINISHED_DUNGEON ? 2 : 0); // FIXME - Dungeon save status? 2 = done
-        data << uint32(sLFGMgr->GetDungeon(m_guid));
+        data << uint32(sLFGMgr->GetDungeon(m_guid, false)); // EG
     }
 
     data << m_guid;

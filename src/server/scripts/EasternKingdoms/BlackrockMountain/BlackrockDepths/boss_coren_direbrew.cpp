@@ -210,7 +210,7 @@ struct boss_coren_direbrew : public BossAI
         if (!players.isEmpty())
         {
             if (Group* group = players.begin()->GetSource()->GetGroup())
-                if (group->isLFGGroup())
+                if (group->isLFGGroup() && sLFGMgr->GetDungeon(group->GetGUID()) == 287) // EG
                     sLFGMgr->FinishDungeon(group->GetGUID(), 287, me->GetMap());
         }
     }
