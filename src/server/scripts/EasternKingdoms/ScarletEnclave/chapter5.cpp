@@ -19,7 +19,6 @@
 #include "Containers.h"
 #include "GameObject.h"
 #include "Map.h"
-#include "MapReference.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "PassiveAI.h"
@@ -33,6 +32,8 @@
 #include <array>
 #include <map>
 #include <set>
+#include <tuple>
+#include <vector>
 
 enum TheLightOfDawnMisc
 {
@@ -265,6 +266,8 @@ Position const OutroDefenderPos[] =
 };
 
 std::array<uint32, 8> const DawnForces = { NPC_DEFENDER_OF_THE_LIGHT, NPC_KORFAX_CHAMPION_OF_THE_LIGHT, NPC_COMMANDER_ELIGOR_DAWNBRINGER, NPC_LORD_MAXWELL_TYROSUS, NPC_LEONID_BARTHALOMEW_THE_REVERED, NPC_DUKE_NICHOLAS_ZVERENHOFF, NPC_RAYNE, NPC_RIMBLAT_EARTHSHATTER };
+std::array<uint32, 4> const SceneSpawns = { NPC_FLESH_BEHEMOTH, NPC_KOLTIRA_DEATHWEAVER, NPC_THASSARIAN, NPC_ORBAZ_BLOODBANE };
+Seconds const SceneRespawnHold = 15min;
 
 // 29173 - Highlord Darion Mograine
 struct npc_highlord_darion_mograine : public ScriptedAI
@@ -385,7 +388,7 @@ struct npc_highlord_darion_mograine : public ScriptedAI
 
                     for (ObjectGuid const& guid : _behemothGUIDs)
                         if (Creature* behemoth = ObjectAccessor::GetCreature(*me, guid))
-                            behemoth->DespawnOrUnsummon(0s, 30s);
+                            behemoth->DespawnOrUnsummon(0s, SceneRespawnHold);
 
                     std::pair<ObjectGuid, Position> const retreats[] = { { _korfaxGUID, KorfaxRetreatPos }, { _maxwellGUID, MaxwellRetreatPos }, { _eligorGUID, EligorRetreatPos } };
                     for (auto const& [guid, pos] : retreats)
@@ -396,7 +399,7 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                             champion->SetFaction(me->GetFaction());
                             champion->AI()->EnterEvadeMode();
                             champion->SetWalk(false);
-                            champion->GetMotionMaster()->MovePoint(0, pos);
+                            champion->GetMotionMaster()->MovePoint(0, pos, true, pos.GetAbsoluteAngle(DarionChapelPos));
                         }
                     }
 
@@ -424,7 +427,7 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                             orbaz->GetMotionMaster()->MovePoint(0, OrbazFleePos);
                         }
 
-                        orbaz->DespawnOrUnsummon(7s, 30s);
+                        orbaz->DespawnOrUnsummon(7s, SceneRespawnHold);
                     }
 
                     for (Position const& pos : OutroDefenderPos)
@@ -593,16 +596,16 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                 Talk(EMOTE_DARION_KNEELS_IN_DEFEAT);
                 me->RemoveAurasDueToSpell(SPELL_THE_LIGHT_OF_DAWN);
                 me->SetWalk(true);
-                me->GetMotionMaster()->MovePoint(0, DarionKneelPos);
+                me->GetMotionMaster()->MovePoint(0, DarionKneelPos, true, DarionKneelPos.GetAbsoluteAngle(TirionSpawnPos));
 
-                std::pair<ObjectGuid, Position> const gatherings[] = { { _korfaxGUID, KorfaxChapelPos }, { _maxwellGUID, MaxwellChapelPos }, { _eligorGUID, EligorChapelPos }, { _koltiraGUID, KoltiraChapelPos }, { _thassarianGUID, ThassarianChapelPos } };
-                for (auto const& [guid, pos] : gatherings)
+                std::tuple<ObjectGuid, Position, Position> const gatherings[] = { { _korfaxGUID, KorfaxChapelPos, DarionKneelPos }, { _maxwellGUID, MaxwellChapelPos, DarionKneelPos }, { _eligorGUID, EligorChapelPos, DarionKneelPos }, { _koltiraGUID, KoltiraChapelPos, TirionSpawnPos }, { _thassarianGUID, ThassarianChapelPos, TirionSpawnPos } };
+                for (auto const& [guid, pos, facing] : gatherings)
                 {
                     if (Creature* gathering = ObjectAccessor::GetCreature(*me, guid))
                     {
                         gathering->RemoveAurasDueToSpell(SPELL_THE_LIGHT_OF_DAWN);
                         gathering->SetWalk(true);
-                        gathering->GetMotionMaster()->MovePoint(0, pos);
+                        gathering->GetMotionMaster()->MovePoint(0, pos, true, pos.GetAbsoluteAngle(facing));
                     }
                 }
 
@@ -655,11 +658,11 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                     if (Creature* alexandros = ObjectAccessor::GetCreature(*me, _alexandrosGUID))
                     {
                         alexandros->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-                        alexandros->GetMotionMaster()->MovePoint(0, AlexandrosForwardPos);
+                        alexandros->GetMotionMaster()->MovePoint(0, AlexandrosForwardPos, true, AlexandrosForwardPos.GetAbsoluteAngle(DarionChapelPos));
                         alexandros->AI()->Talk(SAY_ALEXANDROS_MY_SON);
                     }
 
-                    me->GetMotionMaster()->MovePoint(0, DarionChapelPos);
+                    me->GetMotionMaster()->MovePoint(0, DarionChapelPos, true, DarionChapelPos.GetAbsoluteAngle(AlexandrosForwardPos));
                 })
                 .Schedule(69500ms, [this](TaskContext /*context*/)
                 {
@@ -683,7 +686,7 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                     if (Creature* youngDarion = ObjectAccessor::GetCreature(*me, _youngDarionGUID))
                     {
                         youngDarion->AI()->Talk(EMOTE_YOUNG_DARION_SHADE);
-                        youngDarion->GetMotionMaster()->MovePoint(0, YoungDarionHugPos);
+                        youngDarion->GetMotionMaster()->MovePoint(0, YoungDarionHugPos, true, YoungDarionHugPos.GetAbsoluteAngle(AlexandrosForwardPos));
                     }
                 })
                 .Schedule(86s, [this](TaskContext /*context*/)
@@ -711,7 +714,7 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                     if (Creature* alexandros = ObjectAccessor::GetCreature(*me, _alexandrosGUID))
                         alexandros->AI()->Talk(SAY_ALEXANDROS_BARELY_OF_AGE);
                     if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
-                        tirion->GetMotionMaster()->MovePoint(0, TirionForwardPos);
+                        tirion->GetMotionMaster()->MovePoint(0, TirionForwardPos, true, TirionForwardPos.GetAbsoluteAngle(AlexandrosForwardPos));
                 })
                 .Schedule(125s, [this](TaskContext /*context*/)
                 {
@@ -723,7 +726,7 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                     if (Creature* alexandros = ObjectAccessor::GetCreature(*me, _alexandrosGUID))
                         alexandros->AI()->Talk(SAY_ALEXANDROS_ASHBRINGER);
                 })
-                .Schedule(141s, [this](TaskContext /*context*/)
+                .Schedule(151s, [this](TaskContext /*context*/)
                 {
                     if (Creature* youngDarion = ObjectAccessor::GetCreature(*me, _youngDarionGUID))
                         youngDarion->DespawnOrUnsummon();
@@ -765,13 +768,13 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                 .Schedule(179s, [this](TaskContext /*context*/)
                 {
                     if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
-                        lichKing->GetMotionMaster()->MovePoint(0, LichKingForwardPos);
+                        lichKing->GetMotionMaster()->MovePoint(0, LichKingForwardPos, true, LichKingForwardPos.GetAbsoluteAngle(DarionChapelPos));
                 })
                 .Schedule(185s, [this](TaskContext /*context*/)
                 {
                     me->SetWalk(false);
                     DoCastSelf(SPELL_MOGRAINE_CHARGE);
-                    me->GetMotionMaster()->MovePoint(0, DarionChargePos);
+                    me->GetMotionMaster()->MovePoint(0, DarionChargePos, true, DarionChargePos.GetAbsoluteAngle(LichKingForwardPos));
                 })
                 .Schedule(186s, [this](TaskContext /*context*/)
                 {
@@ -785,7 +788,9 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                         lichKing->AI()->Talk(SAY_LICH_KING_PATHETIC);
                     }
 
-                    me->GetMotionMaster()->MoveJump(DarionKickedPos, 20.0f, 10.0f);
+                    Position kickedPos = DarionKickedPos;
+                    kickedPos.SetOrientation(DarionKickedPos.GetAbsoluteAngle(LichKingForwardPos));
+                    me->GetMotionMaster()->MoveJump(kickedPos, 20.0f, 10.0f, EVENT_JUMP, true);
                 })
                 .Schedule(190s, [this](TaskContext /*context*/)
                 {
@@ -867,7 +872,7 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                     me->SetStandState(UNIT_STAND_STATE_STAND);
                     Talk(SAY_DARION_TIRION);
                     me->SetWalk(true);
-                    me->GetMotionMaster()->MovePoint(0, DarionThrowPos);
+                    me->GetMotionMaster()->MovePoint(0, DarionThrowPos, true, DarionThrowPos.GetAbsoluteAngle(TirionForwardPos));
                 })
                 .Schedule(253s, [this](TaskContext /*context*/)
                 {
@@ -923,7 +928,7 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                         tirion->CastSpell(tirion, SPELL_TIRION_CHARGE);
                         tirion->SetEmoteState(EMOTE_STATE_READY2H);
                         tirion->SetWalk(false);
-                        tirion->GetMotionMaster()->MovePoint(0, TirionChargePos);
+                        tirion->GetMotionMaster()->MovePoint(0, TirionChargePos, true, TirionChargePos.GetAbsoluteAngle(LichKingRecoverPos));
                     }
 
                     if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
@@ -937,7 +942,7 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                 .Schedule(274s, [this](TaskContext /*context*/)
                 {
                     if (Creature* lichKing = ObjectAccessor::GetCreature(*me, _lichKingGUID))
-                        lichKing->GetMotionMaster()->MovePoint(0, LichKingRecoverPos);
+                        lichKing->GetMotionMaster()->MovePoint(0, LichKingRecoverPos, true, LichKingRecoverPos.GetAbsoluteAngle(TirionChargePos));
                 })
                 .Schedule(278s, [this](TaskContext /*context*/)
                 {
@@ -967,7 +972,7 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                     if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
                     {
                         tirion->SetEmoteState(EMOTE_ONESHOT_NONE);
-                        tirion->GetMotionMaster()->MovePoint(0, TirionRunPos);
+                        tirion->GetMotionMaster()->MovePoint(0, TirionRunPos, true, TirionRunPos.GetAbsoluteAngle(DarionThrowPos));
                     }
                 })
                 .Schedule(304s, [this](TaskContext /*context*/)
@@ -986,7 +991,7 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                         if (Creature* champion = ObjectAccessor::GetCreature(*me, guid))
                         {
                             champion->SetStandState(UNIT_STAND_STATE_STAND);
-                            champion->GetMotionMaster()->MovePoint(0, pos);
+                            champion->GetMotionMaster()->MovePoint(0, pos, true, pos.GetAbsoluteAngle(TirionSpeechPos));
                         }
                     }
 
@@ -998,14 +1003,14 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                     if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
                     {
                         tirion->SetWalk(true);
-                        tirion->GetMotionMaster()->MovePoint(0, TirionApproachPos);
+                        tirion->GetMotionMaster()->MovePoint(0, TirionApproachPos, true, TirionApproachPos.GetAbsoluteAngle(me));
                     }
                 })
                 .Schedule(322500ms, [this](TaskContext /*context*/)
                 {
                     if (Creature* tirion = ObjectAccessor::GetCreature(*me, _tirionGUID))
                     {
-                        tirion->GetMotionMaster()->MovePoint(0, TirionSpeechPos);
+                        tirion->GetMotionMaster()->MovePoint(0, TirionSpeechPos, true, TirionSpeechPos.GetAbsoluteAngle(me));
                         tirion->AI()->Talk(SAY_TIRION_TERRIBLE_TRAGEDY);
                     }
                 })
@@ -1055,7 +1060,7 @@ struct npc_highlord_darion_mograine : public ScriptedAI
                 {
                     for (ObjectGuid const& guid : { _koltiraGUID, _thassarianGUID })
                         if (Creature* hero = ObjectAccessor::GetCreature(*me, guid))
-                            hero->DespawnOrUnsummon(0s, 30s);
+                            hero->DespawnOrUnsummon(0s, SceneRespawnHold);
 
                     for (uint32 entry : { NPC_KORFAX_CHAMPION_OF_THE_LIGHT, NPC_LORD_MAXWELL_TYROSUS, NPC_COMMANDER_ELIGOR_DAWNBRINGER, NPC_DEFENDER_OF_THE_LIGHT })
                         _summons.DespawnEntry(entry);
@@ -1354,7 +1359,7 @@ private:
 class zone_the_scarlet_enclave : public WorldZoneScript
 {
 public:
-    zone_the_scarlet_enclave() : WorldZoneScript("zone_the_scarlet_enclave", MAP_SCARLET_ENCLAVE, { ZONE_THE_SCARLET_ENCLAVE }, PHASE_CHAPTER_IV_EPILOGUE), _worldStates({ { WORLD_STATE_FORCES_LIGHT, 0 }, { WORLD_STATE_FORCES_SCOURGE, 0 }, { WORLD_STATE_FORCES_SHOW, 0 }, { WORLD_STATE_COUNTDOWN_SHOW, 0 }, { WORLD_STATE_COUNTDOWN_TIME, 0 }, { WORLD_STATE_BATTLE_BEGUN, 0 } }), _eventState(EVENT_STATE_NOT_STARTED), _defendersKilled(0), _scourgeKilled(0), _abortPending(false) { }
+    zone_the_scarlet_enclave() : WorldZoneScript("zone_the_scarlet_enclave", MAP_SCARLET_ENCLAVE, { ZONE_THE_SCARLET_ENCLAVE }, PHASE_CHAPTER_IV_EPILOGUE), _worldStates({ { WORLD_STATE_FORCES_LIGHT, 0 }, { WORLD_STATE_FORCES_SCOURGE, 0 }, { WORLD_STATE_FORCES_SHOW, 0 }, { WORLD_STATE_COUNTDOWN_SHOW, 0 }, { WORLD_STATE_COUNTDOWN_TIME, 0 }, { WORLD_STATE_BATTLE_BEGUN, 0 } }), _eventState(EVENT_STATE_NOT_STARTED), _defendersKilled(0), _scourgeKilled(0), _abortPending(false), _sceneRespawnPending(false) { }
 
     void OnCreatureCreate(Creature* creature) override
     {
@@ -1369,6 +1374,7 @@ public:
         {
             case NPC_HIGHLORD_DARION_MOGRAINE:
                 _darionGUID = creature->GetGUID();
+                _sceneRespawnPending = true;
                 break;
             case NPC_KOLTIRA_DEATHWEAVER:
                 _koltiraGUID = creature->GetGUID();
@@ -1486,13 +1492,16 @@ public:
         }
     }
 
-    void FillInitialWorldStates(Player* player, WorldPackets::WorldState::InitWorldStates& packet) override
+    void FillInitialWorldStates(Player* /*player*/, WorldPackets::WorldState::InitWorldStates& packet) override
     {
-        if (!player->InSamePhase(GetPhaseMask()))
-            return;
-
         for (auto const& [worldStateId, value] : _worldStates)
             packet.Worldstates.emplace_back(worldStateId, value);
+    }
+
+    void SendRemoveWorldStates(Player* player) override
+    {
+        for (auto const& worldState : _worldStates)
+            player->SendUpdateWorldState(worldState.first, 0);
     }
 
     void OnUpdate(Map* map, uint32 diff) override
@@ -1511,6 +1520,17 @@ public:
             for (ObjectGuid const& guid : { _koltiraGUID, _orbazGUID, _thassarianGUID, _behemothGUIDs[0], _behemothGUIDs[1] })
                 if (Creature* champion = map->GetCreature(guid))
                     champion->DespawnOrUnsummon(0s, 5s);
+        }
+
+        if (_sceneRespawnPending)
+        {
+            _sceneRespawnPending = false;
+
+            std::vector<RespawnInfo const*> respawns;
+            map->GetRespawnInfo(respawns, SPAWN_TYPEMASK_CREATURE);
+            for (RespawnInfo const* respawn : respawns)
+                if (std::find(SceneSpawns.begin(), SceneSpawns.end(), respawn->entry) != SceneSpawns.end())
+                    map->Respawn(SPAWN_TYPE_CREATURE, respawn->spawnId);
         }
 
         _eventTimer.Update(diff);
@@ -1539,11 +1559,10 @@ public:
         if (_changedWorldStates.empty())
             return;
 
-        for (MapReference const& ref : map->GetPlayers())
-            if (Player* player = ref.GetSource())
-                if (HasZone(player->GetZoneId()) && player->InSamePhase(GetPhaseMask()))
-                    for (uint32 worldStateId : _changedWorldStates)
-                        player->SendUpdateWorldState(worldStateId, _worldStates[worldStateId]);
+        for (ObjectGuid const& guid : GetPlayers())
+            if (Player* player = ObjectAccessor::GetPlayer(map, guid))
+                for (uint32 worldStateId : _changedWorldStates)
+                    player->SendUpdateWorldState(worldStateId, _worldStates[worldStateId]);
 
         _changedWorldStates.clear();
     }
@@ -1580,6 +1599,7 @@ private:
     uint32 _defendersKilled;
     uint32 _scourgeKilled;
     bool _abortPending;
+    bool _sceneRespawnPending;
 };
 
 void AddSC_the_scarlet_enclave_c5()
