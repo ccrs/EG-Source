@@ -86,6 +86,22 @@ namespace
     std::set<uint32> RealmFirstRetiredOrigins;
 }
 
+void EG::SendHardcoreDeathMessage(Player const* player)
+{
+    if (!player->GetSession())
+        return;
+
+    ChatHandler handler(player->GetSession());
+    if (!player->CanAbandonHardcore())
+    {
+        handler.SendSysMessage("|cffff0000You died in Hardcore mode. This death is permanent.|r");
+        return;
+    }
+
+    handler.PSendSysMessage("|cffff0000You fell in Hardcore mode at level %u.|r Because you got past level %u you may abandon this run and return to regular play instead of staying dead.", uint32(player->GetLevel()), uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
+    handler.SendSysMessage("To abandon Hardcore, type: |cffffffff.settings hardcore|r");
+}
+
 bool EG::IsBoostedDay()
 {
     return BoostedDayActive;
@@ -131,6 +147,85 @@ bool EG::CanEarnRealmFirst(Player const* player, AchievementEntry const* achieve
         return false;
 
     return true;
+}
+
+bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
+{
+    if (_includeSelf && _source == unit && unit->GetHealthPct() < _hp)
+    {
+        _hp = unit->GetHealthPct();
+        return true;
+    }
+
+    if (((_playerOnly && unit->IsPlayer()) || !_playerOnly)
+        && unit->IsAlive()
+        && !unit->IsCritter()
+        && ((_source->IsInCombat() && unit->IsInCombat()) || (!_source->IsInCombat()))
+        && _source->IsValidAssistTarget(unit)
+        && _source->IsWithinDistInMap(unit, _range)
+        && _source->IsWithinLOSInMap(unit)
+        && unit->GetHealthPct() < _hp
+    )
+    {
+        _hp = unit->GetHealthPct();
+        return true;
+    }
+
+    return false;
+}
+
+bool EG::AnyFriendlyUnitInObjectRangeCheck::operator()(Unit const* unit) const
+{
+    if (_options.Alive && !unit->IsAlive())
+        return false;
+
+    if (_options.IncludeSelf && _source == unit)
+        return true;
+
+    if (unit->IsCritter())
+        return false;
+
+    if (!_options.ExcludedEntries.empty() && _options.ExcludedEntries.contains(unit->GetEntry()))
+        return false;
+
+    if (((_options.PlayerOnly && unit->IsPlayer()) || !_options.PlayerOnly)
+        && (!_source->IsUnit() || (_source->ToUnit()->IsInCombat() && unit->IsInCombat()) || (!_source->ToUnit()->IsInCombat()))
+        && _source->IsValidAssistTarget(unit)
+        && _source->IsWithinDistInMap(unit, _options.Range)
+        && _source->IsWithinLOSInMap(unit)
+    )
+        return true;
+
+    return false;
+}
+
+EG::SetRaceMasqueradeSetting::SetRaceMasqueradeSetting(Player* owner, Races selectedRace) : _owner(owner), _selectedRace(selectedRace)
+{
+}
+
+bool EG::SetRaceMasqueradeSetting::Execute(uint64, uint32)
+{
+    if (!_owner->IsInWorld())
+    {
+        _owner->m_Events.AddEvent(this, _owner->m_Events.CalculateTime(100ms));
+        return false;
+    }
+
+    _owner->SetMasqueradeRace(_selectedRace);
+    return true;
+}
+
+EG::CleanRaceMasquerade::CleanRaceMasquerade(Player* owner) : _owner(owner)
+{
+}
+
+bool EG::CleanRaceMasquerade::Execute(uint64, uint32)
+{
+    if (_owner->CleanMasqueradeRaceValue())
+        return true;
+
+    _owner->m_Events.AddEvent(this, _owner->m_Events.CalculateTime(100ms));
+    return false;
 }
 
 void Creature::ProcessDelayedLOSEntries()
@@ -919,22 +1014,6 @@ void Player::HandleHardcoreDeath(Unit* killer)
     EG::SendHardcoreDeathMessage(this);
 }
 
-void EG::SendHardcoreDeathMessage(Player const* player)
-{
-    if (!player->GetSession())
-        return;
-
-    ChatHandler handler(player->GetSession());
-    if (!player->CanAbandonHardcore())
-    {
-        handler.SendSysMessage("|cffff0000You died in Hardcore mode. This death is permanent.|r");
-        return;
-    }
-
-    handler.PSendSysMessage("|cffff0000You fell in Hardcore mode at level %u.|r Because you got past level %u you may abandon this run and return to regular play instead of staying dead.", uint32(player->GetLevel()), uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
-    handler.SendSysMessage("To abandon Hardcore, type: |cffffffff.settings hardcore|r");
-}
-
 /*static*/ bool Player::IsHardcoreCharacter(ObjectGuid guid)
 {
     if (Player* player = ObjectAccessor::FindConnectedPlayer(guid))
@@ -1579,56 +1658,6 @@ void WorldObject::UpdateWorldZoneScript()
     }
 }
 
-bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
-{
-    if (_includeSelf && _source == unit && unit->GetHealthPct() < _hp)
-    {
-        _hp = unit->GetHealthPct();
-        return true;
-    }
-
-    if (((_playerOnly && unit->IsPlayer()) || !_playerOnly)
-        && unit->IsAlive()
-        && !unit->IsCritter()
-        && ((_source->IsInCombat() && unit->IsInCombat()) || (!_source->IsInCombat()))
-        && _source->IsValidAssistTarget(unit)
-        && _source->IsWithinDistInMap(unit, _range)
-        && _source->IsWithinLOSInMap(unit)
-        && unit->GetHealthPct() < _hp
-    )
-    {
-        _hp = unit->GetHealthPct();
-        return true;
-    }
-
-    return false;
-}
-
-bool EG::AnyFriendlyUnitInObjectRangeCheck::operator()(Unit const* unit) const
-{
-    if (_options.Alive && !unit->IsAlive())
-        return false;
-
-    if (_options.IncludeSelf && _source == unit)
-        return true;
-
-    if (unit->IsCritter())
-        return false;
-
-    if (!_options.ExcludedEntries.empty() && _options.ExcludedEntries.contains(unit->GetEntry()))
-        return false;
-
-    if (((_options.PlayerOnly && unit->IsPlayer()) || !_options.PlayerOnly)
-        && (!_source->IsUnit() || (_source->ToUnit()->IsInCombat() && unit->IsInCombat()) || (!_source->ToUnit()->IsInCombat()))
-        && _source->IsValidAssistTarget(unit)
-        && _source->IsWithinDistInMap(unit, _options.Range)
-        && _source->IsWithinLOSInMap(unit)
-    )
-        return true;
-
-    return false;
-}
-
 void SmartAI::SetCombatMovement()
 {
     if (!me->IsAlive() || !CanCombatMove() || !me->GetVictim())
@@ -1850,33 +1879,4 @@ void InstanceScript::ForceRespawnQueuedCreaturesByEntry(std::vector<uint32> cons
         if (!aliveExists)
             instance->Respawn(info->type, info->spawnId);
     }
-}
-
-EG::SetRaceMasqueradeSetting::SetRaceMasqueradeSetting(Player* owner, Races selectedRace) : _owner(owner), _selectedRace(selectedRace)
-{
-}
-
-bool EG::SetRaceMasqueradeSetting::Execute(uint64, uint32)
-{
-    if (!_owner->IsInWorld())
-    {
-        _owner->m_Events.AddEvent(this, _owner->m_Events.CalculateTime(100ms));
-        return false;
-    }
-
-    _owner->SetMasqueradeRace(_selectedRace);
-    return true;
-}
-
-EG::CleanRaceMasquerade::CleanRaceMasquerade(Player* owner) : _owner(owner)
-{
-}
-
-bool EG::CleanRaceMasquerade::Execute(uint64, uint32)
-{
-    if (_owner->CleanMasqueradeRaceValue())
-        return true;
-
-    _owner->m_Events.AddEvent(this, _owner->m_Events.CalculateTime(100ms));
-    return false;
 }
