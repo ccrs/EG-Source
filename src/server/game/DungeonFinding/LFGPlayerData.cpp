@@ -119,7 +119,7 @@ void LfgPlayerData::SetNumberOfPartyMembersAtJoin(uint8 count)
     m_NumberOfPartyMembersAtJoin = count;
 }
 
-uint8 LfgPlayerData::GetNumberOfPartyMembersAtJoin()
+uint8 LfgPlayerData::GetNumberOfPartyMembersAtJoin() const
 {
     return m_NumberOfPartyMembersAtJoin;
 }

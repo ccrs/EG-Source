@@ -28,7 +28,7 @@ LfgGroupData::LfgGroupData(): m_State(LFG_STATE_NONE), m_OldState(LFG_STATE_NONE
 LfgGroupData::~LfgGroupData()
 { }
 
-bool LfgGroupData::IsLfgGroup()
+bool LfgGroupData::IsLfgGroup() const
 {
     return m_OldState != LFG_STATE_NONE;
 }

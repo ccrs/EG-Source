@@ -452,7 +452,7 @@ struct boss_headless_horseman : public ScriptedAI
         {
             Map* map = me->GetMap();
             if (Group* group = map->GetPlayers().begin()->GetSource()->GetGroup())
-                if (group->isLFGGroup())
+                if (group->isLFGGroup() && sLFGMgr->GetDungeon(group->GetGUID()) == LFG_DUNGEONID_THE_HEADLESS_HORSEMAN) // EG
                     sLFGMgr->FinishDungeon(group->GetGUID(), LFG_DUNGEONID_THE_HEADLESS_HORSEMAN, map);
         }
     }

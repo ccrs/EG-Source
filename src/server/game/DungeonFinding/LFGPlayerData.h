@@ -56,7 +56,7 @@ class TC_GAME_API LfgPlayerData
 
         // Achievement-related
         void SetNumberOfPartyMembersAtJoin(uint8 count);
-        uint8 GetNumberOfPartyMembersAtJoin();
+        uint8 GetNumberOfPartyMembersAtJoin() const;
 
     private:
         // General
