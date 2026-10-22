@@ -221,6 +221,7 @@ void MapManager::Update(uint32 diff)
     if (!i_timer.Passed())
         return;
 
+    _updatingMaps = true; // EG
     MapMapType::iterator iter = i_maps.begin();
     for (; iter != i_maps.end(); ++iter)
     {
@@ -231,6 +232,12 @@ void MapManager::Update(uint32 diff)
     }
     if (m_updater.activated())
         m_updater.wait();
+
+    _updatingMaps = false; // EG
+    sInstanceSaveMgr->ProcessInstanceMapEvents(); // EG
+    for (iter = i_maps.begin(); iter != i_maps.end(); ++iter) // EG
+        if (MapInstanced* mapInstanced = iter->second->ToMapInstanced()) // EG
+            mapInstanced->DestroyPendingInstances(); // EG
 
     for (iter = i_maps.begin(); iter != i_maps.end(); ++iter)
         iter->second->DelayedUpdate(uint32(i_timer.GetCurrent()));

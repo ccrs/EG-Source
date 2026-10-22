@@ -1202,8 +1202,9 @@ void Player::Update(uint32 p_time)
         {
             // Player left the instance
             if (_pendingBindId == GetInstanceId())
-                BindToInstance();
-            SetPendingBind(0, 0);
+                sInstanceSaveMgr->HandleInstanceMapEvent({ .Type = INSTANCE_MAP_EVENT_PENDING_BIND, .InstanceId = _pendingBindId, .PlayerGuid = GetGUID() }); // EG
+            else // EG
+                SetPendingBind(0, 0);
         }
         else
             _pendingBindTimer -= p_time;
@@ -1816,6 +1817,13 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
             if (!GetSession()->PlayerLogout())
             {
                 SetCanTeleport(true);
+                if (mEntry->IsDungeon()) // EG
+                {
+                    WorldPacket lastInstance(SMSG_UPDATE_LAST_INSTANCE, 4); // EG
+                    lastInstance << uint32(mapid); // EG
+                    SendDirectMessage(&lastInstance); // EG
+                }
+
                 WorldPackets::Movement::NewWorld packet;
                 packet.MapID = mapid;
                 packet.Pos = GetTransport() ? m_movementInfo.transport.pos : m_teleport_dest.GetPosition();
@@ -18957,7 +18965,7 @@ void Player::SendRaidInfo()
                 time_t nextReset = save->GetResetTime();
                 if (bind.extendState == EXTEND_STATE_EXTENDED)
                     nextReset = sInstanceSaveMgr->GetSubsequentResetTime(save->GetMapId(), save->GetDifficultyID(), save->GetResetTime());
-                data << uint32(nextReset - now);                // reset time
+                data << uint32(bind.extendState == EXTEND_STATE_EXPIRED ? 0 : nextReset - now); // EG
                 ++counter;
             }
         }
@@ -22867,7 +22875,8 @@ void Player::SendInstanceResetWarning(uint32 mapid, Difficulty difficulty, uint3
     data << uint32(time);
     if (type == RAID_INSTANCE_WELCOME)
     {
-        data << uint8(0);                                   // is locked
+        BoundInstancesMap::const_iterator bind = m_boundInstances[difficulty].find(mapid); // EG
+        data << uint8(bind != m_boundInstances[difficulty].end() && bind->second.perm && bind->second.extendState != EXTEND_STATE_EXPIRED); // EG
         data << uint8(0);                                   // is extended, ignored if prev field is 0
     }
     SendDirectMessage(&data);

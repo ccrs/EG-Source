@@ -3881,14 +3881,15 @@ Map::EnterState InstanceMap::CannotEnter(Player* player)
 
     // cannot enter if the instance is full (player cap), GMs don't count
     uint32 maxPlayers = GetMaxPlayers();
-    if (GetPlayersCountExceptGMs() >= maxPlayers)
+    bool useEntrySnapshot = sMapMgr->IsUpdatingMaps(); // EG
+    if ((useEntrySnapshot ? _entryPlayerCount.load() : GetPlayersCountExceptGMs()) >= maxPlayers) // EG
     {
         TC_LOG_WARN("maps", "MAP: Instance '{}' of map '{}' cannot have more than '{}' players. Player '{}' rejected", GetInstanceId(), GetMapName(), maxPlayers, player->GetName());
         return CANNOT_ENTER_MAX_PLAYERS;
     }
 
     // cannot enter while an encounter is in progress (unless this is a relog, in which case it is permitted)
-    if (!player->IsLoading() && GetInstanceScript() && GetInstanceScript()->IsEncounterInProgress())
+    if (!player->IsLoading() && (useEntrySnapshot ? _entryEncounterInProgress.load() : (GetInstanceScript() && GetInstanceScript()->IsEncounterInProgress()))) // EG
         return CANNOT_ENTER_ZONE_IN_COMBAT;
 
     // cannot enter if player is permanent saved to a different instance id
@@ -4017,6 +4018,7 @@ bool InstanceMap::AddPlayerToMap(Player* player)
     if (i_data)
         i_data->OnPlayerEnter(player);
 
+    UpdateEntrySnapshot(); // EG
     return true;
 }
 
@@ -4026,6 +4028,8 @@ void InstanceMap::Update(uint32 t_diff)
 
     if (i_data)
         i_data->Update(t_diff);
+
+    UpdateEntrySnapshot(); // EG
 }
 
 void InstanceMap::RemovePlayerFromMap(Player* player, bool remove)
@@ -4040,10 +4044,10 @@ void InstanceMap::RemovePlayerFromMap(Player* player, bool remove)
         m_unloadTimer = m_unloadWhenEmpty ? MIN_UNLOAD_DELAY : std::max(sWorld->getIntConfig(CONFIG_INSTANCE_UNLOAD_DELAY), (uint32)MIN_UNLOAD_DELAY);
 
     Map::RemovePlayerFromMap(player, remove);
+    UpdateEntrySnapshot(); // EG
 
     // for normal instances schedule the reset after all players have left
-    SetResetSchedule(true);
-    sInstanceSaveMgr->UnloadInstanceSave(GetInstanceId());
+    sInstanceSaveMgr->HandleInstanceMapEvent({ .Type = INSTANCE_MAP_EVENT_PLAYER_LEFT, .MapId = GetId(), .InstanceId = GetInstanceId() }); // EG
 }
 
 void InstanceMap::CreateInstanceData(bool load)
@@ -4156,38 +4160,7 @@ void InstanceMap::PermBindAllPlayers()
     if (!IsDungeon())
         return;
 
-    InstanceSave* save = sInstanceSaveMgr->GetInstanceSave(GetInstanceId());
-    if (!save)
-    {
-        Map* selfLookup = sMapMgr->FindMap(GetId(), GetInstanceId());
-        uint32 groupBoundInstanceId = 0;
-        for (MapRefManager::iterator itr = m_mapRefManager.begin(); itr != m_mapRefManager.end(); ++itr)
-        {
-            Player* player = itr->GetSource();
-            if (player->IsGameMaster())
-                continue;
-
-            if (Group* group = player->GetGroup())
-                if (InstanceGroupBind* bind = group->GetBoundInstance(this))
-                    if (bind->save)
-                        groupBoundInstanceId = bind->save->GetInstanceId();
-
-            break;
-        }
-
-        InstanceScript const* script = GetInstanceScript();
-        TC_LOG_ERROR("maps", "Cannot bind players to instance map (Name: {}, Entry: {}, Difficulty: {}, ID: {}) because no instance save is available! "
-            "[players: {}, self-lookup: {}, group-bound-instance: {}, save-under-group-bind: {}, encounters: {}]",
-            GetMapName(), GetId(), static_cast<uint32>(GetDifficultyID()), GetInstanceId(),
-            GetPlayersCountExceptGMs(),
-            selfLookup == this ? "self" : (selfLookup ? "other-map" : "null"),
-            groupBoundInstanceId,
-            groupBoundInstanceId ? (sInstanceSaveMgr->GetInstanceSave(groupBoundInstanceId) ? "present" : "missing") : "n/a",
-            script ? script->GetEncounterStateNames() : "no-script");
-        return;
-    }
-
-    // perm bind all players that are currently inside the instance
+    std::vector<ObjectGuid> players; // EG
     for (MapRefManager::iterator itr = m_mapRefManager.begin(); itr != m_mapRefManager.end(); ++itr)
     {
         Player* player = itr->GetSource();
@@ -4195,32 +4168,10 @@ void InstanceMap::PermBindAllPlayers()
         if (player->IsGameMaster())
             continue;
 
-        InstancePlayerBind* bind = player->GetBoundInstance(save->GetMapId(), save->GetDifficultyID());
-        if (bind && bind->perm)
-        {
-            if (bind->save && bind->save->GetInstanceId() != save->GetInstanceId())
-            {
-                TC_LOG_ERROR("maps", "Player ({}, Name: {}) is in instance map (Name: {}, Entry: {}, Difficulty: {}, ID: {}) that is being bound, but already has a save for the map on ID {}!", player->GetGUID().ToString(), player->GetName(), GetMapName(), save->GetMapId(), static_cast<uint32>(save->GetDifficultyID()), save->GetInstanceId(), bind->save->GetInstanceId());
-            }
-            else if (!bind->save)
-            {
-                TC_LOG_ERROR("maps", "Player ({}, Name: {}) is in instance map (Name: {}, Entry: {}, Difficulty: {}, ID: {}) that is being bound, but already has a bind (without associated save) for the map!", player->GetGUID().ToString(), player->GetName(), GetMapName(), save->GetMapId(), static_cast<uint32>(save->GetDifficultyID()), save->GetInstanceId());
-            }
-        }
-        else
-        {
-            player->BindToInstance(save, true);
-            WorldPacket data(SMSG_INSTANCE_SAVE_CREATED, 4);
-            data << uint32(0);
-            player->SendDirectMessage(&data);
-            player->GetSession()->SendCalendarRaidLockoutAdded(save);
-
-            // if group leader is in instance, group also gets bound
-            if (Group* group = player->GetGroup())
-                if (group->GetLeaderGUID() == player->GetGUID())
-                    group->BindToInstance(save, true);
-        }
+        players.push_back(player->GetGUID()); // EG
     }
+
+    sInstanceSaveMgr->HandleInstanceMapEvent({ .Type = INSTANCE_MAP_EVENT_PERM_BIND, .MapId = GetId(), .InstanceId = GetInstanceId(), .Players = std::move(players) }); // EG
 }
 
 void InstanceMap::UnloadAll()

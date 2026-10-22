@@ -46,6 +46,7 @@ class TC_GAME_API MapInstanced : public Map
             return(i == m_InstancedMaps.end() ? nullptr : i->second.get());
         }
         bool DestroyInstance(InstancedMaps::iterator &itr);
+        void DestroyPendingInstances(); // EG
 
         void AddGridMapReference(GridCoord const& p)
         {
@@ -68,6 +69,7 @@ class TC_GAME_API MapInstanced : public Map
         BattlegroundMap* CreateBattleground(uint32 InstanceId, Battleground* bg);
 
         InstancedMaps m_InstancedMaps;
+        std::vector<uint32> _pendingDestroys; // EG
 
         uint16 GridMapReference[MAX_NUMBER_OF_GRIDS][MAX_NUMBER_OF_GRIDS];
 };

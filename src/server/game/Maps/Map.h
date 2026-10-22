@@ -34,6 +34,7 @@
 #include "Timer.h"
 #include "Transaction.h"
 #include "UniqueTrackablePtr.h"
+#include <atomic> // EG
 #include <bitset>
 #include <list>
 #include <memory>
@@ -908,12 +909,13 @@ class TC_GAME_API InstanceMap : public Map
         InstanceScript* GetInstanceScript() { return i_data; }
         InstanceScript const* GetInstanceScript() const { return i_data; }
         void PermBindAllPlayers();
+        void PermBindPlayers(std::vector<ObjectGuid> const& players); // EG
         void UnloadAll() override;
         EnterState CannotEnter(Player* player) override;
         void SendResetWarnings(uint32 timeLeft) const;
         void SetResetSchedule(bool on);
 
-        /* this checks if any players have an active permanent bind (extendState > 0) to the instance ID
+        /* this checks if any players have a permanent bind (included reactivatable expired binds) to the instance ID
         it needs a DB query, so use sparingly */
         bool HasPermBoundPlayers() const;
         void SetFreeInstanceIdOnUnload(bool val) { m_freeInstanceIdOnUnload = val; }
@@ -933,6 +935,10 @@ class TC_GAME_API InstanceMap : public Map
         InstanceScript* i_data;
         uint32 i_script_id;
         TeamId i_script_team;
+        std::atomic<uint32> _entryPlayerCount{ 0 }; // EG
+        std::atomic<bool> _entryEncounterInProgress{ false }; // EG
+
+        void UpdateEntrySnapshot(); // EG
 };
 
 class TC_GAME_API BattlegroundMap : public Map

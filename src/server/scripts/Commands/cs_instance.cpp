@@ -209,7 +209,7 @@ public:
         }
 
         // Reject improper values.
-        if (encounterId > map->GetInstanceScript()->GetEncounterCount())
+        if (encounterId >= map->GetInstanceScript()->GetEncounterCount() || state >= TO_BE_DECIDED) // EG
         {
             handler->PSendSysMessage(LANG_BAD_VALUE);
             handler->SetSentErrorMessage(true);
