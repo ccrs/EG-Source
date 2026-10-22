@@ -166,8 +166,15 @@ struct npc_void_sentry : public ScriptedAI
         me->SetReactState(REACT_PASSIVE);
     }
 
-    void IsSummonedBy(WorldObject* /*summoner*/) override
+    void IsSummonedBy(WorldObject* summoner) override
     {
+        Unit* owner = summoner->ToUnit();
+        if (owner && !owner->IsAlive()) // EG - Summon Void Sentry missile landing after Zuramat's death
+        {
+            me->DespawnOrUnsummon();
+            return;
+        }
+
         me->CastSpell(me, SPELL_SUMMON_VOID_SENTRY_BALL, true);
     }
 
