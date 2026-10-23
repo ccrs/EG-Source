@@ -84,6 +84,8 @@ struct boss_vaelastrasz : public BossAI
     {
         _Reset();
 
+        me->SetFaction(FACTION_FRIENDLY);
+        me->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
         me->SetStandState(UNIT_STAND_STATE_DEAD);
         Initialize();
     }
