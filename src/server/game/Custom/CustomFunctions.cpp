@@ -39,6 +39,7 @@
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "Group.h"
+#include "GroupMgr.h"
 #include "Item.h"
 #include "ItemTemplate.h"
 #include "Language.h"
@@ -552,6 +553,85 @@ bool GameEventMgr::SetHolidayEventTimeFromRule(GameEventData& event, EG::Holiday
     }
 
     return false;
+}
+
+void Group::ConvertFromBattlefieldGroup()
+{
+    if (!isBFGroup())
+        return;
+
+    m_bfGroup = nullptr;
+    m_groupType = GroupType(m_groupType & ~GROUPTYPE_BG);
+
+    InitializeStoredGroup(ObjectAccessor::FindConnectedPlayer(m_leaderGuid));
+    for (MemberSlot const& member : m_memberSlots)
+    {
+        InitializeStoredMember(member, ObjectAccessor::FindConnectedPlayer(member.guid));
+        sScriptMgr->OnGroupAddMember(this, member.guid);
+    }
+
+    SendUpdate();
+}
+
+uint8 Group::GetClientGroupType() const
+{
+    return isBFGroup() ? uint8(m_groupType & ~GROUPTYPE_BG) : uint8(m_groupType);
+}
+
+void Group::InitializeStoredGroup(Player* leader)
+{
+    if (leader)
+    {
+        m_dungeonDifficulty = leader->GetDungeonDifficultyID();
+        m_raidDifficulty = leader->GetRaidDifficultyID();
+    }
+
+    m_dbStoreId = sGroupMgr->GenerateNewGroupDbStoreId();
+    sGroupMgr->RegisterGroupDbStoreId(m_dbStoreId, this);
+
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_GROUP);
+
+    uint8 index = 0;
+
+    stmt->setUInt32(index++, m_dbStoreId);
+    stmt->setUInt32(index++, m_leaderGuid.GetCounter());
+    stmt->setUInt8(index++, uint8(m_lootMethod));
+    stmt->setUInt32(index++, m_looterGuid.GetCounter());
+    stmt->setUInt8(index++, uint8(m_lootThreshold));
+    stmt->setUInt64(index++, m_targetIcons[0].GetRawValue());
+    stmt->setUInt64(index++, m_targetIcons[1].GetRawValue());
+    stmt->setUInt64(index++, m_targetIcons[2].GetRawValue());
+    stmt->setUInt64(index++, m_targetIcons[3].GetRawValue());
+    stmt->setUInt64(index++, m_targetIcons[4].GetRawValue());
+    stmt->setUInt64(index++, m_targetIcons[5].GetRawValue());
+    stmt->setUInt64(index++, m_targetIcons[6].GetRawValue());
+    stmt->setUInt64(index++, m_targetIcons[7].GetRawValue());
+    stmt->setUInt8(index++, uint8(m_groupType));
+    stmt->setUInt32(index++, uint8(m_dungeonDifficulty));
+    stmt->setUInt32(index++, uint8(m_raidDifficulty));
+    stmt->setUInt32(index++, m_masterLooterGuid.GetCounter());
+
+    CharacterDatabase.Execute(stmt);
+
+    if (leader)
+        ConvertLeaderInstancesToGroup(leader, this, false);
+}
+
+void Group::InitializeStoredMember(MemberSlot const& member, Player* player)
+{
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_GROUP_MEMBER);
+    stmt->setUInt32(0, m_dbStoreId);
+    stmt->setUInt32(1, member.guid.GetCounter());
+    stmt->setUInt8(2, member.flags);
+    stmt->setUInt8(3, member.group);
+    stmt->setUInt8(4, member.roles);
+    CharacterDatabase.Execute(stmt);
+
+    if (player && !IsLeader(member.guid))
+    {
+        player->ResetInstances(INSTANCE_RESET_GROUP_JOIN, false);
+        player->ResetInstances(INSTANCE_RESET_GROUP_JOIN, true);
+    }
 }
 
 Item* Player::GetWeaponForDamageMods(WeaponAttackType attackType) const

@@ -144,6 +144,12 @@ void WorldSession::HandleGroupInviteOpcode(WorldPackets::Party::PartyInviteClien
     if (!group)
         group = invitingPlayer->GetGroupInvite();
 
+    if (group && group->isBFGroup()) // EG
+    {
+        SendPartyResult(PARTY_OP_INVITE, packet.TargetName, ERR_NOT_LEADER);
+        return;
+    }
+
     Group* group2 = invitedPlayer->GetGroup();
     if (group2 && group2->isBGGroup())
         group2 = invitedPlayer->GetOriginalGroup();

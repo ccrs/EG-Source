@@ -18,13 +18,20 @@
 #ifndef TRINITY_BATTLEFIELD_H_
 #define TRINITY_BATTLEFIELD_H_
 
+#include "BattlefieldEvents.h"
 #include "Common.h"
+#include "EnumFlag.h"
 #include "ObjectGuid.h"
 #include "SharedDefines.h"
 #include "Timer.h"
 #include "ZoneScript.h"
+#include <array>
+#include <functional>
+#include <list>
 #include <memory>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 enum BattlefieldSpells
 {
@@ -35,6 +42,21 @@ enum BattlefieldSpells
     SPELL_BATTLEFIELD_SPIRIT_HEAL_MANA      = 44535, // Spirit Heal
     SPELL_BATTLEFIELD_AURA_PLAYER_INACTIVE  = 43681  // Inactive
 };
+
+enum BattlefieldPhase : uint8
+{
+    BATTLEFIELD_PHASE_IDLE = 0,
+    BATTLEFIELD_PHASE_PREPARATION,
+    BATTLEFIELD_PHASE_WAR
+};
+
+enum BattlefieldFlags : uint8
+{
+    BATTLEFIELD_FLAG_NONE = 0x00,
+    BATTLEFIELD_FLAG_ENABLED = 0x01
+};
+
+DEFINE_ENUM_FLAG(BattlefieldFlags);
 
 namespace WorldPackets
 {
@@ -91,17 +113,30 @@ public:
     // Is the referenced SpellArea spellId allowed for the referenced player and newArea?
     virtual bool IsSpellAreaAllowed(uint32 /*spellId*/, Player const* /*player*/, uint32 /*newArea*/) const { return false; }
 
+    void EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer);
     void SendInitWorldStatesTo(Player* player);
     void SendUpdateToPlayers();
-
-    void EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer);
-    BattlefieldGraveyard* GetGraveyard(uint8 graveyardId);
-    BattlefieldGraveyard const* GetGraveyard(uint8 graveyardId) const;
+    template<class Event, class... Args>
+    void QueueEvent(Args&&... args)
+    {
+        _events.push_back(std::make_unique<Event>(std::forward<Args>(args)...));
+    }
+    void RemoveEvents(std::function<bool(BattlefieldEvent const&)> const& predicate);
+    void ProcessRaidRelease(BattlefieldEventKey key);
+    void ProcessRaidAdd(BattlefieldEventKey key, Player* player);
+    void ProcessRaidRemove(BattlefieldEventKey key, ObjectGuid playerGuid);
+    void HandleBattlefieldRaidMemberRemoved(ObjectGuid playerGuid, RemoveMethod method);
 
     void SetMapId(uint32 mapId) { _mapId = mapId; }
+    bool SetPhase(BattlefieldPhase phase);
+    void SetEnabled(bool enabled);
 
     BattlefieldBattleId GetId() const { return _battleId; }
     uint32 GetZoneId() const { return _zoneId; }
+    BattlefieldPhase GetPhase() const { return _phase; }
+    bool IsEnabled() const { return _flags.HasFlag(BATTLEFIELD_FLAG_ENABLED); }
+    bool IsInPreparation() const { return _phase == BATTLEFIELD_PHASE_PREPARATION; }
+    bool IsWarTime() const { return _phase == BATTLEFIELD_PHASE_WAR; }
     // enum PvPTeamId
     PvPTeamId GetControllingTeam() const { return _controllingTeam; }
     // enum PvPTeamId
@@ -112,30 +147,34 @@ public:
     TeamId GetAttackingTeamId() const;
     // Battle timer
     uint32 GetTimer() const { return uint32(_timer.GetExpiry().count()); }
+    std::vector<ObjectGuid> const& GetBattlefieldRaids(TeamId teamId) const { return _battlefieldRaids[teamId]; }
+    BattlefieldGraveyard const* GetGraveyard(uint8 graveyardId) const;
+    BattlefieldGraveyard* GetGraveyard(uint8 graveyardId);
     // Closest available graveyard WorldSafeLocsEntry for Player's TeamId
     WorldSafeLocsEntry const* GetClosestGraveyardLocation(Player* player) const;
-    Creature* GetCreature(ObjectGuid guid);
-    GameObject* GetGameObject(ObjectGuid guid);
-
-    bool IsEnabled() const { return _enabled; }
-    bool IsWarTime() const { return _active; }
+    Creature* GetCreature(ObjectGuid guid) const;
+    GameObject* GetGameObject(ObjectGuid guid) const;
 
 protected:
     uint32 _mapId;
-    bool _enabled;
-    bool _active;
     PvPTeamId _controllingTeam;
     TimeTracker _timer;
 
 private:
+    bool IsBattlefieldRaidPhase() const { return IsInPreparation() || IsWarTime(); }
+
     // constant information
     BattlefieldBattleId _battleId;
     uint32 _zoneId;
-    GuidUnorderedSet _playerGUIDs;
 
+    BattlefieldPhase _phase;
+    EnumFlag<BattlefieldFlags> _flags;
+    GuidUnorderedSet _playerGUIDs;
     BattlefieldGraveyardContainer _graveyards;
     uint32 _resurrectionBaseTimer;
     TimeTracker _resurrectionTimer;
+    std::array<std::vector<ObjectGuid>, PVP_TEAMS_COUNT> _battlefieldRaids;
+    std::list<std::unique_ptr<BattlefieldEvent>> _events;
 };
 
 #endif

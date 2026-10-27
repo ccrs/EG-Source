@@ -62,3 +62,12 @@ INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `p
 -- Bridge Guards
 DELETE FROM `creature` WHERE `guid` IN (131281, 131280);
 DELETE FROM `creature_addon` WHERE `guid` IN (131281, 131280);
+
+-- Battlefield raid commands
+DELETE FROM `command` WHERE `name` IN ('bf raid', 'bf raid open', 'bf raid release', 'bf raid add', 'bf raid remove', 'bf raid list');
+INSERT INTO `command` (`name`, `help`) VALUES
+('bf raid', 'Syntax: .bf raid $subcommand\nType .bf raid to see the list of possible subcommands.\nBattlefield raid management.'),
+('bf raid release', 'Syntax: .bf raid release #battleid\nConverts the tracked battlefield raids into stored raids and stops tracking them.'),
+('bf raid add', 'Syntax: .bf raid add #battleid [$playername]\nPuts the player (or selection, or yourself) into a battlefield raid of their faction, leaving their current group.'),
+('bf raid remove', 'Syntax: .bf raid remove #battleid [$playername]\nRemoves the player (or selection, or yourself) from their battlefield raid.'),
+('bf raid list', 'Syntax: .bf raid list #battleid\nLists the tracked battlefield raids of both factions.');

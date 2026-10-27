@@ -19,6 +19,8 @@
 #include "Battlefield.h"
 #include "BattlefieldMgr.h"
 #include "Chat.h"
+#include "Group.h"
+#include "GroupMgr.h"
 #include "RBAC.h"
 
 using namespace Trinity::ChatCommands;
@@ -30,6 +32,14 @@ public:
 
     ChatCommandTable GetCommands() const override
     {
+        static ChatCommandTable battlefieldRaidCommandTable =
+        {
+            { "release", HandleBattlefieldRaidRelease, rbac::RBAC_PERM_COMMAND_BF_RAID, Console::No },
+            { "add", HandleBattlefieldRaidAdd, rbac::RBAC_PERM_COMMAND_BF_RAID, Console::No },
+            { "remove", HandleBattlefieldRaidRemove, rbac::RBAC_PERM_COMMAND_BF_RAID, Console::No },
+            { "list", HandleBattlefieldRaidList, rbac::RBAC_PERM_COMMAND_BF_RAID, Console::No },
+        };
+
         static ChatCommandTable battlefieldcommandTable =
         {
             { "start",  HandleBattlefieldStart,  rbac::RBAC_PERM_COMMAND_BF_START,  Console::No },
@@ -37,6 +47,7 @@ public:
             { "switch", HandleBattlefieldSwitch, rbac::RBAC_PERM_COMMAND_BF_SWITCH, Console::No },
             { "timer",  HandleBattlefieldTimer,  rbac::RBAC_PERM_COMMAND_BF_TIMER,  Console::No },
             { "enable", HandleBattlefieldEnable, rbac::RBAC_PERM_COMMAND_BF_ENABLE, Console::No },
+            { "raid", battlefieldRaidCommandTable },
         };
 
         static ChatCommandTable commandTable =
@@ -85,6 +96,76 @@ public:
 
     static bool HandleBattlefieldTimer(ChatHandler* /*handler*/)
     {
+        return true;
+    }
+
+    static Battlefield* GetBattlefieldById(uint8 battleId)
+    {
+        if (battleId == 0 || battleId >= BattlefieldBattleId::BATTLEFIELD_BATTLEID_MAX)
+            return nullptr;
+        return sBattlefieldMgr->GetBattlefield(BattlefieldBattleId(battleId));
+    }
+
+    static bool HandleBattlefieldRaidRelease(ChatHandler* handler, uint8 battleId)
+    {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        battlefield->QueueEvent<BattlefieldRaidReleaseEvent>();
+        handler->PSendSysMessage("Battlefield %u: battlefield raid release queued.", battleId);
+        return true;
+    }
+
+    static bool HandleBattlefieldRaidAdd(ChatHandler* handler, uint8 battleId, Optional<PlayerIdentifier> player)
+    {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        if (!player)
+            player = PlayerIdentifier::FromTargetOrSelf(handler);
+        if (!player)
+            return false;
+
+        if (!player->IsConnected())
+        {
+            handler->PSendSysMessage("Battlefield %u: %s is not online.", battleId, player->GetName().c_str());
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        battlefield->QueueEvent<BattlefieldRaidAddEvent>(player->GetGUID());
+        handler->PSendSysMessage("Battlefield %u: %s battlefield raid add queued.", battleId, player->GetName().c_str());
+        return true;
+    }
+
+    static bool HandleBattlefieldRaidRemove(ChatHandler* handler, uint8 battleId, Optional<PlayerIdentifier> player)
+    {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        if (!player)
+            player = PlayerIdentifier::FromTargetOrSelf(handler);
+        if (!player)
+            return false;
+
+        battlefield->QueueEvent<BattlefieldRaidRemoveEvent>(player->GetGUID());
+        handler->PSendSysMessage("Battlefield %u: %s battlefield raid remove queued.", battleId, player->GetName().c_str());
+        return true;
+    }
+
+    static bool HandleBattlefieldRaidList(ChatHandler* handler, uint8 battleId)
+    {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        for (TeamId teamId : { TEAM_ALLIANCE, TEAM_HORDE })
+            for (ObjectGuid groupGuid : battlefield->GetBattlefieldRaids(teamId))
+                if (Group* group = sGroupMgr->GetGroupByGUID(groupGuid))
+                    handler->PSendSysMessage("%s raid %u: %u members, leader %s", teamId == TEAM_ALLIANCE ? "Alliance" : "Horde", groupGuid.GetCounter(), group->GetMembersCount(), group->GetLeaderName());
         return true;
     }
 };

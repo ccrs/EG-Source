@@ -1,4 +1,9 @@
 --
+DELETE FROM `rbac_permissions` WHERE `id` IN (1004, 1005);
+INSERT INTO `rbac_permissions` (`id`, `name`) VALUES
+(1004, 'Command: tournament'),
+(1005, 'Command: bf raid');
+
 DELETE FROM `rbac_linked_permissions` WHERE `id` IN (192, 196);
 INSERT INTO `rbac_linked_permissions` VALUES
 (192,  21), -- Skip reset talents when used more than allowed check
@@ -325,4 +330,5 @@ INSERT INTO `rbac_linked_permissions` VALUES
 (196, 881), -- Command: reload vehicle_template
 (196, 884), -- Command: bg start
 (196, 885), -- Command: bg stop
-(196, 1004); -- Command: tournament
+(196, 1004), -- Command: tournament
+(196, 1005); -- Command: bf raid

@@ -19,6 +19,8 @@
 #include "BattlefieldEntities.h"
 #include "BattlegroundPackets.h"
 #include "DBCStores.h"
+#include "Group.h"
+#include "GroupMgr.h"
 #include "MapManager.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
@@ -27,7 +29,7 @@
 #include <algorithm>
 
 Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) :
-    _mapId(0), _enabled(false), _active(false), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0), _battleId(battleId), _zoneId(zoneId), _resurrectionBaseTimer(30 * IN_MILLISECONDS), _resurrectionTimer(_resurrectionBaseTimer)
+    _mapId(0), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0), _battleId(battleId), _zoneId(zoneId), _phase(BATTLEFIELD_PHASE_IDLE), _flags(BATTLEFIELD_FLAG_NONE), _resurrectionBaseTimer(30 * IN_MILLISECONDS), _resurrectionTimer(_resurrectionBaseTimer)
 {
 }
 
@@ -50,6 +52,17 @@ void Battlefield::ChangeTeams(PvPTeamId newControllingTeam)
 
 void Battlefield::Update(uint32 diff)
 {
+    std::list<std::unique_ptr<BattlefieldEvent>> events;
+    events.splice(events.end(), _events);
+    for (auto itr = events.begin(); itr != events.end();)
+    {
+        if ((*itr)->Execute(*this, diff))
+            itr = events.erase(itr);
+        else
+            ++itr;
+    }
+    _events.splice(_events.begin(), events);
+
     _resurrectionTimer.Update(diff);
     if (_resurrectionTimer.Passed())
     {
@@ -62,33 +75,25 @@ void Battlefield::Update(uint32 diff)
 
 void Battlefield::HandlePlayerEnterZone(Player* player)
 {
+    if (Group* group = player->GetGroup())
+    {
+        std::vector<ObjectGuid> const& raid = _battlefieldRaids[player->GetTeamId()];
+        if (std::find(raid.begin(), raid.end(), group->GetGUID()) != raid.end())
+        {
+            RemoveEvents([playerGuid = player->GetGUID()](BattlefieldEvent const& event) -> bool
+            {
+                return event.GetType() == BATTLEFIELD_EVENT_RAID_REMOVE && event.GetObjectGUID() == playerGuid;
+            });
+        }
+    }
     _playerGUIDs.insert(player->GetGUID());
 }
 
 void Battlefield::HandlePlayerLeaveZone(Player* player)
 {
     RemovePlayerFromResurrectionQueue(player);
+    QueueEvent<BattlefieldRaidRemoveEvent>(player->GetGUID());
     _playerGUIDs.erase(player->GetGUID());
-}
-
-void Battlefield::SendUpdateToPlayers()
-{
-    Map* battleMap = sMapMgr->FindMap(_mapId, 0);
-    for (auto itr = _playerGUIDs.begin(); itr != _playerGUIDs.end();)
-    {
-        if (Player* player = ObjectAccessor::GetPlayer(battleMap, *itr))
-        {
-            if (player->IsInWorld())
-            {
-                player->UpdateAreaDependentAuras(player->GetAreaId());
-                player->UpdateZoneDependentAuras(player->GetZoneId());
-                SendInitWorldStatesTo(player);
-            }
-            ++itr;
-        }
-        else
-            itr = _playerGUIDs.erase(itr);
-    }
 }
 
 void Battlefield::SendAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid source)
@@ -115,6 +120,11 @@ void Battlefield::RemovePlayerFromResurrectionQueue(Player* player)
         pair.second->RemovePlayerFromResurrectionQueue(player);
 }
 
+void Battlefield::EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer)
+{
+    _graveyards.emplace(id, std::move(pointer));
+}
+
 void Battlefield::SendInitWorldStatesTo(Player* player)
 {
     WorldPackets::WorldState::InitWorldStates packet;
@@ -126,19 +136,148 @@ void Battlefield::SendInitWorldStatesTo(Player* player)
     player->SendDirectMessage(packet.Write());
 }
 
-void Battlefield::EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer)
+void Battlefield::SendUpdateToPlayers()
 {
-    _graveyards.emplace(id, std::move(pointer));
+    Map* battleMap = sMapMgr->FindMap(_mapId, 0);
+    for (auto itr = _playerGUIDs.begin(); itr != _playerGUIDs.end();)
+    {
+        if (Player* player = ObjectAccessor::GetPlayer(battleMap, *itr))
+        {
+            if (player->IsInWorld())
+            {
+                player->UpdateAreaDependentAuras(player->GetAreaId());
+                player->UpdateZoneDependentAuras(player->GetZoneId());
+                SendInitWorldStatesTo(player);
+            }
+            ++itr;
+        }
+        else
+            itr = _playerGUIDs.erase(itr);
+    }
 }
 
-BattlefieldGraveyard* Battlefield::GetGraveyard(uint8 graveyardId)
+void Battlefield::RemoveEvents(std::function<bool(BattlefieldEvent const&)> const& predicate)
 {
-    return _graveyards.contains(graveyardId) ? _graveyards.find(graveyardId)->second.get() : nullptr;
+    std::erase_if(_events, [&predicate](std::unique_ptr<BattlefieldEvent> const& event) -> bool
+    {
+        return predicate(*event);
+    });
 }
 
-BattlefieldGraveyard const* Battlefield::GetGraveyard(uint8 graveyardId) const
+void Battlefield::ProcessRaidRelease(BattlefieldEventKey /*key*/)
 {
-    return _graveyards.contains(graveyardId) ? _graveyards.find(graveyardId)->second.get() : nullptr;
+    for (std::vector<ObjectGuid>& raid : _battlefieldRaids)
+    {
+        for (ObjectGuid groupGuid : raid)
+            if (Group* group = sGroupMgr->GetGroupByGUID(groupGuid))
+                group->ConvertFromBattlefieldGroup();
+        raid.clear();
+    }
+}
+
+void Battlefield::ProcessRaidAdd(BattlefieldEventKey /*key*/, Player* player)
+{
+    if (!IsBattlefieldRaidPhase() || !player->IsInWorld())
+        return;
+
+    TeamId teamId = player->GetTeamId();
+    std::vector<ObjectGuid>& raid = _battlefieldRaids[teamId];
+    if (Group* group = player->GetGroup())
+    {
+        if (std::find(raid.begin(), raid.end(), group->GetGUID()) != raid.end())
+            return;
+
+        if (group->isBGGroup())
+            return;
+
+        group->RemoveMember(player->GetGUID(), GROUP_REMOVEMETHOD_LEAVE);
+        if (player->GetGroup() || !player->IsInWorld())
+            return;
+    }
+
+    if (Group* invite = player->GetGroupInvite())
+    {
+        if (invite->IsCreated())
+            invite->RemoveInvite(player);
+        else if (invite->GetLeaderGUID() == player->GetGUID())
+        {
+            invite->RemoveAllInvites();
+            delete invite;
+        }
+        else
+            player->UninviteFromGroup();
+    }
+
+    Group* currentGroup = nullptr;
+    for (auto itr = raid.begin(); itr != raid.end();)
+    {
+        Group* group = sGroupMgr->GetGroupByGUID(*itr);
+        if (!group)
+        {
+            itr = raid.erase(itr);
+            continue;
+        }
+
+        if (!group->IsFull())
+        {
+            currentGroup = group;
+            break;
+        }
+
+        ++itr;
+    }
+
+    if (!currentGroup || !currentGroup->AddMember(player))
+    {
+        currentGroup = new Group();
+        currentGroup->SetBattlefieldGroup(this);
+        currentGroup->Create(player);
+        sGroupMgr->AddGroup(currentGroup);
+        raid.push_back(currentGroup->GetGUID());
+    }
+}
+
+void Battlefield::ProcessRaidRemove(BattlefieldEventKey /*key*/, ObjectGuid playerGuid)
+{
+    for (std::vector<ObjectGuid> const& raid : _battlefieldRaids)
+    {
+        for (ObjectGuid groupGuid : raid)
+        {
+            Group* group = sGroupMgr->GetGroupByGUID(groupGuid);
+            if (!group || !group->IsMember(playerGuid))
+                continue;
+
+            group->RemoveMember(playerGuid);
+            return;
+        }
+    }
+}
+
+void Battlefield::HandleBattlefieldRaidMemberRemoved(ObjectGuid /*playerGuid*/, RemoveMethod /*method*/)
+{
+}
+
+bool Battlefield::SetPhase(BattlefieldPhase phase)
+{
+    if (phase != BATTLEFIELD_PHASE_IDLE && !IsEnabled())
+        return false;
+
+    bool wasBattlefieldRaidPhase = IsBattlefieldRaidPhase();
+    _phase = phase;
+    if (wasBattlefieldRaidPhase && !IsBattlefieldRaidPhase())
+        QueueEvent<BattlefieldRaidReleaseEvent>();
+    return true;
+}
+
+void Battlefield::SetEnabled(bool enabled)
+{
+    if (enabled)
+        _flags |= BATTLEFIELD_FLAG_ENABLED;
+    else
+    {
+        SetPhase(BATTLEFIELD_PHASE_IDLE);
+        _flags.RemoveFlag(BATTLEFIELD_FLAG_ENABLED);
+    }
 }
 
 PvPTeamId Battlefield::GetAttackingTeam() const
@@ -167,6 +306,16 @@ TeamId Battlefield::GetAttackingTeamId() const
     return TeamIdByPvPTeamId(GetAttackingTeam());
 }
 
+BattlefieldGraveyard const* Battlefield::GetGraveyard(uint8 graveyardId) const
+{
+    return _graveyards.contains(graveyardId) ? _graveyards.find(graveyardId)->second.get() : nullptr;
+}
+
+BattlefieldGraveyard* Battlefield::GetGraveyard(uint8 graveyardId)
+{
+    return _graveyards.contains(graveyardId) ? _graveyards.find(graveyardId)->second.get() : nullptr;
+}
+
 WorldSafeLocsEntry const* Battlefield::GetClosestGraveyardLocation(Player* player) const
 {
     std::pair<float, WorldSafeLocsEntry const*> selection{ -1, nullptr };
@@ -186,7 +335,7 @@ WorldSafeLocsEntry const* Battlefield::GetClosestGraveyardLocation(Player* playe
     return selection.second;
 }
 
-Creature* Battlefield::GetCreature(ObjectGuid guid)
+Creature* Battlefield::GetCreature(ObjectGuid guid) const
 {
     if (!_mapId || !guid)
         return nullptr;
@@ -195,7 +344,7 @@ Creature* Battlefield::GetCreature(ObjectGuid guid)
     return nullptr;
 }
 
-GameObject* Battlefield::GetGameObject(ObjectGuid guid)
+GameObject* Battlefield::GetGameObject(ObjectGuid guid) const
 {
     if (!_mapId || !guid)
         return nullptr;

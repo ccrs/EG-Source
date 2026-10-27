@@ -16,6 +16,7 @@
  */
 
 #include "Group.h"
+#include "Battlefield.h"
 #include "Battleground.h"
 #include "BattlegroundMgr.h"
 #include "Common.h"
@@ -176,39 +177,7 @@ bool Group::Create(Player* leader)
 
     if (!isBGGroup() && !isBFGroup())
     {
-        m_dungeonDifficulty = leader->GetDungeonDifficultyID();
-        m_raidDifficulty = leader->GetRaidDifficultyID();
-
-        m_dbStoreId = sGroupMgr->GenerateNewGroupDbStoreId();
-
-        sGroupMgr->RegisterGroupDbStoreId(m_dbStoreId, this);
-
-        // Store group in database
-        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_GROUP);
-
-        uint8 index = 0;
-
-        stmt->setUInt32(index++, m_dbStoreId);
-        stmt->setUInt32(index++, m_leaderGuid.GetCounter());
-        stmt->setUInt8(index++, uint8(m_lootMethod));
-        stmt->setUInt32(index++, m_looterGuid.GetCounter());
-        stmt->setUInt8(index++, uint8(m_lootThreshold));
-        stmt->setUInt64(index++, m_targetIcons[0].GetRawValue());
-        stmt->setUInt64(index++, m_targetIcons[1].GetRawValue());
-        stmt->setUInt64(index++, m_targetIcons[2].GetRawValue());
-        stmt->setUInt64(index++, m_targetIcons[3].GetRawValue());
-        stmt->setUInt64(index++, m_targetIcons[4].GetRawValue());
-        stmt->setUInt64(index++, m_targetIcons[5].GetRawValue());
-        stmt->setUInt64(index++, m_targetIcons[6].GetRawValue());
-        stmt->setUInt64(index++, m_targetIcons[7].GetRawValue());
-        stmt->setUInt8(index++, uint8(m_groupType));
-        stmt->setUInt32(index++, uint8(m_dungeonDifficulty));
-        stmt->setUInt32(index++, uint8(m_raidDifficulty));
-        stmt->setUInt32(index++, m_masterLooterGuid.GetCounter());
-
-        CharacterDatabase.Execute(stmt);
-
-        Group::ConvertLeaderInstancesToGroup(leader, this, false);
+        InitializeStoredGroup(leader); // EG
 
         bool addMemberResult = AddMember(leader);
         ASSERT(addMemberResult); // If the leader can't be added to a new group because it appears full, something is clearly wrong.
@@ -434,30 +403,12 @@ bool Group::AddMember(Player* player)
             m_targetIcons[i].Clear();
     }
 
-    // insert into the table if we're not a battleground group
-    if (!isBGGroup() && !isBFGroup())
-    {
-        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_GROUP_MEMBER);
-
-        stmt->setUInt32(0, m_dbStoreId);
-        stmt->setUInt32(1, member.guid.GetCounter());
-        stmt->setUInt8(2, member.flags);
-        stmt->setUInt8(3, member.group);
-        stmt->setUInt8(4, member.roles);
-
-        CharacterDatabase.Execute(stmt);
-    }
+    if (!isBGGroup() && !isBFGroup()) // EG
+        InitializeStoredMember(member, player);
 
     SendUpdate();
     sScriptMgr->OnGroupAddMember(this, player->GetGUID());
 
-    if (!IsLeader(player->GetGUID()) && !isBGGroup() && !isBFGroup())
-    {
-        // reset the new member's instances, unless he is currently in one of them
-        // including raid/heroic instances that they are not permanently bound to!
-        player->ResetInstances(INSTANCE_RESET_GROUP_JOIN, false);
-        player->ResetInstances(INSTANCE_RESET_GROUP_JOIN, true);
-    }
     player->SetGroupUpdateFlag(GROUP_UPDATE_FULL);
     UpdatePlayerOutOfRange(player);
 
@@ -521,6 +472,8 @@ bool Group::RemoveMember(ObjectGuid guid, RemoveMethod const& method /*= GROUP_R
     BroadcastGroupUpdate();
 
     sScriptMgr->OnGroupRemoveMember(this, guid, method, kicker, reason);
+    if (m_bfGroup) // EG
+        m_bfGroup->HandleBattlefieldRaidMemberRemoved(guid, method);
 
     Player* player = ObjectAccessor::FindConnectedPlayer(guid);
     if (player)
@@ -551,7 +504,15 @@ bool Group::RemoveMember(ObjectGuid guid, RemoveMethod const& method /*= GROUP_R
 
             // Battleground group handling
             if (isBGGroup() || isBFGroup())
-                player->RemoveFromBattlegroundOrBattlefieldRaid();
+            {
+                if (player->GetGroup() == this) // EG
+                    player->RemoveFromBattlegroundOrBattlefieldRaid();
+                else if (player->GetOriginalGroup() == this)
+                {
+                    player->SetOriginalGroup(nullptr);
+                    isOriginalGroup = true;
+                }
+            }
             else
             // Regular group
             {
@@ -669,7 +630,7 @@ bool Group::RemoveMember(ObjectGuid guid, RemoveMethod const& method /*= GROUP_R
             }
         }
 
-        if (m_memberMgr.getSize() < ((isLFGGroup() || isBGGroup()) ? 1u : 2u))
+        if (m_memberMgr.getSize() < ((isLFGGroup() || isBGGroup() || isBFGroup()) ? 1u : 2u)) // EG
             Disband();
 
         return true;
@@ -803,7 +764,15 @@ void Group::Disband(bool hideDestroy /* = false */)
         //we cannot call _removeMember because it would invalidate member iterator
         //if we are removing player from battleground raid
         if (isBGGroup() || isBFGroup())
-            player->RemoveFromBattlegroundOrBattlefieldRaid();
+        {
+            if (player->GetGroup() == this) // EG
+                player->RemoveFromBattlegroundOrBattlefieldRaid();
+            else if (player->GetOriginalGroup() == this)
+            {
+                player->SetOriginalGroup(nullptr);
+                isOriginalGroup = true;
+            }
+        }
         else
         {
             //we can remove player who is in battleground from his original group
@@ -1709,7 +1678,7 @@ void Group::SendUpdateToPlayer(Player const* player, MemberSlot const* slot /*= 
     }
 
     WorldPacket data(SMSG_GROUP_LIST, (1+1+1+1+1+4+8+4+4+(GetMembersCount()-1)*(13+8+1+1+1+1)+8+1+8+1+1+1+1));
-    data << uint8(m_groupType);                         // group type (flags in 3.3)
+    data << GetClientGroupType();                       // group type (flags in 3.3) // EG
     data << uint8(slot->group);
     data << uint8(slot->flags);
     data << uint8(slot->roles);
@@ -1730,7 +1699,7 @@ void Group::SendUpdateToPlayer(Player const* player, MemberSlot const* slot /*= 
         Player* member = ObjectAccessor::FindConnectedPlayer(citr->guid);
 
         uint8 onlineState = (member && !member->GetSession()->PlayerLogout()) ? MEMBER_STATUS_ONLINE : MEMBER_STATUS_OFFLINE;
-        onlineState = onlineState | ((isBGGroup() || isBFGroup()) ? MEMBER_STATUS_PVP : 0);
+        onlineState = onlineState | (isBGGroup() ? MEMBER_STATUS_PVP : 0); // EG
 
         data << citr->name;
         data << citr->guid;                             // guid
@@ -1763,7 +1732,7 @@ void Group::SendUpdateToPlayer(Player const* player, MemberSlot const* slot /*= 
 void Group::SendOriginalGroupUpdateToPlayer(Player const* player) const
 {
     WorldPacket data(SMSG_REAL_GROUP_UPDATE, 1 + 4 + 8);
-    data << uint8(m_groupType);
+    data << GetClientGroupType(); // EG
     data << uint32(GetMembersCount() - 1);
     data << m_leaderGuid;
     player->SendDirectMessage(&data);

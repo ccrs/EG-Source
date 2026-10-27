@@ -83,8 +83,6 @@ BattlefieldWintergrasp::~BattlefieldWintergrasp()
 bool BattlefieldWintergrasp::SetupBattlefield()
 {
     SetMapId(MAPID_WINTERGRASP);
-    _enabled = /*sWorld->getBoolConfig(CONFIG_WINTERGRASP_ENABLE)*/false;
-    _active = /*sWorld->getWorldState(WORLDSTATE_WINTERGRASP_SHOW_NOWAR_TIMER) != 0*/false;
 
     uint64 hordeDefender = sWorld->getWorldState(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER);
     _controllingTeam = hordeDefender != 0 ? PVP_TEAM_HORDE : PVP_TEAM_ALLIANCE;

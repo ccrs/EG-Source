@@ -257,6 +257,8 @@ class TC_GAME_API Group
 
         void SetBattlegroundGroup(Battleground* bg);
         void SetBattlefieldGroup(Battlefield* bf);
+        Battlefield* GetBattlefield() const { return m_bfGroup; } // EG
+        void ConvertFromBattlefieldGroup(); // EG
         GroupJoinBattlegroundResult CanJoinBattlegroundQueue(Battleground const* bgOrTemplate, BattlegroundQueueTypeId bgQueueTypeId, uint32 MinPlayerCount, uint32 MaxPlayerCount, bool isRated, uint32 arenaSlot, ObjectGuid& errorGuid) const;
 
         void ChangeMembersGroup(ObjectGuid guid, uint8 group);
@@ -349,6 +351,9 @@ class TC_GAME_API Group
         void SubGroupCounterIncrease(uint8 subgroup);
         void SubGroupCounterDecrease(uint8 subgroup);
         void ToggleGroupMemberFlag(member_witerator slot, uint8 flag, bool apply);
+        uint8 GetClientGroupType() const; // EG
+        void InitializeStoredGroup(Player* leader); // EG
+        void InitializeStoredMember(MemberSlot const& member, Player* player); // EG
 
         MemberSlotList      m_memberSlots;
         GroupRefManager     m_memberMgr;
