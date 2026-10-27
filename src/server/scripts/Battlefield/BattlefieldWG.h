@@ -120,7 +120,7 @@ enum WintergraspGameObjects
 
 enum WintergraspSpawnGroups
 {
-    SPAWNGROUP_WINTERGRASP_FORTRESS_TELEPORTERS = 100,
+    SPAWNGROUP_WINTERGRASP_FORTRESS_TELEPORTERS = 1000,
 };
 
 enum WintergraspSpells

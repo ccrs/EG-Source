@@ -67,6 +67,7 @@ void Battlefield::HandlePlayerEnterZone(Player* player)
 
 void Battlefield::HandlePlayerLeaveZone(Player* player)
 {
+    RemovePlayerFromResurrectionQueue(player);
     _playerGUIDs.erase(player->GetGUID());
 }
 

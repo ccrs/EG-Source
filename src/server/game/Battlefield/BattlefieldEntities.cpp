@@ -172,7 +172,7 @@ void BattlefieldGraveyard::ResurrectPlayers()
     for (ObjectGuid playerGuid : ResurrectionQueue)
     {
         Player* player = ObjectAccessor::FindPlayer(playerGuid);
-        if (!player)
+        if (!player || player->IsAlive() || player->GetZoneId() != Battle->GetZoneId())
             continue;
 
         player->CastSpell(player, SPELL_BATTLEFIELD_RESURRECTION_VISUAL, true);
