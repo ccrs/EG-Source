@@ -190,14 +190,14 @@ public:
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void SaveWorldState() override;
     uint16 GetWorldSafeLocsEntryId() const { return WorldSafeLocsEntryId; }
-    bool IsSpellAreaForzed() const { return SpellAreaForzed; }
+    bool IsSpellAreaForced() const { return SpellAreaForced; }
 
     uint8 Id;
     uint16 WorldSafeLocsEntryId;
     uint32 TextId;
     BattlefieldGraveyardState State;
     GuidUnorderedSet ResurrectionQueue;
-    bool SpellAreaForzed;
+    bool SpellAreaForced;
 };
 
 #endif

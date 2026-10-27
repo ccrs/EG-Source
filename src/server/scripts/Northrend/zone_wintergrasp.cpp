@@ -214,7 +214,7 @@ private:
 
 struct npc_wg_spirit_guide : public ScriptedAI
 {
-    npc_wg_spirit_guide(Creature* creature) : ScriptedAI(creature), _graveyardId(0), _spellAreaForzed(false), _searchTimer(0) { }
+    npc_wg_spirit_guide(Creature* creature) : ScriptedAI(creature), _graveyardId(0), _spellAreaForced(false), _searchTimer(0) { }
 
     void InitializeAI() override
     {
@@ -224,7 +224,7 @@ struct npc_wg_spirit_guide : public ScriptedAI
                 if (BattlefieldGraveyard const* graveyard = wintergrasp->GetGraveyard(graveyardId))
                 {
                     _graveyardId = graveyardId;
-                    _spellAreaForzed = graveyard->IsSpellAreaForzed();
+                    _spellAreaForced = graveyard->IsSpellAreaForced();
                     _searchTimer.Reset(2s);
                 }
 
@@ -236,7 +236,7 @@ struct npc_wg_spirit_guide : public ScriptedAI
         if (!me->HasUnitState(UNIT_STATE_CASTING))
             DoCast(me, SPELL_CHANNEL_SPIRIT_HEAL);
 
-        if (!_spellAreaForzed)
+        if (!_spellAreaForced)
             return;
         _searchTimer.Update(diff);
         if (_searchTimer.Passed())
@@ -285,7 +285,7 @@ struct npc_wg_spirit_guide : public ScriptedAI
     }
 private:
     uint32 _graveyardId;
-    bool _spellAreaForzed;
+    bool _spellAreaForced;
     TimeTracker _searchTimer;
 };
 
