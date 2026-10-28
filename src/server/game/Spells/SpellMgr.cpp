@@ -5292,6 +5292,20 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->DurationEntry = sSpellDurationStore.LookupEntry(347); // 15 minutes
     });
 
+    // Wintergrasp graveyard teleports
+    ApplySpellFix({
+        59760, // Teleport: Fortress Graveyard
+        59762, // Teleport: Sunken Ring
+        59763, // Teleport: Broken Temple
+        59765, // Teleport: Horde Landing Zone
+        59766, // Teleport: Westspark Factory Graveyard
+        59767, // Teleport: Eastspark Factory Graveyard
+        59769 // Teleport: Alliance Landing Zone
+    }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_ALLOW_GHOST_TARGET;
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];

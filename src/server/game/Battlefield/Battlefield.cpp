@@ -213,8 +213,16 @@ void Battlefield::ProcessRaidRelease(BattlefieldEventKey /*key*/)
     for (std::vector<ObjectGuid>& raid : _battlefieldRaids)
     {
         for (ObjectGuid groupGuid : raid)
-            if (Group* group = sGroupMgr->GetGroupByGUID(groupGuid))
+        {
+            Group* group = sGroupMgr->GetGroupByGUID(groupGuid);
+            if (!group)
+                continue;
+
+            if (group->GetMembersCount() < 2)
+                group->Disband();
+            else
                 group->ConvertFromBattlefieldGroup();
+        }
         raid.clear();
     }
 }
