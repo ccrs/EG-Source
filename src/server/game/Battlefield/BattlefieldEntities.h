@@ -168,12 +168,13 @@ public:
 
 struct BattlefieldGraveyardInfo
 {
-    BattlefieldGraveyardInfo(uint32 worldState, uint32 hordeEntry, uint32 allianceEntry, uint32 neutralEntry, uint8 id, uint16 worldSafeLocsEntryId, uint32 textId) : Info(BATTLEFIELD_ENTITY_TYPE_GRAVEYARD, worldState, { hordeEntry }, { allianceEntry }, { neutralEntry }), Id(id), WorldSafeLocsEntryId(worldSafeLocsEntryId), TextId(textId) { }
+    BattlefieldGraveyardInfo(uint32 worldState, uint32 hordeEntry, uint32 allianceEntry, uint32 neutralEntry, uint8 id, uint16 worldSafeLocsEntryId, uint32 textId, uint32 teleportSpellId) : Info(BATTLEFIELD_ENTITY_TYPE_GRAVEYARD, worldState, { hordeEntry }, { allianceEntry }, { neutralEntry }), Id(id), WorldSafeLocsEntryId(worldSafeLocsEntryId), TextId(textId), TeleportSpellId(teleportSpellId) { }
 
     BattlefieldEntityInfo Info;
     uint8 Id;
     uint16 WorldSafeLocsEntryId;
     uint32 TextId;
+    uint32 TeleportSpellId;
 };
 
 class BattlefieldGraveyard : public BattlefieldEntity
@@ -190,6 +191,7 @@ public:
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void SaveWorldState() override;
     uint16 GetWorldSafeLocsEntryId() const { return WorldSafeLocsEntryId; }
+    uint32 GetTeleportSpellId() const { return TeleportSpellId; }
     bool IsSpellAreaForced() const { return SpellAreaForced; }
 
     uint8 Id;
@@ -197,6 +199,7 @@ public:
     uint32 TextId;
     BattlefieldGraveyardState State;
     GuidUnorderedSet ResurrectionQueue;
+    uint32 TeleportSpellId;
     bool SpellAreaForced;
 };
 

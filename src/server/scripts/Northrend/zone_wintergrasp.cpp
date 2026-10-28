@@ -21,8 +21,6 @@
 #include "Battlefield/BattlefieldWG.h"
 #include "ConditionMgr.h"
 #include "Creature.h"
-#include "DBCStores.h"
-#include "DBCStructure.h"
 #include "GameObject.h"
 #include "GameObjectAI.h"
 #include "Player.h"
@@ -279,8 +277,7 @@ struct npc_wg_spirit_guide : public ScriptedAI
             if (BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP)))
                 if (BattlefieldGraveyard const* graveyard = wintergrasp->GetGraveyard(action - GOSSIP_ACTION_INFO_DEF))
                     if (TeamIdByPvPTeamId(graveyard->GetPvPTeamId()) == player->GetTeamId())
-                        if (WorldSafeLocsEntry const* safeLoc = sWorldSafeLocsStore.LookupEntry(graveyard->GetWorldSafeLocsEntryId()))
-                            player->TeleportTo(safeLoc->Continent, safeLoc->Loc.X, safeLoc->Loc.Y, safeLoc->Loc.Z, me->GetOrientation(), 0);
+                        DoCast(player, graveyard->GetTeleportSpellId(), TRIGGERED_IGNORE_CAST_IN_PROGRESS);
         return true;
     }
 private:
