@@ -66,8 +66,10 @@
 #include "SharedDefines.h"
 #include "SmartAI.h"
 #include "Spell.h"
+#include "SpellHistory.h"
 #include "SpellMgr.h"
 #include "SpellInfo.h"
+#include "SpellPackets.h"
 #include "StringConvert.h"
 #include "TemporarySummon.h"
 #include "Transmogrification.h"
@@ -1325,6 +1327,27 @@ void Player::FlushNonArenaBattlegroundQueues()
         BattlegroundMgr::BuildBattlegroundStatusNone(&status, i);
         SendDirectMessage(status.Write());
     }
+}
+
+void Spell::SendForcedSpellCooldown()
+{
+    Unit* unitCaster = m_caster->ToUnit();
+    if (!unitCaster || IsIgnoringCooldowns() || m_spellInfo->IsCooldownStartedOnEvent() || m_spellInfo->IsPassive())
+        return;
+
+    Player* player = unitCaster->GetCharmerOrOwnerPlayerOrPlayerItself();
+    if (!player)
+        return;
+
+    uint32 cooldown = unitCaster->GetSpellHistory()->GetRemainingCooldown(m_spellInfo);
+    if (!cooldown)
+        return;
+
+    WorldPackets::Spells::SpellCooldown spellCooldown;
+    spellCooldown.Caster = unitCaster->GetGUID();
+    spellCooldown.Flags = SPELL_COOLDOWN_FLAG_NONE;
+    spellCooldown.SpellCooldowns.emplace_back(m_spellInfo->Id, cooldown);
+    player->SendDirectMessage(spellCooldown.Write());
 }
 
 void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicleExitParameters params)

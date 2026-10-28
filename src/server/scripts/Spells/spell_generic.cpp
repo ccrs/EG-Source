@@ -4687,7 +4687,7 @@ class spell_gen_charmed_unit_spell_cooldown : public SpellScript
 
     void Register() override
     {
-        OnCast += SpellCastFn(spell_gen_charmed_unit_spell_cooldown::HandleCast);
+        AfterCast += SpellCastFn(spell_gen_charmed_unit_spell_cooldown::HandleCast); // EG
     }
 };
 

@@ -3563,6 +3563,9 @@ void Spell::_cast(bool skipCheck)
     // we must send smsg_spell_go packet before m_castItem delete in TakeCastItem()...
     SendSpellGo();
 
+    if (m_spellInfo->HasAttribute(SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET)) // EG
+        SendForcedSpellCooldown();
+
     if (!m_spellInfo->IsChanneled())
         if (Creature* creatureCaster = m_caster->ToCreature())
             creatureCaster->ReleaseSpellFocus(this);

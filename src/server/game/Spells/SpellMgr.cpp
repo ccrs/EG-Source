@@ -3943,14 +3943,12 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 3000;
-        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     // Jormungar Strike
     ApplySpellFix({ 56513 }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 2000;
-        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     ApplySpellFix({
@@ -3959,7 +3957,6 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 6000;
-        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     ApplySpellFix({
@@ -3969,7 +3966,6 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 10000;
-        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     ApplySpellFix({
@@ -3978,14 +3974,12 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 12000;
-        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     // Signal Helmet to Attack
     ApplySpellFix({ 51748 }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 15000;
-        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     ApplySpellFix({
@@ -3995,7 +3989,6 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 20000;
-        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     // Summon Frigid Bones
@@ -5025,8 +5018,6 @@ void SpellMgr::LoadSpellInfoCorrections()
         17559, 17560, 17561, 17562, 17563, 17564, 17565, 17566,
         // TBC primal
         28566, 28567, 28568, 28569, 28580, 28581, 28582, 28583, 28584, 28585,
-        // Alchemy specialization passive (also cat 310)
-        46714,
         // WotLK eternal
         53771, 53773, 53774, 53775, 53776, 53777, 53779, 53780, 53781, 53782, 53783, 53784, 54020,
         // WotLK epic gem
