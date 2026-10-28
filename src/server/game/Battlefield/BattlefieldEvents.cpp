@@ -28,20 +28,23 @@ bool BattlefieldEvent::Execute(Battlefield& battlefield, uint32 diff)
     return Handle(battlefield);
 }
 
-bool BattlefieldRaidReleaseEvent::Handle(Battlefield& battlefield)
+template<>
+bool BattlefieldTypedEvent<BATTLEFIELD_EVENT_RAID_RELEASE>::Handle(Battlefield& battlefield)
 {
     battlefield.ProcessRaidRelease(GetKey());
     return true;
 }
 
-bool BattlefieldRaidAddEvent::Handle(Battlefield& battlefield)
+template<>
+bool BattlefieldTypedEvent<BATTLEFIELD_EVENT_RAID_ADD>::Handle(Battlefield& battlefield)
 {
     if (Player* player = ObjectAccessor::FindPlayer(GetObjectGUID()))
         battlefield.ProcessRaidAdd(GetKey(), player);
     return true;
 }
 
-bool BattlefieldRaidRemoveEvent::Handle(Battlefield& battlefield)
+template<>
+bool BattlefieldTypedEvent<BATTLEFIELD_EVENT_RAID_REMOVE>::Handle(Battlefield& battlefield)
 {
     battlefield.ProcessRaidRemove(GetKey(), GetObjectGUID());
     return true;

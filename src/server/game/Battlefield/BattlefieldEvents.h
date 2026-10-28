@@ -60,31 +60,22 @@ private:
     TimeTracker _delay;
 };
 
-class TC_GAME_API BattlefieldRaidReleaseEvent : public BattlefieldEvent
+template<BattlefieldEventType Type>
+class BattlefieldTypedEvent final : public BattlefieldEvent
 {
 public:
-    explicit BattlefieldRaidReleaseEvent(Milliseconds delay = 0ms) : BattlefieldEvent(BATTLEFIELD_EVENT_RAID_RELEASE, delay) { }
+    explicit BattlefieldTypedEvent(ObjectGuid objectGuid = ObjectGuid::Empty, Milliseconds delay = 0ms) : BattlefieldEvent(Type, delay, objectGuid) { }
 
 protected:
     bool Handle(Battlefield& battlefield) override;
 };
 
-class TC_GAME_API BattlefieldRaidAddEvent : public BattlefieldEvent
-{
-public:
-    explicit BattlefieldRaidAddEvent(ObjectGuid playerGuid, Milliseconds delay = 0ms) : BattlefieldEvent(BATTLEFIELD_EVENT_RAID_ADD, delay, playerGuid) { }
+#define BATTLEFIELD_EVENT(Name, Type) \
+    template<> TC_GAME_API bool BattlefieldTypedEvent<Type>::Handle(Battlefield& battlefield); \
+    using Battlefield##Name##Event = BattlefieldTypedEvent<Type>
 
-protected:
-    bool Handle(Battlefield& battlefield) override;
-};
-
-class TC_GAME_API BattlefieldRaidRemoveEvent : public BattlefieldEvent
-{
-public:
-    explicit BattlefieldRaidRemoveEvent(ObjectGuid playerGuid, Milliseconds delay = 0ms) : BattlefieldEvent(BATTLEFIELD_EVENT_RAID_REMOVE, delay, playerGuid) { }
-
-protected:
-    bool Handle(Battlefield& battlefield) override;
-};
+BATTLEFIELD_EVENT(RaidRelease, BATTLEFIELD_EVENT_RAID_RELEASE);
+BATTLEFIELD_EVENT(RaidAdd, BATTLEFIELD_EVENT_RAID_ADD);
+BATTLEFIELD_EVENT(RaidRemove, BATTLEFIELD_EVENT_RAID_REMOVE);
 
 #endif
