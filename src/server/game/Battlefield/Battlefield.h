@@ -20,6 +20,7 @@
 
 #include "BattlefieldEvents.h"
 #include "Common.h"
+#include "Duration.h"
 #include "EnumFlag.h"
 #include "ObjectGuid.h"
 #include "SharedDefines.h"
@@ -27,7 +28,7 @@
 #include "ZoneScript.h"
 #include <array>
 #include <functional>
-#include <list>
+#include <map>
 #include <memory>
 #include <unordered_map>
 #include <utility>
@@ -53,7 +54,9 @@ enum BattlefieldPhase : uint8
 enum BattlefieldFlags : uint8
 {
     BATTLEFIELD_FLAG_NONE = 0x00,
-    BATTLEFIELD_FLAG_ENABLED = 0x01
+    BATTLEFIELD_FLAG_ENABLED = 0x01,
+    BATTLEFIELD_FLAG_UPDATE = 0x02,
+    BATTLEFIELD_FLAG_EVENTS_CLEANUP = 0x04
 };
 
 DEFINE_ENUM_FLAG(BattlefieldFlags);
@@ -78,6 +81,7 @@ class TC_GAME_API Battlefield : public ZoneScript
 public:
     typedef std::unique_ptr<BattlefieldGraveyard> BattlefieldGraveyardPointer;
     typedef std::unordered_map<uint8 /*id*/, BattlefieldGraveyardPointer> BattlefieldGraveyardContainer;
+    typedef std::multimap<TimePoint /*due*/, std::unique_ptr<BattlefieldEvent>> BattlefieldEventContainer;
 
     explicit Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId);
     Battlefield(Battlefield const&) = delete;
@@ -119,9 +123,11 @@ public:
     template<class Event, class... Args>
     void QueueEvent(Args&&... args)
     {
-        _events.push_back(std::make_unique<Event>(std::forward<Args>(args)...));
+        EmplaceEvent(std::make_unique<Event>(std::forward<Args>(args)...));
     }
+    void EmplaceEvent(std::unique_ptr<BattlefieldEvent>&& event);
     void RemoveEvents(std::function<bool(BattlefieldEvent const&)> const& predicate);
+    void RemoveEvents(BattlefieldEventType type, ObjectGuid objectGuid);
     void ProcessRaidRelease(BattlefieldEventKey key);
     void ProcessRaidAdd(BattlefieldEventKey key, Player* player);
     void ProcessRaidRemove(BattlefieldEventKey key, ObjectGuid playerGuid);
@@ -174,7 +180,7 @@ private:
     uint32 _resurrectionBaseTimer;
     TimeTracker _resurrectionTimer;
     std::array<std::vector<ObjectGuid>, PVP_TEAMS_COUNT> _battlefieldRaids;
-    std::list<std::unique_ptr<BattlefieldEvent>> _events;
+    BattlefieldEventContainer _events;
 };
 
 #endif

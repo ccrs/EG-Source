@@ -19,33 +19,26 @@
 #include "Battlefield.h"
 #include "ObjectAccessor.h"
 
-bool BattlefieldEvent::Execute(Battlefield& battlefield, uint32 diff)
+void BattlefieldEvent::Execute(Battlefield& battlefield)
 {
-    _delay.Update(diff);
-    if (!_delay.Passed())
-        return false;
-
-    return Handle(battlefield);
+    Handle(battlefield);
 }
 
 template<>
-bool BattlefieldTypedEvent<BATTLEFIELD_EVENT_RAID_RELEASE>::Handle(Battlefield& battlefield)
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_RAID_RELEASE>::Handle(Battlefield& battlefield)
 {
     battlefield.ProcessRaidRelease(GetKey());
-    return true;
 }
 
 template<>
-bool BattlefieldTypedEvent<BATTLEFIELD_EVENT_RAID_ADD>::Handle(Battlefield& battlefield)
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_RAID_ADD>::Handle(Battlefield& battlefield)
 {
     if (Player* player = ObjectAccessor::FindPlayer(GetObjectGUID()))
         battlefield.ProcessRaidAdd(GetKey(), player);
-    return true;
 }
 
 template<>
-bool BattlefieldTypedEvent<BATTLEFIELD_EVENT_RAID_REMOVE>::Handle(Battlefield& battlefield)
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_RAID_REMOVE>::Handle(Battlefield& battlefield)
 {
     battlefield.ProcessRaidRemove(GetKey(), GetObjectGUID());
-    return true;
 }

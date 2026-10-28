@@ -19,6 +19,8 @@
 #include "BattlefieldEntities.h"
 #include "BattlegroundPackets.h"
 #include "DBCStores.h"
+#include "Errors.h"
+#include "GameTime.h"
 #include "Group.h"
 #include "GroupMgr.h"
 #include "MapManager.h"
@@ -52,16 +54,33 @@ void Battlefield::ChangeTeams(PvPTeamId newControllingTeam)
 
 void Battlefield::Update(uint32 diff)
 {
-    std::list<std::unique_ptr<BattlefieldEvent>> events;
-    events.splice(events.end(), _events);
-    for (auto itr = events.begin(); itr != events.end();)
+    TimePoint const now = GameTime::Now();
+    if (!_events.empty() && _events.begin()->first <= now)
     {
-        if ((*itr)->Execute(*this, diff))
-            itr = events.erase(itr);
-        else
-            ++itr;
+        ASSERT(!_flags.HasFlag(BATTLEFIELD_FLAG_UPDATE));
+        _flags |= BATTLEFIELD_FLAG_UPDATE;
+
+        BattlefieldEventContainer::iterator const last = std::prev(_events.upper_bound(now));
+        for (BattlefieldEventContainer::iterator itr = _events.begin();;)
+        {
+            bool const isLast = itr == last;
+            if (!itr->second->IsCancelled())
+                itr->second->Execute(*this);
+            itr = _events.erase(itr);
+            if (isLast)
+                break;
+        }
+
+        _flags.RemoveFlag(BATTLEFIELD_FLAG_UPDATE);
+        if (_flags.HasFlag(BATTLEFIELD_FLAG_EVENTS_CLEANUP))
+        {
+            std::erase_if(_events, [](BattlefieldEventContainer::value_type const& pair) -> bool
+            {
+                return pair.second->IsCancelled();
+            });
+            _flags.RemoveFlag(BATTLEFIELD_FLAG_EVENTS_CLEANUP);
+        }
     }
-    _events.splice(_events.begin(), events);
 
     _resurrectionTimer.Update(diff);
     if (_resurrectionTimer.Passed())
@@ -79,12 +98,7 @@ void Battlefield::HandlePlayerEnterZone(Player* player)
     {
         std::vector<ObjectGuid> const& raid = _battlefieldRaids[player->GetTeamId()];
         if (std::find(raid.begin(), raid.end(), group->GetGUID()) != raid.end())
-        {
-            RemoveEvents([playerGuid = player->GetGUID()](BattlefieldEvent const& event) -> bool
-            {
-                return event.GetType() == BATTLEFIELD_EVENT_RAID_REMOVE && event.GetObjectGUID() == playerGuid;
-            });
-        }
+            RemoveEvents(BATTLEFIELD_EVENT_RAID_REMOVE, player->GetGUID());
     }
     _playerGUIDs.insert(player->GetGUID());
 }
@@ -156,11 +170,41 @@ void Battlefield::SendUpdateToPlayers()
     }
 }
 
+void Battlefield::EmplaceEvent(std::unique_ptr<BattlefieldEvent>&& event)
+{
+    if (event->GetQueuePolicy() == BATTLEFIELD_EVENT_QUEUE_REPLACE)
+        RemoveEvents(event->GetType(), event->GetObjectGUID());
+
+    TimePoint const due = GameTime::Now() + event->GetDelay();
+    _events.emplace(due, std::move(event));
+}
+
 void Battlefield::RemoveEvents(std::function<bool(BattlefieldEvent const&)> const& predicate)
 {
-    std::erase_if(_events, [&predicate](std::unique_ptr<BattlefieldEvent> const& event) -> bool
+    if (!_flags.HasFlag(BATTLEFIELD_FLAG_UPDATE))
     {
-        return predicate(*event);
+        std::erase_if(_events, [&predicate](BattlefieldEventContainer::value_type const& pair) -> bool
+        {
+            return predicate(*pair.second);
+        });
+        return;
+    }
+
+    for (BattlefieldEventContainer::value_type& pair : _events)
+    {
+        if (pair.second->IsCancelled() || !predicate(*pair.second))
+            continue;
+
+        pair.second->Cancel();
+        _flags |= BATTLEFIELD_FLAG_EVENTS_CLEANUP;
+    }
+}
+
+void Battlefield::RemoveEvents(BattlefieldEventType type, ObjectGuid objectGuid)
+{
+    RemoveEvents([type, objectGuid](BattlefieldEvent const& event) -> bool
+    {
+        return event.GetType() == type && event.GetObjectGUID() == objectGuid;
     });
 }
 

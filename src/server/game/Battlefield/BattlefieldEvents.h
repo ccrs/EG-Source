@@ -21,7 +21,6 @@
 #include "Define.h"
 #include "Duration.h"
 #include "ObjectGuid.h"
-#include "Timer.h"
 
 class Battlefield;
 
@@ -30,6 +29,12 @@ enum BattlefieldEventType : uint8
     BATTLEFIELD_EVENT_RAID_RELEASE = 0,
     BATTLEFIELD_EVENT_RAID_ADD,
     BATTLEFIELD_EVENT_RAID_REMOVE
+};
+
+enum BattlefieldEventQueuePolicy : uint8
+{
+    BATTLEFIELD_EVENT_QUEUE_MULTIPLE = 0,
+    BATTLEFIELD_EVENT_QUEUE_REPLACE
 };
 
 class BattlefieldEventKey
@@ -42,40 +47,50 @@ class BattlefieldEventKey
 class TC_GAME_API BattlefieldEvent
 {
 public:
-    explicit BattlefieldEvent(BattlefieldEventType type, Milliseconds delay = 0ms, ObjectGuid objectGuid = ObjectGuid::Empty) : _type(type), _objectGUID(objectGuid), _delay(delay) { }
+    explicit BattlefieldEvent(BattlefieldEventType type, BattlefieldEventQueuePolicy queuePolicy, Milliseconds delay = 0ms, ObjectGuid objectGuid = ObjectGuid::Empty) : _type(type), _queuePolicy(queuePolicy), _objectGUID(objectGuid), _delay(delay), _cancelled(false) { }
     virtual ~BattlefieldEvent() = default;
 
-    bool Execute(Battlefield& battlefield, uint32 diff);
+    void Execute(Battlefield& battlefield);
+    void Cancel() { _cancelled = true; }
 
     BattlefieldEventType GetType() const { return _type; }
+    BattlefieldEventQueuePolicy GetQueuePolicy() const { return _queuePolicy; }
     ObjectGuid GetObjectGUID() const { return _objectGUID; }
+    Milliseconds GetDelay() const { return _delay; }
+    bool IsCancelled() const { return _cancelled; }
 
 protected:
     static BattlefieldEventKey GetKey() { return {}; }
-    virtual bool Handle(Battlefield& battlefield) = 0;
+    virtual void Handle(Battlefield& battlefield) = 0;
 
 private:
     BattlefieldEventType _type;
+    BattlefieldEventQueuePolicy _queuePolicy;
     ObjectGuid _objectGUID;
-    TimeTracker _delay;
+    Milliseconds _delay;
+    bool _cancelled;
 };
+
+template<BattlefieldEventType Type>
+struct BattlefieldEventTraits;
 
 template<BattlefieldEventType Type>
 class BattlefieldTypedEvent final : public BattlefieldEvent
 {
 public:
-    explicit BattlefieldTypedEvent(ObjectGuid objectGuid = ObjectGuid::Empty, Milliseconds delay = 0ms) : BattlefieldEvent(Type, delay, objectGuid) { }
+    explicit BattlefieldTypedEvent(ObjectGuid objectGuid = ObjectGuid::Empty, Milliseconds delay = 0ms) : BattlefieldEvent(Type, BattlefieldEventTraits<Type>::QueuePolicy, delay, objectGuid) { }
 
 protected:
-    bool Handle(Battlefield& battlefield) override;
+    void Handle(Battlefield& battlefield) override;
 };
 
-#define BATTLEFIELD_EVENT(Name, Type) \
-    template<> TC_GAME_API bool BattlefieldTypedEvent<Type>::Handle(Battlefield& battlefield); \
+#define BATTLEFIELD_EVENT(Name, Type, Policy) \
+    template<> struct BattlefieldEventTraits<Type> { static constexpr BattlefieldEventQueuePolicy QueuePolicy = Policy; }; \
+    template<> TC_GAME_API void BattlefieldTypedEvent<Type>::Handle(Battlefield& battlefield); \
     using Battlefield##Name##Event = BattlefieldTypedEvent<Type>
 
-BATTLEFIELD_EVENT(RaidRelease, BATTLEFIELD_EVENT_RAID_RELEASE);
-BATTLEFIELD_EVENT(RaidAdd, BATTLEFIELD_EVENT_RAID_ADD);
-BATTLEFIELD_EVENT(RaidRemove, BATTLEFIELD_EVENT_RAID_REMOVE);
+BATTLEFIELD_EVENT(RaidRelease, BATTLEFIELD_EVENT_RAID_RELEASE, BATTLEFIELD_EVENT_QUEUE_MULTIPLE);
+BATTLEFIELD_EVENT(RaidAdd, BATTLEFIELD_EVENT_RAID_ADD, BATTLEFIELD_EVENT_QUEUE_MULTIPLE);
+BATTLEFIELD_EVENT(RaidRemove, BATTLEFIELD_EVENT_RAID_REMOVE, BATTLEFIELD_EVENT_QUEUE_MULTIPLE);
 
 #endif
