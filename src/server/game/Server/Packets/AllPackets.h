@@ -23,6 +23,7 @@
 #include "AuctionHousePackets.h"
 #include "AuthenticationPackets.h"
 #include "BankPackets.h"
+#include "BattlefieldPackets.h"
 #include "BattlegroundPackets.h"
 #include "CalendarPackets.h"
 #include "ChannelPackets.h"
