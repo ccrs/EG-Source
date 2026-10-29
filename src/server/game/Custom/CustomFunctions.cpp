@@ -46,6 +46,7 @@
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
+#include <G3D/Vector3.h>
 #include <algorithm>
 #include <unordered_set>
 
@@ -445,7 +446,7 @@ Item* Player::GetWeaponForDamageMods(WeaponAttackType attackType) const
 void Player::NearTeleportPetToOwner()
 {
     Pet* pet = GetPet();
-    if (!pet || pet->IsInCombat())
+    if (!pet || pet->IsInCombat() || pet->IsMovedByClient())
         return;
 
     Position petTeleportPosition;
@@ -760,6 +761,17 @@ Unit* WorldObject::DoFindLowestHPFriendlyInRange(FriendlySearchOptions options) 
     return unit;
 }
 
+void WorldObject::GetHitSpherePointFor(Position const* reference, Position const& dest, float& x, float& y, float& z) const
+{
+    G3D::Vector3 vReference(reference->GetPositionX(), reference->GetPositionY(), reference->GetPositionZ() + GetCollisionHeight());
+    G3D::Vector3 vDest(dest.GetPositionX(), dest.GetPositionY(), dest.GetPositionZ());
+    G3D::Vector3 contactPoint = vReference + (vDest - vReference).directionOrZero() * std::min(dest.GetExactDist(reference), GetCombatReach());
+
+    x = contactPoint.x;
+    y = contactPoint.y;
+    z = contactPoint.z;
+}
+
 void WorldObject::GetNearPoint2D(WorldObject const* searcher, Position const* reference, float& x, float& y, float distance, float absAngle) const
 {
     float effectiveReach = GetCombatReach();
@@ -847,7 +859,7 @@ bool WorldObject::IsWithinLOSInMap(Position const* reference, WorldObject const*
         z += GetCollisionHeight();
     }
     else
-        GetHitSpherePointFor({ reference->GetPositionX(), reference->GetPositionY(), reference->GetPositionZ() + obj->GetCollisionHeight() }, x, y, z);
+        GetHitSpherePointFor(reference, { obj->GetPositionX(), obj->GetPositionY(), obj->GetPositionZ() + obj->GetCollisionHeight() }, x, y, z);
 
     return GetMap()->isInLineOfSight(x, y, z, ox, oy, oz, GetPhaseMask(), checks, ignoreFlags);
 }

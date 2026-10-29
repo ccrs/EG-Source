@@ -302,7 +302,7 @@ class FlaggedValuesArray32
 struct FindCreatureOptions
 {
     Optional<uint32> CreatureId;
-    std::unordered_set<uint32> CreatureIds;
+    std::unordered_set<uint32> CreatureIds; // EG
     Optional<std::string_view> StringId;
 
     Optional<bool> IsAlive;
@@ -323,7 +323,7 @@ struct FindCreatureOptions
 struct FindGameObjectOptions
 {
     Optional<uint32> GameObjectId;
-    std::unordered_set<uint32> GameObjectIds;
+    std::unordered_set<uint32> GameObjectIds; // EG
     Optional<std::string_view> StringId;
 
     Optional<bool> IsSummon;
@@ -351,9 +351,9 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         void RemoveFromWorld() override;
 
         void GetNearPoint2D(WorldObject const* searcher, float& x, float& y, float distance, float absAngle) const;
-        void GetNearPoint2D(WorldObject const* searcher, Position const* reference, float& x, float& y, float distance, float absAngle) const;
+        void GetNearPoint2D(WorldObject const* searcher, Position const* reference, float& x, float& y, float distance, float absAngle) const; // EG
         void GetNearPoint(WorldObject const* searcher, float& x, float& y, float& z, float distance2d, float absAngle) const;
-        void GetNearPoint(WorldObject const* searcher, Position const* reference, float& x, float& y, float& z, float distance2d, float absAngle) const;
+        void GetNearPoint(WorldObject const* searcher, Position const* reference, float& x, float& y, float& z, float distance2d, float absAngle) const; // EG
         void GetClosePoint(float& x, float& y, float& z, float size, float distance2d = 0, float relAngle = 0) const;
         void MovePosition(Position &pos, float dist, float angle);
         Position GetNearPosition(float dist, float angle);
@@ -410,9 +410,10 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         bool IsWithinDistInMap(WorldObject const* obj, float dist2compare, bool is3D = true, bool incOwnRadius = true, bool incTargetRadius = true) const;
         bool IsWithinLOS(float x, float y, float z, LineOfSightChecks checks = LINEOFSIGHT_ALL_CHECKS, VMAP::ModelIgnoreFlags ignoreFlags = VMAP::ModelIgnoreFlags::Nothing) const;
         bool IsWithinLOSInMap(WorldObject const* obj, LineOfSightChecks checks = LINEOFSIGHT_ALL_CHECKS, VMAP::ModelIgnoreFlags ignoreFlags = VMAP::ModelIgnoreFlags::Nothing) const;
-        bool IsWithinLOSInMap(Position const* reference, WorldObject const* obj, LineOfSightChecks checks = LINEOFSIGHT_ALL_CHECKS, VMAP::ModelIgnoreFlags ignoreFlags = VMAP::ModelIgnoreFlags::Nothing) const;
+        bool IsWithinLOSInMap(Position const* reference, WorldObject const* obj, LineOfSightChecks checks = LINEOFSIGHT_ALL_CHECKS, VMAP::ModelIgnoreFlags ignoreFlags = VMAP::ModelIgnoreFlags::Nothing) const; // EG
         Position GetHitSpherePointFor(Position const& dest) const;
         void GetHitSpherePointFor(Position const& dest, float& x, float& y, float& z) const;
+        void GetHitSpherePointFor(Position const* reference, Position const& dest, float& x, float& y, float& z) const; // EG
         bool GetDistanceOrder(WorldObject const* obj1, WorldObject const* obj2, bool is3D = true) const;
         bool IsInRange(WorldObject const* obj, float minRange, float maxRange, bool is3D = true) const;
         bool IsInRange2d(float x, float y, float minRange, float maxRange) const;
@@ -543,7 +544,7 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         template <typename Container>
         void GetPlayerListInGrid(Container& playerContainer, float maxSearchRange, bool alive = true) const;
 
-        struct FriendlySearchOptions
+        struct FriendlySearchOptions // EG
         {
             float Range = 0.f;
             bool PlayerOnly = false;
@@ -551,11 +552,11 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
             bool Alive = true;
             std::unordered_set<uint32> ExcludedEntries;
         };
-        Unit* DoFindLowestHPFriendlyInRange(float range) const
+        Unit* DoFindLowestHPFriendlyInRange(float range) const // EG
         {
             return DoFindLowestHPFriendlyInRange(FriendlySearchOptions{ .Range = range });
         }
-        Unit* DoFindLowestHPFriendlyInRange(FriendlySearchOptions options) const;
+        Unit* DoFindLowestHPFriendlyInRange(FriendlySearchOptions options) const; // EG
 
         void DestroyForNearbyPlayers();
         virtual void UpdateObjectVisibility(bool forced = true);
