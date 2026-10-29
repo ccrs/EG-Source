@@ -1268,6 +1268,18 @@ bool Player::InArenaQueue() const
     return false;
 }
 
+void Player::NearTeleportPetToOwner()
+{
+    Pet* pet = GetPet();
+    if (!pet || pet->IsInCombat())
+        return;
+
+    Position petTeleportPosition;
+    GetNearPoint(pet, petTeleportPosition.m_positionX, petTeleportPosition.m_positionY, petTeleportPosition.m_positionZ, PET_FOLLOW_DIST, GetOrientation() + pet->GetFollowAngle());
+    petTeleportPosition.SetOrientation(GetOrientation());
+    pet->NearTeleportTo(petTeleportPosition);
+}
+
 void Player::UpdateHostileAreaState(AreaTableEntry const* zone)
 {
     // a boosted day forces the realm to behave like a PvP realm for flagging purposes

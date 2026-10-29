@@ -403,6 +403,8 @@ void WorldSession::HandleMoveTeleportAck(WorldPackets::Movement::MoveTeleportAck
             plMover->UpdatePvP(false, false);
     }
 
+    plMover->NearTeleportPetToOwner(); // EG
+
     // resummon pet
     GetPlayer()->ResummonPetTemporaryUnSummonedIfAny();
 

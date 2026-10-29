@@ -2217,6 +2217,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void SetTemporaryUnsummonedPetNumber(uint32 petnumber) { m_temporaryUnsummonedPetNumber = petnumber; }
         void UnsummonPetTemporaryIfAny();
         void ResummonPetTemporaryUnSummonedIfAny();
+        void NearTeleportPetToOwner(); // EG
         bool IsPetNeedBeTemporaryUnsummoned() const;
 
         void SendCinematicStart(uint32 CinematicSequenceId) const;
