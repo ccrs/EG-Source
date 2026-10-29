@@ -42,3 +42,21 @@ void BattlefieldTypedEvent<BATTLEFIELD_EVENT_RAID_REMOVE>::Handle(Battlefield& b
 {
     battlefield.ProcessRaidRemove(GetKey(), GetObjectGUID());
 }
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_PHASE_ADVANCE>::Handle(Battlefield& battlefield)
+{
+    battlefield.ProcessPhaseAdvance(GetKey());
+}
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_GRAVEYARD_RESURRECT>::Handle(Battlefield& battlefield)
+{
+    battlefield.ProcessGraveyardResurrect(GetKey());
+}
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_ZONE_REFRESH>::Handle(Battlefield& battlefield)
+{
+    battlefield.ProcessZoneRefresh(GetKey());
+}

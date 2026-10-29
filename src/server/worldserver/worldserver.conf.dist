@@ -2837,15 +2837,15 @@ Wintergrasp.BattleTimer = 30
 
 #
 #     Wintergrasp.NoBattleTimer
-#         Description: Time (in minutes) between Wintergrasp battles.
+#         Description: Time (in minutes) between the start of two consecutive Wintergrasp battles.
 #         Default:     150
 
 Wintergrasp.NoBattleTimer = 150
 
 #
 #     Wintergrasp.CrashRestartTimer
-#         Description: Time (in minutes) to delay the restart of Wintergrasp if the world server
-#                      crashed during a running battle.
+#         Description: Time (in minutes) until the next Wintergrasp battle when the world server
+#                      starts after a running battle or a missed battle start.
 #         Default:     10
 
 Wintergrasp.CrashRestartTimer = 10

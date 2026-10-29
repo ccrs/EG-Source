@@ -23,16 +23,22 @@
 #include "GameTime.h"
 #include "Group.h"
 #include "GroupMgr.h"
+#include "Log.h"
 #include "MapManager.h"
+#include "MapReference.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
+#include "World.h"
 #include "WorldPacket.h"
 #include "WorldStatePackets.h"
 #include <algorithm>
 
-Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) :
-    _mapId(0), _controllingTeam(PVP_TEAM_NEUTRAL), _timer(0), _battleId(battleId), _zoneId(zoneId), _phase(BATTLEFIELD_PHASE_IDLE), _flags(BATTLEFIELD_FLAG_NONE), _resurrectionBaseTimer(30 * IN_MILLISECONDS), _resurrectionTimer(_resurrectionBaseTimer)
+Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId) : _battleId(battleId), _zoneId(zoneId), _phase(BATTLEFIELD_PHASE_IDLE), _flags(BATTLEFIELD_FLAG_NONE)
 {
+    Values.Set(BATTLEFIELD_VALUE_ID_MAP, uint32(0));
+    Values.Set(BATTLEFIELD_VALUE_STATE_CONTROLLING_TEAM, PVP_TEAM_NEUTRAL);
+    Values.Set(BATTLEFIELD_VALUE_INTERVAL_RESURRECTION, 30s);
+    Values.Set(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT, BATTLEFIELD_BATTLE_RESULT_NONE);
 }
 
 Battlefield::~Battlefield()
@@ -41,24 +47,73 @@ Battlefield::~Battlefield()
 
 bool Battlefield::SetupBattlefield()
 {
+    ScheduleNextGraveyardResurrect();
     return true;
 }
 
 void Battlefield::ChangeTeams(PvPTeamId newControllingTeam)
 {
-    _controllingTeam = newControllingTeam;
+    Values.Set(BATTLEFIELD_VALUE_STATE_CONTROLLING_TEAM, newControllingTeam);
 
     for (BattlefieldGraveyardContainer::value_type& graveyardPair : _graveyards)
         graveyardPair.second->InitializeState();
 }
 
-void Battlefield::Update(uint32 diff)
+bool Battlefield::SetPhase(BattlefieldPhase phase)
+{
+    if (phase != BATTLEFIELD_PHASE_IDLE && !IsEnabled())
+        return false;
+
+    BattlefieldPhase const oldPhase = _phase;
+    if (phase == oldPhase)
+        return true;
+
+    bool wasBattlefieldRaidPhase = IsBattlefieldRaidPhase();
+    _phase = phase;
+    if (wasBattlefieldRaidPhase && !IsBattlefieldRaidPhase())
+        QueueEvent<BattlefieldRaidReleaseEvent>();
+
+    if (phase == BATTLEFIELD_PHASE_WAR)
+    {
+        time_t const start = std::min(GameTime::GetGameTime(), Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START));
+        Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END, start + Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_WAR).count());
+        Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START, start + Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_WAR_START).count());
+        Values.Set(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT, BATTLEFIELD_BATTLE_RESULT_NONE);
+    }
+    else if (oldPhase == BATTLEFIELD_PHASE_WAR)
+    {
+        Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END, time_t(0));
+
+        time_t const now = GameTime::GetGameTime();
+        time_t const interval = Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_WAR_START).count();
+        time_t const preparationStartTime = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START) - Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION).count();
+        if (preparationStartTime < now)
+            Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START, Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START) + ((now - preparationStartTime) / interval + 1) * interval);
+
+        if (Values.Get<BattlefieldBattleResult>(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT) == BATTLEFIELD_BATTLE_RESULT_CAPTURED)
+            ChangeTeams(GetAttackingTeam());
+    }
+
+    SendPhaseTimes();
+    QueueEvent<BattlefieldZoneRefreshEvent>();
+    ScheduleNextPhaseAdvance();
+    return true;
+}
+
+void Battlefield::SetPhaseTime(time_t phaseTime)
+{
+    Values.Set(IsWarTime() ? BATTLEFIELD_VALUE_TIME_PHASE_WAR_END : BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START, std::max(phaseTime, GameTime::GetGameTime()));
+    SendPhaseTimes();
+    ScheduleNextPhaseAdvance();
+}
+
+void Battlefield::Update(uint32 /*diff*/)
 {
     TimePoint const now = GameTime::Now();
     if (!_events.empty() && _events.begin()->first <= now)
     {
-        ASSERT(!_flags.HasFlag(BATTLEFIELD_FLAG_UPDATE));
-        _flags |= BATTLEFIELD_FLAG_UPDATE;
+        ASSERT(!_flags.HasFlag(BATTLEFIELD_FLAG_EVENTS_UPDATING));
+        _flags |= BATTLEFIELD_FLAG_EVENTS_UPDATING;
 
         BattlefieldEventContainer::iterator const last = std::prev(_events.upper_bound(now));
         for (BattlefieldEventContainer::iterator itr = _events.begin();;)
@@ -71,24 +126,15 @@ void Battlefield::Update(uint32 diff)
                 break;
         }
 
-        _flags.RemoveFlag(BATTLEFIELD_FLAG_UPDATE);
-        if (_flags.HasFlag(BATTLEFIELD_FLAG_EVENTS_CLEANUP))
+        _flags.RemoveFlag(BATTLEFIELD_FLAG_EVENTS_UPDATING);
+        if (_flags.HasFlag(BATTLEFIELD_FLAG_EVENTS_CLEANUP_PENDING))
         {
             std::erase_if(_events, [](BattlefieldEventContainer::value_type const& pair) -> bool
             {
                 return pair.second->IsCancelled();
             });
-            _flags.RemoveFlag(BATTLEFIELD_FLAG_EVENTS_CLEANUP);
+            _flags.RemoveFlag(BATTLEFIELD_FLAG_EVENTS_CLEANUP_PENDING);
         }
-    }
-
-    _resurrectionTimer.Update(diff);
-    if (_resurrectionTimer.Passed())
-    {
-        for (BattlefieldGraveyardContainer::value_type& pair : _graveyards)
-            pair.second->ResurrectPlayers();
-
-        _resurrectionTimer.Reset(_resurrectionBaseTimer);
     }
 }
 
@@ -114,7 +160,9 @@ void Battlefield::SendAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid sou
 {
     WorldPackets::Battleground::AreaSpiritHealerTime areaSpiritHealerTime;
     areaSpiritHealerTime.HealerGuid = source;
-    areaSpiritHealerTime.TimeLeft = uint32(_resurrectionTimer.GetExpiry().count());
+    TimePoint const now = GameTime::Now();
+    TimePoint const nextResurrectionTime = Values.Get<TimePoint>(BATTLEFIELD_VALUE_TIME_NEXT_RESURRECTION);
+    areaSpiritHealerTime.TimeLeft = nextResurrectionTime > now ? uint32(std::chrono::duration_cast<Milliseconds>(nextResurrectionTime - now).count()) : 0;
     player->SendDirectMessage(areaSpiritHealerTime.Write());
 }
 
@@ -142,32 +190,12 @@ void Battlefield::EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& point
 void Battlefield::SendInitWorldStatesTo(Player* player)
 {
     WorldPackets::WorldState::InitWorldStates packet;
-    packet.MapID = _mapId;
+    packet.MapID = Values.Get<uint32>(BATTLEFIELD_VALUE_ID_MAP);
     packet.AreaID = _zoneId;
     packet.SubareaID = player->GetAreaId();
     FillInitialWorldStates(packet);
 
     player->SendDirectMessage(packet.Write());
-}
-
-void Battlefield::SendUpdateToPlayers()
-{
-    Map* battleMap = sMapMgr->FindMap(_mapId, 0);
-    for (auto itr = _playerGUIDs.begin(); itr != _playerGUIDs.end();)
-    {
-        if (Player* player = ObjectAccessor::GetPlayer(battleMap, *itr))
-        {
-            if (player->IsInWorld())
-            {
-                player->UpdateAreaDependentAuras(player->GetAreaId());
-                player->UpdateZoneDependentAuras(player->GetZoneId());
-                SendInitWorldStatesTo(player);
-            }
-            ++itr;
-        }
-        else
-            itr = _playerGUIDs.erase(itr);
-    }
 }
 
 void Battlefield::EmplaceEvent(std::unique_ptr<BattlefieldEvent>&& event)
@@ -181,7 +209,7 @@ void Battlefield::EmplaceEvent(std::unique_ptr<BattlefieldEvent>&& event)
 
 void Battlefield::RemoveEvents(std::function<bool(BattlefieldEvent const&)> const& predicate)
 {
-    if (!_flags.HasFlag(BATTLEFIELD_FLAG_UPDATE))
+    if (!_flags.HasFlag(BATTLEFIELD_FLAG_EVENTS_UPDATING))
     {
         std::erase_if(_events, [&predicate](BattlefieldEventContainer::value_type const& pair) -> bool
         {
@@ -196,7 +224,7 @@ void Battlefield::RemoveEvents(std::function<bool(BattlefieldEvent const&)> cons
             continue;
 
         pair.second->Cancel();
-        _flags |= BATTLEFIELD_FLAG_EVENTS_CLEANUP;
+        _flags |= BATTLEFIELD_FLAG_EVENTS_CLEANUP_PENDING;
     }
 }
 
@@ -305,20 +333,66 @@ void Battlefield::ProcessRaidRemove(BattlefieldEventKey /*key*/, ObjectGuid play
     }
 }
 
-void Battlefield::HandleBattlefieldRaidMemberRemoved(ObjectGuid /*playerGuid*/, RemoveMethod /*method*/)
+void Battlefield::ProcessPhaseAdvance(BattlefieldEventKey /*key*/)
 {
+    time_t const now = GameTime::GetGameTime();
+    time_t const nextWarStartTime = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START);
+    switch (_phase)
+    {
+        case BATTLEFIELD_PHASE_IDLE:
+            if (now >= nextWarStartTime - Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION).count() && SetPhase(BATTLEFIELD_PHASE_PREPARATION))
+                return;
+            break;
+        case BATTLEFIELD_PHASE_PREPARATION:
+            if (now >= nextWarStartTime && SetPhase(BATTLEFIELD_PHASE_WAR))
+                return;
+            break;
+        case BATTLEFIELD_PHASE_WAR:
+            if (now >= Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END))
+            {
+                if (Values.Get<BattlefieldBattleResult>(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT) == BATTLEFIELD_BATTLE_RESULT_NONE)
+                    Values.Set(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT, BATTLEFIELD_BATTLE_RESULT_DEFENDED);
+                SetPhase(BATTLEFIELD_PHASE_IDLE);
+                return;
+            }
+            break;
+        default:
+            break;
+    }
+
+    ScheduleNextPhaseAdvance();
 }
 
-bool Battlefield::SetPhase(BattlefieldPhase phase)
+void Battlefield::ProcessGraveyardResurrect(BattlefieldEventKey /*key*/)
 {
-    if (phase != BATTLEFIELD_PHASE_IDLE && !IsEnabled())
-        return false;
+    for (BattlefieldGraveyardContainer::value_type& pair : _graveyards)
+        pair.second->ResurrectPlayers();
 
-    bool wasBattlefieldRaidPhase = IsBattlefieldRaidPhase();
-    _phase = phase;
-    if (wasBattlefieldRaidPhase && !IsBattlefieldRaidPhase())
-        QueueEvent<BattlefieldRaidReleaseEvent>();
-    return true;
+    ScheduleNextGraveyardResurrect();
+}
+
+void Battlefield::ProcessZoneRefresh(BattlefieldEventKey /*key*/)
+{
+    Map* battleMap = sMapMgr->FindMap(Values.Get<uint32>(BATTLEFIELD_VALUE_ID_MAP), 0);
+    for (auto itr = _playerGUIDs.begin(); itr != _playerGUIDs.end();)
+    {
+        if (Player* player = ObjectAccessor::GetPlayer(battleMap, *itr))
+        {
+            if (player->IsInWorld())
+            {
+                player->UpdateAreaDependentAuras(player->GetAreaId());
+                player->UpdateZoneDependentAuras(player->GetZoneId());
+                SendInitWorldStatesTo(player);
+            }
+            ++itr;
+        }
+        else
+            itr = _playerGUIDs.erase(itr);
+    }
+}
+
+void Battlefield::HandleBattlefieldRaidMemberRemoved(ObjectGuid /*playerGuid*/, RemoveMethod /*method*/)
+{
 }
 
 void Battlefield::SetEnabled(bool enabled)
@@ -330,6 +404,15 @@ void Battlefield::SetEnabled(bool enabled)
         SetPhase(BATTLEFIELD_PHASE_IDLE);
         _flags.RemoveFlag(BATTLEFIELD_FLAG_ENABLED);
     }
+}
+
+bool Battlefield::SetBattleResult(BattlefieldBattleResult result)
+{
+    if (!IsWarTime())
+        return false;
+
+    Values.Set(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT, result);
+    return true;
 }
 
 PvPTeamId Battlefield::GetAttackingTeam() const
@@ -389,18 +472,94 @@ WorldSafeLocsEntry const* Battlefield::GetClosestGraveyardLocation(Player* playe
 
 Creature* Battlefield::GetCreature(ObjectGuid guid) const
 {
-    if (!_mapId || !guid)
+    uint32 const mapId = Values.Get<uint32>(BATTLEFIELD_VALUE_ID_MAP);
+    if (!mapId || !guid)
         return nullptr;
-    if (Map* battleMap = sMapMgr->FindMap(_mapId, 0))
+    if (Map* battleMap = sMapMgr->FindMap(mapId, 0))
         return battleMap->GetCreature(guid);
     return nullptr;
 }
 
 GameObject* Battlefield::GetGameObject(ObjectGuid guid) const
 {
-    if (!_mapId || !guid)
+    uint32 const mapId = Values.Get<uint32>(BATTLEFIELD_VALUE_ID_MAP);
+    if (!mapId || !guid)
         return nullptr;
-    if (Map* battleMap = sMapMgr->FindMap(_mapId, 0))
+    if (Map* battleMap = sMapMgr->FindMap(mapId, 0))
         return battleMap->GetGameObject(guid);
     return nullptr;
+}
+
+void Battlefield::InitializePhaseTimes()
+{
+    Seconds const cycleDuration = Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_WAR_START);
+    Seconds const minimumCycleDuration = Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_WAR) + Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION);
+    if (cycleDuration < minimumCycleDuration)
+    {
+        TC_LOG_ERROR("bg.battlefield", "Battlefield::InitializePhaseTimes: battlefield {} cycle of {}s is shorter than war plus preparation, using {}s.", uint32(_battleId), cycleDuration.count(), minimumCycleDuration.count());
+        Values.Set(BATTLEFIELD_VALUE_INTERVAL_PHASE_WAR_START, minimumCycleDuration);
+    }
+
+    time_t const now = GameTime::GetGameTime();
+    if (Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END) > now || Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START) <= now)
+        Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START, now + Values.Get<Seconds>(BATTLEFIELD_VALUE_DELAY_PHASE_WAR_RESTART).count());
+
+    Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END, time_t(0));
+    SendPhaseTimes();
+    ScheduleNextPhaseAdvance();
+}
+
+void Battlefield::SendWorldStateToAll(uint32 variable, uint32 value) const
+{
+    WorldPackets::WorldState::UpdateWorldState worldState;
+    worldState.VariableID = variable;
+    worldState.Value = value;
+    sWorld->SendGlobalMessage(worldState.Write());
+}
+
+void Battlefield::SendWorldStateToMap(uint32 variable, uint32 value) const
+{
+    Map* battleMap = sMapMgr->FindMap(Values.Get<uint32>(BATTLEFIELD_VALUE_ID_MAP), 0);
+    if (!battleMap)
+        return;
+
+    WorldPackets::WorldState::UpdateWorldState worldState;
+    worldState.VariableID = variable;
+    worldState.Value = value;
+    WorldPacket const* packet = worldState.Write();
+    for (MapReference const& reference : battleMap->GetPlayers())
+        if (Player* player = reference.GetSource())
+            player->SendDirectMessage(packet);
+}
+
+void Battlefield::ScheduleNextPhaseAdvance()
+{
+    if (!IsEnabled())
+        return;
+
+    time_t target = 0;
+    switch (_phase)
+    {
+        case BATTLEFIELD_PHASE_IDLE:
+            target = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START) - Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION).count();
+            break;
+        case BATTLEFIELD_PHASE_PREPARATION:
+            target = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START);
+            break;
+        case BATTLEFIELD_PHASE_WAR:
+            target = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END);
+            break;
+        default:
+            break;
+    }
+
+    time_t const now = GameTime::GetGameTime();
+    QueueEvent<BattlefieldPhaseAdvanceEvent>(ObjectGuid::Empty, Seconds(target > now ? target - now : 0));
+}
+
+void Battlefield::ScheduleNextGraveyardResurrect()
+{
+    Seconds const interval = Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_RESURRECTION);
+    Values.Set(BATTLEFIELD_VALUE_TIME_NEXT_RESURRECTION, GameTime::Now() + interval);
+    QueueEvent<BattlefieldGraveyardResurrectEvent>(ObjectGuid::Empty, interval);
 }

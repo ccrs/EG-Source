@@ -233,7 +233,16 @@ enum WintergraspWorldstates
     WORLDSTATE_WINTERGRASP_SHOW_WAR_TIMER = 3710,
     WORLDSTATE_WINTERGRASP_TIME_TO_END = 3781,
     WORLDSTATE_WINTERGRASP_SHOW_COOLDOWN = 3801,
-    WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE = 4354
+    WORLDSTATE_WINTERGRASP_CONTROL = 3804,
+    WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE = 4354,
+    WORLDSTATE_WINTERGRASP_ICON_ACTIVE = 4375
+};
+
+enum WintergraspControlStates
+{
+    WINTERGRASP_CONTROL_HORDE = 1,
+    WINTERGRASP_CONTROL_ALLIANCE,
+    WINTERGRASP_CONTROL_WAR
 };
 
 enum WintergraspGraveyardIds : uint8
@@ -271,6 +280,7 @@ enum WintergraspWorldSafeLocs
 };
 
 static uint32 constexpr MAPID_WINTERGRASP = 571; // Northrend
+static Seconds constexpr WINTERGRASP_PREPARATION_DURATION = 15min;
 
 namespace WorldPackets
 {
@@ -326,6 +336,8 @@ public:
 
     bool SetupBattlefield() override;
     void ChangeTeams(PvPTeamId newControllingTeam) override;
+    bool SetPhase(BattlefieldPhase phase) override;
+    void SendPhaseTimes() override;
     void OnCreatureCreate(Creature* object) override;
     void OnCreatureRemove(Creature* object) override;
     void OnGameObjectCreate(GameObject* object) override;
@@ -339,6 +351,8 @@ public:
     bool IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 newArea) const override;
 
 private:
+    uint32 GetControlState() const;
+
     typedef std::unique_ptr<WintergraspBuilding> WintergraspBuildingPointer;
     typedef std::unordered_map<uint32 /*entry*/, WintergraspBuildingPointer> WintergraspBuildingContainer;
     typedef std::unique_ptr<WintergraspCapturePoint> WintergraspCapturePointPointer;

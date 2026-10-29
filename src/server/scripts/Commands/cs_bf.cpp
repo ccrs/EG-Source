@@ -19,6 +19,7 @@
 #include "Battlefield.h"
 #include "BattlefieldMgr.h"
 #include "Chat.h"
+#include "GameTime.h"
 #include "Group.h"
 #include "GroupMgr.h"
 #include "RBAC.h"
@@ -57,13 +58,38 @@ public:
         return commandTable;
     }
 
-    static bool HandleBattlefieldStart(ChatHandler* /*handler*/)
+    static bool HandleBattlefieldStart(ChatHandler* handler, uint8 battleId)
     {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        if (battlefield->IsWarTime() || !battlefield->SetPhase(BATTLEFIELD_PHASE_WAR))
+        {
+            handler->PSendSysMessage("Battlefield %u: the war cannot be started.", battleId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        handler->PSendSysMessage("Battlefield %u: war started.", battleId);
         return true;
     }
 
-    static bool HandleBattlefieldEnd(ChatHandler* /*handler*/)
+    static bool HandleBattlefieldEnd(ChatHandler* handler, uint8 battleId)
     {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        if (!battlefield->IsWarTime())
+        {
+            handler->PSendSysMessage("Battlefield %u: the war cannot be ended.", battleId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        battlefield->SetPhase(BATTLEFIELD_PHASE_IDLE);
+        handler->PSendSysMessage("Battlefield %u: war ended.", battleId);
         return true;
     }
 
@@ -94,8 +120,29 @@ public:
         return true;
     }
 
-    static bool HandleBattlefieldTimer(ChatHandler* /*handler*/)
+    static bool HandleBattlefieldTimer(ChatHandler* handler, uint8 battleId, uint32 seconds)
     {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        if (!battlefield->IsEnabled())
+        {
+            handler->PSendSysMessage("Battlefield %u: the phase times cannot be changed while disabled.", battleId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        Seconds const maximum = battlefield->GetValues().Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_WAR_START);
+        if (seconds > maximum.count())
+        {
+            handler->PSendSysMessage("Battlefield %u: the maximum is %u seconds.", battleId, uint32(maximum.count()));
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        battlefield->SetPhaseTime(GameTime::GetGameTime() + seconds);
+        handler->PSendSysMessage(battlefield->IsWarTime() ? "Battlefield %u: war ends in %u seconds." : "Battlefield %u: next war starts in %u seconds.", battleId, seconds);
         return true;
     }
 
