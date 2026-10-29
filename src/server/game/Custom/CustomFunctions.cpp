@@ -442,6 +442,18 @@ Item* Player::GetWeaponForDamageMods(WeaponAttackType attackType) const
     return item;
 }
 
+void Player::NearTeleportPetToOwner()
+{
+    Pet* pet = GetPet();
+    if (!pet || pet->IsInCombat())
+        return;
+
+    Position petTeleportPosition;
+    GetNearPoint(pet, petTeleportPosition.m_positionX, petTeleportPosition.m_positionY, petTeleportPosition.m_positionZ, PET_FOLLOW_DIST, GetOrientation() + pet->GetFollowAngle());
+    petTeleportPosition.SetOrientation(GetOrientation());
+    pet->NearTeleportTo(petTeleportPosition);
+}
+
 void Spell::SendForcedSpellCooldown()
 {
     Unit* unitCaster = m_caster->ToUnit();
