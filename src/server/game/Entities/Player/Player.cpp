@@ -1617,7 +1617,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
     // reset movement flags at teleport, because player will continue move with these flags after teleport
     SetUnitMovementFlags(GetUnitMovementFlags() & MOVEMENTFLAG_MASK_HAS_PLAYER_STATUS_OPCODE);
     DisableSpline();
-    GetMotionMaster()->Remove(FACE_MOTION_TYPE, MOTION_SLOT_ACTIVE, MOTION_PRIORITY_NORMAL, MOTION_MODE_OVERRIDE);
+    GetMotionMaster()->Remove(FACE_MOTION_TYPE, MOTION_SLOT_ACTIVE, MOTION_PRIORITY_NORMAL, MOTION_MODE_OVERRIDE); // EG
     GetMotionMaster()->Remove(EFFECT_MOTION_TYPE, MOTION_SLOT_ACTIVE, MOTION_PRIORITY_HIGHEST, MOTION_MODE_OVERRIDE);
     GetMotionMaster()->InterruptOnTeleport();
 
@@ -1627,7 +1627,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         {
             // Cross-map or transport-driven hop: always keep
             // Same-map spell/interaction: only keep if the destination falls within the transport's model geometry
-            if (mapid != GetMapId() || (options & TELE_TO_TRANSPORT_TELEPORT) || transport->IsInRange(x, y, z, 0.0f))
+            if (mapid != GetMapId() || (options & TELE_TO_TRANSPORT_TELEPORT) || transport->IsInRange(x, y, z, 0.0f)) // EG
                 AddUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT);
             else
                 transport->RemovePassenger(this);
@@ -1682,7 +1682,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         // near teleport, triggering send MSG_MOVE_TELEPORT_ACK from client at landing
         if (!GetSession()->PlayerLogout())
         {
-            SetCanTeleport(true);
+            SetCanTeleport(true); // EG
             SendTeleportPacket(m_teleport_dest, (options & TELE_TO_TRANSPORT_TELEPORT) != 0);
         }
 
@@ -1801,7 +1801,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
 
             if (!GetSession()->PlayerLogout())
             {
-                SetCanTeleport(true);
+                SetCanTeleport(true); // EG
                 if (mEntry->IsDungeon()) // EG
                 {
                     WorldPacket lastInstance(SMSG_UPDATE_LAST_INSTANCE, 4); // EG
