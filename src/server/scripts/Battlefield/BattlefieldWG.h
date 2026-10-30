@@ -125,7 +125,7 @@ enum WintergraspSpawnGroups
 
 enum WintergraspSpells
 {
-    // Wartime auras
+    // Battle time auras
     SPELL_WINTERGRASP_RECRUIT = 37795,
     SPELL_WINTERGRASP_CORPORAL = 33280,
     SPELL_WINTERGRASP_LIEUTENANT = 55629,
@@ -230,7 +230,7 @@ enum WintergraspWorldstates
     WORLDSTATE_WINTERGRASP_TIMES_DEFENDED_HORDE = 4024,
     WORLDSTATE_WINTERGRASP_TIMES_DEFENDED_ALLIANCE = 4025,
 
-    WORLDSTATE_WINTERGRASP_SHOW_WAR_TIMER = 3710,
+    WORLDSTATE_WINTERGRASP_SHOW_BATTLE_TIMER = 3710,
     WORLDSTATE_WINTERGRASP_TIME_TO_END = 3781,
     WORLDSTATE_WINTERGRASP_SHOW_COOLDOWN = 3801,
     WORLDSTATE_WINTERGRASP_CONTROL = 3804,
@@ -242,7 +242,7 @@ enum WintergraspControlStates
 {
     WINTERGRASP_CONTROL_HORDE = 1,
     WINTERGRASP_CONTROL_ALLIANCE,
-    WINTERGRASP_CONTROL_WAR
+    WINTERGRASP_CONTROL_BATTLE
 };
 
 enum WintergraspGraveyardIds : uint8
@@ -348,7 +348,7 @@ public:
 
     uint8 GetWintergraspGraveyardId(Creature* creature) const;
 
-    bool IsFlyingMountAllowed() const override { return !IsEnabled() || (IsEnabled() && !IsWarTime()); }
+    bool IsFlyingMountAllowed() const override { return !IsEnabled() || (IsEnabled() && !IsBattleTime()); }
     bool IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 newArea) const override;
 
 private:

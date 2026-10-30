@@ -86,14 +86,14 @@ bool Battlefield::SetPhase(BattlefieldPhase phase)
         ClearBattleStatus();
     }
 
-    if (phase == BATTLEFIELD_PHASE_WAR)
+    if (phase == BATTLEFIELD_PHASE_BATTLE)
     {
-        time_t const start = std::min(GameTime::GetGameTime(), Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START));
-        Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END, start + Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_WAR).count());
-        Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START, start + Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_WAR_START).count());
+        time_t const start = std::min(GameTime::GetGameTime(), Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START));
+        Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END, start + Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_BATTLE).count());
+        Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START, start + Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START).count());
         Values.Set(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT, BATTLEFIELD_BATTLE_RESULT_NONE);
     }
-    else if (oldPhase == BATTLEFIELD_PHASE_WAR)
+    else if (oldPhase == BATTLEFIELD_PHASE_BATTLE)
     {
         for (TeamId teamId : { TEAM_ALLIANCE, TEAM_HORDE })
         {
@@ -106,13 +106,13 @@ bool Battlefield::SetPhase(BattlefieldPhase phase)
         }
 
         QueueEvent<BattlefieldBattleStatusClearEvent>(ObjectGuid::Empty, Values.Get<Seconds>(BATTLEFIELD_VALUE_DELAY_BATTLE_STATUS_CLEAR));
-        Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END, time_t(0));
+        Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END, time_t(0));
 
         time_t const now = GameTime::GetGameTime();
-        time_t const interval = Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_WAR_START).count();
-        time_t const preparationStartTime = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START) - Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION).count();
+        time_t const interval = Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START).count();
+        time_t const preparationStartTime = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START) - Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION).count();
         if (preparationStartTime < now)
-            Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START, Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START) + ((now - preparationStartTime) / interval + 1) * interval);
+            Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START, Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START) + ((now - preparationStartTime) / interval + 1) * interval);
 
         if (Values.Get<BattlefieldBattleResult>(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT) == BATTLEFIELD_BATTLE_RESULT_CAPTURED)
             ChangeTeams(GetAttackingTeam());
@@ -153,7 +153,7 @@ bool Battlefield::SetPhase(BattlefieldPhase phase)
             player->GetSession()->SendBfStateChange(GetId(), BATTLEFIELD_PLAYER_STATUS_QUEUED);
         }
     }
-    else if (phase == BATTLEFIELD_PHASE_WAR)
+    else if (phase == BATTLEFIELD_PHASE_BATTLE)
     {
         FillBattleSlots(true);
         for (ObjectGuid playerGuid : _playerGUIDs)
@@ -167,7 +167,7 @@ bool Battlefield::SetPhase(BattlefieldPhase phase)
 
 void Battlefield::SetPhaseTime(time_t phaseTime)
 {
-    Values.Set(IsWarTime() ? BATTLEFIELD_VALUE_TIME_PHASE_WAR_END : BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START, std::max(phaseTime, GameTime::GetGameTime()));
+    Values.Set(IsBattleTime() ? BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END : BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START, std::max(phaseTime, GameTime::GetGameTime()));
     SendPhaseTimes();
     ScheduleNextPhaseAdvance();
 }
@@ -213,7 +213,7 @@ void Battlefield::HandlePlayerEnterZone(Player* player)
     if (inBattlefieldRaid)
         RemoveEvents(BATTLEFIELD_EVENT_RAID_REMOVE, playerGuid);
 
-    if (IsWarTime() && _battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE))
+    if (IsBattleTime() && _battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE))
     {
         RemoveEvents(BATTLEFIELD_EVENT_BATTLE_LEAVE, playerGuid);
         if (!inBattlefieldRaid)
@@ -224,7 +224,7 @@ void Battlefield::HandlePlayerEnterZone(Player* player)
     }
     else if (IsInPreparation())
         QueueEvent<BattlefieldQueueInviteEvent>(playerGuid);
-    else if (IsWarTime())
+    else if (IsBattleTime())
         QueueEvent<BattlefieldBattleInviteEvent>(playerGuid);
 
     _playerGUIDs.insert(playerGuid);
@@ -235,7 +235,7 @@ void Battlefield::HandlePlayerLeaveZone(Player* player)
     ObjectGuid const playerGuid = player->GetGUID();
     TeamId const teamId = player->GetTeamId();
     bool const logout = player->GetSession()->PlayerLogout();
-    bool const leavingBattle = IsWarTime() && _battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE);
+    bool const leavingBattle = IsBattleTime() && _battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE);
     RemovePlayerFromResurrectionQueue(player);
     if (IsEnabled() && !logout && !leavingBattle)
         player->GetSession()->SendBfLeaveMessage(GetId(), BATTLEFIELD_LEAVE_REASON_ZONE_EXIT, GetPlayerStatus(playerGuid, teamId));
@@ -439,19 +439,19 @@ void Battlefield::ProcessRaidRemove(BattlefieldEventKey /*key*/, ObjectGuid play
 void Battlefield::ProcessPhaseAdvance(BattlefieldEventKey /*key*/)
 {
     time_t const now = GameTime::GetGameTime();
-    time_t const nextWarStartTime = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START);
+    time_t const nextBattleStartTime = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START);
     switch (_phase)
     {
         case BATTLEFIELD_PHASE_IDLE:
-            if (now >= nextWarStartTime - Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION).count() && SetPhase(BATTLEFIELD_PHASE_PREPARATION))
+            if (now >= nextBattleStartTime - Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION).count() && SetPhase(BATTLEFIELD_PHASE_PREPARATION))
                 return;
             break;
         case BATTLEFIELD_PHASE_PREPARATION:
-            if (now >= nextWarStartTime && SetPhase(BATTLEFIELD_PHASE_WAR))
+            if (now >= nextBattleStartTime && SetPhase(BATTLEFIELD_PHASE_BATTLE))
                 return;
             break;
-        case BATTLEFIELD_PHASE_WAR:
-            if (now >= Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END))
+        case BATTLEFIELD_PHASE_BATTLE:
+            if (now >= Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END))
             {
                 if (Values.Get<BattlefieldBattleResult>(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT) == BATTLEFIELD_BATTLE_RESULT_NONE)
                     Values.Set(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT, BATTLEFIELD_BATTLE_RESULT_DEFENDED);
@@ -506,7 +506,7 @@ void Battlefield::ProcessBattleInvite(BattlefieldEventKey /*key*/, Player* playe
 {
     ObjectGuid const playerGuid = player->GetGUID();
     TeamId const teamId = player->GetTeamId();
-    if (!IsWarTime() || !_playerGUIDs.contains(playerGuid) || !CanJoinBattle(player))
+    if (!IsBattleTime() || !_playerGUIDs.contains(playerGuid) || !CanJoinBattle(player))
         return;
 
     if (_battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_INVITED) || _battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE))
@@ -522,7 +522,7 @@ void Battlefield::ProcessBattleAccept(BattlefieldEventKey key, Player* player)
 {
     ObjectGuid const playerGuid = player->GetGUID();
     TeamId const teamId = player->GetTeamId();
-    if (!IsWarTime() || player->InArena() || !_battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_INVITED))
+    if (!IsBattleTime() || player->InArena() || !_battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_INVITED))
         return;
 
     RemoveEvents(BATTLEFIELD_EVENT_BATTLE_EXPIRE, playerGuid);
@@ -581,7 +581,7 @@ void Battlefield::ProcessBattleExpire(BattlefieldEventKey /*key*/, ObjectGuid pl
 
 void Battlefield::ProcessBattleLeave(BattlefieldEventKey key, ObjectGuid playerGuid)
 {
-    if (!IsWarTime())
+    if (!IsBattleTime())
         return;
 
     for (TeamId teamId : { TEAM_ALLIANCE, TEAM_HORDE })
@@ -611,7 +611,7 @@ void Battlefield::HandlePlayerLogout(Player* player)
 {
     ObjectGuid const playerGuid = player->GetGUID();
     TeamId const teamId = player->GetTeamId();
-    if (IsWarTime() && _battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE))
+    if (IsBattleTime() && _battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE))
     {
         QueueEvent<BattlefieldBattleLeaveEvent>(playerGuid, Values.Get<Seconds>(BATTLEFIELD_VALUE_DELAY_BATTLE_LOGOUT_LEAVE));
         return;
@@ -630,7 +630,7 @@ void Battlefield::HandlePlayerAddToMap(Player* player)
         return;
 
     player->GetSession()->SendBfQueueInviteResponse(GetId(), GetZoneId(), true, true, IsInPreparation());
-    if (IsWarTime())
+    if (IsBattleTime())
         FillBattleSlots(false);
 }
 
@@ -644,7 +644,7 @@ void Battlefield::HandleQueueRequest(Player* player)
     if (_battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_INVITED) || _battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE))
         return;
 
-    if (IsWarTime() && HasBattleSlot(teamId))
+    if (IsBattleTime() && HasBattleSlot(teamId))
     {
         InviteToBattle(player, false);
         return;
@@ -688,7 +688,7 @@ void Battlefield::SetEnabled(bool enabled)
 
 bool Battlefield::SetBattleResult(BattlefieldBattleResult result)
 {
-    if (!IsWarTime())
+    if (!IsBattleTime())
         return false;
 
     Values.Set(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT, result);
@@ -777,19 +777,19 @@ GameObject* Battlefield::GetGameObject(ObjectGuid guid) const
 
 void Battlefield::InitializePhaseTimes()
 {
-    Seconds const cycleDuration = Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_WAR_START);
-    Seconds const minimumCycleDuration = Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_WAR) + Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION);
+    Seconds const cycleDuration = Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START);
+    Seconds const minimumCycleDuration = Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_BATTLE) + Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION);
     if (cycleDuration < minimumCycleDuration)
     {
-        TC_LOG_ERROR("bg.battlefield", "Battlefield::InitializePhaseTimes: battlefield {} cycle of {}s is shorter than war plus preparation, using {}s.", uint32(_battleId), cycleDuration.count(), minimumCycleDuration.count());
-        Values.Set(BATTLEFIELD_VALUE_INTERVAL_PHASE_WAR_START, minimumCycleDuration);
+        TC_LOG_ERROR("bg.battlefield", "Battlefield::InitializePhaseTimes: battlefield {} cycle of {}s is shorter than battle plus preparation, using {}s.", uint32(_battleId), cycleDuration.count(), minimumCycleDuration.count());
+        Values.Set(BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START, minimumCycleDuration);
     }
 
     time_t const now = GameTime::GetGameTime();
-    if (Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END) > now || Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START) <= now)
-        Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START, now + Values.Get<Seconds>(BATTLEFIELD_VALUE_DELAY_PHASE_WAR_RESTART).count());
+    if (Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END) > now || Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START) <= now)
+        Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START, now + Values.Get<Seconds>(BATTLEFIELD_VALUE_DELAY_PHASE_BATTLE_RESTART).count());
 
-    Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END, time_t(0));
+    Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END, time_t(0));
     SendPhaseTimes();
     ScheduleNextPhaseAdvance();
 }
@@ -862,7 +862,7 @@ void Battlefield::InviteToBattle(Player* player, bool battleStart)
     TeamId const teamId = player->GetTeamId();
     Seconds const duration = Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_BATTLE_INVITE);
     _battlefieldPlayers.Insert(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_INVITED);
-    player->GetSession()->SendBfInvitePlayerToWar(GetId(), GetZoneId(), uint32(duration.count()));
+    player->GetSession()->SendBfInvitePlayerToBattle(GetId(), GetZoneId(), uint32(duration.count()));
     if (battleStart)
         player->GetSession()->SendBfStateChange(GetId(), BATTLEFIELD_PLAYER_STATUS_INVITED);
 
@@ -924,13 +924,13 @@ void Battlefield::ScheduleNextPhaseAdvance()
     switch (_phase)
     {
         case BATTLEFIELD_PHASE_IDLE:
-            target = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START) - Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION).count();
+            target = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START) - Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION).count();
             break;
         case BATTLEFIELD_PHASE_PREPARATION:
-            target = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START);
+            target = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START);
             break;
-        case BATTLEFIELD_PHASE_WAR:
-            target = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END);
+        case BATTLEFIELD_PHASE_BATTLE:
+            target = Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END);
             break;
         default:
             break;

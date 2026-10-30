@@ -64,14 +64,14 @@ public:
         if (!battlefield)
             return false;
 
-        if (battlefield->IsWarTime() || !battlefield->SetPhase(BATTLEFIELD_PHASE_WAR))
+        if (battlefield->IsBattleTime() || !battlefield->SetPhase(BATTLEFIELD_PHASE_BATTLE))
         {
-            handler->PSendSysMessage("Battlefield %u: the war cannot be started.", battleId);
+            handler->PSendSysMessage("Battlefield %u: the battle cannot be started.", battleId);
             handler->SetSentErrorMessage(true);
             return false;
         }
 
-        handler->PSendSysMessage("Battlefield %u: war started.", battleId);
+        handler->PSendSysMessage("Battlefield %u: battle started.", battleId);
         return true;
     }
 
@@ -81,15 +81,15 @@ public:
         if (!battlefield)
             return false;
 
-        if (!battlefield->IsWarTime())
+        if (!battlefield->IsBattleTime())
         {
-            handler->PSendSysMessage("Battlefield %u: the war cannot be ended.", battleId);
+            handler->PSendSysMessage("Battlefield %u: the battle cannot be ended.", battleId);
             handler->SetSentErrorMessage(true);
             return false;
         }
 
         battlefield->SetPhase(BATTLEFIELD_PHASE_IDLE);
-        handler->PSendSysMessage("Battlefield %u: war ended.", battleId);
+        handler->PSendSysMessage("Battlefield %u: battle ended.", battleId);
         return true;
     }
 
@@ -133,7 +133,7 @@ public:
             return false;
         }
 
-        Seconds const maximum = battlefield->GetValues().Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_WAR_START);
+        Seconds const maximum = battlefield->GetValues().Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START);
         if (seconds > maximum.count())
         {
             handler->PSendSysMessage("Battlefield %u: the maximum is %u seconds.", battleId, uint32(maximum.count()));
@@ -142,7 +142,7 @@ public:
         }
 
         battlefield->SetPhaseTime(GameTime::GetGameTime() + seconds);
-        handler->PSendSysMessage(battlefield->IsWarTime() ? "Battlefield %u: war ends in %u seconds." : "Battlefield %u: next war starts in %u seconds.", battleId, seconds);
+        handler->PSendSysMessage(battlefield->IsBattleTime() ? "Battlefield %u: battle ends in %u seconds." : "Battlefield %u: next battle starts in %u seconds.", battleId, seconds);
         return true;
     }
 

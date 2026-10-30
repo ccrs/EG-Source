@@ -45,12 +45,12 @@ enum ZoneWintergraspNPCTexts
     NPC_TEXT_ALLIANCE_SORRY_ONLY_OFFICER = 14172,
     NPC_TEXT_SORRY_USED_ALL_PARTS        = 13786,
 
-    NPC_TEXT_HORDE_NOWAR                 = 14775,
+    NPC_TEXT_HORDE_NOBATTLE              = 14775,
     NPC_TEXT_HORDE_QUEUE                 = 14790,
-    NPC_TEXT_HORDE_WAR                   = 14777,
-    NPC_TEXT_ALLIANCE_NOWAR              = 14782,
+    NPC_TEXT_HORDE_BATTLE                = 14777,
+    NPC_TEXT_ALLIANCE_NOBATTLE           = 14782,
     NPC_TEXT_ALLIANCE_QUEUE              = 14791,
-    NPC_TEXT_ALLIANCE_WAR                = 14781
+    NPC_TEXT_ALLIANCE_BATTLE             = 14781
 };
 
 enum ZoneWintergraspGossipMenuIds
@@ -195,7 +195,7 @@ private:
     bool CanBuild() const
     {
         Battlefield* wintergrasp = sBattlefieldMgr->GetEnabledBattlefield(me->GetZoneId());
-        if (!wintergrasp || !wintergrasp->IsWarTime())
+        if (!wintergrasp || !wintergrasp->IsBattleTime())
             return false;
 
         switch (me->GetEntry())
@@ -313,15 +313,15 @@ struct npc_wg_queue : public ScriptedAI
             return true;
 
         bool const horde = wintergrasp->GetControllingTeamId() == TEAM_HORDE;
-        if ((wintergrasp->IsWarTime() || wintergrasp->IsInPreparation()) && wintergrasp->CanJoinBattle(player))
+        if ((wintergrasp->IsBattleTime() || wintergrasp->IsInPreparation()) && wintergrasp->CanJoinBattle(player))
             AddGossipItemFor(player, me->GetCreatureTemplate()->GossipMenuId, 0, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
 
-        if (wintergrasp->IsWarTime())
-            SendGossipMenuFor(player, horde ? NPC_TEXT_HORDE_WAR : NPC_TEXT_ALLIANCE_WAR, me->GetGUID());
+        if (wintergrasp->IsBattleTime())
+            SendGossipMenuFor(player, horde ? NPC_TEXT_HORDE_BATTLE : NPC_TEXT_ALLIANCE_BATTLE, me->GetGUID());
         else if (wintergrasp->IsInPreparation())
             SendGossipMenuFor(player, horde ? NPC_TEXT_HORDE_QUEUE : NPC_TEXT_ALLIANCE_QUEUE, me->GetGUID());
         else
-            SendGossipMenuFor(player, horde ? NPC_TEXT_HORDE_NOWAR : NPC_TEXT_ALLIANCE_NOWAR, me->GetGUID());
+            SendGossipMenuFor(player, horde ? NPC_TEXT_HORDE_NOBATTLE : NPC_TEXT_ALLIANCE_NOBATTLE, me->GetGUID());
 
         return true;
     }
@@ -345,7 +345,7 @@ struct go_wg_vehicle_teleporter : public GameObjectAI
         if (_checkTimer.Passed())
         {
             Battlefield* wintergrasp = sBattlefieldMgr->GetEnabledBattlefield(me->GetZoneId());
-            if (!wintergrasp || !wintergrasp->IsWarTime())
+            if (!wintergrasp || !wintergrasp->IsBattleTime())
             {
                 _checkTimer.Reset(60000);
                 return;

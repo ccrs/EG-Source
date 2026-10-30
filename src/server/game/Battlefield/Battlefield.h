@@ -53,7 +53,7 @@ enum BattlefieldPhase : uint8
 {
     BATTLEFIELD_PHASE_IDLE = 0,
     BATTLEFIELD_PHASE_PREPARATION,
-    BATTLEFIELD_PHASE_WAR
+    BATTLEFIELD_PHASE_BATTLE
 };
 
 enum BattlefieldFlags : uint8
@@ -106,16 +106,16 @@ enum BattlefieldValue : uint8
     BATTLEFIELD_VALUE_STATE_BATTLE_RESULT,
     BATTLEFIELD_VALUE_LIMIT_TEAM_PLAYERS,
     BATTLEFIELD_VALUE_LIMIT_PLAYER_LEVEL,
-    BATTLEFIELD_VALUE_DURATION_PHASE_WAR,
+    BATTLEFIELD_VALUE_DURATION_PHASE_BATTLE,
     BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION,
     BATTLEFIELD_VALUE_DURATION_BATTLE_INVITE,
-    BATTLEFIELD_VALUE_INTERVAL_PHASE_WAR_START,
+    BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START,
     BATTLEFIELD_VALUE_INTERVAL_RESURRECTION,
-    BATTLEFIELD_VALUE_DELAY_PHASE_WAR_RESTART,
+    BATTLEFIELD_VALUE_DELAY_PHASE_BATTLE_RESTART,
     BATTLEFIELD_VALUE_DELAY_BATTLE_LOGOUT_LEAVE,
     BATTLEFIELD_VALUE_DELAY_BATTLE_STATUS_CLEAR,
-    BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START,
-    BATTLEFIELD_VALUE_TIME_PHASE_WAR_END,
+    BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START,
+    BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END,
     BATTLEFIELD_VALUE_TIME_NEXT_RESURRECTION,
     BATTLEFIELD_VALUE_MAX
 };
@@ -241,7 +241,7 @@ public:
     BattlefieldPhase GetPhase() const { return _phase; }
     bool IsEnabled() const { return _flags.HasFlag(BATTLEFIELD_FLAG_ENABLED); }
     bool IsInPreparation() const { return _phase == BATTLEFIELD_PHASE_PREPARATION; }
-    bool IsWarTime() const { return _phase == BATTLEFIELD_PHASE_WAR; }
+    bool IsBattleTime() const { return _phase == BATTLEFIELD_PHASE_BATTLE; }
     bool CanJoinBattle(Player const* player) const;
     // enum PvPTeamId
     PvPTeamId GetControllingTeam() const { return Values.Get<PvPTeamId>(BATTLEFIELD_VALUE_STATE_CONTROLLING_TEAM); }
@@ -288,7 +288,7 @@ private:
         Container _players;
     };
 
-    bool IsBattlefieldRaidPhase() const { return IsInPreparation() || IsWarTime(); }
+    bool IsBattlefieldRaidPhase() const { return IsInPreparation() || IsBattleTime(); }
     uint32 GetFreeBattleSlots(TeamId teamId) const;
     bool HasBattleSlot(TeamId teamId) const { return GetFreeBattleSlots(teamId) > 0; }
     BattlefieldPlayerStatus GetPlayerStatus(ObjectGuid playerGuid, TeamId teamId) const;

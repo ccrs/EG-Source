@@ -726,7 +726,7 @@ bool SpellArea::IsFitToRequirements(Player const* player, uint32 newZone, uint32
                 return false;
 
             if (Battlefield* wintergrasp = sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP))
-                return wintergrasp->IsEnabled() && !wintergrasp->IsWarTime() && player->GetTeamId() == wintergrasp->GetControllingTeamId();
+                return wintergrasp->IsEnabled() && !wintergrasp->IsBattleTime() && player->GetTeamId() == wintergrasp->GetControllingTeamId();
             break;
         }
     }

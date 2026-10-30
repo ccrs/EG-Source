@@ -22,7 +22,7 @@
 #include "GameTime.h"
 #include "Player.h"
 
-void WorldSession::SendBfInvitePlayerToWar(uint32 battleId, uint32 zoneId, uint32 acceptTime)
+void WorldSession::SendBfInvitePlayerToBattle(uint32 battleId, uint32 zoneId, uint32 acceptTime)
 {
     WorldPackets::Battlefield::BFMgrEntryInvite bfMgrEntryInvite;
     bfMgrEntryInvite.BattleID = battleId;

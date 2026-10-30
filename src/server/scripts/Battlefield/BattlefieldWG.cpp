@@ -107,14 +107,14 @@ bool BattlefieldWintergrasp::SetupBattlefield()
         EmplaceGraveyard(itr->Id, std::move(graveyard));
     }
 
-    Values.Set<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_WAR, Minutes(sWorld->getIntConfig(CONFIG_WINTERGRASP_BATTLETIME)));
-    Values.Set<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_WAR_START, Minutes(sWorld->getIntConfig(CONFIG_WINTERGRASP_NOBATTLETIME)));
+    Values.Set<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_BATTLE, Minutes(sWorld->getIntConfig(CONFIG_WINTERGRASP_BATTLETIME)));
+    Values.Set<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START, Minutes(sWorld->getIntConfig(CONFIG_WINTERGRASP_NOBATTLETIME)));
     Values.Set(BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION, WINTERGRASP_PREPARATION_DURATION);
     Values.Set(BATTLEFIELD_VALUE_LIMIT_TEAM_PLAYERS, sWorld->getIntConfig(CONFIG_WINTERGRASP_PLR_MAX));
     Values.Set(BATTLEFIELD_VALUE_LIMIT_PLAYER_LEVEL, sWorld->getIntConfig(CONFIG_WINTERGRASP_PLR_MIN_LVL));
-    Values.Set<Seconds>(BATTLEFIELD_VALUE_DELAY_PHASE_WAR_RESTART, Minutes(sWorld->getIntConfig(CONFIG_WINTERGRASP_RESTART_AFTER_CRASH)));
-    Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START, time_t(sWorld->getWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE)));
-    Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END, time_t(sWorld->getWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_END)));
+    Values.Set<Seconds>(BATTLEFIELD_VALUE_DELAY_PHASE_BATTLE_RESTART, Minutes(sWorld->getIntConfig(CONFIG_WINTERGRASP_RESTART_AFTER_CRASH)));
+    Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START, time_t(sWorld->getWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE)));
+    Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END, time_t(sWorld->getWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_END)));
     InitializePhaseTimes();
     return true;
 }
@@ -146,22 +146,22 @@ bool BattlefieldWintergrasp::SetPhase(BattlefieldPhase phase)
         case BATTLEFIELD_PHASE_PREPARATION:
             SendWorldStateToAll(WORLDSTATE_WINTERGRASP_ICON_ACTIVE, 1);
             break;
-        case BATTLEFIELD_PHASE_WAR:
-            SendWorldStateToMap(WORLDSTATE_WINTERGRASP_CONTROL, WINTERGRASP_CONTROL_WAR);
+        case BATTLEFIELD_PHASE_BATTLE:
+            SendWorldStateToMap(WORLDSTATE_WINTERGRASP_CONTROL, WINTERGRASP_CONTROL_BATTLE);
             SendWorldStateToMap(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, 0);
             SendWorldStateToMap(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, 0);
-            SendWorldStateToAll(WORLDSTATE_WINTERGRASP_SHOW_WAR_TIMER, 1);
+            SendWorldStateToAll(WORLDSTATE_WINTERGRASP_SHOW_BATTLE_TIMER, 1);
             SendWorldStateToAll(WORLDSTATE_WINTERGRASP_SHOW_COOLDOWN, 0);
             SendWorldStateToAll(WORLDSTATE_WINTERGRASP_ICON_ACTIVE, 1);
             break;
         case BATTLEFIELD_PHASE_IDLE:
         {
             SendWorldStateToAll(WORLDSTATE_WINTERGRASP_ICON_ACTIVE, 0);
-            if (oldPhase != BATTLEFIELD_PHASE_WAR)
+            if (oldPhase != BATTLEFIELD_PHASE_BATTLE)
                 break;
 
             SendWorldStateToAll(WORLDSTATE_WINTERGRASP_SHOW_COOLDOWN, 1);
-            SendWorldStateToAll(WORLDSTATE_WINTERGRASP_SHOW_WAR_TIMER, 0);
+            SendWorldStateToAll(WORLDSTATE_WINTERGRASP_SHOW_BATTLE_TIMER, 0);
 
             BattlefieldBattleResult const result = Values.Get<BattlefieldBattleResult>(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT);
             if (result != BATTLEFIELD_BATTLE_RESULT_NONE)
@@ -196,10 +196,10 @@ void BattlefieldWintergrasp::SendPhaseTimes()
     if (!IsEnabled())
         return;
 
-    sWorld->setWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE, uint64(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START)));
-    sWorld->setWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint64(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END)));
-    SendWorldStateToAll(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START)));
-    SendWorldStateToMap(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END)));
+    sWorld->setWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE, uint64(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START)));
+    sWorld->setWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint64(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END)));
+    SendWorldStateToAll(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START)));
+    SendWorldStateToMap(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END)));
 }
 
 bool BattlefieldWintergrasp::TeleportPlayerToBattle(Player* player)
@@ -335,15 +335,15 @@ void BattlefieldWintergrasp::OnGameObjectRemove(GameObject* object)
 
 void BattlefieldWintergrasp::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
 {
-    bool const warTime = IsWarTime();
+    bool const warTime = IsBattleTime();
     packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, !warTime && GetControllingTeam() == PVP_TEAM_HORDE ? 1 : 0); // 3802
     packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, !warTime && GetControllingTeam() == PVP_TEAM_ALLIANCE ? 1 : 0); // 3803
 
     if (IsEnabled())
     {
         packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_CONTROL, GetControlState()); // 3804
-        packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_SHOW_WAR_TIMER, warTime ? 1 : 0); // 3710
-        packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END))); // 3781
+        packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_SHOW_BATTLE_TIMER, warTime ? 1 : 0); // 3710
+        packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END))); // 3781
     }
 
     for (WintergraspBuildingContainer::value_type const& building : _buildings)
@@ -355,10 +355,10 @@ void BattlefieldWintergrasp::SendGlobalWorldStates(Player const* player) const
     if (!IsEnabled())
         return;
 
-    bool const warTime = IsWarTime();
-    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_SHOW_WAR_TIMER, warTime ? 1 : 0); // 3710
+    bool const warTime = IsBattleTime();
+    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_SHOW_BATTLE_TIMER, warTime ? 1 : 0); // 3710
     player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_SHOW_COOLDOWN, warTime ? 0 : 1); // 3801
-    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START))); // 4354
+    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START))); // 4354
     player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_ICON_ACTIVE, IsInPreparation() || warTime ? 1 : 0); // 4375
     for (uint32 worldState : { WORLDSTATE_WINTERGRASP_TIMES_ATTACKED_HORDE, WORLDSTATE_WINTERGRASP_TIMES_ATTACKED_ALLIANCE, WORLDSTATE_WINTERGRASP_TIMES_DEFENDED_HORDE, WORLDSTATE_WINTERGRASP_TIMES_DEFENDED_ALLIANCE })
         player->SendUpdateWorldState(worldState, uint32(sWorld->getWorldState(worldState)));
@@ -366,7 +366,7 @@ void BattlefieldWintergrasp::SendGlobalWorldStates(Player const* player) const
     if (player->GetMapId() != MAPID_WINTERGRASP)
         return;
 
-    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END))); // 3781
+    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END))); // 3781
     player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, !warTime && GetControllingTeam() == PVP_TEAM_HORDE ? 1 : 0); // 3802
     player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, !warTime && GetControllingTeam() == PVP_TEAM_ALLIANCE ? 1 : 0); // 3803
     player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_CONTROL, GetControlState()); // 3804
@@ -417,11 +417,11 @@ bool BattlefieldWintergrasp::IsSpellAreaAllowed(uint32 spellId, Player const* pl
                 return false;
             break;
         case SPELL_WINTERGRASP_ESSENCE_OF_WINTERGRASP:
-            return !IsWarTime();
+            return !IsBattleTime();
         case SPELL_WINTERGRASP_ESSENCE_OF_WINTERGRASP_NORTHREND:
             return false;
         case SPELL_WINTERGRASP_BATTLEGROUND_DAMPENING:
-            return IsEnabled() && IsWarTime();
+            return IsEnabled() && IsBattleTime();
         case SPELL_WINTERGRASP_ALLIANCE_CONTROLS_FACTORY_PHASE_SHIFT:
             return false;
         case SPELL_WINTERGRASP_HORDE_CONTROLS_FACTORY_PHASE_SHIFT:
@@ -439,8 +439,8 @@ bool BattlefieldWintergrasp::IsSpellAreaAllowed(uint32 spellId, Player const* pl
 
 uint32 BattlefieldWintergrasp::GetControlState() const
 {
-    if (IsWarTime())
-        return WINTERGRASP_CONTROL_WAR;
+    if (IsBattleTime())
+        return WINTERGRASP_CONTROL_BATTLE;
 
     return GetControllingTeam() == PVP_TEAM_HORDE ? WINTERGRASP_CONTROL_HORDE : WINTERGRASP_CONTROL_ALLIANCE;
 }

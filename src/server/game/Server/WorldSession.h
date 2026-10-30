@@ -1163,7 +1163,7 @@ class TC_GAME_API WorldSession
         void HandleRequestBattlefieldStatusOpcode(WorldPackets::Battleground::RequestBattlefieldStatus& requestBattlefieldStatus);
 
         // Battlefield
-        void SendBfInvitePlayerToWar(uint32 battleId, uint32 zoneId, uint32 time);
+        void SendBfInvitePlayerToBattle(uint32 battleId, uint32 zoneId, uint32 time);
         void SendBfInvitePlayerToQueue(uint32 battleId);
         void SendBfQueueInviteResponse(uint32 battleId, uint32 zoneId, bool accepted, bool loggingIn, bool warmup); // EG
         void SendBfEntered(uint32 battleId, bool relocated, bool onOffense); // EG
