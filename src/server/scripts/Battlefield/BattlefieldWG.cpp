@@ -24,6 +24,10 @@
 #include "WorldStatePackets.h"
 #include <vector>
 
+static WorldLocation const WintergraspDefenderBattleLocation(MAPID_WINTERGRASP, 5333.0f, 2842.0f, 410.0f, 0.0f);
+static WorldLocation const WintergraspAllianceAttackerBattleLocation(MAPID_WINTERGRASP, 5095.0f, 2180.0f, 366.0f, 0.0f);
+static WorldLocation const WintergraspHordeAttackerBattleLocation(MAPID_WINTERGRASP, 5025.857f, 3674.629f, 362.737f, 0.0f);
+
 static std::vector<BattlefieldBuildingInfo> const wintergraspBuildingInfo =
 {
     { WORLDSTATE_WINTERGRASP_FORTRESS_GATE,            GO_WINTERGRASP_FORTRESS_GATE,            BATTLEFIELD_BUILDING_TYPE_DOOR },
@@ -106,6 +110,8 @@ bool BattlefieldWintergrasp::SetupBattlefield()
     Values.Set<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_WAR, Minutes(sWorld->getIntConfig(CONFIG_WINTERGRASP_BATTLETIME)));
     Values.Set<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_WAR_START, Minutes(sWorld->getIntConfig(CONFIG_WINTERGRASP_NOBATTLETIME)));
     Values.Set(BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION, WINTERGRASP_PREPARATION_DURATION);
+    Values.Set(BATTLEFIELD_VALUE_LIMIT_TEAM_PLAYERS, sWorld->getIntConfig(CONFIG_WINTERGRASP_PLR_MAX));
+    Values.Set(BATTLEFIELD_VALUE_LIMIT_PLAYER_LEVEL, sWorld->getIntConfig(CONFIG_WINTERGRASP_PLR_MIN_LVL));
     Values.Set<Seconds>(BATTLEFIELD_VALUE_DELAY_PHASE_WAR_RESTART, Minutes(sWorld->getIntConfig(CONFIG_WINTERGRASP_RESTART_AFTER_CRASH)));
     Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START, time_t(sWorld->getWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE)));
     Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END, time_t(sWorld->getWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_END)));
@@ -194,6 +200,19 @@ void BattlefieldWintergrasp::SendPhaseTimes()
     sWorld->setWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint64(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END)));
     SendWorldStateToAll(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START)));
     SendWorldStateToMap(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_WAR_END)));
+}
+
+bool BattlefieldWintergrasp::TeleportPlayerToBattle(Player* player)
+{
+    Battlefield::TeleportPlayerToBattle(player);
+
+    if (player->GetTeamId() == GetControllingTeamId())
+        return player->TeleportTo(WintergraspDefenderBattleLocation);
+
+    if (player->GetTeamId() == TEAM_ALLIANCE)
+        return player->TeleportTo(WintergraspAllianceAttackerBattleLocation);
+
+    return player->TeleportTo(WintergraspHordeAttackerBattleLocation);
 }
 
 void BattlefieldWintergrasp::OnCreatureCreate(Creature* object)

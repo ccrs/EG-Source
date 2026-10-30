@@ -60,3 +60,49 @@ void BattlefieldTypedEvent<BATTLEFIELD_EVENT_ZONE_REFRESH>::Handle(Battlefield& 
 {
     battlefield.ProcessZoneRefresh(GetKey());
 }
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_QUEUE_INVITE>::Handle(Battlefield& battlefield)
+{
+    if (Player* player = ObjectAccessor::FindPlayer(GetObjectGUID()))
+        battlefield.ProcessQueueInvite(GetKey(), player);
+}
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_INVITE>::Handle(Battlefield& battlefield)
+{
+    if (Player* player = ObjectAccessor::FindPlayer(GetObjectGUID()))
+        battlefield.ProcessBattleInvite(GetKey(), player);
+}
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_ACCEPT>::Handle(Battlefield& battlefield)
+{
+    if (Player* player = ObjectAccessor::FindPlayer(GetObjectGUID()))
+        battlefield.ProcessBattleAccept(GetKey(), player);
+}
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_DECLINE>::Handle(Battlefield& battlefield)
+{
+    if (Player* player = ObjectAccessor::FindPlayer(GetObjectGUID()))
+        battlefield.ProcessBattleDecline(GetKey(), player);
+}
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_EXPIRE>::Handle(Battlefield& battlefield)
+{
+    battlefield.ProcessBattleExpire(GetKey(), GetObjectGUID());
+}
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_LEAVE>::Handle(Battlefield& battlefield)
+{
+    battlefield.ProcessBattleLeave(GetKey(), GetObjectGUID());
+}
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_STATUS_CLEAR>::Handle(Battlefield& battlefield)
+{
+    battlefield.ProcessBattleStatusClear(GetKey());
+}

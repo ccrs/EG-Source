@@ -308,12 +308,29 @@ struct npc_wg_queue : public ScriptedAI
         if (me->IsQuestGiver())
             player->PrepareQuestMenu(me->GetGUID());
 
+        Battlefield* wintergrasp = sBattlefieldMgr->GetEnabledBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP);
+        if (!wintergrasp)
+            return true;
+
+        bool const horde = wintergrasp->GetControllingTeamId() == TEAM_HORDE;
+        if ((wintergrasp->IsWarTime() || wintergrasp->IsInPreparation()) && wintergrasp->CanJoinBattle(player))
+            AddGossipItemFor(player, me->GetCreatureTemplate()->GossipMenuId, 0, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
+
+        if (wintergrasp->IsWarTime())
+            SendGossipMenuFor(player, horde ? NPC_TEXT_HORDE_WAR : NPC_TEXT_ALLIANCE_WAR, me->GetGUID());
+        else if (wintergrasp->IsInPreparation())
+            SendGossipMenuFor(player, horde ? NPC_TEXT_HORDE_QUEUE : NPC_TEXT_ALLIANCE_QUEUE, me->GetGUID());
+        else
+            SendGossipMenuFor(player, horde ? NPC_TEXT_HORDE_NOWAR : NPC_TEXT_ALLIANCE_NOWAR, me->GetGUID());
+
         return true;
     }
 
     bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
     {
         CloseGossipMenuFor(player);
+        if (Battlefield* wintergrasp = sBattlefieldMgr->GetEnabledBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP))
+            wintergrasp->HandleQueueRequest(player);
         return true;
     }
 };

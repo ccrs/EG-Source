@@ -22814,6 +22814,11 @@ void Player::SendInitialPacketsAfterAddToMap()
         else
             ClearQuestSharingInfo();
     }
+
+    sBattlefieldMgr->ForEach([this](Battlefield* battlefield) // EG
+    {
+        battlefield->HandlePlayerAddToMap(this);
+    });
 }
 
 void Player::SendUpdateToOutOfRangeGroupMembers()

@@ -24,6 +24,7 @@
 #include "EnumFlag.h"
 #include "Errors.h"
 #include "ObjectGuid.h"
+#include "Optional.h"
 #include "SharedDefines.h"
 #include "Timer.h"
 #include "ZoneScript.h"
@@ -31,6 +32,8 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <set>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <variant>
@@ -63,6 +66,32 @@ enum BattlefieldFlags : uint8
 
 DEFINE_ENUM_FLAG(BattlefieldFlags);
 
+enum BattlefieldPlayerStatus : uint8
+{
+    BATTLEFIELD_PLAYER_STATUS_NONE = 0,
+    BATTLEFIELD_PLAYER_STATUS_QUEUED,
+    BATTLEFIELD_PLAYER_STATUS_INVITED,
+    BATTLEFIELD_PLAYER_STATUS_BATTLE_ENDED
+};
+
+enum BattlefieldPlayerState : uint8
+{
+    BATTLEFIELD_PLAYER_STATE_QUEUED = 0,
+    BATTLEFIELD_PLAYER_STATE_INVITED,
+    BATTLEFIELD_PLAYER_STATE_IN_BATTLE,
+    BATTLEFIELD_PLAYER_STATE_BATTLE_ENDED,
+    BATTLEFIELD_PLAYER_STATE_MAX
+};
+
+enum BattlefieldLeaveReason : uint8
+{
+    BATTLEFIELD_LEAVE_REASON_CLOSE = 1,
+    BATTLEFIELD_LEAVE_REASON_INVITE_EXPIRED = 2,
+    BATTLEFIELD_LEAVE_REASON_INVITE_DECLINED = 5,
+    BATTLEFIELD_LEAVE_REASON_EXIT_REQUEST = 7,
+    BATTLEFIELD_LEAVE_REASON_ZONE_EXIT = 8
+};
+
 enum BattlefieldBattleResult : uint8
 {
     BATTLEFIELD_BATTLE_RESULT_NONE = 0,
@@ -75,11 +104,16 @@ enum BattlefieldValue : uint8
     BATTLEFIELD_VALUE_ID_MAP = 0,
     BATTLEFIELD_VALUE_STATE_CONTROLLING_TEAM,
     BATTLEFIELD_VALUE_STATE_BATTLE_RESULT,
+    BATTLEFIELD_VALUE_LIMIT_TEAM_PLAYERS,
+    BATTLEFIELD_VALUE_LIMIT_PLAYER_LEVEL,
     BATTLEFIELD_VALUE_DURATION_PHASE_WAR,
     BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION,
+    BATTLEFIELD_VALUE_DURATION_BATTLE_INVITE,
     BATTLEFIELD_VALUE_INTERVAL_PHASE_WAR_START,
     BATTLEFIELD_VALUE_INTERVAL_RESURRECTION,
     BATTLEFIELD_VALUE_DELAY_PHASE_WAR_RESTART,
+    BATTLEFIELD_VALUE_DELAY_BATTLE_LOGOUT_LEAVE,
+    BATTLEFIELD_VALUE_DELAY_BATTLE_STATUS_CLEAR,
     BATTLEFIELD_VALUE_TIME_PHASE_WAR_NEXT_START,
     BATTLEFIELD_VALUE_TIME_PHASE_WAR_END,
     BATTLEFIELD_VALUE_TIME_NEXT_RESURRECTION,
@@ -144,6 +178,7 @@ public:
     virtual bool SetPhase(BattlefieldPhase phase);
     virtual void SetPhaseTime(time_t phaseTime);
     virtual void SendPhaseTimes() { }
+    virtual bool TeleportPlayerToBattle(Player* /*player*/) { return false; }
     virtual void Update(uint32 diff);
     // Called when a player enters the battlefield zone
     virtual void HandlePlayerEnterZone(Player* player);
@@ -182,7 +217,20 @@ public:
     void ProcessPhaseAdvance(BattlefieldEventKey key);
     void ProcessGraveyardResurrect(BattlefieldEventKey key);
     void ProcessZoneRefresh(BattlefieldEventKey key);
+    void ProcessQueueInvite(BattlefieldEventKey key, Player* player);
+    void ProcessBattleInvite(BattlefieldEventKey key, Player* player);
+    void ProcessBattleAccept(BattlefieldEventKey key, Player* player);
+    void ProcessBattleDecline(BattlefieldEventKey key, Player* player);
+    void ProcessBattleExpire(BattlefieldEventKey key, ObjectGuid playerGuid);
+    void ProcessBattleLeave(BattlefieldEventKey key, ObjectGuid playerGuid);
+    void ProcessBattleStatusClear(BattlefieldEventKey key);
     void HandleBattlefieldRaidMemberRemoved(ObjectGuid playerGuid, RemoveMethod method);
+    void HandlePlayerLogout(Player* player);
+    void HandlePlayerAddToMap(Player* player);
+    void HandleQueueRequest(Player* player);
+    void HandleQueueInviteResponse(Player* player, bool accepted);
+    void HandleQueueExitRequest(Player* player);
+    void HandleBattleInviteResponse(Player* player, bool accepted);
 
     void SetMapId(uint32 mapId) { Values.Set(BATTLEFIELD_VALUE_ID_MAP, mapId); }
     void SetEnabled(bool enabled);
@@ -194,6 +242,7 @@ public:
     bool IsEnabled() const { return _flags.HasFlag(BATTLEFIELD_FLAG_ENABLED); }
     bool IsInPreparation() const { return _phase == BATTLEFIELD_PHASE_PREPARATION; }
     bool IsWarTime() const { return _phase == BATTLEFIELD_PHASE_WAR; }
+    bool CanJoinBattle(Player const* player) const;
     // enum PvPTeamId
     PvPTeamId GetControllingTeam() const { return Values.Get<PvPTeamId>(BATTLEFIELD_VALUE_STATE_CONTROLLING_TEAM); }
     // enum PvPTeamId
@@ -219,7 +268,34 @@ protected:
     BattlefieldValues Values;
 
 private:
+    class PlayerContainer
+    {
+    public:
+        bool Contains(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state) const;
+        Optional<BattlefieldPlayerState> FindState(ObjectGuid playerGuid, TeamId teamId) const;
+        uint32 Count(TeamId teamId, BattlefieldPlayerState state) const;
+        std::vector<ObjectGuid> List(TeamId teamId, BattlefieldPlayerState state) const;
+        void Insert(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state);
+        bool Erase(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state);
+        void EraseAll(TeamId teamId, BattlefieldPlayerState state);
+
+    private:
+        typedef std::tuple<TeamId, BattlefieldPlayerState, ObjectGuid> Key;
+        typedef std::set<Key> Container;
+
+        std::pair<Container::const_iterator, Container::const_iterator> GetRange(TeamId teamId, BattlefieldPlayerState state) const;
+
+        Container _players;
+    };
+
     bool IsBattlefieldRaidPhase() const { return IsInPreparation() || IsWarTime(); }
+    uint32 GetFreeBattleSlots(TeamId teamId) const;
+    bool HasBattleSlot(TeamId teamId) const { return GetFreeBattleSlots(teamId) > 0; }
+    BattlefieldPlayerStatus GetPlayerStatus(ObjectGuid playerGuid, TeamId teamId) const;
+    BattlefieldPlayerStatus RemoveFromQueue(ObjectGuid playerGuid, TeamId teamId);
+    void InviteToBattle(Player* player, bool battleStart);
+    void FillBattleSlots(bool battleStart);
+    void ClearBattleStatus();
     void ScheduleNextPhaseAdvance();
     void ScheduleNextGraveyardResurrect();
 
@@ -232,6 +308,7 @@ private:
     GuidUnorderedSet _playerGUIDs;
     BattlefieldGraveyardContainer _graveyards;
     std::array<std::vector<ObjectGuid>, PVP_TEAMS_COUNT> _battlefieldRaids;
+    PlayerContainer _battlefieldPlayers;
     BattlefieldEventContainer _events;
 };
 

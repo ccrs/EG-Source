@@ -24,6 +24,7 @@
 #include "AddonMgr.h"
 #include "AnticheatMgr.h"
 #include "Battlefield.h"
+#include "BattlefieldMgr.h"
 #include "BattlegroundMgr.h"
 #include "CharacterPackets.h"
 #include "ChatPackets.h"
@@ -589,9 +590,12 @@ void WorldSession::LogoutPlayer(bool save)
             group->ResetMaxEnchantingLevel();
             if (group->GetLeaderGUID() == _player->GetGUID())
                 group->StartLeaderOfflineTimer();
-            if (Battlefield* battlefield = group->GetBattlefield()) // EG
-                battlefield->QueueEvent<BattlefieldRaidRemoveEvent>(_player->GetGUID());
         }
+
+        sBattlefieldMgr->ForEach([this](Battlefield* battlefield) // EG
+        {
+            battlefield->HandlePlayerLogout(_player);
+        });
 
         //! Broadcast a logout message to the player's friends
         sSocialMgr->SendFriendStatus(_player, FRIEND_OFFLINE, _player->GetGUID(), true);
