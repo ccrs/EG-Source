@@ -61,7 +61,8 @@ enum BattlefieldFlags : uint8
     BATTLEFIELD_FLAG_NONE = 0x00,
     BATTLEFIELD_FLAG_ENABLED = 0x01,
     BATTLEFIELD_FLAG_EVENTS_UPDATING = 0x02,
-    BATTLEFIELD_FLAG_EVENTS_CLEANUP_PENDING = 0x04
+    BATTLEFIELD_FLAG_EVENTS_CLEANUP_PENDING = 0x04,
+    BATTLEFIELD_FLAG_RAID_RELEASE_PENDING = 0x08
 };
 
 DEFINE_ENUM_FLAG(BattlefieldFlags);
@@ -113,7 +114,9 @@ enum BattlefieldValue : uint8
     BATTLEFIELD_VALUE_INTERVAL_RESURRECTION,
     BATTLEFIELD_VALUE_DELAY_PHASE_BATTLE_RESTART,
     BATTLEFIELD_VALUE_DELAY_BATTLE_LOGOUT_LEAVE,
+    BATTLEFIELD_VALUE_DELAY_BATTLE_FILL,
     BATTLEFIELD_VALUE_DELAY_BATTLE_STATUS_CLEAR,
+    BATTLEFIELD_VALUE_TIME_PHASE_START,
     BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START,
     BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END,
     BATTLEFIELD_VALUE_TIME_NEXT_RESURRECTION,
@@ -223,6 +226,7 @@ public:
     void ProcessBattleDecline(BattlefieldEventKey key, Player* player);
     void ProcessBattleExpire(BattlefieldEventKey key, ObjectGuid playerGuid);
     void ProcessBattleLeave(BattlefieldEventKey key, ObjectGuid playerGuid);
+    void ProcessBattleFill(BattlefieldEventKey key);
     void ProcessBattleStatusClear(BattlefieldEventKey key);
     void HandleBattlefieldRaidMemberRemoved(ObjectGuid playerGuid, RemoveMethod method);
     void HandlePlayerLogout(Player* player);

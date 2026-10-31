@@ -133,15 +133,18 @@ public:
             return false;
         }
 
-        Seconds const maximum = battlefield->GetValues().Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START);
-        if (seconds > maximum.count())
+        time_t const now = GameTime::GetGameTime();
+        Seconds const phaseLimit = battlefield->GetValues().Get<Seconds>(battlefield->IsInPreparation() ? BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION : BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START);
+        time_t const phaseLimitTime = battlefield->GetValues().Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_START) + phaseLimit.count();
+        uint32 const maximum = phaseLimitTime > now ? uint32(phaseLimitTime - now) : 0;
+        if (seconds > maximum)
         {
-            handler->PSendSysMessage("Battlefield %u: the maximum is %u seconds.", battleId, uint32(maximum.count()));
+            handler->PSendSysMessage("Battlefield %u: the maximum is %u seconds.", battleId, maximum);
             handler->SetSentErrorMessage(true);
             return false;
         }
 
-        battlefield->SetPhaseTime(GameTime::GetGameTime() + seconds);
+        battlefield->SetPhaseTime(now + seconds);
         handler->PSendSysMessage(battlefield->IsBattleTime() ? "Battlefield %u: battle ends in %u seconds." : "Battlefield %u: next battle starts in %u seconds.", battleId, seconds);
         return true;
     }

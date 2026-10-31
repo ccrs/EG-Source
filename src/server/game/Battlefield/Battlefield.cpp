@@ -45,6 +45,7 @@ Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId)
     Values.Set(BATTLEFIELD_VALUE_LIMIT_PLAYER_LEVEL, uint32(0));
     Values.Set(BATTLEFIELD_VALUE_DURATION_BATTLE_INVITE, 20s);
     Values.Set(BATTLEFIELD_VALUE_DELAY_BATTLE_LOGOUT_LEAVE, 30s);
+    Values.Set(BATTLEFIELD_VALUE_DELAY_BATTLE_FILL, 30s);
     Values.Set(BATTLEFIELD_VALUE_DELAY_BATTLE_STATUS_CLEAR, 30s);
 }
 
@@ -68,7 +69,7 @@ void Battlefield::ChangeTeams(PvPTeamId newControllingTeam)
 
 bool Battlefield::SetPhase(BattlefieldPhase phase)
 {
-    if (phase != BATTLEFIELD_PHASE_IDLE && !IsEnabled())
+    if (phase != BATTLEFIELD_PHASE_IDLE && (!IsEnabled() || _flags.HasFlag(BATTLEFIELD_FLAG_RAID_RELEASE_PENDING)))
         return false;
 
     BattlefieldPhase const oldPhase = _phase;
@@ -77,8 +78,12 @@ bool Battlefield::SetPhase(BattlefieldPhase phase)
 
     bool wasBattlefieldRaidPhase = IsBattlefieldRaidPhase();
     _phase = phase;
+    Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_START, GameTime::GetGameTime());
     if (wasBattlefieldRaidPhase && !IsBattlefieldRaidPhase())
+    {
+        _flags |= BATTLEFIELD_FLAG_RAID_RELEASE_PENDING;
         QueueEvent<BattlefieldRaidReleaseEvent>();
+    }
 
     if (phase != BATTLEFIELD_PHASE_IDLE)
     {
@@ -134,7 +139,7 @@ bool Battlefield::SetPhase(BattlefieldPhase phase)
 
         RemoveEvents([](BattlefieldEvent const& event) -> bool
         {
-            return event.GetType() == BATTLEFIELD_EVENT_BATTLE_EXPIRE || event.GetType() == BATTLEFIELD_EVENT_BATTLE_LEAVE;
+            return event.GetType() == BATTLEFIELD_EVENT_BATTLE_EXPIRE || event.GetType() == BATTLEFIELD_EVENT_BATTLE_LEAVE || event.GetType() == BATTLEFIELD_EVENT_BATTLE_FILL;
         });
     }
 
@@ -330,6 +335,7 @@ void Battlefield::RemoveEvents(BattlefieldEventType type, ObjectGuid objectGuid)
 
 void Battlefield::ProcessRaidRelease(BattlefieldEventKey /*key*/)
 {
+    _flags.RemoveFlag(BATTLEFIELD_FLAG_RAID_RELEASE_PENDING);
     for (std::vector<ObjectGuid>& raid : _battlefieldRaids)
     {
         for (ObjectGuid groupGuid : raid)
@@ -525,6 +531,12 @@ void Battlefield::ProcessBattleAccept(BattlefieldEventKey key, Player* player)
     if (!IsBattleTime() || player->InArena() || !_battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_INVITED))
         return;
 
+    if (!player->IsInWorld())
+    {
+        QueueEvent<BattlefieldBattleAcceptEvent>(playerGuid, 1s);
+        return;
+    }
+
     RemoveEvents(BATTLEFIELD_EVENT_BATTLE_EXPIRE, playerGuid);
     _battlefieldPlayers.Insert(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE);
     bool const relocated = !_playerGUIDs.contains(playerGuid);
@@ -559,6 +571,7 @@ void Battlefield::ProcessBattleDecline(BattlefieldEventKey /*key*/, Player* play
     player->GetSession()->SendBfLeaveMessage(GetId(), BATTLEFIELD_LEAVE_REASON_INVITE_DECLINED, BATTLEFIELD_PLAYER_STATUS_INVITED);
     FillBattleSlots(false);
     _battlefieldPlayers.Insert(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_QUEUED);
+    QueueEvent<BattlefieldBattleFillEvent>(ObjectGuid::Empty, Values.Get<Seconds>(BATTLEFIELD_VALUE_DELAY_BATTLE_FILL));
 }
 
 void Battlefield::ProcessBattleExpire(BattlefieldEventKey /*key*/, ObjectGuid playerGuid)
@@ -574,7 +587,11 @@ void Battlefield::ProcessBattleExpire(BattlefieldEventKey /*key*/, ObjectGuid pl
 
         FillBattleSlots(false);
         if (player)
+        {
             _battlefieldPlayers.Insert(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_QUEUED);
+            QueueEvent<BattlefieldBattleFillEvent>(ObjectGuid::Empty, Values.Get<Seconds>(BATTLEFIELD_VALUE_DELAY_BATTLE_FILL));
+        }
+
         return;
     }
 }
@@ -596,6 +613,12 @@ void Battlefield::ProcessBattleLeave(BattlefieldEventKey key, ObjectGuid playerG
         FillBattleSlots(false);
         return;
     }
+}
+
+void Battlefield::ProcessBattleFill(BattlefieldEventKey /*key*/)
+{
+    if (IsBattleTime())
+        FillBattleSlots(false);
 }
 
 void Battlefield::ProcessBattleStatusClear(BattlefieldEventKey /*key*/)
@@ -626,7 +649,15 @@ void Battlefield::HandlePlayerLogout(Player* player)
 
 void Battlefield::HandlePlayerAddToMap(Player* player)
 {
-    if (!_battlefieldPlayers.Contains(player->GetGUID(), player->GetTeamId(), BATTLEFIELD_PLAYER_STATE_QUEUED))
+    ObjectGuid const playerGuid = player->GetGUID();
+    TeamId const teamId = player->GetTeamId();
+    if (IsBattleTime() && _battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE) && !_playerGUIDs.contains(playerGuid))
+    {
+        QueueEvent<BattlefieldBattleLeaveEvent>(playerGuid);
+        return;
+    }
+
+    if (!_battlefieldPlayers.Contains(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_QUEUED))
         return;
 
     player->GetSession()->SendBfQueueInviteResponse(GetId(), GetZoneId(), true, true, IsInPreparation());
@@ -786,6 +817,7 @@ void Battlefield::InitializePhaseTimes()
     }
 
     time_t const now = GameTime::GetGameTime();
+    Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_START, now);
     if (Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END) > now || Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START) <= now)
         Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START, now + Values.Get<Seconds>(BATTLEFIELD_VALUE_DELAY_PHASE_BATTLE_RESTART).count());
 

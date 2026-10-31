@@ -78,14 +78,14 @@ void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_INVITE>::Handle(Battlefield&
 template<>
 void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_ACCEPT>::Handle(Battlefield& battlefield)
 {
-    if (Player* player = ObjectAccessor::FindPlayer(GetObjectGUID()))
+    if (Player* player = ObjectAccessor::FindConnectedPlayer(GetObjectGUID()))
         battlefield.ProcessBattleAccept(GetKey(), player);
 }
 
 template<>
 void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_DECLINE>::Handle(Battlefield& battlefield)
 {
-    if (Player* player = ObjectAccessor::FindPlayer(GetObjectGUID()))
+    if (Player* player = ObjectAccessor::FindConnectedPlayer(GetObjectGUID()))
         battlefield.ProcessBattleDecline(GetKey(), player);
 }
 
@@ -99,6 +99,12 @@ template<>
 void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_LEAVE>::Handle(Battlefield& battlefield)
 {
     battlefield.ProcessBattleLeave(GetKey(), GetObjectGUID());
+}
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_FILL>::Handle(Battlefield& battlefield)
+{
+    battlefield.ProcessBattleFill(GetKey());
 }
 
 template<>
