@@ -10396,7 +10396,7 @@ void Unit::StopMoving(bool force /*= false*/)
         return;
 
     // Update position now since Stop does not start a new movement that can be updated later
-    if (movespline->HasStarted())
+    if (!movespline->Finalized() && movespline->HasStarted()) // EG
         UpdateSplinePosition();
     Movement::MoveSplineInit init(this);
     init.Stop(force);
