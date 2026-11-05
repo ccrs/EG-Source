@@ -23,6 +23,7 @@
 #include "Duration.h"
 #include "EnumFlag.h"
 #include "Errors.h"
+#include "IteratorPair.h"
 #include "ObjectGuid.h"
 #include "Optional.h"
 #include "SharedDefines.h"
@@ -154,6 +155,7 @@ namespace WorldPackets
 
 class BattlefieldGraveyard;
 class GameObject;
+class Map;
 class ObjectGuid;
 class Player;
 class Unit;
@@ -287,12 +289,13 @@ private:
         typedef std::tuple<TeamId, BattlefieldPlayerState, ObjectGuid> Key;
         typedef std::set<Key> Container;
 
-        std::pair<Container::const_iterator, Container::const_iterator> GetRange(TeamId teamId, BattlefieldPlayerState state) const;
+        Trinity::IteratorPair<Container::const_iterator> GetRange(TeamId teamId, BattlefieldPlayerState state) const;
 
         Container _players;
     };
 
     bool IsBattlefieldRaidPhase() const { return IsInPreparation() || IsBattleTime(); }
+    Map* GetBattleMap() const;
     uint32 GetFreeBattleSlots(TeamId teamId) const;
     bool HasBattleSlot(TeamId teamId) const { return GetFreeBattleSlots(teamId) > 0; }
     BattlefieldPlayerStatus GetPlayerStatus(ObjectGuid playerGuid, TeamId teamId) const;

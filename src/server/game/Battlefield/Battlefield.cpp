@@ -147,7 +147,7 @@ bool Battlefield::SetPhase(BattlefieldPhase phase)
 
     if (phase == BATTLEFIELD_PHASE_PREPARATION)
     {
-        Map* battleMap = sMapMgr->FindMap(Values.Get<uint32>(BATTLEFIELD_VALUE_ID_MAP), 0);
+        Map* battleMap = GetBattleMap();
         for (ObjectGuid playerGuid : _playerGUIDs)
         {
             Player* player = ObjectAccessor::GetPlayer(battleMap, playerGuid);
@@ -214,7 +214,7 @@ void Battlefield::HandlePlayerEnterZone(Player* player)
     TeamId const teamId = player->GetTeamId();
     std::vector<ObjectGuid> const& raid = _battlefieldRaids[teamId];
     Group* group = player->GetGroup();
-    bool const inBattlefieldRaid = group && std::find(raid.begin(), raid.end(), group->GetGUID()) != raid.end();
+    bool const inBattlefieldRaid = group && std::ranges::find(raid, group->GetGUID()) != raid.end();
     if (inBattlefieldRaid)
         RemoveEvents(BATTLEFIELD_EVENT_RAID_REMOVE, playerGuid);
 
@@ -373,7 +373,7 @@ void Battlefield::ProcessRaidAdd(BattlefieldEventKey /*key*/, Player* player)
 
     if (Group* group = player->GetGroup())
     {
-        if (std::find(raid.begin(), raid.end(), group->GetGUID()) != raid.end())
+        if (std::ranges::find(raid, group->GetGUID()) != raid.end())
             return;
 
         if (group->isBGGroup())
@@ -482,7 +482,7 @@ void Battlefield::ProcessGraveyardResurrect(BattlefieldEventKey /*key*/)
 
 void Battlefield::ProcessZoneRefresh(BattlefieldEventKey /*key*/)
 {
-    Map* battleMap = sMapMgr->FindMap(Values.Get<uint32>(BATTLEFIELD_VALUE_ID_MAP), 0);
+    Map* battleMap = GetBattleMap();
     for (auto itr = _playerGUIDs.begin(); itr != _playerGUIDs.end();)
     {
         if (Player* player = ObjectAccessor::GetPlayer(battleMap, *itr))
@@ -759,12 +759,14 @@ TeamId Battlefield::GetAttackingTeamId() const
 
 BattlefieldGraveyard const* Battlefield::GetGraveyard(uint8 graveyardId) const
 {
-    return _graveyards.contains(graveyardId) ? _graveyards.find(graveyardId)->second.get() : nullptr;
+    BattlefieldGraveyardPointer const* graveyard = Trinity::Containers::MapGetValuePtr(_graveyards, graveyardId);
+    return graveyard ? graveyard->get() : nullptr;
 }
 
 BattlefieldGraveyard* Battlefield::GetGraveyard(uint8 graveyardId)
 {
-    return _graveyards.contains(graveyardId) ? _graveyards.find(graveyardId)->second.get() : nullptr;
+    BattlefieldGraveyardPointer* graveyard = Trinity::Containers::MapGetValuePtr(_graveyards, graveyardId);
+    return graveyard ? graveyard->get() : nullptr;
 }
 
 WorldSafeLocsEntry const* Battlefield::GetClosestGraveyardLocation(Player* player) const
@@ -788,20 +790,18 @@ WorldSafeLocsEntry const* Battlefield::GetClosestGraveyardLocation(Player* playe
 
 Creature* Battlefield::GetCreature(ObjectGuid guid) const
 {
-    uint32 const mapId = Values.Get<uint32>(BATTLEFIELD_VALUE_ID_MAP);
-    if (!mapId || !guid)
+    if (!guid)
         return nullptr;
-    if (Map* battleMap = sMapMgr->FindMap(mapId, 0))
+    if (Map* battleMap = GetBattleMap())
         return battleMap->GetCreature(guid);
     return nullptr;
 }
 
 GameObject* Battlefield::GetGameObject(ObjectGuid guid) const
 {
-    uint32 const mapId = Values.Get<uint32>(BATTLEFIELD_VALUE_ID_MAP);
-    if (!mapId || !guid)
+    if (!guid)
         return nullptr;
-    if (Map* battleMap = sMapMgr->FindMap(mapId, 0))
+    if (Map* battleMap = GetBattleMap())
         return battleMap->GetGameObject(guid);
     return nullptr;
 }
@@ -836,7 +836,7 @@ void Battlefield::SendWorldStateToAll(uint32 variable, uint32 value) const
 
 void Battlefield::SendWorldStateToMap(uint32 variable, uint32 value) const
 {
-    Map* battleMap = sMapMgr->FindMap(Values.Get<uint32>(BATTLEFIELD_VALUE_ID_MAP), 0);
+    Map* battleMap = GetBattleMap();
     if (!battleMap)
         return;
 
@@ -847,6 +847,12 @@ void Battlefield::SendWorldStateToMap(uint32 variable, uint32 value) const
     for (MapReference const& reference : battleMap->GetPlayers())
         if (Player* player = reference.GetSource())
             player->SendDirectMessage(packet);
+}
+
+Map* Battlefield::GetBattleMap() const
+{
+    uint32 const mapId = Values.Get<uint32>(BATTLEFIELD_VALUE_ID_MAP);
+    return mapId ? sMapMgr->FindMap(mapId, 0) : nullptr;
 }
 
 uint32 Battlefield::GetFreeBattleSlots(TeamId teamId) const
@@ -1000,15 +1006,14 @@ Optional<BattlefieldPlayerState> Battlefield::PlayerContainer::FindState(ObjectG
 uint32 Battlefield::PlayerContainer::Count(TeamId teamId, BattlefieldPlayerState state) const
 {
     auto const range = GetRange(teamId, state);
-    return uint32(std::distance(range.first, range.second));
+    return uint32(std::distance(range.begin(), range.end()));
 }
 
 std::vector<ObjectGuid> Battlefield::PlayerContainer::List(TeamId teamId, BattlefieldPlayerState state) const
 {
     std::vector<ObjectGuid> playerGuids;
-    auto const range = GetRange(teamId, state);
-    for (auto itr = range.first; itr != range.second; ++itr)
-        playerGuids.push_back(std::get<ObjectGuid>(*itr));
+    for (Key const& key : GetRange(teamId, state))
+        playerGuids.push_back(std::get<ObjectGuid>(key));
 
     return playerGuids;
 }
@@ -1029,10 +1034,10 @@ bool Battlefield::PlayerContainer::Erase(ObjectGuid playerGuid, TeamId teamId, B
 void Battlefield::PlayerContainer::EraseAll(TeamId teamId, BattlefieldPlayerState state)
 {
     auto const range = GetRange(teamId, state);
-    _players.erase(range.first, range.second);
+    _players.erase(range.begin(), range.end());
 }
 
-std::pair<Battlefield::PlayerContainer::Container::const_iterator, Battlefield::PlayerContainer::Container::const_iterator> Battlefield::PlayerContainer::GetRange(TeamId teamId, BattlefieldPlayerState state) const
+Trinity::IteratorPair<Battlefield::PlayerContainer::Container::const_iterator> Battlefield::PlayerContainer::GetRange(TeamId teamId, BattlefieldPlayerState state) const
 {
     return { _players.lower_bound(Key(teamId, state, ObjectGuid::Empty)), _players.lower_bound(Key(teamId, BattlefieldPlayerState(state + 1), ObjectGuid::Empty)) };
 }

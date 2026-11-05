@@ -19,6 +19,7 @@
 #include "Battlefield.h"
 #include "Creature.h"
 #include "Errors.h"
+#include "MapUtils.h"
 #include "Object.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
@@ -29,9 +30,9 @@
 
 bool BattlefieldEntityInfo::ValidateObjectEntry(uint32 entry) const
 {
-    return std::any_of(ObjectEntriesByPvPTeamId.begin(), ObjectEntriesByPvPTeamId.end(), [&](std::unordered_map<PvPTeamId, std::vector<uint32 /*entry*/>>::value_type pair) -> bool
+    return std::any_of(ObjectEntriesByPvPTeamId.begin(), ObjectEntriesByPvPTeamId.end(), [&](std::unordered_map<PvPTeamId, std::vector<uint32 /*entry*/>>::value_type const& pair) -> bool
     {
-        return std::find(pair.second.begin(), pair.second.end(), entry) != pair.second.end();
+        return std::ranges::find(pair.second, entry) != pair.second.end();
     });
 }
 
@@ -44,12 +45,9 @@ void BattlefieldEntity::OnObjectCreate(WorldObject* object)
 {
     for (PvPTeamId currentTeam : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE, PVP_TEAM_NEUTRAL })
     {
-        if (Info.ObjectEntriesByPvPTeamId.contains(currentTeam))
-        {
-            std::vector<uint32> const& factionEntries = Info.ObjectEntriesByPvPTeamId.at(currentTeam);
-            if (std::find(factionEntries.begin(), factionEntries.end(), object->GetEntry()) != factionEntries.end())
+        if (std::vector<uint32> const* factionEntries = Trinity::Containers::MapGetValuePtr(Info.ObjectEntriesByPvPTeamId, currentTeam))
+            if (std::ranges::find(*factionEntries, object->GetEntry()) != factionEntries->end())
                 ObjectGUIDsByPvPTeamId[currentTeam].insert(object->GetGUID());
-        }
     }
 }
 
@@ -57,12 +55,9 @@ void BattlefieldEntity::OnObjectRemove(WorldObject* object)
 {
     for (PvPTeamId currentTeam : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE, PVP_TEAM_NEUTRAL })
     {
-        if (Info.ObjectEntriesByPvPTeamId.contains(currentTeam))
-        {
-            std::vector<uint32> const& factionEntries = Info.ObjectEntriesByPvPTeamId.at(currentTeam);
-            if (std::find(factionEntries.begin(), factionEntries.end(), object->GetEntry()) != factionEntries.end())
+        if (std::vector<uint32> const* factionEntries = Trinity::Containers::MapGetValuePtr(Info.ObjectEntriesByPvPTeamId, currentTeam))
+            if (std::ranges::find(*factionEntries, object->GetEntry()) != factionEntries->end())
                 ObjectGUIDsByPvPTeamId[currentTeam].erase(object->GetGUID());
-        }
     }
 }
 
@@ -73,9 +68,9 @@ void BattlefieldEntity::FillInitialWorldStates(WorldPackets::WorldState::InitWor
 
 bool BattlefieldEntity::ValidateObjectGUID(ObjectGuid reference) const
 {
-    return std::any_of(ObjectGUIDsByPvPTeamId.begin(), ObjectGUIDsByPvPTeamId.end(), [&](std::unordered_map<PvPTeamId, GuidUnorderedSet>::value_type pair) -> bool
+    return std::any_of(ObjectGUIDsByPvPTeamId.begin(), ObjectGUIDsByPvPTeamId.end(), [&](std::unordered_map<PvPTeamId, GuidUnorderedSet>::value_type const& pair) -> bool
     {
-        return std::find(pair.second.begin(), pair.second.end(), reference) != pair.second.end();
+        return pair.second.contains(reference);
     });
 }
 
