@@ -1892,6 +1892,29 @@ class EG_spell_salvaged_vehicle_ride_gate : public SpellScript
     }
 };
 
+// 64677 - Shield Generator
+class EG_spell_flame_leviathan_shield_generator : public AuraScript
+{
+    PrepareAuraScript(EG_spell_flame_leviathan_shield_generator);
+
+    void CalculateAmount(AuraEffect const* /*aurEff*/, int32& amount, bool& canBeRecalculated)
+    {
+        amount = -1;
+        canBeRecalculated = false;
+    }
+
+    void Absorb(AuraEffect* /*aurEff*/, DamageInfo& dmgInfo, uint32& absorbAmount)
+    {
+        absorbAmount = dmgInfo.GetDamage();
+    }
+
+    void Register() override
+    {
+        DoEffectCalcAmount += AuraEffectCalcAmountFn(EG_spell_flame_leviathan_shield_generator::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
+        OnEffectAbsorb += AuraEffectAbsorbFn(EG_spell_flame_leviathan_shield_generator::Absorb, EFFECT_0);
+    }
+};
+
 void AddSC_boss_flame_leviathan()
 {
     RegisterUlduarCreatureAI(boss_flame_leviathan);
@@ -1934,4 +1957,5 @@ void AddSC_boss_flame_leviathan()
     RegisterSpellScript(EG_spell_flame_leviathan_mimirons_inferno);
     RegisterSpellScript(EG_spell_flame_leviathan_grab_crate_triggered);
     RegisterSpellScript(EG_spell_salvaged_vehicle_ride_gate);
+    RegisterSpellScript(EG_spell_flame_leviathan_shield_generator);
 }
