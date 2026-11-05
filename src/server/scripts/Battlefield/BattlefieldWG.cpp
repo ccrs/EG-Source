@@ -27,6 +27,7 @@
 static WorldLocation const WintergraspDefenderBattleLocation(MAPID_WINTERGRASP, 5333.0f, 2842.0f, 410.0f, 0.0f);
 static WorldLocation const WintergraspAllianceAttackerBattleLocation(MAPID_WINTERGRASP, 5095.0f, 2180.0f, 366.0f, 0.0f);
 static WorldLocation const WintergraspHordeAttackerBattleLocation(MAPID_WINTERGRASP, 5025.857f, 3674.629f, 362.737f, 0.0f);
+static WorldLocation const WintergraspKickLocation(MAPID_WINTERGRASP, 5748.0f, 2698.0f, 697.4f, 0.0f);
 
 static std::vector<BattlefieldBuildingInfo> const wintergraspBuildingInfo =
 {
@@ -213,6 +214,13 @@ bool BattlefieldWintergrasp::TeleportPlayerToBattle(Player* player)
         return player->TeleportTo(WintergraspAllianceAttackerBattleLocation);
 
     return player->TeleportTo(WintergraspHordeAttackerBattleLocation);
+}
+
+void BattlefieldWintergrasp::TeleportPlayerOutOfBattle(Player* player)
+{
+    Battlefield::TeleportPlayerOutOfBattle(player);
+
+    player->TeleportTo(WintergraspKickLocation);
 }
 
 void BattlefieldWintergrasp::OnCreatureCreate(Creature* object)

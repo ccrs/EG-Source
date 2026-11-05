@@ -339,6 +339,7 @@ public:
     bool SetPhase(BattlefieldPhase phase) override;
     void SendPhaseTimes() override;
     bool TeleportPlayerToBattle(Player* player) override;
+    void TeleportPlayerOutOfBattle(Player* player) override;
     void OnCreatureCreate(Creature* object) override;
     void OnCreatureRemove(Creature* object) override;
     void OnGameObjectCreate(GameObject* object) override;

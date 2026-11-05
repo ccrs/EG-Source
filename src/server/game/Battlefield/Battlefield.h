@@ -116,6 +116,7 @@ enum BattlefieldValue : uint8
     BATTLEFIELD_VALUE_DELAY_PHASE_BATTLE_RESTART,
     BATTLEFIELD_VALUE_DELAY_BATTLE_LOGOUT_LEAVE,
     BATTLEFIELD_VALUE_DELAY_BATTLE_FILL,
+    BATTLEFIELD_VALUE_DELAY_BATTLE_KICK,
     BATTLEFIELD_VALUE_DELAY_BATTLE_STATUS_CLEAR,
     BATTLEFIELD_VALUE_TIME_PHASE_START,
     BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START,
@@ -184,6 +185,7 @@ public:
     virtual void SetPhaseTime(time_t phaseTime);
     virtual void SendPhaseTimes() { }
     virtual bool TeleportPlayerToBattle(Player* /*player*/) { return false; }
+    virtual void TeleportPlayerOutOfBattle(Player* /*player*/) { }
     virtual void Update(uint32 diff);
     // Called when a player enters the battlefield zone
     virtual void HandlePlayerEnterZone(Player* player);
@@ -229,6 +231,7 @@ public:
     void ProcessBattleExpire(BattlefieldEventKey key, ObjectGuid playerGuid);
     void ProcessBattleLeave(BattlefieldEventKey key, ObjectGuid playerGuid);
     void ProcessBattleFill(BattlefieldEventKey key);
+    void ProcessBattleKick(BattlefieldEventKey key, Player* player);
     void ProcessBattleStatusClear(BattlefieldEventKey key);
     void HandleBattlefieldRaidMemberRemoved(ObjectGuid playerGuid, RemoveMethod method);
     void HandlePlayerLogout(Player* player);

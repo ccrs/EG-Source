@@ -102,9 +102,22 @@ void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_LEAVE>::Handle(Battlefield& 
 }
 
 template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_RAID_LEAVE>::Handle(Battlefield& battlefield)
+{
+    battlefield.ProcessBattleLeave(GetKey(), GetObjectGUID());
+}
+
+template<>
 void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_FILL>::Handle(Battlefield& battlefield)
 {
     battlefield.ProcessBattleFill(GetKey());
+}
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_KICK>::Handle(Battlefield& battlefield)
+{
+    if (Player* player = ObjectAccessor::FindPlayer(GetObjectGUID()))
+        battlefield.ProcessBattleKick(GetKey(), player);
 }
 
 template<>
