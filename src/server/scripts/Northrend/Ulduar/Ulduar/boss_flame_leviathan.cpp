@@ -1153,7 +1153,7 @@ struct npc_lorekeeper : public ScriptedAI
     {
         if (menuId == GOSSIP_MENU_LORE_KEEPER_CONFIRM && gossipListId == GOSSIP_OPTION_LORE_KEEPER_CONFIRM)
         {
-            if (_instance->GetData(DATA_ACTIVE_TOWERS) != 0 || _instance->GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
+            if (_instance->GetData(DATA_ACTIVE_TOWERS) != 0 || _instance->GetData(DATA_FL_INTRO_START) != 0 || _instance->GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
             {
                 player->PlayerTalkClass->SendCloseGossip();
                 return false;
@@ -1164,7 +1164,7 @@ struct npc_lorekeeper : public ScriptedAI
             if (Creature* brann = _instance->GetCreature(DATA_BRANN_BRONZEBEARD_INTRO))
                 brann->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
             Talk(SAY_LORE_KEEPER_CONFIRMED);
-            _instance->SetGuidData(DATA_FL_HARDMODE_PLAYER, player->GetGUID());
+            _instance->SetGuidData(DATA_FL_INTRO_PLAYER, player->GetGUID());
             _instance->SetData(DATA_FL_HARDMODE_CONFIRMED, 1);
         }
         return false;

@@ -914,19 +914,27 @@ enum UlduarTowerGauntletGeneratorMisc
     NPC_CHOPPER = 33062,
     NPC_SIEGE_ENGINE = 33060,
     NPC_STEELFORGED_DEFENDER = 33572,
+    NPC_MECHANOSTRIKER_54_A = 34161,
+    GO_TOWER_OF_LIFE = 194375,
+    GO_TOWER_OF_FROST = 194370,
+    GO_TOWER_OF_FLAMES = 194371,
+    GO_TOWER_OF_STORMS = 194377
 };
 
 struct EG_npc_ulduar_tower_gauntlet_generator : public ScriptedAI
 {
-    EG_npc_ulduar_tower_gauntlet_generator(Creature* creature) : ScriptedAI(creature)
+    EG_npc_ulduar_tower_gauntlet_generator(Creature* creature) : ScriptedAI(creature), _summons(creature)
     {
         _summonTimer = 2000;
+        _summonFlyerTimer = 0;
         _summon = false;
+        _summonFlyers = false;
+        _maxFlyers = 0;
     }
 
     void Reset() override
     {
-        GameObject* beacon = me->FindNearestGameObjectWithOptions(10.f, FindGameObjectOptions{ .GameObjectIds = { 194375, 194370, 194371, 194377,
+        GameObject* beacon = me->FindNearestGameObjectWithOptions(20.f, FindGameObjectOptions{ .GameObjectIds = { GO_TOWER_OF_LIFE, GO_TOWER_OF_FROST, GO_TOWER_OF_FLAMES, GO_TOWER_OF_STORMS,
             194398, 194399, 194400, 194401, 194402, 194403, 194404, 194405, 194406, 194407, 194408, 194409, 194410, 194411, 194412, 194413, 194414, 194415, 194506 } });
         if (beacon)
         {
@@ -934,42 +942,102 @@ struct EG_npc_ulduar_tower_gauntlet_generator : public ScriptedAI
             {
                 me->DespawnOrUnsummon();
                 _summon = false;
+                return;
             }
+            _summonFlyers = beacon->GetEntry() == GO_TOWER_OF_LIFE || beacon->GetEntry() == GO_TOWER_OF_FROST || beacon->GetEntry() == GO_TOWER_OF_FLAMES || beacon->GetEntry() == GO_TOWER_OF_STORMS;
+            _maxFlyers = urand(1, 2);
+            _summonFlyerTimer = 2000;
             _summon = true;
             _beaconGuid = beacon->GetGUID();
         }
     }
 
+    void JustSummoned(Creature* summon) override
+    {
+        _summons.Summon(summon);
+    }
+
+    void SummonedCreatureDespawn(Creature* summon) override
+    {
+        _summons.Despawn(summon);
+    }
+
     void UpdateAI(uint32 diff) override
     {
-        if (_summon && _summonTimer <= diff)
+        if (!_summon)
+            return;
+
+        GameObject* beacon = ObjectAccessor::GetGameObject(*me, _beaconGuid);
+        if (!_beaconGuid.IsEmpty() && (!beacon || beacon->GetDestructibleState() == GO_DESTRUCTIBLE_DESTROYED))
         {
-            GameObject* beacon = ObjectAccessor::GetGameObject(*me, _beaconGuid);
-            if (!_beaconGuid.IsEmpty() && (!beacon || beacon->GetDestructibleState() == GO_DESTRUCTIBLE_DESTROYED))
+            me->DespawnOrUnsummon();
+            _summon = false;
+            return;
+        }
+
+        if (_summonTimer <= diff)
+        {
+            uint8 counter = 0;
+            for (ObjectGuid const& guid : _summons)
+                if (guid.GetEntry() == NPC_STEELFORGED_DEFENDER)
+                    ++counter;
+            if (counter < 20)
             {
-                me->DespawnOrUnsummon();
-                _summon = false;
-                return;
+                std::list<Creature*> targets;
+                me->GetCreatureListWithOptionsInGrid(targets, 70.0f, FindCreatureOptions{ .CreatureIds = { NPC_DEMOLISHER, NPC_CHOPPER, NPC_SIEGE_ENGINE }, .IsAlive = true });
+                if (!targets.empty())
+                    if (Creature* summon = me->SummonCreature(NPC_STEELFORGED_DEFENDER, me->GetPosition(), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10s))
+                    {
+                        summon->AI()->AttackStart(Trinity::Containers::SelectRandomContainerElement(targets));
+                        if (!summon->IsEngaged())
+                            summon->DespawnOrUnsummon();
+                    }
             }
-            std::list<Creature*> targets;
-            me->GetCreatureListWithOptionsInGrid(targets, 70.0f, FindCreatureOptions{ .CreatureIds = { NPC_DEMOLISHER, NPC_CHOPPER, NPC_SIEGE_ENGINE }, .IsAlive = true });
-            if (!targets.empty())
-                if (Creature* summon = me->SummonCreature(NPC_STEELFORGED_DEFENDER, me->GetPosition(), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10s))
-                {
-                    summon->AI()->AttackStart(Trinity::Containers::SelectRandomContainerElement(targets));
-                    if (!summon->IsEngaged())
-                        summon->DespawnOrUnsummon();
-                }
 
             _summonTimer = 2000;
         }
         else
             _summonTimer -= diff;
+
+        if (!_summonFlyers)
+            return;
+
+        if (_summonFlyerTimer <= diff)
+        {
+            uint8 counter = 0;
+            for (ObjectGuid const& guid : _summons)
+                if (guid.GetEntry() == NPC_MECHANOSTRIKER_54_A)
+                    ++counter;
+            if (counter < _maxFlyers)
+            {
+                std::list<Creature*> targets;
+                me->GetCreatureListWithOptionsInGrid(targets, 70.0f, FindCreatureOptions{ .CreatureIds = { NPC_DEMOLISHER, NPC_CHOPPER, NPC_SIEGE_ENGINE }, .IsAlive = true });
+                if (!targets.empty())
+                {
+                    Position summonPosition = me->GetRandomNearPosition(15.0f);
+                    summonPosition.m_positionZ += 40.0f;
+                    if (Creature* summon = me->SummonCreature(NPC_MECHANOSTRIKER_54_A, summonPosition, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10s))
+                    {
+                        summon->AI()->AttackStart(Trinity::Containers::SelectRandomContainerElement(targets));
+                        if (!summon->IsEngaged())
+                            summon->DespawnOrUnsummon();
+                    }
+                }
+            }
+
+            _summonFlyerTimer = urand(2000, 6000);
+        }
+        else
+            _summonFlyerTimer -= diff;
     }
 private:
     uint32 _summonTimer;
+    uint32 _summonFlyerTimer;
     bool _summon;
+    bool _summonFlyers;
+    uint8 _maxFlyers;
     ObjectGuid _beaconGuid;
+    SummonList _summons;
 };
 
 enum ArachnopodDestroyerMisc

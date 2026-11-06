@@ -187,38 +187,38 @@ static constexpr uint32 FlameLeviathanOutroSummonDespawnMs = 10 * MINUTE * IN_MI
 static constexpr uint32 MimironTramArrivalMimiron = 33200;
 static constexpr uint32 MimironTramArrivalCenter = 101867;
 
-enum BrannIntroTexts
+enum UlduarBrannIntroTexts
 {
     SAY_BRANN_INTRO_PENTARUS_YOU_HEARD = 0,
     SAY_BRANN_INTRO_LETS_MOVE_OUT,
     SAY_BRANN_INTRO_BRING_DOWN_SHIELD
 };
 
-enum PentarusIntroTexts
+enum UlduarPentarusIntroTexts
 {
     SAY_PENTARUS_INTRO_OF_COURSE_BRANN = 0,
     SAY_PENTARUS_INTRO_MAGES_OF_KIRIN_TOR
 };
 
-static constexpr ObjectGuid::LowType ShieldChannelMageSpawnIdEast = 136525;
-static constexpr ObjectGuid::LowType ShieldChannelMageSpawnIdNorthEast = 136528;
+static constexpr ObjectGuid::LowType UlduarShieldChannelMageSpawnIdEast = 136525;
+static constexpr ObjectGuid::LowType UlduarShieldChannelMageSpawnIdNorthEast = 136528;
 
-enum DellorahHardmodeTexts
+enum UlduarDellorahHardmodeTexts
 {
     SAY_DELLORAH_HARDMODE_REACT = 7,  // "What... What did you just do, $n?! Brann! Braaaaannn!"
     SAY_DELLORAH_HARDMODE_WARN        // "Brann! $n just activated the orbital defense system!..."
 };
 
-struct FlGauntletProximityPoint
+struct FlameLeviathanGauntletProximityPoint
 {
     Position pos;
     float radius;
     uint32 brannGroup;   // creature_text GroupID on Bronzebeard Radio (34054)
-    uint32 firedMask;    // bit in _flGauntletRadioFiredMask once played
+    uint32 firedMask;    // bit in _leviathanGauntletRadioFiredMask once played
     bool hardmodeOnly;   // tower warnings only fire under hardmode
 };
 
-enum FlGauntletRadioBits : uint32
+enum FlameLeviathanGauntletRadioBits : uint32
 {
     GAUNTLET_RADIO_IRON_DWARVES = 0x01,
     GAUNTLET_RADIO_GENERATORS   = 0x02,
@@ -229,7 +229,7 @@ enum FlGauntletRadioBits : uint32
     GAUNTLET_RADIO_REPAIR_PAD   = 0x40
 };
 
-static FlGauntletProximityPoint const FlGauntletProximityPoints[] =
+static FlameLeviathanGauntletProximityPoint const FlGauntletProximityPoints[] =
 {
     // Tower of Frost (GO 194370) - Hammer of Hodir
     { {  82.86f, -394.29f, 406.85f, 0.f }, 60.0f, SAY_BRANN_RADIO_GAUNTLET_TOWER_FROST,  GAUNTLET_RADIO_TOWER_FROST,  true  },
@@ -290,25 +290,25 @@ class instance_ulduar : public InstanceMapScript
                 _algalonTimer = 61;
                 _maxArmorItemLevel = 0;
                 _maxWeaponItemLevel = 0;
-                TeamInInstance = 0;
-                ColossusData = 0;
-                elderCount = 0;
-                illusion = 0;
+                _teamInInstance = 0;
+                _colossusData = 0;
+                _elderCount = 0;
+                _illusion = 0;
                 _activatedKeeperMask = 0;
-                conSpeedAtory = false;
-                lumberjacked = false;
-                Unbroken = true;
-                IsDriveMeCrazyEligible = true;
+                _conSpeedAtory = false;
+                _lumberjacked = false;
+                _unbroken = true;
+                _isDriveMeCrazyEligible = true;
                 _algalonSummoned = false;
                 _summonAlgalon = false;
-                _CoUAchivePlayerDeathMask = 0;
+                _couAchivePlayerDeathMask = 0;
 
                 _activeTowers = false;
                 _destroyedTowers = 0;
                 _stunned = 1;
-                _flIntroCompleted = false;
-                _flIntroStarted = false;
-                _flGauntletRadioFiredMask = 0;
+                _leviathanIntroCompleted = false;
+                _leviathanIntroStarted = false;
+                _leviathanGauntletRadioFiredMask = 0;
                 _mimironTramUsed = false;
                 _tramProgress = 0;
                 _mimironEngaged = false;
@@ -322,8 +322,8 @@ class instance_ulduar : public InstanceMapScript
 
             void OnPlayerEnter(Player* player) override
             {
-                if (!TeamInInstance)
-                    TeamInInstance = player->GetTeam();
+                if (!_teamInInstance)
+                    _teamInInstance = player->GetTeam();
 
                 if (_summonAlgalon)
                 {
@@ -354,10 +354,10 @@ class instance_ulduar : public InstanceMapScript
                         if (GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
                             DespawnLeviatanVehicle(creature);
                         else
-                            LeviathanVehicleGUIDs.push_back(creature->GetGUID());
+                            _leviathanVehicleGUIDs.push_back(creature->GetGUID());
                         break;
                     case NPC_BRANN_BRONZEBEARD_INTRO:
-                        if (_flIntroCompleted || _activeTowers || GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
+                        if (_leviathanIntroCompleted || _activeTowers || GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
                             creature->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                         break;
                     case NPC_LORE_KEEPER_OF_NORGANNON:
@@ -365,18 +365,18 @@ class instance_ulduar : public InstanceMapScript
                             creature->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                         break;
                     case NPC_KIRIN_TOR_BATTLE_MAGE:
-                        if (creature->GetSpawnId() == ShieldChannelMageSpawnIdEast || creature->GetSpawnId() == ShieldChannelMageSpawnIdNorthEast)
-                            if (!_flIntroCompleted)
-                                KirinTorMageGUIDs.push_back(creature->GetGUID());
+                        if (creature->GetSpawnId() == UlduarShieldChannelMageSpawnIdEast || creature->GetSpawnId() == UlduarShieldChannelMageSpawnIdNorthEast)
+                            if (!_leviathanIntroCompleted)
+                                _kirinTorMageGUIDs.push_back(creature->GetGUID());
                         break;
 
                     // XT-002 Deconstructor
                     case NPC_XT_TOY_PILE:
                         for (uint8 i = 0; i < 4; ++i)
                         {
-                            if (!XTToyPileGUIDs[i])
+                            if (!_xtToyPileGUIDs[i])
                             {
-                                XTToyPileGUIDs[i] = creature->GetGUID();
+                                _xtToyPileGUIDs[i] = creature->GetGUID();
                                 break;
                             }
                         }
@@ -384,36 +384,36 @@ class instance_ulduar : public InstanceMapScript
 
                     // Assembly of Iron
                     case NPC_STEELBREAKER:
-                        AssemblyGUIDs[0] = creature->GetGUID();
+                        _assemblyGUIDs[0] = creature->GetGUID();
                         AddMinion(creature, true);
                         break;
                     case NPC_MOLGEIM:
-                        AssemblyGUIDs[1] = creature->GetGUID();
+                        _assemblyGUIDs[1] = creature->GetGUID();
                         AddMinion(creature, true);
                         break;
                     case NPC_BRUNDIR:
-                        AssemblyGUIDs[2] = creature->GetGUID();
+                        _assemblyGUIDs[2] = creature->GetGUID();
                         AddMinion(creature, true);
                         break;
 
                     // Freya
                     case NPC_BRIGHTLEAF:
-                        ElderGUIDs[0] = creature->GetGUID();
+                        _elderGUIDs[0] = creature->GetGUID();
                         if (GetBossState(DATA_FREYA) == DONE)
                             creature->DespawnOrUnsummon();
                         break;
                     case NPC_IRONBRANCH:
-                        ElderGUIDs[1] = creature->GetGUID();
+                        _elderGUIDs[1] = creature->GetGUID();
                         if (GetBossState(DATA_FREYA) == DONE)
                             creature->DespawnOrUnsummon();
                         break;
                     case NPC_STONEBARK:
-                        ElderGUIDs[2] = creature->GetGUID();
+                        _elderGUIDs[2] = creature->GetGUID();
                         if (GetBossState(DATA_FREYA) == DONE)
                             creature->DespawnOrUnsummon();
                         break;
                     case NPC_FREYA_ACHIEVE_TRIGGER:
-                        FreyaAchieveTriggerGUID = creature->GetGUID();
+                        _freyaAchieveTriggerGUID = creature->GetGUID();
                         break;
 
                     // Thorim
@@ -435,7 +435,7 @@ class instance_ulduar : public InstanceMapScript
                         if (index == MAX_ULDUAR_KEEPERS)
                             break;
 
-                        KeeperGUIDs[index] = creature->GetGUID();
+                        _keeperGUIDs[index] = creature->GetGUID();
                         if (!(_activatedKeeperMask & (1 << index)))
                         {
                             _activatedKeeperMask |= 1 << index;
@@ -452,7 +452,7 @@ class instance_ulduar : public InstanceMapScript
                         if (index == MAX_ULDUAR_KEEPERS)
                             break;
 
-                        ObservationRingKeeperGUIDs[index] = creature->GetGUID();
+                        _observationRingKeeperGUIDs[index] = creature->GetGUID();
                         break;
                     }
                     case NPC_SANITY_WELL:
@@ -486,21 +486,21 @@ class instance_ulduar : public InstanceMapScript
 
             uint32 GetCreatureEntry(ObjectGuid::LowType /*guidLow*/, CreatureData const* data) override
             {
-                if (!TeamInInstance)
+                if (!_teamInInstance)
                 {
                     Map::PlayerList const& Players = instance->GetPlayers();
                     if (!Players.isEmpty())
                         if (Player* player = Players.begin()->GetSource())
-                            TeamInInstance = player->GetTeam();
+                            _teamInInstance = player->GetTeam();
                 }
 
                 uint32 entry = data->id;
                 switch (entry)
                 {
                     case NPC_MERCENARY_CAPTAIN_H:
-                        return TeamInInstance == HORDE ? NPC_MERCENARY_CAPTAIN_A : NPC_MERCENARY_CAPTAIN_H;
+                        return _teamInInstance == HORDE ? NPC_MERCENARY_CAPTAIN_A : NPC_MERCENARY_CAPTAIN_H;
                     case NPC_MERCENARY_SOLDIER_H:
-                        return TeamInInstance == HORDE ? NPC_MERCENARY_SOLDIER_A : NPC_MERCENARY_SOLDIER_H;
+                        return _teamInInstance == HORDE ? NPC_MERCENARY_SOLDIER_A : NPC_MERCENARY_SOLDIER_H;
                     default:
                         return entry;
                 }
@@ -515,9 +515,9 @@ class instance_ulduar : public InstanceMapScript
                     case NPC_XT_TOY_PILE:
                         for (uint8 i = 0; i < 4; ++i)
                         {
-                            if (XTToyPileGUIDs[i] == creature->GetGUID())
+                            if (_xtToyPileGUIDs[i] == creature->GetGUID())
                             {
-                                XTToyPileGUIDs[i].Clear();
+                                _xtToyPileGUIDs[i].Clear();
                                 break;
                             }
                         }
@@ -532,14 +532,14 @@ class instance_ulduar : public InstanceMapScript
                     case NPC_THORIM_YS:
                     case NPC_MIMIRON_YS:
                         if (uint8 index = GetKeeperIndex(creature->GetEntry(), false); index != MAX_ULDUAR_KEEPERS)
-                            KeeperGUIDs[index].Clear();
+                            _keeperGUIDs[index].Clear();
                         break;
                     case NPC_FREYA_OBSERVATION_RING:
                     case NPC_HODIR_OBSERVATION_RING:
                     case NPC_THORIM_OBSERVATION_RING:
                     case NPC_MIMIRON_OBSERVATION_RING:
                         if (uint8 index = GetKeeperIndex(creature->GetEntry(), true); index != MAX_ULDUAR_KEEPERS)
-                            ObservationRingKeeperGUIDs[index].Clear();
+                            _observationRingKeeperGUIDs[index].Clear();
                         break;
                     default:
                         break;
@@ -557,15 +557,15 @@ class instance_ulduar : public InstanceMapScript
                         break;
                     case GO_KOLOGARN_CHEST_HERO:
                     case GO_KOLOGARN_CHEST:
-                        KologarnChestGUID = gameObject->GetGUID();
+                        _kologarnChestGUID = gameObject->GetGUID();
                         break;
                     case GO_KOLOGARN_BRIDGE:
-                        KologarnBridgeGUID = gameObject->GetGUID();
+                        _kologarnBridgeGUID = gameObject->GetGUID();
                         if (GetBossState(DATA_KOLOGARN) == DONE)
                             HandleGameObject(ObjectGuid::Empty, false, gameObject);
                         break;
                     case GO_THORIM_DARK_IRON_PORTCULLIS:
-                        ThorimDarkIronPortcullisGUID = gameObject->GetGUID();
+                        _thorimDarkIronPortcullisGUID = gameObject->GetGUID();
                         break;
                     case GO_THORIM_LEVER:
                         if (GetBossState(DATA_THORIM) != IN_PROGRESS)
@@ -573,19 +573,19 @@ class instance_ulduar : public InstanceMapScript
                         break;
                     case GO_CACHE_OF_STORMS_10:
                     case GO_CACHE_OF_STORMS_25:
-                        CacheOfStormsGUID = gameObject->GetGUID();
+                        _cacheOfStormsGUID = gameObject->GetGUID();
                         break;
                     case GO_CACHE_OF_STORMS_HARDMODE_10:
                     case GO_CACHE_OF_STORMS_HARDMODE_25:
-                        CacheOfStormsHardmodeGUID = gameObject->GetGUID();
+                        _cacheOfStormsHardmodeGUID = gameObject->GetGUID();
                         break;
                     case GO_HODIR_RARE_CACHE_OF_WINTER_HERO:
                     case GO_HODIR_RARE_CACHE_OF_WINTER:
-                        HodirRareCacheGUID = gameObject->GetGUID();
+                        _hodirRareCacheGUID = gameObject->GetGUID();
                         break;
                     case GO_HODIR_CHEST_HERO:
                     case GO_HODIR_CHEST:
-                        HodirChestGUID = gameObject->GetGUID();
+                        _hodirChestGUID = gameObject->GetGUID();
                         break;
                     case GO_MIMIRON_TRAM:
                         if (GetBossState(DATA_MIMIRON) == DONE)
@@ -598,23 +598,23 @@ class instance_ulduar : public InstanceMapScript
                                 tram->BoardScriptedPassenger(gameObject);
                         break;
                     case GO_LEVIATHAN_GATE:
-                        LeviathanGateGUID = gameObject->GetGUID();
-                        if (GetBossState(DATA_FLAME_LEVIATHAN) == DONE || ColossusData >= 2)
+                        _leviathanGateGUID = gameObject->GetGUID();
+                        if (GetBossState(DATA_FLAME_LEVIATHAN) == DONE || _colossusData >= 2)
                             gameObject->SetGoState(GO_STATE_DESTROYED);
                         break;
                     case GO_LEVIATHAN_PROTECTIVE_BUBBLE:
-                        LeviathanProtectiveBubbleGUID = gameObject->GetGUID();
-                        if (_flIntroCompleted || GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
+                        _leviathanProtectiveBubbleGUID = gameObject->GetGUID();
+                        if (_leviathanIntroCompleted || GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
                             gameObject->DespawnOrUnsummon();
                         break;
                     case GO_BRAIN_ROOM_DOOR_1:
-                        BrainRoomDoorGUIDs[0] = gameObject->GetGUID();
+                        _brainRoomDoorGUIDs[0] = gameObject->GetGUID();
                         break;
                     case GO_BRAIN_ROOM_DOOR_2:
-                        BrainRoomDoorGUIDs[1] = gameObject->GetGUID();
+                        _brainRoomDoorGUIDs[1] = gameObject->GetGUID();
                         break;
                     case GO_BRAIN_ROOM_DOOR_3:
-                        BrainRoomDoorGUIDs[2] = gameObject->GetGUID();
+                        _brainRoomDoorGUIDs[2] = gameObject->GetGUID();
                         break;
                     case GO_CELESTIAL_PLANETARIUM_ACCESS_10:
                     case GO_CELESTIAL_PLANETARIUM_ACCESS_25:
@@ -640,7 +640,7 @@ class instance_ulduar : public InstanceMapScript
                     {
                         if (GetBossState(i) == IN_PROGRESS)
                         {
-                            _CoUAchivePlayerDeathMask |= (1 << i);
+                            _couAchivePlayerDeathMask |= (1 << i);
                             SaveToDB();
                         }
                     }
@@ -654,7 +654,7 @@ class instance_ulduar : public InstanceMapScript
                 {
                     case NPC_STEELFORGED_DEFFENDER:
                     case NPC_STEELFORGED_DEFENDER_GENERATOR_SUMMON:
-                        if (_flIntroCompleted && GetData(DATA_ACTIVE_TOWERS) != 0)
+                        if (_leviathanIntroCompleted && GetData(DATA_ACTIVE_TOWERS) != 0)
                             FireGauntletRadioWarning(SAY_BRANN_RADIO_GAUNTLET_GENERATORS, GAUNTLET_RADIO_GENERATORS);
                         break;
                     case NPC_CORRUPTED_SERVITOR:
@@ -665,19 +665,19 @@ class instance_ulduar : public InstanceMapScript
                     case NPC_IRONROOT_LASHER:
                     case NPC_NATURES_BLADE:
                     case NPC_GUARDIAN_OF_LIFE:
-                        if (!conSpeedAtory)
+                        if (!_conSpeedAtory)
                         {
                             DoStartTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, CRITERIA_CON_SPEED_ATORY);
-                            conSpeedAtory = true;
+                            _conSpeedAtory = true;
                         }
                         break;
                     case NPC_IRONBRANCH:
                     case NPC_STONEBARK:
                     case NPC_BRIGHTLEAF:
-                        if (!lumberjacked)
+                        if (!_lumberjacked)
                         {
                             DoStartTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, CRITERIA_LUMBERJACKED);
-                            lumberjacked = true;
+                            _lumberjacked = true;
                         }
                         break;
                     default:
@@ -713,7 +713,7 @@ class instance_ulduar : public InstanceMapScript
                             break;
                         if (Creature* hodir = GetCreature(DATA_HODIR))
                             hodir->AI()->DoAction(ACTION_CACHE_SHATTERED);
-                        if (GameObject* hodirRareCache = instance->GetGameObject(HodirRareCacheGUID))
+                        if (GameObject* hodirRareCache = instance->GetGameObject(_hodirRareCacheGUID))
                             hodirRareCache->ActivateObject(GameObjectActions::Despawn);
                         break;
                     case EVENT_FLASH_FREEZE_FINISHED:
@@ -723,11 +723,11 @@ class instance_ulduar : public InstanceMapScript
 
                     // Yogg-Saron Event triggers
                     case EVENT_ACTIVATE_SANITY_WELL:
-                        if (Creature* freya = instance->GetCreature(KeeperGUIDs[0]))
+                        if (Creature* freya = instance->GetCreature(_keeperGUIDs[0]))
                             freya->AI()->DoAction(4/*ACTION_SANITY_WELLS*/);
                         break;
                     case EVENT_HODIRS_PROTECTIVE_GAZE_PROC:
-                        if (Creature* hodir = instance->GetCreature(KeeperGUIDs[1]))
+                        if (Creature* hodir = instance->GetCreature(_keeperGUIDs[1]))
                             hodir->AI()->DoAction(5/*ACTION_FLASH_FREEZE*/);
                         break;
 
@@ -762,7 +762,7 @@ class instance_ulduar : public InstanceMapScript
                         }
                         else if (state == NOT_STARTED)
                         {
-                            for (ObjectGuid const& vehicleGuid : LeviathanVehicleGUIDs)
+                            for (ObjectGuid const& vehicleGuid : _leviathanVehicleGUIDs)
                             {
                                 if (Creature* vehicleCreature = instance->GetCreature(vehicleGuid))
                                     if (vehicleCreature->IsAlive())
@@ -774,7 +774,7 @@ class instance_ulduar : public InstanceMapScript
                             ForceRespawnQueuedCreaturesByEntry({ NPC_SALVAGED_DEMOLISHER, NPC_SALVAGED_SIEGE_ENGINE, NPC_SALVAGED_CHOPPER });
 
                             _events.CancelEvent(EVENT_FL_GAUNTLET_RADIO_POLL);
-                            if (_flIntroCompleted)
+                            if (_leviathanIntroCompleted)
                                 _events.ScheduleEvent(EVENT_FL_GAUNTLET_RADIO_POLL, 3s);
                         }
                         else if (state == IN_PROGRESS)
@@ -809,26 +809,26 @@ class instance_ulduar : public InstanceMapScript
                     case DATA_STONEBARK:
                     case DATA_BRIGHTLEAF:
                         if (GetBossState(DATA_BRIGHTLEAF) == DONE && GetBossState(DATA_IRONBRANCH) == DONE && GetBossState(DATA_STONEBARK) == DONE && GetBossState(DATA_FREYA) != DONE)
-                            if (Creature* trigger = instance->GetCreature(FreyaAchieveTriggerGUID))
+                            if (Creature* trigger = instance->GetCreature(_freyaAchieveTriggerGUID))
                                 trigger->CastSpell(trigger, SPELL_LUMBERJACKED_CREDIT, true);
                         break;
                     case DATA_KOLOGARN:
                         if (state == DONE)
                         {
-                            if (GameObject* gameObject = instance->GetGameObject(KologarnChestGUID))
+                            if (GameObject* gameObject = instance->GetGameObject(_kologarnChestGUID))
                             {
                                 gameObject->SetRespawnTime(gameObject->GetRespawnDelay());
                                 gameObject->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                             }
-                            HandleGameObject(KologarnBridgeGUID, false);
+                            HandleGameObject(_kologarnBridgeGUID, false);
                         }
                         break;
                     case DATA_HODIR:
                         if (state == DONE)
                         {
-                            if (GameObject* hodirRareCache = instance->GetGameObject(HodirRareCacheGUID))
+                            if (GameObject* hodirRareCache = instance->GetGameObject(_hodirRareCacheGUID))
                                 hodirRareCache->ActivateObject(GameObjectActions::MakeActive);
-                            if (GameObject* hodirChest = instance->GetGameObject(HodirChestGUID))
+                            if (GameObject* hodirChest = instance->GetGameObject(_hodirChestGUID))
                                 hodirChest->ActivateObject(GameObjectActions::MakeActive);
 
                             VerifyKeeperState();
@@ -841,7 +841,7 @@ class instance_ulduar : public InstanceMapScript
                         {
                             if (Creature* thorim = GetCreature(DATA_THORIM))
                             {
-                                if (GameObject* cache = instance->GetGameObject(thorim->AI()->GetData(DATA_THORIM_HARDMODE) ? CacheOfStormsHardmodeGUID : CacheOfStormsGUID))
+                                if (GameObject* cache = instance->GetGameObject(thorim->AI()->GetData(DATA_THORIM_HARDMODE) ? _cacheOfStormsHardmodeGUID : _cacheOfStormsGUID))
                                 {
                                     cache->SetLootRecipient(thorim->GetLootRecipient());
                                     cache->SetRespawnTime(cache->GetRespawnDelay());
@@ -854,7 +854,7 @@ class instance_ulduar : public InstanceMapScript
                         else
                         {
                             DoCloseDoorOrButton(GetGuidData(DATA_THORIM_LEVER));
-                            DoCloseDoorOrButton(ThorimDarkIronPortcullisGUID);
+                            DoCloseDoorOrButton(_thorimDarkIronPortcullisGUID);
                         }
                         break;
                     case DATA_ALGALON:
@@ -913,7 +913,7 @@ class instance_ulduar : public InstanceMapScript
                 switch (type)
                 {
                     case DATA_COLOSSUS:
-                        ColossusData = data;
+                        _colossusData = data;
                         if (data >= 2 && GetBossState(DATA_FLAME_LEVIATHAN) == NOT_STARTED)
                         {
                             Creature* radio = GetCreature(DATA_BRONZEBEARD_RADIO);
@@ -928,16 +928,16 @@ class instance_ulduar : public InstanceMapScript
                         }
                         break;
                     case DATA_UNBROKEN:
-                        Unbroken = data != 0;
+                        _unbroken = data != 0;
                         break;
                     case DATA_THORIM_PREADD_SUMMONS:
-                        DespawnThorimSummons(ThorimPreAddGUIDs);
+                        DespawnThorimSummons(_thorimPreAddGUIDs);
                         break;
                     case DATA_ILLUSION:
-                        illusion = data;
+                        _illusion = data;
                         break;
                     case DATA_DRIVE_ME_CRAZY:
-                        IsDriveMeCrazyEligible = data ? true : false;
+                        _isDriveMeCrazyEligible = data ? true : false;
                         break;
                     case DATA_VERIFY_YS_KEEPERS:
                         VerifyKeeperState();
@@ -959,7 +959,7 @@ class instance_ulduar : public InstanceMapScript
                         _stunned = data;
                         break;
                     case DATA_FL_OUTRO_FLYING_MACHINE_LANDED:
-                        if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                        if (Creature* brann = instance->GetCreature(_outroFlameLeviathanBrannGUID))
                         {
                             brann->ExitVehicle();
                             brann->NearTeleportTo(FlameLeviathanOutroFlyingMachineLand.GetPositionX(), FlameLeviathanOutroFlyingMachineLand.GetPositionY(), 409.747f, FlameLeviathanOutroFlyingMachineLand.GetOrientation());
@@ -969,9 +969,9 @@ class instance_ulduar : public InstanceMapScript
                         _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_1, 6500ms);
                         break;
                     case DATA_FL_INTRO_START:
-                        if (_flIntroStarted || _flIntroCompleted)
+                        if (_leviathanIntroStarted || _leviathanIntroCompleted)
                             break;
-                        _flIntroStarted = true;
+                        _leviathanIntroStarted = true;
                         _events.ScheduleEvent(EVENT_FL_INTRO_LINE_1, 1s);
                         break;
                     case DATA_FL_HARDMODE_CONFIRMED:
@@ -1021,13 +1021,10 @@ class instance_ulduar : public InstanceMapScript
                 switch (type)
                 {
                     case DATA_FL_INTRO_PLAYER:
-                        _flIntroPlayerGUID = data;
-                        break;
-                    case DATA_FL_HARDMODE_PLAYER:
-                        _flHardmodePlayerGUID = data;
+                        _leviathanIntroPlayerGUID = data;
                         break;
                     case DATA_THORIM_PREADD_SUMMONS:
-                        ThorimPreAddGUIDs.push_back(data);
+                        _thorimPreAddGUIDs.push_back(data);
                         break;
                     default:
                         break;
@@ -1043,39 +1040,39 @@ class instance_ulduar : public InstanceMapScript
                     case DATA_TOY_PILE_1:
                     case DATA_TOY_PILE_2:
                     case DATA_TOY_PILE_3:
-                        return XTToyPileGUIDs[data - DATA_TOY_PILE_0];
+                        return _xtToyPileGUIDs[data - DATA_TOY_PILE_0];
 
                     // Assembly of Iron
                     case DATA_STEELBREAKER:
-                        return AssemblyGUIDs[0];
+                        return _assemblyGUIDs[0];
                     case DATA_MOLGEIM:
-                        return AssemblyGUIDs[1];
+                        return _assemblyGUIDs[1];
                     case DATA_BRUNDIR:
-                        return AssemblyGUIDs[2];
+                        return _assemblyGUIDs[2];
 
                     // Freya
                     case DATA_BRIGHTLEAF:
-                        return ElderGUIDs[0];
+                        return _elderGUIDs[0];
                     case DATA_IRONBRANCH:
-                        return ElderGUIDs[1];
+                        return _elderGUIDs[1];
                     case DATA_STONEBARK:
-                        return ElderGUIDs[2];
+                        return _elderGUIDs[2];
 
                     // Yogg-Saron
                     case GO_BRAIN_ROOM_DOOR_1:
-                        return BrainRoomDoorGUIDs[0];
+                        return _brainRoomDoorGUIDs[0];
                     case GO_BRAIN_ROOM_DOOR_2:
-                        return BrainRoomDoorGUIDs[1];
+                        return _brainRoomDoorGUIDs[1];
                     case GO_BRAIN_ROOM_DOOR_3:
-                        return BrainRoomDoorGUIDs[2];
+                        return _brainRoomDoorGUIDs[2];
                     case DATA_FREYA_YS:
-                        return KeeperGUIDs[KEEPER_INDEX_FREYA];
+                        return _keeperGUIDs[KEEPER_INDEX_FREYA];
                     case DATA_HODIR_YS:
-                        return KeeperGUIDs[KEEPER_INDEX_HODIR];
+                        return _keeperGUIDs[KEEPER_INDEX_HODIR];
                     case DATA_THORIM_YS:
-                        return KeeperGUIDs[KEEPER_INDEX_THORIM];
+                        return _keeperGUIDs[KEEPER_INDEX_THORIM];
                     case DATA_MIMIRON_YS:
-                        return KeeperGUIDs[KEEPER_INDEX_MIMIRON];
+                        return _keeperGUIDs[KEEPER_INDEX_MIMIRON];
                 }
 
                 return InstanceScript::GetGuidData(data);
@@ -1088,15 +1085,15 @@ class instance_ulduar : public InstanceMapScript
                     case DATA_MIMIRON:
                         return _mimironEngaged ? 1 : 0;
                     case DATA_COLOSSUS:
-                        return ColossusData;
+                        return _colossusData;
                     case DATA_UNBROKEN:
-                        return uint32(Unbroken);
+                        return uint32(_unbroken);
                     case DATA_ILLUSION:
-                        return illusion;
+                        return _illusion;
                     case DATA_KEEPERS_COUNT:
                         return GetActivatedKeeperCount();
                     case WORLD_STATE_ULDUAR_TEAM_IN_INSTANCE:
-                        switch (TeamInInstance)
+                        switch (_teamInInstance)
                         {
                             default: return 0;
                             case ALLIANCE: return 1;
@@ -1107,8 +1104,10 @@ class instance_ulduar : public InstanceMapScript
                         return _activeTowers ? 1 : 0;
                     case DATA_DESTROYED_TOWERS:
                         return _destroyedTowers;
+                    case DATA_FL_INTRO_START:
+                        return (_leviathanIntroStarted || _leviathanIntroCompleted) ? 1 : 0;
                     case DATA_FL_INTRO_COMPLETED:
-                        return _flIntroCompleted ? 1 : 0;
+                        return _leviathanIntroCompleted ? 1 : 0;
                     case DATA_CALL_TRAM:
                         return _mimironTramUsed ? 1 : 0;
                     default:
@@ -1126,16 +1125,16 @@ class instance_ulduar : public InstanceMapScript
                         return _maxArmorItemLevel <= MAX_HERALD_ARMOR_ITEMLEVEL && _maxWeaponItemLevel <= MAX_HERALD_WEAPON_ITEMLEVEL;
                     case CRITERIA_WAITS_DREAMING_STORMWIND_25:
                     case CRITERIA_WAITS_DREAMING_STORMWIND_10:
-                        return illusion == STORMWIND_ILLUSION;
+                        return _illusion == STORMWIND_ILLUSION;
                     case CRITERIA_WAITS_DREAMING_CHAMBER_25:
                     case CRITERIA_WAITS_DREAMING_CHAMBER_10:
-                        return illusion == CHAMBER_ILLUSION;
+                        return _illusion == CHAMBER_ILLUSION;
                     case CRITERIA_WAITS_DREAMING_ICECROWN_25:
                     case CRITERIA_WAITS_DREAMING_ICECROWN_10:
-                        return illusion == ICECROWN_ILLUSION;
+                        return _illusion == ICECROWN_ILLUSION;
                     case CRITERIA_DRIVE_ME_CRAZY_10:
                     case CRITERIA_DRIVE_ME_CRAZY_25:
-                        return IsDriveMeCrazyEligible;
+                        return _isDriveMeCrazyEligible;
                     case CRITERIA_THREE_LIGHTS_IN_THE_DARKNESS_10:
                     case CRITERIA_THREE_LIGHTS_IN_THE_DARKNESS_25:
                         return GetActivatedKeeperCount() <= 3;
@@ -1151,56 +1150,56 @@ class instance_ulduar : public InstanceMapScript
                         return GetActivatedKeeperCount() == 0;
                     case CRITERIA_C_O_U_LEVIATHAN_10:
                     case CRITERIA_C_O_U_LEVIATHAN_25:
-                        return (_CoUAchivePlayerDeathMask & (1 << DATA_FLAME_LEVIATHAN)) == 0;
+                        return (_couAchivePlayerDeathMask & (1 << DATA_FLAME_LEVIATHAN)) == 0;
                     case CRITERIA_C_O_U_IGNIS_10:
                     case CRITERIA_C_O_U_IGNIS_25:
-                        return (_CoUAchivePlayerDeathMask & (1 << DATA_IGNIS)) == 0;
+                        return (_couAchivePlayerDeathMask & (1 << DATA_IGNIS)) == 0;
                     case CRITERIA_C_O_U_RAZORSCALE_10:
                     case CRITERIA_C_O_U_RAZORSCALE_25:
-                        return (_CoUAchivePlayerDeathMask & (1 << DATA_RAZORSCALE)) == 0;
+                        return (_couAchivePlayerDeathMask & (1 << DATA_RAZORSCALE)) == 0;
                     case CRITERIA_C_O_U_XT002_10:
                     case CRITERIA_C_O_U_XT002_25:
-                        return (_CoUAchivePlayerDeathMask & (1 << DATA_XT002)) == 0;
+                        return (_couAchivePlayerDeathMask & (1 << DATA_XT002)) == 0;
                     case CRITERIA_C_O_U_IRON_COUNCIL_10:
                     case CRITERIA_C_O_U_IRON_COUNCIL_25:
-                        return (_CoUAchivePlayerDeathMask & (1 << DATA_ASSEMBLY_OF_IRON)) == 0;
+                        return (_couAchivePlayerDeathMask & (1 << DATA_ASSEMBLY_OF_IRON)) == 0;
                     case CRITERIA_C_O_U_KOLOGARN_10:
                     case CRITERIA_C_O_U_KOLOGARN_25:
-                        return (_CoUAchivePlayerDeathMask & (1 << DATA_KOLOGARN)) == 0;
+                        return (_couAchivePlayerDeathMask & (1 << DATA_KOLOGARN)) == 0;
                     case CRITERIA_C_O_U_AURIAYA_10:
                     case CRITERIA_C_O_U_AURIAYA_25:
-                        return (_CoUAchivePlayerDeathMask & (1 << DATA_AURIAYA)) == 0;
+                        return (_couAchivePlayerDeathMask & (1 << DATA_AURIAYA)) == 0;
                     case CRITERIA_C_O_U_HODIR_10:
                     case CRITERIA_C_O_U_HODIR_25:
-                        return (_CoUAchivePlayerDeathMask & (1 << DATA_HODIR)) == 0;
+                        return (_couAchivePlayerDeathMask & (1 << DATA_HODIR)) == 0;
                     case CRITERIA_C_O_U_THORIM_10:
                     case CRITERIA_C_O_U_THORIM_25:
-                        return (_CoUAchivePlayerDeathMask & (1 << DATA_THORIM)) == 0;
+                        return (_couAchivePlayerDeathMask & (1 << DATA_THORIM)) == 0;
                     case CRITERIA_C_O_U_FREYA_10:
                     case CRITERIA_C_O_U_FREYA_25:
-                        return (_CoUAchivePlayerDeathMask & (1 << DATA_FREYA)) == 0;
+                        return (_couAchivePlayerDeathMask & (1 << DATA_FREYA)) == 0;
                     case CRITERIA_C_O_U_MIMIRON_10:
                     case CRITERIA_C_O_U_MIMIRON_25:
-                        return (_CoUAchivePlayerDeathMask & (1 << DATA_MIMIRON)) == 0;
+                        return (_couAchivePlayerDeathMask & (1 << DATA_MIMIRON)) == 0;
                     case CRITERIA_C_O_U_VEZAX_10:
                     case CRITERIA_C_O_U_VEZAX_25:
-                        return (_CoUAchivePlayerDeathMask & (1 << DATA_VEZAX)) == 0;
+                        return (_couAchivePlayerDeathMask & (1 << DATA_VEZAX)) == 0;
                     case CRITERIA_C_O_U_YOGG_SARON_10:
                     case CRITERIA_C_O_U_YOGG_SARON_25:
-                        return (_CoUAchivePlayerDeathMask & (1 << DATA_YOGG_SARON)) == 0;
+                        return (_couAchivePlayerDeathMask & (1 << DATA_YOGG_SARON)) == 0;
                     case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_10_SB:
                     case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_25_SB:
-                        if (Creature* stormcaller = instance->GetCreature(AssemblyGUIDs[2]))
+                        if (Creature* stormcaller = instance->GetCreature(_assemblyGUIDs[2]))
                             return _stunned == 1 && stormcaller->AI()->GetData(1 /*DATA_PHASE_3*/) == 1;
                         break;
                     case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_10_S:
                     case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_25_S:
-                        if (Creature* steelbreaker = instance->GetCreature(AssemblyGUIDs[0]))
+                        if (Creature* steelbreaker = instance->GetCreature(_assemblyGUIDs[0]))
                             return _stunned == 1 && steelbreaker->AI()->GetData(1 /*DATA_PHASE_3*/) == 1;
                         break;
                     case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_10_RM:
                     case CRITERIA_CANT_DO_THAT_WHILE_STUNNED_25_RM:
-                        if (Creature* runeMaster = instance->GetCreature(AssemblyGUIDs[1]))
+                        if (Creature* runeMaster = instance->GetCreature(_assemblyGUIDs[1]))
                             return _stunned == 1 && runeMaster->AI()->GetData(1 /*DATA_PHASE_3*/) == 1;
                         break;
                 }
@@ -1210,15 +1209,15 @@ class instance_ulduar : public InstanceMapScript
 
             void WriteSaveDataMore(std::ostringstream& data) override
             {
-                data << ColossusData << ' ' << _algalonTimer << ' ' << uint32(_algalonSummoned ? 1 : 0);
+                data << _colossusData << ' ' << _algalonTimer << ' ' << uint32(_algalonSummoned ? 1 : 0);
 
                 for (uint8 i = 0; i < MAX_ULDUAR_KEEPERS; ++i)
                     data << ' ' << uint32((_activatedKeeperMask & (1 << i)) ? 1 : 0);
 
-                data << ' ' << _CoUAchivePlayerDeathMask;
+                data << ' ' << _couAchivePlayerDeathMask;
                 data << ' ' << uint32(_activeTowers ? 1 : 0);
                 data << ' ' << _destroyedTowers;
-                data << ' ' << uint32(_flIntroCompleted ? 1 : 0);
+                data << ' ' << uint32(_leviathanIntroCompleted ? 1 : 0);
                 data << ' ' << uint32(_mimironEngaged ? 1 : 0);
             }
 
@@ -1249,7 +1248,7 @@ class instance_ulduar : public InstanceMapScript
                         _activatedKeeperMask |= 1 << i;
                 }
 
-                data >> _CoUAchivePlayerDeathMask;
+                data >> _couAchivePlayerDeathMask;
 
                 data >> tempState;
                 _activeTowers = tempState != 0;
@@ -1258,7 +1257,7 @@ class instance_ulduar : public InstanceMapScript
 
                 uint32 introCompletedTemp = 0;
                 data >> introCompletedTemp;
-                _flIntroCompleted = introCompletedTemp != 0;
+                _leviathanIntroCompleted = introCompletedTemp != 0;
 
                 uint32 mimironEngagedTemp = 0;
                 data >> mimironEngagedTemp;
@@ -1301,7 +1300,7 @@ class instance_ulduar : public InstanceMapScript
                         case EVENT_DESPAWN_LEVIATHAN_VEHICLES:
                             // Eject all players from vehicles and make them untargetable.
                             // They will be despawned after a while
-                            for (auto const& vehicleGuid : LeviathanVehicleGUIDs)
+                            for (auto const& vehicleGuid : _leviathanVehicleGUIDs)
                                 if (Creature* vehicleCreature = instance->GetCreature(vehicleGuid))
                                     DespawnLeviatanVehicle(vehicleCreature);
                             break;
@@ -1318,12 +1317,12 @@ class instance_ulduar : public InstanceMapScript
                         case EVENT_LEVIATHAN_BREAK_DOOR:
                             if (Creature* leviathan = GetCreature(DATA_FLAME_LEVIATHAN))
                                 leviathan->AI()->DoAction(ACTION_MOVE_TO_CENTER_POSITION);
-                            if (GameObject* gameObject = instance->GetGameObject(LeviathanGateGUID))
+                            if (GameObject* gameObject = instance->GetGameObject(_leviathanGateGUID))
                                 gameObject->SetGoState(GO_STATE_DESTROYED);
                             break;
                         case EVENT_FL_INTRO_LINE_1:
                             if (Creature* brann = GetCreature(DATA_BRANN_BRONZEBEARD_INTRO))
-                                brann->AI()->Talk(SAY_BRANN_INTRO_PENTARUS_YOU_HEARD, ObjectAccessor::GetPlayer(*brann, _flIntroPlayerGUID));
+                                brann->AI()->Talk(SAY_BRANN_INTRO_PENTARUS_YOU_HEARD, ObjectAccessor::GetPlayer(*brann, _leviathanIntroPlayerGUID));
                             _events.ScheduleEvent(EVENT_FL_INTRO_LINE_2, 9s);
                             break;
                         case EVENT_FL_INTRO_LINE_2:
@@ -1347,11 +1346,11 @@ class instance_ulduar : public InstanceMapScript
                             _events.ScheduleEvent(EVENT_FL_INTRO_SHIELD_DOWN, 13s);
                             break;
                         case EVENT_FL_INTRO_SHIELD_DOWN:
-                            _flIntroCompleted = true;
+                            _leviathanIntroCompleted = true;
                             SaveToDB();
-                            if (GameObject* shield = instance->GetGameObject(LeviathanProtectiveBubbleGUID))
+                            if (GameObject* shield = instance->GetGameObject(_leviathanProtectiveBubbleGUID))
                                 shield->DespawnOrUnsummon();
-                            for (ObjectGuid const& mageGuid : KirinTorMageGUIDs)
+                            for (ObjectGuid const& mageGuid : _kirinTorMageGUIDs)
                             {
                                 if (Creature* mage = instance->GetCreature(mageGuid))
                                 {
@@ -1359,7 +1358,7 @@ class instance_ulduar : public InstanceMapScript
                                     mage->SetEmoteState(EMOTE_STATE_NONE);
                                 }
                             }
-                            _flIntroPlayerGUID.Clear();
+                            _leviathanIntroPlayerGUID.Clear();
                             _events.ScheduleEvent(EVENT_FL_GAUNTLET_RADIO_POLL, 3s);
                             break;
                         case EVENT_FL_HARDMODE_LINE_DEACTIVATING:
@@ -1383,7 +1382,7 @@ class instance_ulduar : public InstanceMapScript
                             if (Creature* dellorah = GetCreature(DATA_DELLORAH))
                             {
                                 dellorah->AI()->SetData(99, 99);
-                                dellorah->AI()->Talk(SAY_DELLORAH_HARDMODE_REACT, ObjectAccessor::GetPlayer(*dellorah, _flHardmodePlayerGUID));
+                                dellorah->AI()->Talk(SAY_DELLORAH_HARDMODE_REACT, ObjectAccessor::GetPlayer(*dellorah, _leviathanIntroPlayerGUID));
                             }
                             break;
                         case EVENT_FL_HARDMODE_DELLORAH_RUN:
@@ -1395,8 +1394,8 @@ class instance_ulduar : public InstanceMapScript
                             break;
                         case EVENT_FL_HARDMODE_DELLORAH_YELL_2:
                             if (Creature* dellorah = GetCreature(DATA_DELLORAH))
-                                dellorah->AI()->Talk(SAY_DELLORAH_HARDMODE_WARN, ObjectAccessor::GetPlayer(*dellorah, _flHardmodePlayerGUID));
-                            _flHardmodePlayerGUID.Clear();
+                                dellorah->AI()->Talk(SAY_DELLORAH_HARDMODE_WARN, ObjectAccessor::GetPlayer(*dellorah, _leviathanIntroPlayerGUID));
+                            _leviathanIntroPlayerGUID.Clear();
                             break;
                         case EVENT_FL_HARDMODE_BRANN_RESPOND:
                             if (Creature* brann = GetCreature(DATA_BRANN_BRONZEBEARD_INTRO))
@@ -1408,9 +1407,9 @@ class instance_ulduar : public InstanceMapScript
 
                             // proximity warnings
                             Map::PlayerList const& players = instance->GetPlayers();
-                            for (FlGauntletProximityPoint const& point : FlGauntletProximityPoints)
+                            for (FlameLeviathanGauntletProximityPoint const& point : FlGauntletProximityPoints)
                             {
-                                if (_flGauntletRadioFiredMask & point.firedMask)
+                                if (_leviathanGauntletRadioFiredMask & point.firedMask)
                                     continue;
                                 if (point.hardmodeOnly && !hardmode)
                                     continue;
@@ -1427,7 +1426,7 @@ class instance_ulduar : public InstanceMapScript
                                 }
                             }
 
-                            if (!(_flGauntletRadioFiredMask & GAUNTLET_RADIO_IRON_DWARVES))
+                            if (!(_leviathanGauntletRadioFiredMask & GAUNTLET_RADIO_IRON_DWARVES))
                             {
                                 for (auto i = players.begin(); i != players.end(); ++i)
                                 {
@@ -1460,82 +1459,82 @@ class instance_ulduar : public InstanceMapScript
                                 flyingMachine->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                                 flyingMachine->RemoveNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
                                 flyingMachine->GetMotionMaster()->MoveSmoothPath(POINT_FL_OUTRO_FLYING_MACHINE_LAND, FlameLeviathanOutroFlyingMachinePath, std::size(FlameLeviathanOutroFlyingMachinePath), false);
-                                OutroFlameLeviathanFlyingMachineGUID = flyingMachine->GetGUID();
-                                OutroFlameLeviathanBrannGUID = brann->GetGUID();
+                                _outroFlameLeviathanFlyingMachineGUID = flyingMachine->GetGUID();
+                                _outroFlameLeviathanBrannGUID = brann->GetGUID();
                             }
                             if (rhydian)
                             {
-                                OutroFlameLeviathanRhydianGUID = rhydian->GetGUID();
+                                _outroFlameLeviathanRhydianGUID = rhydian->GetGUID();
                                 rhydian->SetWalk(true);
                                 rhydian->GetMotionMaster()->MovePoint(POINT_FL_OUTRO_RHYDIAN_WALK_TO_LANDING, FlameLeviathanOutroRhydianWalkTo);
                             }
                             break;
                         }
                         case EVENT_FL_OUTRO_LINE_1:
-                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                            if (Creature* brann = instance->GetCreature(_outroFlameLeviathanBrannGUID))
                                 brann->AI()->Talk(0);
                             _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_2, 9s);
                             break;
                         case EVENT_FL_OUTRO_LINE_2:
-                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                            if (Creature* rhydian = instance->GetCreature(_outroFlameLeviathanRhydianGUID))
                                 rhydian->AI()->Talk(2);
                             _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_3, 9s);
                             break;
                         case EVENT_FL_OUTRO_LINE_3:
-                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                            if (Creature* brann = instance->GetCreature(_outroFlameLeviathanBrannGUID))
                                 brann->AI()->Talk(1);
                             _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_4, 8s);
                             break;
                         case EVENT_FL_OUTRO_LINE_4:
-                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                            if (Creature* rhydian = instance->GetCreature(_outroFlameLeviathanRhydianGUID))
                                 rhydian->AI()->Talk(3);
                             _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_5, 8s);
                             break;
                         case EVENT_FL_OUTRO_LINE_5:
-                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                            if (Creature* brann = instance->GetCreature(_outroFlameLeviathanBrannGUID))
                                 brann->AI()->Talk(2);
                             _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_6, 9s);
                             break;
                         case EVENT_FL_OUTRO_LINE_6:
-                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                            if (Creature* brann = instance->GetCreature(_outroFlameLeviathanBrannGUID))
                                 brann->AI()->Talk(3);
                             _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_7, 8s);
                             break;
                         case EVENT_FL_OUTRO_LINE_7:
-                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                            if (Creature* rhydian = instance->GetCreature(_outroFlameLeviathanRhydianGUID))
                                 rhydian->AI()->Talk(4);
                             _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_8, 9s);
                             break;
                         case EVENT_FL_OUTRO_LINE_8:
-                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                            if (Creature* rhydian = instance->GetCreature(_outroFlameLeviathanRhydianGUID))
                                 rhydian->AI()->Talk(5);
                             _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_9, 8s);
                             break;
                         case EVENT_FL_OUTRO_LINE_9:
-                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                            if (Creature* brann = instance->GetCreature(_outroFlameLeviathanBrannGUID))
                                 brann->AI()->Talk(4);
                             _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_10, 9s);
                             break;
                         case EVENT_FL_OUTRO_LINE_10:
-                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                            if (Creature* rhydian = instance->GetCreature(_outroFlameLeviathanRhydianGUID))
                                 rhydian->AI()->Talk(6);
                             _events.ScheduleEvent(EVENT_FL_OUTRO_LINE_11, 8s);
                             break;
                         case EVENT_FL_OUTRO_LINE_11:
-                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                            if (Creature* brann = instance->GetCreature(_outroFlameLeviathanBrannGUID))
                                 brann->AI()->Talk(5);
                             _events.ScheduleEvent(EVENT_FL_OUTRO_DESPAWN, 30s);
                             break;
                         case EVENT_FL_OUTRO_DESPAWN:
-                            if (Creature* brann = instance->GetCreature(OutroFlameLeviathanBrannGUID))
+                            if (Creature* brann = instance->GetCreature(_outroFlameLeviathanBrannGUID))
                                 brann->DespawnOrUnsummon();
-                            if (Creature* flyingMachine = instance->GetCreature(OutroFlameLeviathanFlyingMachineGUID))
+                            if (Creature* flyingMachine = instance->GetCreature(_outroFlameLeviathanFlyingMachineGUID))
                                 flyingMachine->DespawnOrUnsummon();
-                            if (Creature* rhydian = instance->GetCreature(OutroFlameLeviathanRhydianGUID))
+                            if (Creature* rhydian = instance->GetCreature(_outroFlameLeviathanRhydianGUID))
                                 rhydian->DespawnOrUnsummon();
-                            OutroFlameLeviathanFlyingMachineGUID.Clear();
-                            OutroFlameLeviathanBrannGUID.Clear();
-                            OutroFlameLeviathanRhydianGUID.Clear();
+                            _outroFlameLeviathanFlyingMachineGUID.Clear();
+                            _outroFlameLeviathanBrannGUID.Clear();
+                            _outroFlameLeviathanRhydianGUID.Clear();
                             break;
                     }
                 }
@@ -1596,9 +1595,9 @@ class instance_ulduar : public InstanceMapScript
 
             void FireGauntletRadioWarning(uint32 brannGroup, uint32 firedBit)
             {
-                if (_flGauntletRadioFiredMask & firedBit)
+                if (_leviathanGauntletRadioFiredMask & firedBit)
                     return;
-                _flGauntletRadioFiredMask |= firedBit;
+                _leviathanGauntletRadioFiredMask |= firedBit;
                 Creature* radio = GetCreature(DATA_BRONZEBEARD_RADIO);
                 if (!radio)
                     radio = instance->SummonCreature(NPC_BRONZEBEARD_RADIO, BrannRadioSummonPos);
@@ -1667,48 +1666,48 @@ class instance_ulduar : public InstanceMapScript
                 {
                     if (_activatedKeeperMask & (1 << i))
                     {
-                        if (GetBossState(DATA_YOGG_SARON) != DONE && !instance->GetCreature(KeeperGUIDs[i]))
+                        if (GetBossState(DATA_YOGG_SARON) != DONE && !instance->GetCreature(_keeperGUIDs[i]))
                             instance->SummonCreature(KeeperData[i].YoggSaronEntry, YSKeepersPos[i]);
                     }
-                    else if (GetBossState(KeeperData[i].BossId) == DONE && !instance->GetCreature(ObservationRingKeeperGUIDs[i]))
+                    else if (GetBossState(KeeperData[i].BossId) == DONE && !instance->GetCreature(_observationRingKeeperGUIDs[i]))
                         instance->SummonCreature(KeeperData[i].ObservationRingEntry, ObservationRingKeepersPos[i]);
                 }
             }
 
         private:
             // Creatures
-            GuidVector LeviathanVehicleGUIDs;
-            GuidVector KirinTorMageGUIDs;
-            GuidVector ThorimPreAddGUIDs;
-            ObjectGuid XTToyPileGUIDs[4];
-            ObjectGuid AssemblyGUIDs[3];
-            ObjectGuid ElderGUIDs[3];
-            ObjectGuid FreyaAchieveTriggerGUID;
-            ObjectGuid KeeperGUIDs[MAX_ULDUAR_KEEPERS];
-            ObjectGuid ObservationRingKeeperGUIDs[MAX_ULDUAR_KEEPERS];
-            ObjectGuid OutroFlameLeviathanFlyingMachineGUID;
-            ObjectGuid OutroFlameLeviathanBrannGUID;
-            ObjectGuid OutroFlameLeviathanRhydianGUID;
+            GuidVector _leviathanVehicleGUIDs;
+            GuidVector _kirinTorMageGUIDs;
+            GuidVector _thorimPreAddGUIDs;
+            ObjectGuid _xtToyPileGUIDs[4];
+            ObjectGuid _assemblyGUIDs[3];
+            ObjectGuid _elderGUIDs[3];
+            ObjectGuid _freyaAchieveTriggerGUID;
+            ObjectGuid _keeperGUIDs[MAX_ULDUAR_KEEPERS];
+            ObjectGuid _observationRingKeeperGUIDs[MAX_ULDUAR_KEEPERS];
+            ObjectGuid _outroFlameLeviathanFlyingMachineGUID;
+            ObjectGuid _outroFlameLeviathanBrannGUID;
+            ObjectGuid _outroFlameLeviathanRhydianGUID;
             // GameObjects
-            ObjectGuid LeviathanGateGUID;
-            ObjectGuid LeviathanProtectiveBubbleGUID;
-            ObjectGuid KologarnChestGUID;
-            ObjectGuid KologarnBridgeGUID;
-            ObjectGuid ThorimDarkIronPortcullisGUID;
-            ObjectGuid CacheOfStormsGUID;
-            ObjectGuid CacheOfStormsHardmodeGUID;
-            ObjectGuid HodirRareCacheGUID;
-            ObjectGuid HodirChestGUID;
-            ObjectGuid BrainRoomDoorGUIDs[3];
+            ObjectGuid _leviathanGateGUID;
+            ObjectGuid _leviathanProtectiveBubbleGUID;
+            ObjectGuid _kologarnChestGUID;
+            ObjectGuid _kologarnBridgeGUID;
+            ObjectGuid _thorimDarkIronPortcullisGUID;
+            ObjectGuid _cacheOfStormsGUID;
+            ObjectGuid _cacheOfStormsHardmodeGUID;
+            ObjectGuid _hodirRareCacheGUID;
+            ObjectGuid _hodirChestGUID;
+            ObjectGuid _brainRoomDoorGUIDs[3];
             // Miscellaneous
-            uint32 TeamInInstance;
-            uint32 ColossusData;
-            uint8 elderCount;
-            uint8 illusion;
-            bool conSpeedAtory;
-            bool lumberjacked;
-            bool Unbroken;
-            bool IsDriveMeCrazyEligible;
+            uint32 _teamInInstance;
+            uint32 _colossusData;
+            uint8 _elderCount;
+            uint8 _illusion;
+            bool _conSpeedAtory;
+            bool _lumberjacked;
+            bool _unbroken;
+            bool _isDriveMeCrazyEligible;
 
             EventMap _events;
             uint32 _algalonTimer;
@@ -1717,16 +1716,15 @@ class instance_ulduar : public InstanceMapScript
             uint8 _activatedKeeperMask;
             uint32 _maxArmorItemLevel;
             uint32 _maxWeaponItemLevel;
-            uint32 _CoUAchivePlayerDeathMask;
+            uint32 _couAchivePlayerDeathMask;
             bool _activeTowers;
             uint32 _destroyedTowers;
             uint8 _stunned;
 
-            bool _flIntroCompleted;
-            bool _flIntroStarted;
-            ObjectGuid _flIntroPlayerGUID;
-            ObjectGuid _flHardmodePlayerGUID;
-            uint32 _flGauntletRadioFiredMask;
+            bool _leviathanIntroCompleted;
+            bool _leviathanIntroStarted;
+            ObjectGuid _leviathanIntroPlayerGUID;
+            uint32 _leviathanGauntletRadioFiredMask;
             bool _mimironTramUsed;
             uint32 _tramProgress;
             bool _mimironEngaged;
