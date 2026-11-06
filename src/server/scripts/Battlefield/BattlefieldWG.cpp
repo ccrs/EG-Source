@@ -17,11 +17,15 @@
 
 #include "BattlefieldWG.h"
 #include "Creature.h"
-#include "GameObject.h"
+#include "CreatureTextMgr.h"
+#include "Map.h"
+#include "MapUtils.h"
+#include "ObjectMgr.h"
 #include "Player.h"
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldStatePackets.h"
+#include <unordered_map>
 #include <vector>
 
 static WorldLocation const WintergraspDefenderBattleLocation(MAPID_WINTERGRASP, 5333.0f, 2842.0f, 410.0f, 0.0f);
@@ -29,7 +33,7 @@ static WorldLocation const WintergraspAllianceAttackerBattleLocation(MAPID_WINTE
 static WorldLocation const WintergraspHordeAttackerBattleLocation(MAPID_WINTERGRASP, 5025.857f, 3674.629f, 362.737f, 0.0f);
 static WorldLocation const WintergraspKickLocation(MAPID_WINTERGRASP, 5748.0f, 2698.0f, 697.4f, 0.0f);
 
-static std::vector<BattlefieldBuildingInfo> const wintergraspBuildingInfo =
+static std::vector<BattlefieldBuildingInfo> const WintergraspBuildingInfo =
 {
     { WORLDSTATE_WINTERGRASP_FORTRESS_GATE,            GO_WINTERGRASP_FORTRESS_GATE,            BATTLEFIELD_BUILDING_TYPE_DOOR },
     { WORLDSTATE_WINTERGRASP_FORTRESS_VAULT_GATE,      GO_WINTERGRASP_FORTRESS_VAULT_GATE,      BATTLEFIELD_BUILDING_TYPE_DOOR_LAST },
@@ -56,16 +60,27 @@ static std::vector<BattlefieldBuildingInfo> const wintergraspBuildingInfo =
     { WORLDSTATE_WINTERGRASP_FORTRESS_INTERIOR_WALL_1, GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_1, BATTLEFIELD_BUILDING_TYPE_WALL },
     { WORLDSTATE_WINTERGRASP_FORTRESS_INTERIOR_WALL_2, GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_2, BATTLEFIELD_BUILDING_TYPE_WALL },
     { WORLDSTATE_WINTERGRASP_FORTRESS_INTERIOR_WALL_3, GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_3, BATTLEFIELD_BUILDING_TYPE_WALL },
-    { WORLDSTATE_WINTERGRASP_FORTRESS_TOWER_1,         GO_WINTERGRASP_FORTRESS_TOWER_1,         BATTLEFIELD_BUILDING_TYPE_TOWER },
-    { WORLDSTATE_WINTERGRASP_FORTRESS_TOWER_2,         GO_WINTERGRASP_FORTRESS_TOWER_2,         BATTLEFIELD_BUILDING_TYPE_TOWER },
-    { WORLDSTATE_WINTERGRASP_FORTRESS_TOWER_3,         GO_WINTERGRASP_FORTRESS_TOWER_3,         BATTLEFIELD_BUILDING_TYPE_TOWER },
-    { WORLDSTATE_WINTERGRASP_FORTRESS_TOWER_4,         GO_WINTERGRASP_FORTRESS_TOWER_4,         BATTLEFIELD_BUILDING_TYPE_TOWER },
+    { WORLDSTATE_WINTERGRASP_FORTRESS_TOWER_1,         GO_WINTERGRASP_FORTRESS_TOWER_1,         BATTLEFIELD_BUILDING_TYPE_KEEP_TOWER },
+    { WORLDSTATE_WINTERGRASP_FORTRESS_TOWER_2,         GO_WINTERGRASP_FORTRESS_TOWER_2,         BATTLEFIELD_BUILDING_TYPE_KEEP_TOWER },
+    { WORLDSTATE_WINTERGRASP_FORTRESS_TOWER_3,         GO_WINTERGRASP_FORTRESS_TOWER_3,         BATTLEFIELD_BUILDING_TYPE_KEEP_TOWER },
+    { WORLDSTATE_WINTERGRASP_FORTRESS_TOWER_4,         GO_WINTERGRASP_FORTRESS_TOWER_4,         BATTLEFIELD_BUILDING_TYPE_KEEP_TOWER },
     { WORLDSTATE_WINTERGRASP_TOWER_1,                  GO_WINTERGRASP_TOWER_1,                  BATTLEFIELD_BUILDING_TYPE_TOWER },
     { WORLDSTATE_WINTERGRASP_TOWER_2,                  GO_WINTERGRASP_TOWER_2,                  BATTLEFIELD_BUILDING_TYPE_TOWER },
     { WORLDSTATE_WINTERGRASP_TOWER_3,                  GO_WINTERGRASP_TOWER_3,                  BATTLEFIELD_BUILDING_TYPE_TOWER }
 };
 
-static std::vector<BattlefieldGraveyardInfo> const wintergraspGraveyardInfo =
+static std::unordered_map<uint32 /*entry*/, uint8> const WintergraspTowerTexts =
+{
+    { GO_WINTERGRASP_TOWER_1, SAY_WINTERGRASP_WESTERN_TOWER_DAMAGED },
+    { GO_WINTERGRASP_TOWER_2, SAY_WINTERGRASP_SOUTHERN_TOWER_DAMAGED },
+    { GO_WINTERGRASP_TOWER_3, SAY_WINTERGRASP_EASTERN_TOWER_DAMAGED },
+    { GO_WINTERGRASP_FORTRESS_TOWER_1, SAY_WINTERGRASP_NORTH_WESTERN_KEEP_TOWER_DAMAGED },
+    { GO_WINTERGRASP_FORTRESS_TOWER_2, SAY_WINTERGRASP_SOUTH_WESTERN_KEEP_TOWER_DAMAGED },
+    { GO_WINTERGRASP_FORTRESS_TOWER_3, SAY_WINTERGRASP_SOUTH_EASTERN_KEEP_TOWER_DAMAGED },
+    { GO_WINTERGRASP_FORTRESS_TOWER_4, SAY_WINTERGRASP_NORTH_EASTERN_KEEP_TOWER_DAMAGED }
+};
+
+static std::vector<BattlefieldGraveyardInfo> const WintergraspGraveyardInfo =
 {
     { 0, NPC_WINTERGRASP_TAUNKA_SPIRIT_GUIDE, NPC_WINTERGRASP_DWARVEN_SPIRIT_GUIDE, 0, GRAVEYARD_WORKSHOP_NE, WORLDSAFELOC_WINTERGRASP_SIEGE_FACTORY_DEFENSE_NE, GOSSIP_WINTERGRASP_GRAVEYARD_NE, SPELL_WINTERGRASP_TELEPORT_SUNKEN_RING },
     { 0, NPC_WINTERGRASP_TAUNKA_SPIRIT_GUIDE, NPC_WINTERGRASP_DWARVEN_SPIRIT_GUIDE, 0, GRAVEYARD_WORKSHOP_NW, WORLDSAFELOC_WINTERGRASP_SIEGE_FACTORY_DEFENSE_NW, GOSSIP_WINTERGRASP_GRAVEYARD_NW, SPELL_WINTERGRASP_TELEPORT_BROKEN_TEMPLE },
@@ -94,14 +109,14 @@ bool BattlefieldWintergrasp::SetupBattlefield()
     uint64 hordeDefender = sWorld->getWorldState(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER);
     Values.Set(BATTLEFIELD_VALUE_STATE_CONTROLLING_TEAM, hordeDefender != 0 ? PVP_TEAM_HORDE : PVP_TEAM_ALLIANCE);
 
-    for (auto itr = wintergraspBuildingInfo.begin(); itr != wintergraspBuildingInfo.end(); ++itr)
+    for (auto itr = WintergraspBuildingInfo.begin(); itr != WintergraspBuildingInfo.end(); ++itr)
     {
         WintergraspBuildingPointer building = std::make_unique<WintergraspBuilding>(this, *itr);
         building->InitializeState();
-        _buildings.emplace(itr->Info.GetNeutralObjectEntry(), std::move(building));
+        EmplaceBuilding(std::move(building));
     }
 
-    for (auto itr = wintergraspGraveyardInfo.begin(); itr != wintergraspGraveyardInfo.end(); ++itr)
+    for (auto itr = WintergraspGraveyardInfo.begin(); itr != WintergraspGraveyardInfo.end(); ++itr)
     {
         WintergraspGraveyardPointer graveyard = std::make_unique<WintergraspGraveyard>(this, *itr);
         graveyard->InitializeState();
@@ -120,16 +135,12 @@ bool BattlefieldWintergrasp::SetupBattlefield()
     return true;
 }
 
-void BattlefieldWintergrasp::ChangeTeams(PvPTeamId newControllingTeam)
+void BattlefieldWintergrasp::ChangeTeam(PvPTeamId newControllingTeam)
 {
-    Battlefield::ChangeTeams(newControllingTeam);
+    Battlefield::ChangeTeam(newControllingTeam);
 
     sWorld->setWorldState(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, GetControllingTeam() == PVP_TEAM_HORDE ? 1 : 0);
     sWorld->setWorldState(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, GetControllingTeam() == PVP_TEAM_ALLIANCE ? 1 : 0);
-
-    for (WintergraspBuildingContainer::value_type& buildingPair : _buildings)
-        buildingPair.second->InitializeState();
-
     QueueEvent<BattlefieldZoneRefreshEvent>();
 }
 
@@ -148,6 +159,13 @@ bool BattlefieldWintergrasp::SetPhase(BattlefieldPhase phase)
             SendWorldStateToAll(WORLDSTATE_WINTERGRASP_ICON_ACTIVE, 1);
             break;
         case BATTLEFIELD_PHASE_BATTLE:
+            if (Map* battleMap = GetBattleMap())
+                if (CreatureData const* stalkerData = sObjectMgr->GetCreatureData(SPAWNID_WINTERGRASP_INVISIBLE_STALKER))
+                    battleMap->LoadGrid(stalkerData->spawnPoint.GetPositionX(), stalkerData->spawnPoint.GetPositionY());
+
+            if (Creature* stalker = GetCreature(_stalkerGUID))
+                stalker->setActive(true);
+
             SendWorldStateToMap(WORLDSTATE_WINTERGRASP_CONTROL, WINTERGRASP_CONTROL_BATTLE);
             SendWorldStateToMap(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, 0);
             SendWorldStateToMap(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, 0);
@@ -157,6 +175,9 @@ bool BattlefieldWintergrasp::SetPhase(BattlefieldPhase phase)
             break;
         case BATTLEFIELD_PHASE_IDLE:
         {
+            if (Creature* stalker = GetCreature(_stalkerGUID))
+                stalker->setActive(false);
+
             SendWorldStateToAll(WORLDSTATE_WINTERGRASP_ICON_ACTIVE, 0);
             if (oldPhase != BATTLEFIELD_PHASE_BATTLE)
                 break;
@@ -223,10 +244,35 @@ void BattlefieldWintergrasp::TeleportPlayerOutOfBattle(Player* player)
     player->TeleportTo(WintergraspKickLocation);
 }
 
+uint32 BattlefieldWintergrasp::GetFaction(PvPTeamId pvpTeamId) const
+{
+    switch (pvpTeamId)
+    {
+        case PVP_TEAM_HORDE:
+            return FACTION_HORDE_GENERIC_WG;
+        case PVP_TEAM_ALLIANCE:
+            return FACTION_ALLIANCE_GENERIC_WG;
+        default:
+            return 0;
+    }
+}
+
 void BattlefieldWintergrasp::OnCreatureCreate(Creature* object)
 {
     switch (object->GetEntry())
     {
+        case NPC_WINTERGRASP_INVISIBLE_STALKER:
+            if (object->GetSpawnId() == SPAWNID_WINTERGRASP_INVISIBLE_STALKER)
+                _stalkerGUID = object->GetGUID();
+            break;
+        case NPC_WINTERGRASP_COMMANDER_ZANNETH:
+            if (object->GetSpawnId() == SPAWNID_WINTERGRASP_COMMANDER_ZANNETH_KEEP)
+                _commanderGUIDs[PVP_TEAM_ALLIANCE] = object->GetGUID();
+            break;
+        case NPC_WINTERGRASP_COMMANDER_DARDOSH:
+            if (object->GetSpawnId() == SPAWNID_WINTERGRASP_COMMANDER_DARDOSH_KEEP)
+                _commanderGUIDs[PVP_TEAM_HORDE] = object->GetGUID();
+            break;
         case NPC_WINTERGRASP_TAUNKA_SPIRIT_GUIDE:
         case NPC_WINTERGRASP_DWARVEN_SPIRIT_GUIDE:
             if (uint8 graveyardId = GetWintergraspGraveyardId(object))
@@ -253,96 +299,10 @@ void BattlefieldWintergrasp::OnCreatureRemove(Creature* object)
     }
 }
 
-void BattlefieldWintergrasp::OnGameObjectCreate(GameObject* object)
-{
-    switch (object->GetEntry())
-    {
-        case GO_WINTERGRASP_FORTRESS_GATE:
-        case GO_WINTERGRASP_FORTRESS_VAULT_GATE:
-        case GO_WINTERGRASP_FORTRESS_WALL_1:
-        case GO_WINTERGRASP_FORTRESS_WALL_2:
-        case GO_WINTERGRASP_FORTRESS_WALL_3:
-        case GO_WINTERGRASP_FORTRESS_WALL_4:
-        case GO_WINTERGRASP_FORTRESS_WALL_5:
-        case GO_WINTERGRASP_FORTRESS_WALL_6:
-        case GO_WINTERGRASP_FORTRESS_WALL_7:
-        case GO_WINTERGRASP_FORTRESS_WALL_8:
-        case GO_WINTERGRASP_FORTRESS_WALL_9:
-        case GO_WINTERGRASP_FORTRESS_WALL_10:
-        case GO_WINTERGRASP_FORTRESS_WALL_11:
-        case GO_WINTERGRASP_FORTRESS_WALL_12:
-        case GO_WINTERGRASP_FORTRESS_WALL_13:
-        case GO_WINTERGRASP_FORTRESS_WALL_14:
-        case GO_WINTERGRASP_FORTRESS_WALL_15:
-        case GO_WINTERGRASP_FORTRESS_WALL_16:
-        case GO_WINTERGRASP_FORTRESS_WALL_17:
-        case GO_WINTERGRASP_FORTRESS_WALL_18:
-        case GO_WINTERGRASP_FORTRESS_WALL_19:
-        case GO_WINTERGRASP_FORTRESS_WALL_20:
-        case GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_1:
-        case GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_2:
-        case GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_3:
-        case GO_WINTERGRASP_FORTRESS_TOWER_1:
-        case GO_WINTERGRASP_FORTRESS_TOWER_2:
-        case GO_WINTERGRASP_FORTRESS_TOWER_3:
-        case GO_WINTERGRASP_FORTRESS_TOWER_4:
-        case GO_WINTERGRASP_TOWER_1:
-        case GO_WINTERGRASP_TOWER_2:
-        case GO_WINTERGRASP_TOWER_3:
-            if (auto it = _buildings.find(object->GetEntry()); it != _buildings.end() && it->second)
-                it->second->OnObjectCreate(object);
-            break;
-        default:
-            break;
-    }
-}
-
-void BattlefieldWintergrasp::OnGameObjectRemove(GameObject* object)
-{
-    switch (object->GetEntry())
-    {
-        case GO_WINTERGRASP_FORTRESS_GATE:
-        case GO_WINTERGRASP_FORTRESS_VAULT_GATE:
-        case GO_WINTERGRASP_FORTRESS_WALL_1:
-        case GO_WINTERGRASP_FORTRESS_WALL_2:
-        case GO_WINTERGRASP_FORTRESS_WALL_3:
-        case GO_WINTERGRASP_FORTRESS_WALL_4:
-        case GO_WINTERGRASP_FORTRESS_WALL_5:
-        case GO_WINTERGRASP_FORTRESS_WALL_6:
-        case GO_WINTERGRASP_FORTRESS_WALL_7:
-        case GO_WINTERGRASP_FORTRESS_WALL_8:
-        case GO_WINTERGRASP_FORTRESS_WALL_9:
-        case GO_WINTERGRASP_FORTRESS_WALL_10:
-        case GO_WINTERGRASP_FORTRESS_WALL_11:
-        case GO_WINTERGRASP_FORTRESS_WALL_12:
-        case GO_WINTERGRASP_FORTRESS_WALL_13:
-        case GO_WINTERGRASP_FORTRESS_WALL_14:
-        case GO_WINTERGRASP_FORTRESS_WALL_15:
-        case GO_WINTERGRASP_FORTRESS_WALL_16:
-        case GO_WINTERGRASP_FORTRESS_WALL_17:
-        case GO_WINTERGRASP_FORTRESS_WALL_18:
-        case GO_WINTERGRASP_FORTRESS_WALL_19:
-        case GO_WINTERGRASP_FORTRESS_WALL_20:
-        case GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_1:
-        case GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_2:
-        case GO_WINTERGRASP_FORTRESS_INTERIOR_WALL_3:
-        case GO_WINTERGRASP_FORTRESS_TOWER_1:
-        case GO_WINTERGRASP_FORTRESS_TOWER_2:
-        case GO_WINTERGRASP_FORTRESS_TOWER_3:
-        case GO_WINTERGRASP_FORTRESS_TOWER_4:
-        case GO_WINTERGRASP_TOWER_1:
-        case GO_WINTERGRASP_TOWER_2:
-        case GO_WINTERGRASP_TOWER_3:
-            if (auto it = _buildings.find(object->GetEntry()); it != _buildings.end() && it->second)
-                it->second->OnObjectRemove(object);
-            break;
-        default:
-            break;
-    }
-}
-
 void BattlefieldWintergrasp::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
 {
+    Battlefield::FillInitialWorldStates(packet);
+
     bool const warTime = IsBattleTime();
     packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, !warTime && GetControllingTeam() == PVP_TEAM_HORDE ? 1 : 0); // 3802
     packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, !warTime && GetControllingTeam() == PVP_TEAM_ALLIANCE ? 1 : 0); // 3803
@@ -353,9 +313,6 @@ void BattlefieldWintergrasp::FillInitialWorldStates(WorldPackets::WorldState::In
         packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_SHOW_BATTLE_TIMER, warTime ? 1 : 0); // 3710
         packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END))); // 3781
     }
-
-    for (WintergraspBuildingContainer::value_type const& building : _buildings)
-        building.second->FillInitialWorldStates(packet);
 }
 
 void BattlefieldWintergrasp::SendGlobalWorldStates(Player const* player) const
@@ -413,6 +370,39 @@ uint8 BattlefieldWintergrasp::GetWintergraspGraveyardId(Creature* creature) cons
     return 0;
 }
 
+void BattlefieldWintergrasp::SendStalkerText(uint8 textGroup) const
+{
+    if (Creature* stalker = GetCreature(_stalkerGUID))
+        sCreatureTextMgr->SendChat(stalker, textGroup);
+}
+
+void BattlefieldWintergrasp::HandleSouthernTowerDestroyed()
+{
+    uint32 towers = 0;
+    uint32 destroyedTowers = 0;
+    for (BattlefieldBuildingContainer::value_type const& pair : GetBuildings())
+    {
+        if (pair.second->BuildingType != BATTLEFIELD_BUILDING_TYPE_TOWER)
+            continue;
+
+        ++towers;
+        if (pair.second->GetDestructibleState() == GO_DESTRUCTIBLE_DESTROYED)
+            ++destroyedTowers;
+    }
+
+    uint8 textGroup = SAY_WINTERGRASP_COMMANDER_SECOND_TOWER_FALLEN;
+    if (destroyedTowers == towers)
+        textGroup = SAY_WINTERGRASP_COMMANDER_ALL_TOWERS_FALLEN;
+    else if (destroyedTowers == 1)
+        textGroup = SAY_WINTERGRASP_COMMANDER_FIRST_TOWER_FALLEN;
+
+    if (Creature* commander = GetCreature(_commanderGUIDs[GetControllingTeam()]))
+        sCreatureTextMgr->SendChat(commander, textGroup);
+
+    if (destroyedTowers == towers)
+        SetPhaseTime(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END) - WINTERGRASP_SOUTHERN_TOWERS_TIME_REDUCTION.count());
+}
+
 bool BattlefieldWintergrasp::IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 /*newArea*/) const
 {
     if (!player)
@@ -453,7 +443,7 @@ uint32 BattlefieldWintergrasp::GetControlState() const
     return GetControllingTeam() == PVP_TEAM_HORDE ? WINTERGRASP_CONTROL_HORDE : WINTERGRASP_CONTROL_ALLIANCE;
 }
 
-WintergraspBuilding::WintergraspBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info) : BattlefieldBuilding(battlefield, info)
+WintergraspBuilding::WintergraspBuilding(BattlefieldWintergrasp* wintergrasp, BattlefieldBuildingInfo const info) : BattlefieldBuilding(wintergrasp, info), _wintergrasp(wintergrasp)
 {
 }
 
@@ -473,20 +463,36 @@ void WintergraspBuilding::OnObjectRemove(WorldObject* object)
     BattlefieldBuilding::OnObjectRemove(object);
 }
 
-void WintergraspBuilding::InitializeState()
+bool WintergraspBuilding::Damage()
 {
-    switch (Info.WorldState)
-    {
-        case WORLDSTATE_WINTERGRASP_TOWER_1:
-        case WORLDSTATE_WINTERGRASP_TOWER_2:
-        case WORLDSTATE_WINTERGRASP_TOWER_3:
-            State = Battle->GetControllingTeam() == PVP_TEAM_HORDE ? BATTLEFIELD_BUILDING_STATE_ALLIANCE_INTACT : BATTLEFIELD_BUILDING_STATE_HORDE_INTACT;
-            break;
-        default:
-            State = Battle->GetControllingTeam() == PVP_TEAM_HORDE ? BATTLEFIELD_BUILDING_STATE_HORDE_INTACT : BATTLEFIELD_BUILDING_STATE_ALLIANCE_INTACT;
-            break;
-    }
-    SaveWorldState();
+    if (!BattlefieldBuilding::Damage())
+        return false;
+
+    if (_wintergrasp->IsBattleTime())
+        SendText(false);
+
+    return true;
+}
+
+bool WintergraspBuilding::Destroy()
+{
+    if (!BattlefieldBuilding::Destroy())
+        return false;
+
+    if (!_wintergrasp->IsBattleTime())
+        return true;
+
+    SendText(true);
+    if (BuildingType == BATTLEFIELD_BUILDING_TYPE_TOWER)
+        _wintergrasp->HandleSouthernTowerDestroyed();
+
+    return true;
+}
+
+void WintergraspBuilding::SendText(bool destroyed) const
+{
+    if (uint8 const* textGroup = Trinity::Containers::MapGetValuePtr(WintergraspTowerTexts, Info.GetNeutralObjectEntry()))
+        _wintergrasp->SendStalkerText(uint8(*textGroup + (destroyed ? 1 : 0)));
 }
 
 WintergraspCapturePoint::WintergraspCapturePoint(Battlefield* battlefield, BattlefieldEntityInfo const info) : BattlefieldCapturePoint(battlefield, info)

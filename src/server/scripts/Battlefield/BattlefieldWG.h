@@ -21,6 +21,7 @@
 #include "Battlefield.h"
 #include "BattlefieldEntities.h"
 #include "ScriptMgr.h"
+#include <array>
 #include <memory>
 #include <unordered_map>
 
@@ -30,6 +31,7 @@ enum WintergraspNPCEntries
     NPC_WINTERGRASP_GUARD_HORDE = 30739,
     NPC_WINTERGRASP_GUARD_ALLIANCE = 30740,
     NPC_WINTERGRASP_STALKER = 27869,
+    NPC_WINTERGRASP_INVISIBLE_STALKER = 15214,
 
     NPC_WINTERGRASP_VIERON_BLAZEFEATHER = 31102,
     NPC_WINTERGRASP_STONE_GUARD_MUKAR = 32296, // <WINTERGRASP QUARTERMASTER>
@@ -66,6 +68,62 @@ enum WintergraspNPCEntries
 
     NPC_WINTERGRASP_PVP_KILL_HORDE = 39019,
     NPC_WINTERGRASP_PVP_KILL_ALLIANCE = 31086
+};
+
+enum WintergraspSpawnIds
+{
+    SPAWNID_WINTERGRASP_INVISIBLE_STALKER = 131387,
+    SPAWNID_WINTERGRASP_COMMANDER_ZANNETH_KEEP = 88337,
+    SPAWNID_WINTERGRASP_COMMANDER_DARDOSH_KEEP = 88356
+};
+
+enum WintergraspStalkerTexts
+{
+    SAY_WINTERGRASP_SOUTHERN_TOWER_DAMAGED = 1,
+    SAY_WINTERGRASP_SOUTHERN_TOWER_DESTROYED,
+    SAY_WINTERGRASP_EASTERN_TOWER_DAMAGED,
+    SAY_WINTERGRASP_EASTERN_TOWER_DESTROYED,
+    SAY_WINTERGRASP_WESTERN_TOWER_DAMAGED,
+    SAY_WINTERGRASP_WESTERN_TOWER_DESTROYED,
+    SAY_WINTERGRASP_NORTH_WESTERN_KEEP_TOWER_DAMAGED,
+    SAY_WINTERGRASP_NORTH_WESTERN_KEEP_TOWER_DESTROYED,
+    SAY_WINTERGRASP_SOUTH_EASTERN_KEEP_TOWER_DAMAGED,
+    SAY_WINTERGRASP_SOUTH_EASTERN_KEEP_TOWER_DESTROYED,
+    SAY_WINTERGRASP_BROKEN_TEMPLE_ATTACKED_ALLIANCE,
+    SAY_WINTERGRASP_BROKEN_TEMPLE_CAPTURED_ALLIANCE,
+    SAY_WINTERGRASP_BROKEN_TEMPLE_ATTACKED_HORDE,
+    SAY_WINTERGRASP_BROKEN_TEMPLE_CAPTURED_HORDE,
+    SAY_WINTERGRASP_EASTSPARK_ATTACKED_ALLIANCE,
+    SAY_WINTERGRASP_EASTSPARK_CAPTURED_ALLIANCE,
+    SAY_WINTERGRASP_EASTSPARK_ATTACKED_HORDE,
+    SAY_WINTERGRASP_EASTSPARK_CAPTURED_HORDE,
+    SAY_WINTERGRASP_SUNKEN_RING_ATTACKED_ALLIANCE,
+    SAY_WINTERGRASP_SUNKEN_RING_CAPTURED_ALLIANCE,
+    SAY_WINTERGRASP_SUNKEN_RING_ATTACKED_HORDE,
+    SAY_WINTERGRASP_SUNKEN_RING_CAPTURED_HORDE,
+    SAY_WINTERGRASP_WESTSPARK_ATTACKED_ALLIANCE,
+    SAY_WINTERGRASP_WESTSPARK_CAPTURED_ALLIANCE,
+    SAY_WINTERGRASP_WESTSPARK_ATTACKED_HORDE,
+    SAY_WINTERGRASP_WESTSPARK_CAPTURED_HORDE,
+    SAY_WINTERGRASP_BATTLE_ABOUT_TO_BEGIN,
+    SAY_WINTERGRASP_BATTLE_BEGIN,
+    SAY_WINTERGRASP_FORTRESS_DEFENDED_ALLIANCE,
+    SAY_WINTERGRASP_FORTRESS_CAPTURED_ALLIANCE,
+    SAY_WINTERGRASP_FORTRESS_DEFENDED_HORDE,
+    SAY_WINTERGRASP_FORTRESS_CAPTURED_HORDE,
+    SAY_WINTERGRASP_NORTH_EASTERN_KEEP_TOWER_DAMAGED,
+    SAY_WINTERGRASP_NORTH_EASTERN_KEEP_TOWER_DESTROYED,
+    SAY_WINTERGRASP_SOUTH_WESTERN_KEEP_TOWER_DAMAGED,
+    SAY_WINTERGRASP_SOUTH_WESTERN_KEEP_TOWER_DESTROYED,
+    SAY_WINTERGRASP_RANK_CORPORAL,
+    SAY_WINTERGRASP_RANK_FIRST_LIEUTENANT
+};
+
+enum WintergraspCommanderTexts
+{
+    SAY_WINTERGRASP_COMMANDER_FIRST_TOWER_FALLEN = 0,
+    SAY_WINTERGRASP_COMMANDER_SECOND_TOWER_FALLEN,
+    SAY_WINTERGRASP_COMMANDER_ALL_TOWERS_FALLEN
 };
 
 enum WintergraspGossipText
@@ -281,6 +339,7 @@ enum WintergraspWorldSafeLocs
 
 static uint32 constexpr MAPID_WINTERGRASP = 571; // Northrend
 static Seconds constexpr WINTERGRASP_PREPARATION_DURATION = 15min;
+static Seconds constexpr WINTERGRASP_SOUTHERN_TOWERS_TIME_REDUCTION = 10min;
 
 namespace WorldPackets
 {
@@ -290,19 +349,25 @@ namespace WorldPackets
     }
 }
 
+class BattlefieldWintergrasp;
 class Creature;
-class GameObject;
 class WorldObject;
 
 class WintergraspBuilding : public BattlefieldBuilding
 {
 public:
-    explicit WintergraspBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info);
+    explicit WintergraspBuilding(BattlefieldWintergrasp* wintergrasp, BattlefieldBuildingInfo const info);
     ~WintergraspBuilding() { }
 
     void OnObjectCreate(WorldObject* object) override;
     void OnObjectRemove(WorldObject* object) override;
-    void InitializeState() override;
+    bool Damage() override;
+    bool Destroy() override;
+
+private:
+    void SendText(bool destroyed) const;
+
+    BattlefieldWintergrasp* _wintergrasp;
 };
 
 class WintergraspCapturePoint : public BattlefieldCapturePoint
@@ -335,19 +400,20 @@ public:
     ~BattlefieldWintergrasp();
 
     bool SetupBattlefield() override;
-    void ChangeTeams(PvPTeamId newControllingTeam) override;
+    void ChangeTeam(PvPTeamId newControllingTeam) override;
     bool SetPhase(BattlefieldPhase phase) override;
     void SendPhaseTimes() override;
     bool TeleportPlayerToBattle(Player* player) override;
     void TeleportPlayerOutOfBattle(Player* player) override;
+    uint32 GetFaction(PvPTeamId pvpTeamId) const override;
     void OnCreatureCreate(Creature* object) override;
     void OnCreatureRemove(Creature* object) override;
-    void OnGameObjectCreate(GameObject* object) override;
-    void OnGameObjectRemove(GameObject* object) override;
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void SendGlobalWorldStates(Player const* player) const override;
 
     uint8 GetWintergraspGraveyardId(Creature* creature) const;
+    void SendStalkerText(uint8 textGroup) const;
+    void HandleSouthernTowerDestroyed();
 
     bool IsFlyingMountAllowed() const override { return !IsEnabled() || (IsEnabled() && !IsBattleTime()); }
     bool IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 newArea) const override;
@@ -356,7 +422,6 @@ private:
     uint32 GetControlState() const;
 
     typedef std::unique_ptr<WintergraspBuilding> WintergraspBuildingPointer;
-    typedef std::unordered_map<uint32 /*entry*/, WintergraspBuildingPointer> WintergraspBuildingContainer;
     typedef std::unique_ptr<WintergraspCapturePoint> WintergraspCapturePointPointer;
     typedef std::unordered_map<uint32 /*entry*/, WintergraspCapturePointPointer> WintergraspCapturePointContainer;
     typedef std::unique_ptr<WintergraspGraveyard> WintergraspGraveyardPointer;
@@ -364,7 +429,8 @@ private:
     BattlefieldWintergrasp(BattlefieldWintergrasp const&) = delete;
     BattlefieldWintergrasp& operator=(BattlefieldWintergrasp const&) = delete;
 
-    WintergraspBuildingContainer _buildings;
+    ObjectGuid _stalkerGUID;
+    std::array<ObjectGuid, PVP_TEAMS_COUNT> _commanderGUIDs;
 };
 
 #endif

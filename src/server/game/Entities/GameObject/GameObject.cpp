@@ -217,6 +217,8 @@ void GameObject::AddToWorld()
 
         // The state can be changed after GameObject::Create but before GameObject::AddToWorld
         bool toggledState = GetGoType() == GAMEOBJECT_TYPE_CHEST ? getLootState() == GO_READY : (GetGoState() == GO_STATE_READY || IsTransport());
+        if (IsDestructibleBuilding() && GetDestructibleState() == GO_DESTRUCTIBLE_DESTROYED) // EG
+            toggledState = false;
         if (m_model)
         {
             if (Transport* trans = ToTransport(); trans && GetGOInfo()->type == GAMEOBJECT_TYPE_MAP_OBJ_TRANSPORT)

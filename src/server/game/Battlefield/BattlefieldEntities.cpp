@@ -19,6 +19,7 @@
 #include "Battlefield.h"
 #include "Creature.h"
 #include "Errors.h"
+#include "GameObject.h"
 #include "MapUtils.h"
 #include "Object.h"
 #include "ObjectAccessor.h"
@@ -78,6 +79,21 @@ BattlefieldBuilding::BattlefieldBuilding(Battlefield* battlefield, BattlefieldBu
 {
 }
 
+void BattlefieldBuilding::OnObjectCreate(WorldObject* object)
+{
+    BattlefieldEntity::OnObjectCreate(object);
+
+    GameObject* gameObject = object->ToGameObject();
+    if (!gameObject)
+        return;
+
+    if (uint32 const faction = GetFaction())
+        gameObject->SetFaction(faction);
+
+    if (GetDestructibleState() != GO_DESTRUCTIBLE_INTACT)
+        gameObject->SetDestructibleState(GetDestructibleState(), nullptr, true);
+}
+
 PvPTeamId BattlefieldBuilding::GetPvPTeamId() const
 {
     switch (State)
@@ -100,9 +116,123 @@ void BattlefieldBuilding::FillInitialWorldStates(WorldPackets::WorldState::InitW
     packet.Worldstates.emplace_back(Info.WorldState, State);
 }
 
+void BattlefieldBuilding::InitializeState()
+{
+    uint64 const savedState = sWorld->getWorldState(Info.WorldState);
+    State = savedState <= BATTLEFIELD_BUILDING_STATE_ALLIANCE_DESTROYED ? BattlefieldBuildingState(savedState) : BATTLEFIELD_BUILDING_STATE_NONE;
+    SetState(GetOwnerPvPTeamId(), GetDestructibleState());
+    SaveWorldState();
+}
+
 void BattlefieldBuilding::SaveWorldState()
 {
     sWorld->setWorldState(Info.WorldState, State);
+}
+
+GameObjectDestructibleState BattlefieldBuilding::GetDestructibleState() const
+{
+    if (State == BATTLEFIELD_BUILDING_STATE_NONE)
+        return GO_DESTRUCTIBLE_INTACT;
+
+    return GameObjectDestructibleState((State - BATTLEFIELD_BUILDING_STATE_NEUTRAL_INTACT) % 3);
+}
+
+bool BattlefieldBuilding::Damage()
+{
+    if (GetDestructibleState() >= GO_DESTRUCTIBLE_DAMAGED)
+        return false;
+
+    SetState(GetPvPTeamId(), GO_DESTRUCTIBLE_DAMAGED);
+    UpdateWorldState();
+    return true;
+}
+
+bool BattlefieldBuilding::Destroy()
+{
+    if (GetDestructibleState() >= GO_DESTRUCTIBLE_DESTROYED)
+        return false;
+
+    SetState(GetPvPTeamId(), GO_DESTRUCTIBLE_DESTROYED);
+    UpdateWorldState();
+    return true;
+}
+
+void BattlefieldBuilding::Rebuild()
+{
+    if (SetState(GetOwnerPvPTeamId(), GO_DESTRUCTIBLE_INTACT))
+        UpdateWorldState();
+
+    uint32 const faction = GetFaction();
+    for (GameObject* gameObject : GetGameObjects())
+    {
+        if (faction)
+            gameObject->SetFaction(faction);
+
+        gameObject->SetDestructibleState(GO_DESTRUCTIBLE_REBUILDING, nullptr, true);
+    }
+}
+
+void BattlefieldBuilding::ChangeTeam()
+{
+    if (SetState(GetOwnerPvPTeamId(), GetDestructibleState()))
+        UpdateWorldState();
+
+    if (uint32 const faction = GetFaction())
+        for (GameObject* gameObject : GetGameObjects())
+            gameObject->SetFaction(faction);
+}
+
+PvPTeamId BattlefieldBuilding::GetOwnerPvPTeamId() const
+{
+    if (BuildingType != BATTLEFIELD_BUILDING_TYPE_TOWER)
+        return Battle->GetControllingTeam();
+
+    return Battle->IsBattleTime() ? Battle->GetAttackingTeam() : PVP_TEAM_NEUTRAL;
+}
+
+uint32 BattlefieldBuilding::GetFaction() const
+{
+    if (!Battle->IsEnabled())
+        return FACTION_FRIENDLY;
+
+    return Battle->GetFaction(BuildingType == BATTLEFIELD_BUILDING_TYPE_TOWER ? Battle->GetAttackingTeam() : Battle->GetControllingTeam());
+}
+
+std::vector<GameObject*> BattlefieldBuilding::GetGameObjects() const
+{
+    std::vector<GameObject*> gameObjects;
+    for (std::unordered_map<PvPTeamId, GuidUnorderedSet>::value_type const& pair : ObjectGUIDsByPvPTeamId)
+        for (ObjectGuid objectGuid : pair.second)
+            if (GameObject* gameObject = Battle->GetGameObject(objectGuid))
+                gameObjects.push_back(gameObject);
+
+    return gameObjects;
+}
+
+bool BattlefieldBuilding::SetState(PvPTeamId pvpTeamId, GameObjectDestructibleState destructibleState)
+{
+    BattlefieldBuildingState intactState = BATTLEFIELD_BUILDING_STATE_NEUTRAL_INTACT;
+    switch (pvpTeamId)
+    {
+        case PVP_TEAM_HORDE:
+            intactState = BATTLEFIELD_BUILDING_STATE_HORDE_INTACT;
+            break;
+        case PVP_TEAM_ALLIANCE:
+            intactState = BATTLEFIELD_BUILDING_STATE_ALLIANCE_INTACT;
+            break;
+        default:
+            break;
+    }
+
+    BattlefieldBuildingState const previousState = State;
+    State = BattlefieldBuildingState(intactState + uint8(destructibleState));
+    return State != previousState;
+}
+
+void BattlefieldBuilding::UpdateWorldState()
+{
+    SaveWorldState();
+    Battle->SendWorldStateToMap(Info.WorldState, State);
 }
 
 BattlefieldCapturePoint::BattlefieldCapturePoint(Battlefield* battlefield, BattlefieldEntityInfo const info) : BattlefieldEntity(battlefield, info), State(BATTLEFIELD_CAPTUREPOINT_STATE_NEUTRAL)

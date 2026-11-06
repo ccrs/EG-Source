@@ -26,6 +26,7 @@
 #include <vector>
 
 class Battlefield;
+class GameObject;
 class Player;
 class WorldObject;
 
@@ -140,16 +141,27 @@ public:
     explicit BattlefieldBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info);
     virtual ~BattlefieldBuilding() { }
 
+    void OnObjectCreate(WorldObject* object) override;
     PvPTeamId GetPvPTeamId() const override;
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
+    void InitializeState() override;
     void SaveWorldState() override;
 
-    bool IsIntact() const { return State == BATTLEFIELD_BUILDING_STATE_NEUTRAL_INTACT || State == BATTLEFIELD_BUILDING_STATE_HORDE_INTACT || State == BATTLEFIELD_BUILDING_STATE_ALLIANCE_INTACT; }
-    bool IsDestroyed() const { return State == BATTLEFIELD_BUILDING_STATE_NEUTRAL_DESTROYED || State == BATTLEFIELD_BUILDING_STATE_HORDE_DESTROYED || State == BATTLEFIELD_BUILDING_STATE_ALLIANCE_DESTROYED; }
-    bool IsDamaged() const { return State == BATTLEFIELD_BUILDING_STATE_NEUTRAL_DAMAGED || State == BATTLEFIELD_BUILDING_STATE_HORDE_DAMAGED || State == BATTLEFIELD_BUILDING_STATE_ALLIANCE_DAMAGED; }
+    GameObjectDestructibleState GetDestructibleState() const;
+    virtual bool Damage();
+    virtual bool Destroy();
+    void Rebuild();
+    void ChangeTeam();
 
     BattlefieldBuildingType BuildingType;
     BattlefieldBuildingState State;
+
+private:
+    PvPTeamId GetOwnerPvPTeamId() const;
+    uint32 GetFaction() const;
+    std::vector<GameObject*> GetGameObjects() const;
+    bool SetState(PvPTeamId pvpTeamId, GameObjectDestructibleState destructibleState);
+    void UpdateWorldState();
 };
 
 class BattlefieldCapturePoint : public BattlefieldEntity

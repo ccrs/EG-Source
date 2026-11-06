@@ -125,3 +125,15 @@ void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_STATUS_CLEAR>::Handle(Battle
 {
     battlefield.ProcessBattleStatusClear(GetKey());
 }
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BUILDING_DAMAGE>::Handle(Battlefield& battlefield)
+{
+    battlefield.ProcessBuildingDamage(GetKey(), GetObjectGUID());
+}
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BUILDING_DESTROY>::Handle(Battlefield& battlefield)
+{
+    battlefield.ProcessBuildingDestroy(GetKey(), GetObjectGUID());
+}

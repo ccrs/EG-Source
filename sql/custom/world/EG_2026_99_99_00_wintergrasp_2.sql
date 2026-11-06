@@ -25,3 +25,6 @@ INSERT INTO `spell_target_position` (`ID`, `EffectIndex`, `MapID`, `PositionX`, 
 (59766, 0, 571, 4335.95, 3232.7, 390.249, 0.252549, 12340),
 (59767, 0, 571, 4317.06, 2404.3, 392.504, 6.26813, 0), -- orientation not sniffed
 (59769, 0, 571, 5140.79, 2179.12, 390.95, 1.97222, 0);
+
+-- Building flags
+UPDATE `gameobject_template_addon` SET `flags` = 32 WHERE `entry` IN (190220, 190221, 190358, 190369, 190370, 190373, 190375, 190376, 191804, 191805, 191809);

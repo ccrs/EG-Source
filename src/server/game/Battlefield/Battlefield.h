@@ -154,6 +154,7 @@ namespace WorldPackets
     }
 }
 
+class BattlefieldBuilding;
 class BattlefieldGraveyard;
 class GameObject;
 class Map;
@@ -167,6 +168,8 @@ class TC_GAME_API Battlefield : public ZoneScript
 public:
     typedef std::unique_ptr<BattlefieldGraveyard> BattlefieldGraveyardPointer;
     typedef std::unordered_map<uint8 /*id*/, BattlefieldGraveyardPointer> BattlefieldGraveyardContainer;
+    typedef std::unique_ptr<BattlefieldBuilding> BattlefieldBuildingPointer;
+    typedef std::unordered_map<uint32 /*entry*/, BattlefieldBuildingPointer> BattlefieldBuildingContainer;
     typedef std::multimap<TimePoint /*due*/, std::unique_ptr<BattlefieldEvent>> BattlefieldEventContainer;
 
     explicit Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId);
@@ -180,12 +183,13 @@ public:
 
     // Called on battlefield creation
     virtual bool SetupBattlefield();
-    virtual void ChangeTeams(PvPTeamId newControllingTeam);
+    virtual void ChangeTeam(PvPTeamId newControllingTeam);
     virtual bool SetPhase(BattlefieldPhase phase);
     virtual void SetPhaseTime(time_t phaseTime);
     virtual void SendPhaseTimes() { }
     virtual bool TeleportPlayerToBattle(Player* /*player*/) { return false; }
     virtual void TeleportPlayerOutOfBattle(Player* /*player*/) { }
+    virtual uint32 GetFaction(PvPTeamId /*pvpTeamId*/) const { return 0; }
     virtual void Update(uint32 diff);
     // Called when a player enters the battlefield zone
     virtual void HandlePlayerEnterZone(Player* player);
@@ -199,7 +203,7 @@ public:
     virtual void AddPlayerToResurrectionQueue(Player* player, ObjectGuid source);
     // Called when a player moves out of a resurrection queue
     virtual void RemovePlayerFromResurrectionQueue(Player* player);
-    virtual void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& /*packet*/) { }
+    virtual void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet);
     virtual void SendGlobalWorldStates(Player const* /*player*/) const { }
     // Can players inside the battlefield zone use ground mounts?
     virtual bool IsMountAllowed() const { return true; }
@@ -208,7 +212,12 @@ public:
     // Is the referenced SpellArea spellId allowed for the referenced player and newArea?
     virtual bool IsSpellAreaAllowed(uint32 /*spellId*/, Player const* /*player*/, uint32 /*newArea*/) const { return false; }
 
+    void OnGameObjectCreate(GameObject* object) override;
+    void OnGameObjectRemove(GameObject* object) override;
+    void ProcessEvent(WorldObject* object, uint32 eventId) override;
+
     void EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer);
+    void EmplaceBuilding(BattlefieldBuildingPointer&& pointer);
     void SendInitWorldStatesTo(Player* player);
     template<class Event, class... Args>
     void QueueEvent(Args&&... args)
@@ -232,6 +241,8 @@ public:
     void ProcessBattleLeave(BattlefieldEventKey key, ObjectGuid playerGuid);
     void ProcessBattleFill(BattlefieldEventKey key);
     void ProcessBattleKick(BattlefieldEventKey key, Player* player);
+    void ProcessBuildingDamage(BattlefieldEventKey key, ObjectGuid objectGuid);
+    void ProcessBuildingDestroy(BattlefieldEventKey key, ObjectGuid objectGuid);
     void ProcessBattleStatusClear(BattlefieldEventKey key);
     void HandleBattlefieldRaidMemberRemoved(ObjectGuid playerGuid, RemoveMethod method);
     void HandlePlayerLogout(Player* player);
@@ -264,15 +275,19 @@ public:
     std::vector<ObjectGuid> const& GetBattlefieldRaids(TeamId teamId) const { return _battlefieldRaids[teamId]; }
     BattlefieldGraveyard const* GetGraveyard(uint8 graveyardId) const;
     BattlefieldGraveyard* GetGraveyard(uint8 graveyardId);
+    BattlefieldBuilding* GetBuilding(uint32 entry);
     // Closest available graveyard WorldSafeLocsEntry for Player's TeamId
     WorldSafeLocsEntry const* GetClosestGraveyardLocation(Player* player) const;
     Creature* GetCreature(ObjectGuid guid) const;
     GameObject* GetGameObject(ObjectGuid guid) const;
+    void SendWorldStateToMap(uint32 variable, uint32 value) const;
 
 protected:
     void InitializePhaseTimes();
+
+    Map* GetBattleMap() const;
     void SendWorldStateToAll(uint32 variable, uint32 value) const;
-    void SendWorldStateToMap(uint32 variable, uint32 value) const;
+    BattlefieldBuildingContainer const& GetBuildings() const { return _buildings; }
 
     BattlefieldValues Values;
 
@@ -280,13 +295,14 @@ private:
     class PlayerContainer
     {
     public:
+        void Insert(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state);
+        bool Erase(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state);
+        void EraseAll(TeamId teamId, BattlefieldPlayerState state);
+
         bool Contains(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state) const;
         Optional<BattlefieldPlayerState> FindState(ObjectGuid playerGuid, TeamId teamId) const;
         uint32 Count(TeamId teamId, BattlefieldPlayerState state) const;
         std::vector<ObjectGuid> List(TeamId teamId, BattlefieldPlayerState state) const;
-        void Insert(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state);
-        bool Erase(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state);
-        void EraseAll(TeamId teamId, BattlefieldPlayerState state);
 
     private:
         typedef std::tuple<TeamId, BattlefieldPlayerState, ObjectGuid> Key;
@@ -297,17 +313,17 @@ private:
         Container _players;
     };
 
-    bool IsBattlefieldRaidPhase() const { return IsInPreparation() || IsBattleTime(); }
-    Map* GetBattleMap() const;
-    uint32 GetFreeBattleSlots(TeamId teamId) const;
-    bool HasBattleSlot(TeamId teamId) const { return GetFreeBattleSlots(teamId) > 0; }
-    BattlefieldPlayerStatus GetPlayerStatus(ObjectGuid playerGuid, TeamId teamId) const;
     BattlefieldPlayerStatus RemoveFromQueue(ObjectGuid playerGuid, TeamId teamId);
     void InviteToBattle(Player* player, bool battleStart);
     void FillBattleSlots(bool battleStart);
     void ClearBattleStatus();
     void ScheduleNextPhaseAdvance();
     void ScheduleNextGraveyardResurrect();
+
+    bool IsBattlefieldRaidPhase() const { return IsInPreparation() || IsBattleTime(); }
+    uint32 GetFreeBattleSlots(TeamId teamId) const;
+    bool HasBattleSlot(TeamId teamId) const { return GetFreeBattleSlots(teamId) > 0; }
+    BattlefieldPlayerStatus GetPlayerStatus(ObjectGuid playerGuid, TeamId teamId) const;
 
     // constant information
     BattlefieldBattleId _battleId;
@@ -317,6 +333,7 @@ private:
     EnumFlag<BattlefieldFlags> _flags;
     GuidUnorderedSet _playerGUIDs;
     BattlefieldGraveyardContainer _graveyards;
+    BattlefieldBuildingContainer _buildings;
     std::array<std::vector<ObjectGuid>, PVP_TEAMS_COUNT> _battlefieldRaids;
     PlayerContainer _battlefieldPlayers;
     BattlefieldEventContainer _events;

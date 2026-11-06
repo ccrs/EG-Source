@@ -21,6 +21,7 @@
 #include "Containers.h"
 #include "DBCStores.h"
 #include "Errors.h"
+#include "GameObject.h"
 #include "GameTime.h"
 #include "Group.h"
 #include "GroupMgr.h"
@@ -60,12 +61,15 @@ bool Battlefield::SetupBattlefield()
     return true;
 }
 
-void Battlefield::ChangeTeams(PvPTeamId newControllingTeam)
+void Battlefield::ChangeTeam(PvPTeamId newControllingTeam)
 {
     Values.Set(BATTLEFIELD_VALUE_STATE_CONTROLLING_TEAM, newControllingTeam);
 
     for (BattlefieldGraveyardContainer::value_type& graveyardPair : _graveyards)
         graveyardPair.second->InitializeState();
+
+    for (BattlefieldBuildingContainer::value_type const& buildingPair : _buildings)
+        buildingPair.second->ChangeTeam();
 }
 
 bool Battlefield::SetPhase(BattlefieldPhase phase)
@@ -101,6 +105,13 @@ bool Battlefield::SetPhase(BattlefieldPhase phase)
         Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END, start + Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_BATTLE).count());
         Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START, start + Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START).count());
         Values.Set(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT, BATTLEFIELD_BATTLE_RESULT_NONE);
+        RemoveEvents([](BattlefieldEvent const& event) -> bool
+        {
+            return event.GetType() == BATTLEFIELD_EVENT_BUILDING_DAMAGE || event.GetType() == BATTLEFIELD_EVENT_BUILDING_DESTROY;
+        });
+
+        for (BattlefieldBuildingContainer::value_type const& buildingPair : _buildings)
+            buildingPair.second->Rebuild();
     }
     else if (oldPhase == BATTLEFIELD_PHASE_BATTLE)
     {
@@ -124,7 +135,10 @@ bool Battlefield::SetPhase(BattlefieldPhase phase)
             Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START, Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START) + ((now - preparationStartTime) / interval + 1) * interval);
 
         if (Values.Get<BattlefieldBattleResult>(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT) == BATTLEFIELD_BATTLE_RESULT_CAPTURED)
-            ChangeTeams(GetAttackingTeam());
+            ChangeTeam(GetAttackingTeam());
+        else
+            for (BattlefieldBuildingContainer::value_type const& buildingPair : _buildings)
+                buildingPair.second->ChangeTeam();
     }
 
     if (phase == BATTLEFIELD_PHASE_IDLE)
@@ -283,9 +297,45 @@ void Battlefield::RemovePlayerFromResurrectionQueue(Player* player)
         pair.second->RemovePlayerFromResurrectionQueue(player);
 }
 
+void Battlefield::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
+{
+    for (BattlefieldBuildingContainer::value_type const& pair : _buildings)
+        pair.second->FillInitialWorldStates(packet);
+}
+
+void Battlefield::OnGameObjectCreate(GameObject* object)
+{
+    if (BattlefieldBuilding* building = GetBuilding(object->GetEntry()))
+        building->OnObjectCreate(object);
+}
+
+void Battlefield::OnGameObjectRemove(GameObject* object)
+{
+    if (BattlefieldBuilding* building = GetBuilding(object->GetEntry()))
+        building->OnObjectRemove(object);
+}
+
+void Battlefield::ProcessEvent(WorldObject* object, uint32 eventId)
+{
+    GameObject* gameObject = object ? object->ToGameObject() : nullptr;
+    if (!gameObject || !gameObject->IsDestructibleBuilding() || !GetBuilding(gameObject->GetEntry()))
+        return;
+
+    if (eventId == gameObject->GetGOInfo()->building.damagedEvent)
+        QueueEvent<BattlefieldBuildingDamageEvent>(gameObject->GetGUID());
+    else if (eventId == gameObject->GetGOInfo()->building.destroyedEvent)
+        QueueEvent<BattlefieldBuildingDestroyEvent>(gameObject->GetGUID());
+}
+
 void Battlefield::EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer)
 {
     _graveyards.emplace(id, std::move(pointer));
+}
+
+void Battlefield::EmplaceBuilding(BattlefieldBuildingPointer&& pointer)
+{
+    uint32 const entry = pointer->Info.GetNeutralObjectEntry();
+    _buildings.emplace(entry, std::move(pointer));
 }
 
 void Battlefield::SendInitWorldStatesTo(Player* player)
@@ -661,6 +711,18 @@ void Battlefield::ProcessBattleKick(BattlefieldEventKey /*key*/, Player* player)
     TeleportPlayerOutOfBattle(player);
 }
 
+void Battlefield::ProcessBuildingDamage(BattlefieldEventKey /*key*/, ObjectGuid objectGuid)
+{
+    if (BattlefieldBuilding* building = GetBuilding(objectGuid.GetEntry()))
+        building->Damage();
+}
+
+void Battlefield::ProcessBuildingDestroy(BattlefieldEventKey /*key*/, ObjectGuid objectGuid)
+{
+    if (BattlefieldBuilding* building = GetBuilding(objectGuid.GetEntry()))
+        building->Destroy();
+}
+
 void Battlefield::ProcessBattleStatusClear(BattlefieldEventKey /*key*/)
 {
     ClearBattleStatus();
@@ -762,6 +824,9 @@ void Battlefield::SetEnabled(bool enabled)
         SetPhase(BATTLEFIELD_PHASE_IDLE);
         _flags.RemoveFlag(BATTLEFIELD_FLAG_ENABLED);
     }
+
+    for (BattlefieldBuildingContainer::value_type const& buildingPair : _buildings)
+        buildingPair.second->ChangeTeam();
 }
 
 bool Battlefield::SetBattleResult(BattlefieldBattleResult result)
@@ -816,6 +881,12 @@ BattlefieldGraveyard* Battlefield::GetGraveyard(uint8 graveyardId)
     return graveyard ? graveyard->get() : nullptr;
 }
 
+BattlefieldBuilding* Battlefield::GetBuilding(uint32 entry)
+{
+    BattlefieldBuildingPointer* building = Trinity::Containers::MapGetValuePtr(_buildings, entry);
+    return building ? building->get() : nullptr;
+}
+
 WorldSafeLocsEntry const* Battlefield::GetClosestGraveyardLocation(Player* player) const
 {
     std::pair<float, WorldSafeLocsEntry const*> selection{ -1, nullptr };
@@ -853,6 +924,21 @@ GameObject* Battlefield::GetGameObject(ObjectGuid guid) const
     return nullptr;
 }
 
+void Battlefield::SendWorldStateToMap(uint32 variable, uint32 value) const
+{
+    Map* battleMap = GetBattleMap();
+    if (!battleMap)
+        return;
+
+    WorldPackets::WorldState::UpdateWorldState worldState;
+    worldState.VariableID = variable;
+    worldState.Value = value;
+    WorldPacket const* packet = worldState.Write();
+    for (MapReference const& reference : battleMap->GetPlayers())
+        if (Player* player = reference.GetSource())
+            player->SendDirectMessage(packet);
+}
+
 void Battlefield::InitializePhaseTimes()
 {
     Seconds const cycleDuration = Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START);
@@ -873,59 +959,18 @@ void Battlefield::InitializePhaseTimes()
     ScheduleNextPhaseAdvance();
 }
 
-void Battlefield::SendWorldStateToAll(uint32 variable, uint32 value) const
-{
-    WorldPackets::WorldState::UpdateWorldState worldState;
-    worldState.VariableID = variable;
-    worldState.Value = value;
-    sWorld->SendGlobalMessage(worldState.Write());
-}
-
-void Battlefield::SendWorldStateToMap(uint32 variable, uint32 value) const
-{
-    Map* battleMap = GetBattleMap();
-    if (!battleMap)
-        return;
-
-    WorldPackets::WorldState::UpdateWorldState worldState;
-    worldState.VariableID = variable;
-    worldState.Value = value;
-    WorldPacket const* packet = worldState.Write();
-    for (MapReference const& reference : battleMap->GetPlayers())
-        if (Player* player = reference.GetSource())
-            player->SendDirectMessage(packet);
-}
-
 Map* Battlefield::GetBattleMap() const
 {
     uint32 const mapId = Values.Get<uint32>(BATTLEFIELD_VALUE_ID_MAP);
     return mapId ? sMapMgr->FindMap(mapId, 0) : nullptr;
 }
 
-uint32 Battlefield::GetFreeBattleSlots(TeamId teamId) const
+void Battlefield::SendWorldStateToAll(uint32 variable, uint32 value) const
 {
-    uint32 const usedSlots = _battlefieldPlayers.Count(teamId, BATTLEFIELD_PLAYER_STATE_INVITED) + _battlefieldPlayers.Count(teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE);
-    uint32 const maxSlots = Values.Get<uint32>(BATTLEFIELD_VALUE_LIMIT_TEAM_PLAYERS);
-    return usedSlots < maxSlots ? maxSlots - usedSlots : 0;
-}
-
-BattlefieldPlayerStatus Battlefield::GetPlayerStatus(ObjectGuid playerGuid, TeamId teamId) const
-{
-    Optional<BattlefieldPlayerState> const state = _battlefieldPlayers.FindState(playerGuid, teamId);
-    if (!state)
-        return BATTLEFIELD_PLAYER_STATUS_NONE;
-
-    switch (*state)
-    {
-        case BATTLEFIELD_PLAYER_STATE_QUEUED:
-            return BATTLEFIELD_PLAYER_STATUS_QUEUED;
-        case BATTLEFIELD_PLAYER_STATE_INVITED:
-            return BATTLEFIELD_PLAYER_STATUS_INVITED;
-        case BATTLEFIELD_PLAYER_STATE_BATTLE_ENDED:
-            return BATTLEFIELD_PLAYER_STATUS_BATTLE_ENDED;
-        default:
-            return BATTLEFIELD_PLAYER_STATUS_NONE;
-    }
+    WorldPackets::WorldState::UpdateWorldState worldState;
+    worldState.VariableID = variable;
+    worldState.Value = value;
+    sWorld->SendGlobalMessage(worldState.Write());
 }
 
 BattlefieldPlayerStatus Battlefield::RemoveFromQueue(ObjectGuid playerGuid, TeamId teamId)
@@ -1032,9 +1077,54 @@ void Battlefield::ScheduleNextGraveyardResurrect()
     QueueEvent<BattlefieldGraveyardResurrectEvent>(ObjectGuid::Empty, interval);
 }
 
+uint32 Battlefield::GetFreeBattleSlots(TeamId teamId) const
+{
+    uint32 const usedSlots = _battlefieldPlayers.Count(teamId, BATTLEFIELD_PLAYER_STATE_INVITED) + _battlefieldPlayers.Count(teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE);
+    uint32 const maxSlots = Values.Get<uint32>(BATTLEFIELD_VALUE_LIMIT_TEAM_PLAYERS);
+    return usedSlots < maxSlots ? maxSlots - usedSlots : 0;
+}
+
+BattlefieldPlayerStatus Battlefield::GetPlayerStatus(ObjectGuid playerGuid, TeamId teamId) const
+{
+    Optional<BattlefieldPlayerState> const state = _battlefieldPlayers.FindState(playerGuid, teamId);
+    if (!state)
+        return BATTLEFIELD_PLAYER_STATUS_NONE;
+
+    switch (*state)
+    {
+        case BATTLEFIELD_PLAYER_STATE_QUEUED:
+            return BATTLEFIELD_PLAYER_STATUS_QUEUED;
+        case BATTLEFIELD_PLAYER_STATE_INVITED:
+            return BATTLEFIELD_PLAYER_STATUS_INVITED;
+        case BATTLEFIELD_PLAYER_STATE_BATTLE_ENDED:
+            return BATTLEFIELD_PLAYER_STATUS_BATTLE_ENDED;
+        default:
+            return BATTLEFIELD_PLAYER_STATUS_NONE;
+    }
+}
+
 /*
  * PlayerContainer
  */
+
+void Battlefield::PlayerContainer::Insert(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state)
+{
+    if (Optional<BattlefieldPlayerState> const previousState = FindState(playerGuid, teamId))
+        Erase(playerGuid, teamId, *previousState);
+
+    _players.emplace(teamId, state, playerGuid);
+}
+
+bool Battlefield::PlayerContainer::Erase(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state)
+{
+    return _players.erase(Key(teamId, state, playerGuid)) != 0;
+}
+
+void Battlefield::PlayerContainer::EraseAll(TeamId teamId, BattlefieldPlayerState state)
+{
+    auto const range = GetRange(teamId, state);
+    _players.erase(range.begin(), range.end());
+}
 
 bool Battlefield::PlayerContainer::Contains(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state) const
 {
@@ -1063,25 +1153,6 @@ std::vector<ObjectGuid> Battlefield::PlayerContainer::List(TeamId teamId, Battle
         playerGuids.push_back(std::get<ObjectGuid>(key));
 
     return playerGuids;
-}
-
-void Battlefield::PlayerContainer::Insert(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state)
-{
-    if (Optional<BattlefieldPlayerState> const previousState = FindState(playerGuid, teamId))
-        Erase(playerGuid, teamId, *previousState);
-
-    _players.emplace(teamId, state, playerGuid);
-}
-
-bool Battlefield::PlayerContainer::Erase(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state)
-{
-    return _players.erase(Key(teamId, state, playerGuid)) != 0;
-}
-
-void Battlefield::PlayerContainer::EraseAll(TeamId teamId, BattlefieldPlayerState state)
-{
-    auto const range = GetRange(teamId, state);
-    _players.erase(range.begin(), range.end());
 }
 
 Trinity::IteratorPair<Battlefield::PlayerContainer::Container::const_iterator> Battlefield::PlayerContainer::GetRange(TeamId teamId, BattlefieldPlayerState state) const
