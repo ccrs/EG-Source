@@ -1653,7 +1653,10 @@ struct EG_npc_ulduar_focused_laser : public PassiveAI
         DoCastSelf(SPELL_FOCUSED_LASER_PERIODIC, true);
 
         if (Unit* owner = summoner->ToUnit())
+        {
+            _ownerGuid = owner->GetGUID();
             me->CastSpell(owner, SPELL_FOCUSED_LASER_SUMMONER, true);
+        }
 
         ChaseFixateTarget();
     }
@@ -1662,6 +1665,12 @@ struct EG_npc_ulduar_focused_laser : public PassiveAI
     {
         if (_checkTimer <= diff)
         {
+            if (!IsLaserActive())
+            {
+                me->DespawnOrUnsummon();
+                return;
+            }
+
             ChaseFixateTarget();
             _checkTimer = 2000;
         }
@@ -1670,6 +1679,15 @@ struct EG_npc_ulduar_focused_laser : public PassiveAI
     }
 
 private:
+    bool IsLaserActive() const
+    {
+        Unit* owner = ObjectAccessor::GetUnit(*me, _ownerGuid);
+        if (!owner || !owner->IsAlive() || !owner->IsInCombat() || owner->HasUnitState(UNIT_STATE_EVADE))
+            return false;
+
+        return owner->HasAura(SPELL_FOCUSED_LASER_SUMMONER, me->GetGUID());
+    }
+
     void ChaseFixateTarget()
     {
         Unit* target = ObjectAccessor::GetUnit(*me, _fixateGuid);
@@ -1700,6 +1718,7 @@ private:
     }
 
     uint32 _checkTimer;
+    ObjectGuid _ownerGuid;
     ObjectGuid _fixateGuid;
 };
 

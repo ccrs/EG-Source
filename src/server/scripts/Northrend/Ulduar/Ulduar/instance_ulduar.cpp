@@ -607,6 +607,11 @@ class instance_ulduar : public InstanceMapScript
                         if (_leviathanIntroCompleted || GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
                             gameObject->DespawnOrUnsummon();
                         break;
+                    case GO_LEVIATHAN_INTRO_COLLISION:
+                        _leviathanIntroCollisionGUIDs.push_back(gameObject->GetGUID());
+                        if (_leviathanIntroCompleted || GetBossState(DATA_FLAME_LEVIATHAN) == DONE)
+                            gameObject->DespawnOrUnsummon();
+                        break;
                     case GO_BRAIN_ROOM_DOOR_1:
                         _brainRoomDoorGUIDs[0] = gameObject->GetGUID();
                         break;
@@ -1350,6 +1355,10 @@ class instance_ulduar : public InstanceMapScript
                             SaveToDB();
                             if (GameObject* shield = instance->GetGameObject(_leviathanProtectiveBubbleGUID))
                                 shield->DespawnOrUnsummon();
+                            for (ObjectGuid const& guid : _leviathanIntroCollisionGUIDs)
+                                if (GameObject* collision = instance->GetGameObject(guid))
+                                    collision->DespawnOrUnsummon();
+                            _leviathanIntroCollisionGUIDs.clear();
                             for (ObjectGuid const& mageGuid : _kirinTorMageGUIDs)
                             {
                                 if (Creature* mage = instance->GetCreature(mageGuid))
@@ -1691,6 +1700,7 @@ class instance_ulduar : public InstanceMapScript
             // GameObjects
             ObjectGuid _leviathanGateGUID;
             ObjectGuid _leviathanProtectiveBubbleGUID;
+            GuidVector _leviathanIntroCollisionGUIDs;
             ObjectGuid _kologarnChestGUID;
             ObjectGuid _kologarnBridgeGUID;
             ObjectGuid _thorimDarkIronPortcullisGUID;

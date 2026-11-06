@@ -263,6 +263,7 @@ enum UlduarGameObjects
     GO_LEVIATHAN_DOOR                       = 194905,
     GO_LEVIATHAN_GATE                       = 194630,
     GO_LEVIATHAN_PROTECTIVE_BUBBLE          = 194484,
+    GO_LEVIATHAN_INTRO_COLLISION            = 201612,
 
     // Razorscale
     GO_MOLE_MACHINE                         = 194316,
