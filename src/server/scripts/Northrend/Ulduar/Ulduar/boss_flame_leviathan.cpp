@@ -639,7 +639,6 @@ struct boss_flame_leviathan_seat : public ScriptedAI
     boss_flame_leviathan_seat(Creature* creature) : ScriptedAI(creature)
     {
         me->SetReactState(REACT_PASSIVE);
-        me->SetDisplayId(me->GetCreatureTemplate()->Modelid2);
         instance = creature->GetInstanceScript();
     }
 
