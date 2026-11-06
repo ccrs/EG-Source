@@ -19,6 +19,7 @@
 #define TRINITY_BATTLEFIELD_ENTITIES_H_
 
 #include "Common.h"
+#include "Duration.h"
 #include "ObjectGuid.h"
 #include "SharedDefines.h"
 #include <initializer_list>
@@ -29,6 +30,7 @@ class Battlefield;
 class GameObject;
 class Player;
 class WorldObject;
+struct GameObjectTemplate;
 
 enum BattlefieldEntityType : uint8
 {
@@ -44,7 +46,8 @@ enum BattlefieldBuildingType : uint8
     BATTLEFIELD_BUILDING_TYPE_KEEP_TOWER,
     BATTLEFIELD_BUILDING_TYPE_DOOR,
     BATTLEFIELD_BUILDING_TYPE_DOOR_LAST,
-    BATTLEFIELD_BUILDING_TYPE_TITANRELIC
+    BATTLEFIELD_BUILDING_TYPE_TITANRELIC,
+    BATTLEFIELD_BUILDING_TYPE_WORKSHOP
 };
 
 enum BattlefieldBuildingState : uint8
@@ -61,15 +64,10 @@ enum BattlefieldBuildingState : uint8
     BATTLEFIELD_BUILDING_STATE_ALLIANCE_DESTROYED
 };
 
-enum BattlefieldCapturePointState : uint8
+enum BattlefieldCapturePointArtKit : uint8
 {
-    BATTLEFIELD_CAPTUREPOINT_STATE_NEUTRAL = 0,
-    BATTLEFIELD_CAPTUREPOINT_STATE_ALLIANCE,
-    BATTLEFIELD_CAPTUREPOINT_STATE_HORDE,
-    BATTLEFIELD_CAPTUREPOINT_STATE_NEUTRAL_ALLIANCE_CHALLENGE,
-    BATTLEFIELD_CAPTUREPOINT_STATE_NEUTRAL_HORDE_CHALLENGE,
-    BATTLEFIELD_CAPTUREPOINT_STATE_ALLIANCE_HORDE_CHALLENGE,
-    BATTLEFIELD_CAPTUREPOINT_STATE_HORDE_ALLIANCE_CHALLENGE
+    BATTLEFIELD_CAPTUREPOINT_ARTKIT_HORDE = 1,
+    BATTLEFIELD_CAPTUREPOINT_ARTKIT_ALLIANCE
 };
 
 enum BattlefieldGraveyardState : uint8
@@ -81,17 +79,17 @@ enum BattlefieldGraveyardState : uint8
 
 struct BattlefieldEntityInfo
 {
-    BattlefieldEntityInfo(BattlefieldEntityType type) : EntityType(type), WorldState(0) { }
-    BattlefieldEntityInfo(BattlefieldEntityType type, uint32 worldState) : EntityType(type), WorldState(worldState) { }
-    BattlefieldEntityInfo(BattlefieldEntityType type, uint32 worldState, uint32 entry) : EntityType(type), WorldState(worldState), ObjectEntriesByPvPTeamId({{ PVP_TEAM_NEUTRAL, { entry } }}) { }
-    BattlefieldEntityInfo(BattlefieldEntityType type, uint32 worldState, std::initializer_list<uint32> neutralEntryList) : EntityType(type), WorldState(worldState), ObjectEntriesByPvPTeamId({{ PVP_TEAM_NEUTRAL, { neutralEntryList } }}) { }
-    BattlefieldEntityInfo(BattlefieldEntityType type, uint32 worldState, std::initializer_list<uint32> hordeEntryList, std::initializer_list<uint32> allianceEntryList) : EntityType(type), WorldState(worldState), ObjectEntriesByPvPTeamId({{ PVP_TEAM_HORDE, { hordeEntryList } }, { PVP_TEAM_ALLIANCE, { allianceEntryList } }}) { }
-    BattlefieldEntityInfo(BattlefieldEntityType type, uint32 worldState, std::initializer_list<uint32> hordeEntryList, std::initializer_list<uint32> allianceEntryList, std::initializer_list<uint32> neutralEntryList) : EntityType(type), WorldState(worldState), ObjectEntriesByPvPTeamId({{ PVP_TEAM_HORDE, { hordeEntryList } }, { PVP_TEAM_ALLIANCE, { allianceEntryList } }, { PVP_TEAM_NEUTRAL, { neutralEntryList } }}) { }
+    BattlefieldEntityInfo(BattlefieldEntityType type, uint8 id) : EntityType(type), Id(id), WorldState(0) { }
+    BattlefieldEntityInfo(BattlefieldEntityType type, uint8 id, uint32 worldState) : EntityType(type), Id(id), WorldState(worldState) { }
+    BattlefieldEntityInfo(BattlefieldEntityType type, uint8 id, uint32 worldState, uint32 entry) : EntityType(type), Id(id), WorldState(worldState), ObjectEntriesByPvPTeamId({{ PVP_TEAM_NEUTRAL, { entry } }}) { }
+    BattlefieldEntityInfo(BattlefieldEntityType type, uint8 id, uint32 worldState, std::initializer_list<uint32> neutralEntryList) : EntityType(type), Id(id), WorldState(worldState), ObjectEntriesByPvPTeamId({{ PVP_TEAM_NEUTRAL, { neutralEntryList } }}) { }
+    BattlefieldEntityInfo(BattlefieldEntityType type, uint8 id, uint32 worldState, std::initializer_list<uint32> hordeEntryList, std::initializer_list<uint32> allianceEntryList) : EntityType(type), Id(id), WorldState(worldState), ObjectEntriesByPvPTeamId({{ PVP_TEAM_HORDE, { hordeEntryList } }, { PVP_TEAM_ALLIANCE, { allianceEntryList } }}) { }
+    BattlefieldEntityInfo(BattlefieldEntityType type, uint8 id, uint32 worldState, std::initializer_list<uint32> hordeEntryList, std::initializer_list<uint32> allianceEntryList, std::initializer_list<uint32> neutralEntryList) : EntityType(type), Id(id), WorldState(worldState), ObjectEntriesByPvPTeamId({{ PVP_TEAM_HORDE, { hordeEntryList } }, { PVP_TEAM_ALLIANCE, { allianceEntryList } }, { PVP_TEAM_NEUTRAL, { neutralEntryList } }}) { }
 
-    uint32 GetNeutralObjectEntry() const { return ObjectEntriesByPvPTeamId.contains(PVP_TEAM_NEUTRAL) ? ObjectEntriesByPvPTeamId.at(PVP_TEAM_NEUTRAL)[0] : 0; }
     bool ValidateObjectEntry(uint32 entry) const;
 
     BattlefieldEntityType EntityType;
+    uint8 Id;
     uint32 WorldState;
     std::unordered_map<PvPTeamId, std::vector<uint32 /*entry*/>> ObjectEntriesByPvPTeamId;
 };
@@ -112,7 +110,6 @@ public:
 
     virtual void OnObjectCreate(WorldObject* object);
     virtual void OnObjectRemove(WorldObject* object);
-    virtual void Update(uint32 /*diff*/) { }
     virtual PvPTeamId GetPvPTeamId() const { return PVP_TEAM_NEUTRAL; }
     virtual void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet);
     virtual void InitializeState() { }
@@ -128,7 +125,7 @@ public:
 
 struct BattlefieldBuildingInfo
 {
-    BattlefieldBuildingInfo(uint32 worldState, uint32 entry, BattlefieldBuildingType type) : BattlefieldBuildingInfo(BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_BUILDING, worldState, entry), type) { }
+    BattlefieldBuildingInfo(uint8 id, uint32 worldState, uint32 entry, BattlefieldBuildingType type) : BattlefieldBuildingInfo(BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_BUILDING, id, worldState, entry), type) { }
     BattlefieldBuildingInfo(BattlefieldEntityInfo const info, BattlefieldBuildingType type) : Info(info), Type(type) { }
 
     BattlefieldEntityInfo Info;
@@ -141,49 +138,89 @@ public:
     explicit BattlefieldBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info);
     virtual ~BattlefieldBuilding() { }
 
-    void OnObjectCreate(WorldObject* object) override;
     PvPTeamId GetPvPTeamId() const override;
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
-    void InitializeState() override;
     void SaveWorldState() override;
 
-    GameObjectDestructibleState GetDestructibleState() const;
+    virtual void Reset() { }
+    virtual void ChangeTeam() { }
+    virtual void Update(std::vector<Player*> const& /*players*/, Seconds /*diff*/) { }
     virtual bool Damage();
     virtual bool Destroy();
-    void Rebuild();
-    void ChangeTeam();
+    GameObjectDestructibleState GetDestructibleState() const;
 
     BattlefieldBuildingType BuildingType;
     BattlefieldBuildingState State;
 
-private:
-    PvPTeamId GetOwnerPvPTeamId() const;
-    uint32 GetFaction() const;
+protected:
     std::vector<GameObject*> GetGameObjects() const;
     bool SetState(PvPTeamId pvpTeamId, GameObjectDestructibleState destructibleState);
     void UpdateWorldState();
 };
 
-class BattlefieldCapturePoint : public BattlefieldEntity
+class BattlefieldDestructibleBuilding : public BattlefieldBuilding
 {
 public:
-    explicit BattlefieldCapturePoint(Battlefield* battlefield, uint32 worldState, uint32 entry) : BattlefieldCapturePoint(battlefield, BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_CAPTUREPOINT, worldState, entry)) { }
-    explicit BattlefieldCapturePoint(Battlefield* battlefield, BattlefieldEntityInfo const info);
+    explicit BattlefieldDestructibleBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info);
+    virtual ~BattlefieldDestructibleBuilding() { }
+
+    void OnObjectCreate(WorldObject* object) override;
+    void InitializeState() override;
+    void Reset() override;
+    void ChangeTeam() override;
+
+private:
+    PvPTeamId GetOwnerPvPTeamId() const;
+    uint32 GetFaction() const;
+};
+
+struct BattlefieldCapturePointInfo
+{
+    BattlefieldCapturePointInfo(uint8 id, uint32 worldState, std::initializer_list<uint32> hordeEntryList, std::initializer_list<uint32> allianceEntryList, uint8 graveyardId, bool capturable, bool startsWithAttacker, bool keepsOwner) : Info(BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_CAPTUREPOINT, id, worldState, hordeEntryList, allianceEntryList), BATTLEFIELD_BUILDING_TYPE_WORKSHOP), GraveyardId(graveyardId), Capturable(capturable), StartsWithAttacker(startsWithAttacker), KeepsOwner(keepsOwner) { }
+
+    BattlefieldBuildingInfo Info;
+    uint8 GraveyardId;
+    bool Capturable;
+    bool StartsWithAttacker;
+    bool KeepsOwner;
+};
+
+class BattlefieldCapturePoint : public BattlefieldBuilding
+{
+public:
+    explicit BattlefieldCapturePoint(Battlefield* battlefield, BattlefieldCapturePointInfo const info);
     virtual ~BattlefieldCapturePoint() { }
 
-    PvPTeamId GetPvPTeamId() const override;
-    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
-    void SaveWorldState() override;
+    void OnObjectCreate(WorldObject* object) override;
+    void InitializeState() override;
+    void Reset() override;
+    void ChangeTeam() override;
+    void Update(std::vector<Player*> const& players, Seconds diff) override;
 
-    BattlefieldCapturePointState State;
+    virtual void SetOwner(PvPTeamId pvpTeamId);
+    virtual void Attack(PvPTeamId /*pvpTeamId*/) { }
+    virtual void Capture(PvPTeamId pvpTeamId);
+
+    uint8 GraveyardId;
+    bool Capturable;
+    bool StartsWithAttacker;
+    bool KeepsOwner;
+
+private:
+    GameObjectTemplate const* GetBannerTemplate() const;
+    void SendCaptureBar(Player* player, bool show) const;
+    void SendCaptureBarValue() const;
+
+    float _slider;
+    bool _contested;
+    GuidUnorderedSet _capturePlayers;
 };
 
 struct BattlefieldGraveyardInfo
 {
-    BattlefieldGraveyardInfo(uint32 worldState, uint32 hordeEntry, uint32 allianceEntry, uint32 neutralEntry, uint8 id, uint16 worldSafeLocsEntryId, uint32 textId, uint32 teleportSpellId) : Info(BATTLEFIELD_ENTITY_TYPE_GRAVEYARD, worldState, { hordeEntry }, { allianceEntry }, { neutralEntry }), Id(id), WorldSafeLocsEntryId(worldSafeLocsEntryId), TextId(textId), TeleportSpellId(teleportSpellId) { }
+    BattlefieldGraveyardInfo(uint8 id, uint32 worldState, uint32 hordeEntry, uint32 allianceEntry, uint32 neutralEntry, uint16 worldSafeLocsEntryId, uint32 textId, uint32 teleportSpellId) : Info(BATTLEFIELD_ENTITY_TYPE_GRAVEYARD, id, worldState, { hordeEntry }, { allianceEntry }, { neutralEntry }), WorldSafeLocsEntryId(worldSafeLocsEntryId), TextId(textId), TeleportSpellId(teleportSpellId) { }
 
     BattlefieldEntityInfo Info;
-    uint8 Id;
     uint16 WorldSafeLocsEntryId;
     uint32 TextId;
     uint32 TeleportSpellId;
@@ -198,21 +235,19 @@ public:
     void AddPlayerToResurrectionQueue(Player* player);
     void RemovePlayerFromResurrectionQueue(Player* player);
     void ResurrectPlayers();
+    void SetOwner(PvPTeamId pvpTeamId);
 
     PvPTeamId GetPvPTeamId() const override;
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void SaveWorldState() override;
     uint16 GetWorldSafeLocsEntryId() const { return WorldSafeLocsEntryId; }
     uint32 GetTeleportSpellId() const { return TeleportSpellId; }
-    bool IsSpellAreaForced() const { return SpellAreaForced; }
 
-    uint8 Id;
     uint16 WorldSafeLocsEntryId;
     uint32 TextId;
     BattlefieldGraveyardState State;
     GuidUnorderedSet ResurrectionQueue;
     uint32 TeleportSpellId;
-    bool SpellAreaForced;
 };
 
 #endif

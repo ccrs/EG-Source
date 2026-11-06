@@ -173,7 +173,15 @@ enum WintergraspGameObjects
     GO_WINTERGRASP_FORTRESS_VAULT_GATE = 191810,
     GO_WINTERGRASP_FORTRESS_TELEPORTER_HORDE = 190763,
     GO_WINTERGRASP_FORTRESS_TELEPORTER_ALLIANCE = 191575,
-    GO_WINTERGRASP_FORTRESS_TELEPORTER_VEHICLE = 192951
+    GO_WINTERGRASP_FORTRESS_TELEPORTER_VEHICLE = 192951,
+    GO_WINTERGRASP_FACTORY_BANNER_NE_HORDE = 190475,
+    GO_WINTERGRASP_FACTORY_BANNER_NE_ALLIANCE = 192626,
+    GO_WINTERGRASP_FACTORY_BANNER_NW_HORDE = 190487,
+    GO_WINTERGRASP_FACTORY_BANNER_NW_ALLIANCE = 192627,
+    GO_WINTERGRASP_FACTORY_BANNER_SE_HORDE = 194960,
+    GO_WINTERGRASP_FACTORY_BANNER_SE_ALLIANCE = 194959,
+    GO_WINTERGRASP_FACTORY_BANNER_SW_HORDE = 194963,
+    GO_WINTERGRASP_FACTORY_BANNER_SW_ALLIANCE = 194962
 };
 
 enum WintergraspSpawnGroups
@@ -293,7 +301,8 @@ enum WintergraspWorldstates
     WORLDSTATE_WINTERGRASP_SHOW_COOLDOWN = 3801,
     WORLDSTATE_WINTERGRASP_CONTROL = 3804,
     WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE = 4354,
-    WORLDSTATE_WINTERGRASP_ICON_ACTIVE = 4375
+    WORLDSTATE_WINTERGRASP_ICON_ACTIVE = 4375,
+    WORLDSTATE_WINTERGRASP_CAPTURE_NEUTRAL_PERCENT = 3508
 };
 
 enum WintergraspControlStates
@@ -303,13 +312,55 @@ enum WintergraspControlStates
     WINTERGRASP_CONTROL_BATTLE
 };
 
+enum WintergraspBuildingIds : uint8
+{
+    BUILDING_FORTRESS_GATE = 1,
+    BUILDING_FORTRESS_VAULT_GATE,
+    BUILDING_FORTRESS_WALL_1,
+    BUILDING_FORTRESS_WALL_2,
+    BUILDING_FORTRESS_WALL_3,
+    BUILDING_FORTRESS_WALL_4,
+    BUILDING_FORTRESS_WALL_5,
+    BUILDING_FORTRESS_WALL_6,
+    BUILDING_FORTRESS_WALL_7,
+    BUILDING_FORTRESS_WALL_8,
+    BUILDING_FORTRESS_WALL_9,
+    BUILDING_FORTRESS_WALL_10,
+    BUILDING_FORTRESS_WALL_11,
+    BUILDING_FORTRESS_WALL_12,
+    BUILDING_FORTRESS_WALL_13,
+    BUILDING_FORTRESS_WALL_14,
+    BUILDING_FORTRESS_WALL_15,
+    BUILDING_FORTRESS_WALL_16,
+    BUILDING_FORTRESS_WALL_17,
+    BUILDING_FORTRESS_WALL_18,
+    BUILDING_FORTRESS_WALL_19,
+    BUILDING_FORTRESS_WALL_20,
+    BUILDING_FORTRESS_INTERIOR_WALL_1,
+    BUILDING_FORTRESS_INTERIOR_WALL_2,
+    BUILDING_FORTRESS_INTERIOR_WALL_3,
+    BUILDING_FORTRESS_TOWER_1,
+    BUILDING_FORTRESS_TOWER_2,
+    BUILDING_FORTRESS_TOWER_3,
+    BUILDING_FORTRESS_TOWER_4,
+    BUILDING_TOWER_1,
+    BUILDING_TOWER_2,
+    BUILDING_TOWER_3,
+    BUILDING_WORKSHOP_NE,
+    BUILDING_WORKSHOP_NW,
+    BUILDING_WORKSHOP_SE,
+    BUILDING_WORKSHOP_SW,
+    BUILDING_WORKSHOP_KEEP_W,
+    BUILDING_WORKSHOP_KEEP_E
+};
+
 enum WintergraspGraveyardIds : uint8
 {
-    GRAVEYARD_WORKSHOP_NE = 1,
+    GRAVEYARD_KEEP = 1,
+    GRAVEYARD_WORKSHOP_NE,
     GRAVEYARD_WORKSHOP_NW,
-    GRAVEYARD_WORKSHOP_SE,
     GRAVEYARD_WORKSHOP_SW,
-    GRAVEYARD_KEEP,
+    GRAVEYARD_WORKSHOP_SE,
     GRAVEYARD_HORDE,
     GRAVEYARD_ALLIANCE
 };
@@ -340,6 +391,8 @@ enum WintergraspWorldSafeLocs
 static uint32 constexpr MAPID_WINTERGRASP = 571; // Northrend
 static Seconds constexpr WINTERGRASP_PREPARATION_DURATION = 15min;
 static Seconds constexpr WINTERGRASP_SOUTHERN_TOWERS_TIME_REDUCTION = 10min;
+static uint32 constexpr WINTERGRASP_VEHICLES_PER_WORKSHOP = 4;
+static uint32 constexpr WINTERGRASP_CAPTURE_NEUTRAL_PERCENT = 80;
 
 namespace WorldPackets
 {
@@ -353,7 +406,7 @@ class BattlefieldWintergrasp;
 class Creature;
 class WorldObject;
 
-class WintergraspBuilding : public BattlefieldBuilding
+class WintergraspBuilding : public BattlefieldDestructibleBuilding
 {
 public:
     explicit WintergraspBuilding(BattlefieldWintergrasp* wintergrasp, BattlefieldBuildingInfo const info);
@@ -373,12 +426,19 @@ private:
 class WintergraspCapturePoint : public BattlefieldCapturePoint
 {
 public:
-    explicit WintergraspCapturePoint(Battlefield* battlefield, BattlefieldEntityInfo const info);
+    explicit WintergraspCapturePoint(BattlefieldWintergrasp* wintergrasp, BattlefieldCapturePointInfo const info);
     ~WintergraspCapturePoint() { }
 
     void OnObjectCreate(WorldObject* object) override;
     void OnObjectRemove(WorldObject* object) override;
-    void InitializeState() override;
+    void SetOwner(PvPTeamId pvpTeamId) override;
+    void Attack(PvPTeamId pvpTeamId) override;
+    void Capture(PvPTeamId pvpTeamId) override;
+
+private:
+    void SendText(PvPTeamId pvpTeamId, bool captured) const;
+
+    BattlefieldWintergrasp* _wintergrasp;
 };
 
 class WintergraspGraveyard : public BattlefieldGraveyard
@@ -414,16 +474,17 @@ public:
     uint8 GetWintergraspGraveyardId(Creature* creature) const;
     void SendStalkerText(uint8 textGroup) const;
     void HandleSouthernTowerDestroyed();
+    void SendVehicleLimits() const;
 
     bool IsFlyingMountAllowed() const override { return !IsEnabled() || (IsEnabled() && !IsBattleTime()); }
     bool IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 newArea) const override;
 
 private:
     uint32 GetControlState() const;
+    uint32 GetVehicleLimit(PvPTeamId pvpTeamId) const;
 
     typedef std::unique_ptr<WintergraspBuilding> WintergraspBuildingPointer;
     typedef std::unique_ptr<WintergraspCapturePoint> WintergraspCapturePointPointer;
-    typedef std::unordered_map<uint32 /*entry*/, WintergraspCapturePointPointer> WintergraspCapturePointContainer;
     typedef std::unique_ptr<WintergraspGraveyard> WintergraspGraveyardPointer;
 
     BattlefieldWintergrasp(BattlefieldWintergrasp const&) = delete;

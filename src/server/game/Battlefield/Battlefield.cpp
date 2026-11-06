@@ -41,6 +41,7 @@ Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId)
     Values.Set(BATTLEFIELD_VALUE_ID_MAP, uint32(0));
     Values.Set(BATTLEFIELD_VALUE_STATE_CONTROLLING_TEAM, PVP_TEAM_NEUTRAL);
     Values.Set(BATTLEFIELD_VALUE_INTERVAL_RESURRECTION, 30s);
+    Values.Set(BATTLEFIELD_VALUE_INTERVAL_BUILDING_UPDATE, 1s);
     Values.Set(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT, BATTLEFIELD_BATTLE_RESULT_NONE);
     Values.Set(BATTLEFIELD_VALUE_LIMIT_TEAM_PLAYERS, uint32(0));
     Values.Set(BATTLEFIELD_VALUE_LIMIT_PLAYER_LEVEL, uint32(0));
@@ -58,6 +59,7 @@ Battlefield::~Battlefield()
 bool Battlefield::SetupBattlefield()
 {
     ScheduleNextGraveyardResurrect();
+    QueueEvent<BattlefieldBuildingUpdateEvent>(ObjectGuid::Empty, Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_BUILDING_UPDATE));
     return true;
 }
 
@@ -111,7 +113,7 @@ bool Battlefield::SetPhase(BattlefieldPhase phase)
         });
 
         for (BattlefieldBuildingContainer::value_type const& buildingPair : _buildings)
-            buildingPair.second->Rebuild();
+            buildingPair.second->Reset();
     }
     else if (oldPhase == BATTLEFIELD_PHASE_BATTLE)
     {
@@ -305,20 +307,20 @@ void Battlefield::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStat
 
 void Battlefield::OnGameObjectCreate(GameObject* object)
 {
-    if (BattlefieldBuilding* building = GetBuilding(object->GetEntry()))
+    if (BattlefieldBuilding* building = GetBuildingByEntry(object->GetEntry()))
         building->OnObjectCreate(object);
 }
 
 void Battlefield::OnGameObjectRemove(GameObject* object)
 {
-    if (BattlefieldBuilding* building = GetBuilding(object->GetEntry()))
+    if (BattlefieldBuilding* building = GetBuildingByEntry(object->GetEntry()))
         building->OnObjectRemove(object);
 }
 
 void Battlefield::ProcessEvent(WorldObject* object, uint32 eventId)
 {
     GameObject* gameObject = object ? object->ToGameObject() : nullptr;
-    if (!gameObject || !gameObject->IsDestructibleBuilding() || !GetBuilding(gameObject->GetEntry()))
+    if (!gameObject || !gameObject->IsDestructibleBuilding() || !GetBuildingByEntry(gameObject->GetEntry()))
         return;
 
     if (eventId == gameObject->GetGOInfo()->building.damagedEvent)
@@ -327,15 +329,16 @@ void Battlefield::ProcessEvent(WorldObject* object, uint32 eventId)
         QueueEvent<BattlefieldBuildingDestroyEvent>(gameObject->GetGUID());
 }
 
-void Battlefield::EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer)
+void Battlefield::EmplaceGraveyard(BattlefieldGraveyardPointer&& pointer)
 {
+    uint8 const id = pointer->Info.Id;
     _graveyards.emplace(id, std::move(pointer));
 }
 
 void Battlefield::EmplaceBuilding(BattlefieldBuildingPointer&& pointer)
 {
-    uint32 const entry = pointer->Info.GetNeutralObjectEntry();
-    _buildings.emplace(entry, std::move(pointer));
+    uint8 const id = pointer->Info.Id;
+    _buildings.emplace(id, std::move(pointer));
 }
 
 void Battlefield::SendInitWorldStatesTo(Player* player)
@@ -713,14 +716,29 @@ void Battlefield::ProcessBattleKick(BattlefieldEventKey /*key*/, Player* player)
 
 void Battlefield::ProcessBuildingDamage(BattlefieldEventKey /*key*/, ObjectGuid objectGuid)
 {
-    if (BattlefieldBuilding* building = GetBuilding(objectGuid.GetEntry()))
+    if (BattlefieldBuilding* building = GetBuildingByEntry(objectGuid.GetEntry()))
         building->Damage();
 }
 
 void Battlefield::ProcessBuildingDestroy(BattlefieldEventKey /*key*/, ObjectGuid objectGuid)
 {
-    if (BattlefieldBuilding* building = GetBuilding(objectGuid.GetEntry()))
+    if (BattlefieldBuilding* building = GetBuildingByEntry(objectGuid.GetEntry()))
         building->Destroy();
+}
+
+void Battlefield::ProcessBuildingUpdate(BattlefieldEventKey /*key*/)
+{
+    std::vector<Player*> players;
+    for (TeamId teamId : { TEAM_ALLIANCE, TEAM_HORDE })
+        for (ObjectGuid playerGuid : _battlefieldPlayers.List(teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE))
+            if (Player* player = ObjectAccessor::FindPlayer(playerGuid))
+                players.push_back(player);
+
+    Seconds const interval = Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_BUILDING_UPDATE);
+    for (BattlefieldBuildingContainer::value_type const& pair : _buildings)
+        pair.second->Update(players, interval);
+
+    QueueEvent<BattlefieldBuildingUpdateEvent>(ObjectGuid::Empty, interval);
 }
 
 void Battlefield::ProcessBattleStatusClear(BattlefieldEventKey /*key*/)
@@ -881,15 +899,24 @@ BattlefieldGraveyard* Battlefield::GetGraveyard(uint8 graveyardId)
     return graveyard ? graveyard->get() : nullptr;
 }
 
-BattlefieldBuilding* Battlefield::GetBuilding(uint32 entry)
+BattlefieldBuilding const* Battlefield::GetBuilding(uint8 buildingId) const
 {
-    BattlefieldBuildingPointer* building = Trinity::Containers::MapGetValuePtr(_buildings, entry);
+    BattlefieldBuildingPointer const* building = Trinity::Containers::MapGetValuePtr(_buildings, buildingId);
     return building ? building->get() : nullptr;
 }
 
-WorldSafeLocsEntry const* Battlefield::GetClosestGraveyardLocation(Player* player) const
+BattlefieldBuilding* Battlefield::GetBuildingByEntry(uint32 entry)
 {
-    std::pair<float, WorldSafeLocsEntry const*> selection{ -1, nullptr };
+    for (BattlefieldBuildingContainer::value_type const& pair : _buildings)
+        if (pair.second->ValidateObjectEntry(entry))
+            return pair.second.get();
+
+    return nullptr;
+}
+
+BattlefieldGraveyard const* Battlefield::GetClosestGraveyard(Player* player) const
+{
+    std::pair<float, BattlefieldGraveyard const*> selection{ -1, nullptr };
     for (BattlefieldGraveyardContainer::value_type const& pair : _graveyards)
     {
         if (TeamIdByPvPTeamId(pair.second->GetPvPTeamId()) != player->GetTeamId())
@@ -900,10 +927,16 @@ WorldSafeLocsEntry const* Battlefield::GetClosestGraveyardLocation(Player* playe
 
         float dist = player->GetDistance2d(safeLoc->Loc.X, safeLoc->Loc.Y);
         if (dist < selection.first || selection.first < 0)
-            selection = { dist, safeLoc };
+            selection = { dist, pair.second.get() };
     }
 
     return selection.second;
+}
+
+WorldSafeLocsEntry const* Battlefield::GetClosestGraveyardLocation(Player* player) const
+{
+    BattlefieldGraveyard const* graveyard = GetClosestGraveyard(player);
+    return graveyard ? sWorldSafeLocsStore.LookupEntry(graveyard->GetWorldSafeLocsEntryId()) : nullptr;
 }
 
 Creature* Battlefield::GetCreature(ObjectGuid guid) const

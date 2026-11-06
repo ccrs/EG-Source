@@ -137,3 +137,9 @@ void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BUILDING_DESTROY>::Handle(Battlefie
 {
     battlefield.ProcessBuildingDestroy(GetKey(), GetObjectGUID());
 }
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BUILDING_UPDATE>::Handle(Battlefield& battlefield)
+{
+    battlefield.ProcessBuildingUpdate(GetKey());
+}

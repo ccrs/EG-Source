@@ -113,6 +113,7 @@ enum BattlefieldValue : uint8
     BATTLEFIELD_VALUE_DURATION_BATTLE_INVITE,
     BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START,
     BATTLEFIELD_VALUE_INTERVAL_RESURRECTION,
+    BATTLEFIELD_VALUE_INTERVAL_BUILDING_UPDATE,
     BATTLEFIELD_VALUE_DELAY_PHASE_BATTLE_RESTART,
     BATTLEFIELD_VALUE_DELAY_BATTLE_LOGOUT_LEAVE,
     BATTLEFIELD_VALUE_DELAY_BATTLE_FILL,
@@ -169,7 +170,7 @@ public:
     typedef std::unique_ptr<BattlefieldGraveyard> BattlefieldGraveyardPointer;
     typedef std::unordered_map<uint8 /*id*/, BattlefieldGraveyardPointer> BattlefieldGraveyardContainer;
     typedef std::unique_ptr<BattlefieldBuilding> BattlefieldBuildingPointer;
-    typedef std::unordered_map<uint32 /*entry*/, BattlefieldBuildingPointer> BattlefieldBuildingContainer;
+    typedef std::unordered_map<uint8 /*id*/, BattlefieldBuildingPointer> BattlefieldBuildingContainer;
     typedef std::multimap<TimePoint /*due*/, std::unique_ptr<BattlefieldEvent>> BattlefieldEventContainer;
 
     explicit Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId);
@@ -216,7 +217,7 @@ public:
     void OnGameObjectRemove(GameObject* object) override;
     void ProcessEvent(WorldObject* object, uint32 eventId) override;
 
-    void EmplaceGraveyard(uint8 id, BattlefieldGraveyardPointer&& pointer);
+    void EmplaceGraveyard(BattlefieldGraveyardPointer&& pointer);
     void EmplaceBuilding(BattlefieldBuildingPointer&& pointer);
     void SendInitWorldStatesTo(Player* player);
     template<class Event, class... Args>
@@ -243,6 +244,7 @@ public:
     void ProcessBattleKick(BattlefieldEventKey key, Player* player);
     void ProcessBuildingDamage(BattlefieldEventKey key, ObjectGuid objectGuid);
     void ProcessBuildingDestroy(BattlefieldEventKey key, ObjectGuid objectGuid);
+    void ProcessBuildingUpdate(BattlefieldEventKey key);
     void ProcessBattleStatusClear(BattlefieldEventKey key);
     void HandleBattlefieldRaidMemberRemoved(ObjectGuid playerGuid, RemoveMethod method);
     void HandlePlayerLogout(Player* player);
@@ -275,7 +277,9 @@ public:
     std::vector<ObjectGuid> const& GetBattlefieldRaids(TeamId teamId) const { return _battlefieldRaids[teamId]; }
     BattlefieldGraveyard const* GetGraveyard(uint8 graveyardId) const;
     BattlefieldGraveyard* GetGraveyard(uint8 graveyardId);
-    BattlefieldBuilding* GetBuilding(uint32 entry);
+    BattlefieldBuilding const* GetBuilding(uint8 buildingId) const;
+    BattlefieldBuilding* GetBuildingByEntry(uint32 entry);
+    BattlefieldGraveyard const* GetClosestGraveyard(Player* player) const;
     // Closest available graveyard WorldSafeLocsEntry for Player's TeamId
     WorldSafeLocsEntry const* GetClosestGraveyardLocation(Player* player) const;
     Creature* GetCreature(ObjectGuid guid) const;

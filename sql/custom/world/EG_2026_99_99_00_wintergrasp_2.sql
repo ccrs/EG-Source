@@ -28,3 +28,25 @@ INSERT INTO `spell_target_position` (`ID`, `EffectIndex`, `MapID`, `PositionX`, 
 
 -- Building flags
 UPDATE `gameobject_template_addon` SET `flags` = 32 WHERE `entry` IN (190220, 190221, 190358, 190369, 190370, 190373, 190375, 190376, 191804, 191805, 191809);
+
+-- Workshop banners
+DELETE FROM `gameobject` WHERE `guid` IN (71385, 71386, 71387, 71388, 200045, 200046, 200047, 200048);
+DELETE FROM `gameobject_addon` WHERE `guid` IN (71385, 71386, 71387, 71388, 200045, 200046, 200047, 200048);
+INSERT INTO `gameobject` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `position_x`, `position_y`, `position_z`, `orientation`, `rotation0`, `rotation1`, `rotation2`, `rotation3`, `spawntimesecs`, `animprogress`, `state`, `VerifiedBuild`) VALUES
+(71385, 190475, 571, 4197, 4538, 1, 16, 4938.364, 2454.5986, 320.39178, 3.769911, 0, 0, -0.9510565, 0.30901712, 0, 0, 0, 12340),
+(200045, 192626, 571, 4197, 4538, 1, 32, 4938.364, 2454.5986, 320.39178, 3.769911, 0, 0, -0.9510565, 0.30901712, 0, 0, 0, 12340),
+(71386, 190487, 571, 4197, 4539, 1, 16, 4939.4854, 3339.6526, 376.87494, 0.890117, 0, 0, 0.43051052, 0.90258557, 0, 0, 0, 12340),
+(200046, 192627, 571, 4197, 4539, 1, 32, 4939.4854, 3339.6526, 376.87494, 0.890117, 0, 0, 0.43051052, 0.90258557, 0, 0, 0, 12340),
+(200047, 194960, 571, 4197, 4612, 1, 16, 4394.2964, 2357.411, 376.2978, 3.769911, 0, 0, -0.9510565, 0.30901712, 0, 0, 0, 12340),
+(71387, 194959, 571, 4197, 4612, 1, 32, 4394.2964, 2357.411, 376.2978, 3.769911, 0, 0, -0.9510565, 0.30901712, 0, 0, 0, 12340),
+(200048, 194963, 571, 4197, 4611, 1, 16, 4392.1494, 3300.9258, 372.42868, 0.890117, 0, 0, 0.43051052, 0.90258557, 0, 0, 0, 12340),
+(71388, 194962, 571, 4197, 4611, 1, 32, 4392.1494, 3300.9258, 372.42868, 0.890117, 0, 0, 0.43051052, 0.90258557, 0, 0, 0, 12340);
+
+-- Attacker banners at Eastspark and Westspark
+UPDATE `gameobject` SET `phaseMask` = 64 WHERE `guid` IN (67242, 67252);
+
+-- Factory phases in The Chilled Quagmire
+DELETE FROM `spell_area` WHERE `spell` IN (56617, 56618) AND `area` = 4589;
+INSERT INTO `spell_area` (`area`, `spell`, `quest_start`, `quest_start_status`, `quest_end`, `quest_end_status`, `autocast`, `aura_spell`, `racemask`, `gender`) VALUES
+(4589, 56617, 0, 64, 0, 11, 1, 0, 0, 2),
+(4589, 56618, 0, 64, 0, 11, 1, 0, 0, 2);
