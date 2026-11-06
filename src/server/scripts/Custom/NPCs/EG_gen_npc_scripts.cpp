@@ -1569,6 +1569,72 @@ private:
     InstanceScript* _instance;
 };
 
+enum UlduarFocusedLaserMisc
+{
+    SPELL_FOCUSED_LASER_PERIODIC = 64684,
+    SPELL_FOCUSED_LASER_SUMMONER = 64685
+};
+
+// 34181 - Focused Laser
+struct EG_npc_ulduar_focused_laser : public PassiveAI
+{
+    EG_npc_ulduar_focused_laser(Creature* creature) : PassiveAI(creature), _checkTimer(0) { }
+
+    void IsSummonedBy(WorldObject* summoner) override
+    {
+        DoCastSelf(SPELL_FOCUSED_LASER_PERIODIC, true);
+
+        if (Unit* owner = summoner->ToUnit())
+            me->CastSpell(owner, SPELL_FOCUSED_LASER_SUMMONER, true);
+
+        ChaseFixateTarget();
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (_checkTimer <= diff)
+        {
+            ChaseFixateTarget();
+            _checkTimer = 2000;
+        }
+        else
+            _checkTimer -= diff;
+    }
+
+private:
+    void ChaseFixateTarget()
+    {
+        Unit* target = ObjectAccessor::GetUnit(*me, _fixateGuid);
+        if (!target || !target->IsAlive() || !me->IsValidAttackTarget(target))
+        {
+            target = me->SelectNearestTarget(150.0f);
+            if (!target)
+            {
+                _fixateGuid.Clear();
+                me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
+                return;
+            }
+
+            _fixateGuid = target->GetGUID();
+        }
+
+        if (MovementGenerator const* base = me->GetMotionMaster()->GetMovementGenerator([](MovementGenerator const* movegen) -> bool
+        {
+            return movegen->GetMovementGeneratorType() == CHASE_MOTION_TYPE;
+        }))
+        {
+            ChaseMovementGenerator const* chase = static_cast<ChaseMovementGenerator const*>(base);
+            if (chase->GetTarget() != target)
+                me->GetMotionMaster()->MoveChase(target, 0.f, false);
+        }
+        else
+            me->GetMotionMaster()->MoveChase(target, 0.f, false);
+    }
+
+    uint32 _checkTimer;
+    ObjectGuid _fixateGuid;
+};
+
 void AddSC_EG_gen_npc_scripts()
 {
     RegisterCreatureAI(EG_npc_damage_test_controller);
@@ -1584,4 +1650,5 @@ void AddSC_EG_gen_npc_scripts()
     RegisterCreatureAI(EG_npc_mimiron_bomb_bot);
     RegisterCreatureAI(EG_npc_kologarn_focused_eyebeam);
     RegisterCreatureAI(EG_npc_kologarn_arm);
+    RegisterCreatureAI(EG_npc_ulduar_focused_laser);
 }
