@@ -972,6 +972,18 @@ void Battlefield::SendWorldStateToMap(uint32 variable, uint32 value) const
             player->SendDirectMessage(packet);
 }
 
+void Battlefield::SetSpawnGroupActive(uint32 spawnGroupId, bool active) const
+{
+    Map* battleMap = GetBattleMap();
+    if (!battleMap || battleMap->IsSpawnGroupActive(spawnGroupId) == active)
+        return;
+
+    if (active)
+        battleMap->SpawnGroupSpawn(spawnGroupId, true);
+    else
+        battleMap->SpawnGroupDespawn(spawnGroupId, true);
+}
+
 void Battlefield::InitializePhaseTimes()
 {
     Seconds const cycleDuration = Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START);

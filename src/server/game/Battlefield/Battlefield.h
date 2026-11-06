@@ -285,6 +285,7 @@ public:
     Creature* GetCreature(ObjectGuid guid) const;
     GameObject* GetGameObject(ObjectGuid guid) const;
     void SendWorldStateToMap(uint32 variable, uint32 value) const;
+    void SetSpawnGroupActive(uint32 spawnGroupId, bool active) const;
 
 protected:
     void InitializePhaseTimes();

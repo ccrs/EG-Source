@@ -22,6 +22,7 @@
 #include "Duration.h"
 #include "ObjectGuid.h"
 #include "SharedDefines.h"
+#include <array>
 #include <initializer_list>
 #include <unordered_map>
 #include <vector>
@@ -125,11 +126,12 @@ public:
 
 struct BattlefieldBuildingInfo
 {
-    BattlefieldBuildingInfo(uint8 id, uint32 worldState, uint32 entry, BattlefieldBuildingType type) : BattlefieldBuildingInfo(BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_BUILDING, id, worldState, entry), type) { }
-    BattlefieldBuildingInfo(BattlefieldEntityInfo const info, BattlefieldBuildingType type) : Info(info), Type(type) { }
+    BattlefieldBuildingInfo(uint8 id, uint32 worldState, uint32 entry, BattlefieldBuildingType type, uint32 hordeSpawnGroupId = 0, uint32 allianceSpawnGroupId = 0) : BattlefieldBuildingInfo(BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_BUILDING, id, worldState, entry), type, hordeSpawnGroupId, allianceSpawnGroupId) { }
+    BattlefieldBuildingInfo(BattlefieldEntityInfo const info, BattlefieldBuildingType type, uint32 hordeSpawnGroupId = 0, uint32 allianceSpawnGroupId = 0) : Info(info), Type(type), SpawnGroupIds{ hordeSpawnGroupId, allianceSpawnGroupId } { }
 
     BattlefieldEntityInfo Info;
     BattlefieldBuildingType Type;
+    std::array<uint32, PVP_TEAMS_COUNT> SpawnGroupIds;
 };
 
 class BattlefieldBuilding : public BattlefieldEntity
@@ -142,15 +144,18 @@ public:
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void SaveWorldState() override;
 
+    virtual PvPTeamId GetFactionPvPTeamId() const { return GetPvPTeamId(); }
     virtual void Reset() { }
     virtual void ChangeTeam() { }
-    virtual void Update(std::vector<Player*> const& /*players*/, Seconds /*diff*/) { }
+    virtual void Update(std::vector<Player*> const& players, Seconds diff);
     virtual bool Damage();
     virtual bool Destroy();
     GameObjectDestructibleState GetDestructibleState() const;
+    void UpdateSpawnGroups() const;
 
     BattlefieldBuildingType BuildingType;
     BattlefieldBuildingState State;
+    std::array<uint32, PVP_TEAMS_COUNT> SpawnGroupIds;
 
 protected:
     std::vector<GameObject*> GetGameObjects() const;
@@ -166,6 +171,7 @@ public:
 
     void OnObjectCreate(WorldObject* object) override;
     void InitializeState() override;
+    PvPTeamId GetFactionPvPTeamId() const override;
     void Reset() override;
     void ChangeTeam() override;
 
@@ -176,7 +182,7 @@ private:
 
 struct BattlefieldCapturePointInfo
 {
-    BattlefieldCapturePointInfo(uint8 id, uint32 worldState, std::initializer_list<uint32> hordeEntryList, std::initializer_list<uint32> allianceEntryList, uint8 graveyardId, bool capturable, bool startsWithAttacker, bool keepsOwner) : Info(BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_CAPTUREPOINT, id, worldState, hordeEntryList, allianceEntryList), BATTLEFIELD_BUILDING_TYPE_WORKSHOP), GraveyardId(graveyardId), Capturable(capturable), StartsWithAttacker(startsWithAttacker), KeepsOwner(keepsOwner) { }
+    BattlefieldCapturePointInfo(uint8 id, uint32 worldState, std::initializer_list<uint32> hordeEntryList, std::initializer_list<uint32> allianceEntryList, uint8 graveyardId, bool capturable, bool startsWithAttacker, bool keepsOwner, uint32 hordeSpawnGroupId = 0, uint32 allianceSpawnGroupId = 0) : Info(BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_CAPTUREPOINT, id, worldState, hordeEntryList, allianceEntryList), BATTLEFIELD_BUILDING_TYPE_WORKSHOP, hordeSpawnGroupId, allianceSpawnGroupId), GraveyardId(graveyardId), Capturable(capturable), StartsWithAttacker(startsWithAttacker), KeepsOwner(keepsOwner) { }
 
     BattlefieldBuildingInfo Info;
     uint8 GraveyardId;

@@ -77,7 +77,7 @@ bool BattlefieldEntity::ValidateObjectGUID(ObjectGuid reference) const
     });
 }
 
-BattlefieldBuilding::BattlefieldBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info) : BattlefieldEntity(battlefield, info.Info), BuildingType(info.Type), State(BATTLEFIELD_BUILDING_STATE_NONE)
+BattlefieldBuilding::BattlefieldBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info) : BattlefieldEntity(battlefield, info.Info), BuildingType(info.Type), State(BATTLEFIELD_BUILDING_STATE_NONE), SpawnGroupIds(info.SpawnGroupIds)
 {
 }
 
@@ -108,6 +108,11 @@ void BattlefieldBuilding::SaveWorldState()
     sWorld->setWorldState(Info.WorldState, State);
 }
 
+void BattlefieldBuilding::Update(std::vector<Player*> const& /*players*/, Seconds /*diff*/)
+{
+    UpdateSpawnGroups();
+}
+
 bool BattlefieldBuilding::Damage()
 {
     if (GetDestructibleState() >= GO_DESTRUCTIBLE_DAMAGED)
@@ -134,6 +139,14 @@ GameObjectDestructibleState BattlefieldBuilding::GetDestructibleState() const
         return GO_DESTRUCTIBLE_INTACT;
 
     return GameObjectDestructibleState((State - BATTLEFIELD_BUILDING_STATE_NEUTRAL_INTACT) % 3);
+}
+
+void BattlefieldBuilding::UpdateSpawnGroups() const
+{
+    PvPTeamId const factionPvPTeamId = GetFactionPvPTeamId();
+    for (PvPTeamId spawnTeam : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE })
+        if (uint32 const spawnGroupId = SpawnGroupIds[spawnTeam])
+            Battle->SetSpawnGroupActive(spawnGroupId, spawnTeam == factionPvPTeamId);
 }
 
 std::vector<GameObject*> BattlefieldBuilding::GetGameObjects() const
@@ -200,6 +213,11 @@ void BattlefieldDestructibleBuilding::InitializeState()
     SaveWorldState();
 }
 
+PvPTeamId BattlefieldDestructibleBuilding::GetFactionPvPTeamId() const
+{
+    return BuildingType == BATTLEFIELD_BUILDING_TYPE_TOWER ? Battle->GetAttackingTeam() : Battle->GetControllingTeam();
+}
+
 void BattlefieldDestructibleBuilding::Reset()
 {
     BattlefieldBuilding::Reset();
@@ -227,6 +245,8 @@ void BattlefieldDestructibleBuilding::ChangeTeam()
     if (uint32 const faction = GetFaction())
         for (GameObject* gameObject : GetGameObjects())
             gameObject->SetFaction(faction);
+
+    UpdateSpawnGroups();
 }
 
 PvPTeamId BattlefieldDestructibleBuilding::GetOwnerPvPTeamId() const
@@ -242,7 +262,7 @@ uint32 BattlefieldDestructibleBuilding::GetFaction() const
     if (!Battle->IsEnabled())
         return FACTION_FRIENDLY;
 
-    return Battle->GetFaction(BuildingType == BATTLEFIELD_BUILDING_TYPE_TOWER ? Battle->GetAttackingTeam() : Battle->GetControllingTeam());
+    return Battle->GetFaction(GetFactionPvPTeamId());
 }
 
 BattlefieldCapturePoint::BattlefieldCapturePoint(Battlefield* battlefield, BattlefieldCapturePointInfo const info) : BattlefieldBuilding(battlefield, info.Info), GraveyardId(info.GraveyardId), Capturable(info.Capturable), StartsWithAttacker(info.StartsWithAttacker), KeepsOwner(info.KeepsOwner), _slider(0.0f), _contested(false)
@@ -377,6 +397,7 @@ void BattlefieldCapturePoint::SetOwner(PvPTeamId pvpTeamId)
         return;
 
     UpdateWorldState();
+    UpdateSpawnGroups();
     if (BattlefieldGraveyard* graveyard = Battle->GetGraveyard(GraveyardId))
         graveyard->SetOwner(pvpTeamId);
 
