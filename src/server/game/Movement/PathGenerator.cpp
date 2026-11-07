@@ -26,6 +26,8 @@
 #include "DetourNavMeshQuery.h"
 #include "Metric.h"
 
+static constexpr float SURFACE_SWIM_DEPTH = 1.0f; // EG
+
 ////////////////// PathGenerator //////////////////
 PathGenerator::PathGenerator(WorldObject const* owner) :
     _polyLength(0), _type(PATHFIND_BLANK), _useStraightPath(false),
@@ -159,6 +161,10 @@ dtPolyRef PathGenerator::GetPolyByLocation(float const* point, float* distance) 
 void PathGenerator::BuildPolyPath(G3D::Vector3 const& startPos, G3D::Vector3 const& endPos)
 {
     // *** getting start/end poly logic ***
+
+    bool surfaceRetry = false; // EG
+    dtPolyRef partialPath[MAX_PATH_LENGTH];
+    uint32 partialLength = 0;
 
     float distToStartPoly, distToEndPoly;
     float startPoint[VERTEX_SIZE] = {startPos.y, startPos.z, startPos.x};
@@ -438,6 +444,35 @@ void PathGenerator::BuildPolyPath(G3D::Vector3 const& startPos, G3D::Vector3 con
             _type = PATHFIND_NOPATH;
             return;
         }
+
+        Creature const* creature = _source->ToCreature();
+        uint16 startPolyFlags = 0;
+        if (_pathPolyRefs[_polyLength - 1] != endPoly && creature && creature->CanSwim() && creature->IsInWater() // EG
+            && dtStatusSucceed(_navMesh->getPolyFlags(startPoly, &startPolyFlags)) && !(startPolyFlags & NAV_WATER))
+        {
+            if (_sourceLiquidData)
+            {
+                dtQueryFilter waterFilter;
+                waterFilter.setIncludeFlags(NAV_WATER);
+                float const waterPoint[VERTEX_SIZE] = { startPos.y, _sourceLiquidData->level, startPos.x };
+                float const extents[VERTEX_SIZE] = { 3.0f, 5.0f, 3.0f };
+                dtPolyRef waterPoly = INVALID_POLYREF;
+                if (dtStatusSucceed(_navMeshQuery->findNearestPoly(waterPoint, extents, &waterFilter, &waterPoly, nullptr)) && waterPoly != INVALID_POLYREF)
+                {
+                    dtPolyRef retryPath[MAX_PATH_LENGTH];
+                    int retryLength = 0;
+                    if (dtStatusSucceed(_navMeshQuery->findPath(waterPoly, endPoly, startPoint, endPoint, &_filter, retryPath, &retryLength, MAX_PATH_LENGTH))
+                        && retryLength && retryPath[retryLength - 1] == endPoly)
+                    {
+                        memcpy(partialPath, _pathPolyRefs, _polyLength * sizeof(dtPolyRef));
+                        partialLength = _polyLength;
+                        memcpy(_pathPolyRefs, retryPath, retryLength * sizeof(dtPolyRef));
+                        _polyLength = uint32(retryLength);
+                        surfaceRetry = true;
+                    }
+                }
+            }
+        }
     }
 
     // by now we know what type of path we can get
@@ -450,6 +485,22 @@ void PathGenerator::BuildPolyPath(G3D::Vector3 const& startPos, G3D::Vector3 con
 
     // generate the point-path out of our up-to-date poly-path
     BuildPointPath(startPoint, endPoint);
+
+    if (surfaceRetry && !(_type & (PATHFIND_NOPATH | PATHFIND_SHORTCUT)) && _pathPoints.size() >= 2) // EG
+    {
+        G3D::Vector3 const& riseEnd = _pathPoints[1];
+        float const collisionHeight = _source->GetCollisionHeight();
+        float x, y, z;
+        _source->GetHitSpherePointFor({ riseEnd.x, riseEnd.y, riseEnd.z + collisionHeight }, x, y, z);
+        if (!_source->GetMap()->isInLineOfSight(x, y, z, riseEnd.x, riseEnd.y, riseEnd.z + collisionHeight, _source->GetPhaseMask(), LINEOFSIGHT_ALL_CHECKS, VMAP::ModelIgnoreFlags::Nothing))
+        {
+            memcpy(_pathPolyRefs, partialPath, partialLength * sizeof(dtPolyRef));
+            _polyLength = partialLength;
+            _type = PATHFIND_INCOMPLETE;
+            AddFarFromPolyFlags(startFarFromPoly, endFarFromPoly);
+            BuildPointPath(startPoint, endPoint);
+        }
+    }
 }
 
 void PathGenerator::BuildPointPath(const float *startPoint, const float *endPoint)
@@ -548,8 +599,16 @@ void PathGenerator::BuildPointPath(const float *startPoint, const float *endPoin
 
 void PathGenerator::NormalizePath()
 {
+    Creature const* creature = _source->ToCreature(); // EG
+    bool const swimBelowSurface = creature && creature->CanSwim() && !creature->CanFly();
     for (uint32 i = 0; i < _pathPoints.size(); ++i)
-        _source->UpdateAllowedPositionZ(_pathPoints[i].x, _pathPoints[i].y, _pathPoints[i].z);
+    {
+        float const z = _pathPoints[i].z;
+        float groundZ = z;
+        _source->UpdateAllowedPositionZ(_pathPoints[i].x, _pathPoints[i].y, _pathPoints[i].z, &groundZ);
+        if (swimBelowSurface && i > 0 && _pathPoints[i].z < z && _pathPoints[i].z > groundZ) // EG
+            _pathPoints[i].z = std::max(_pathPoints[i].z - SURFACE_SWIM_DEPTH, groundZ);
+    }
 }
 
 void PathGenerator::BuildShortcut()
@@ -599,6 +658,8 @@ void PathGenerator::CreateFilter()
 
 void PathGenerator::UpdateFilter()
 {
+    _sourceLiquidData.reset(); // EG
+
     // allow creatures to cheat and use different movement types if they are moved
     // forcefully into terrain they can't normally move in
     if (Unit const* _sourceUnit = _source->ToUnit())
@@ -625,6 +686,8 @@ NavTerrainFlag PathGenerator::GetNavTerrain(float x, float y, float z)
     ZLiquidStatus liquidStatus = _source->GetMap()->GetLiquidStatus(_source->GetPhaseMask(), x, y, z, {}, &data, _source->GetCollisionHeight());
     if (liquidStatus == LIQUID_MAP_NO_WATER)
         return NAV_GROUND;
+
+    _sourceLiquidData = data; // EG
 
     switch (data.type_flags)
     {
