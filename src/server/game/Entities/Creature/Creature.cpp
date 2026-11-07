@@ -2072,7 +2072,6 @@ void Creature::setDeathState(DeathState s)
         ResetPlayerDamageReq();
 
         SetCannotReachTarget(false);
-        UpdateMovementFlags();
 
         ClearUnitState(UNIT_STATE_ALL_ERASABLE);
 
@@ -2098,7 +2097,12 @@ void Creature::setDeathState(DeathState s)
         Unit::setDeathState(ALIVE);
 
         if (!IsPet())
+        {
             LoadCreaturesAddon();
+            InitializeMovementFlags(); // EG
+        }
+
+        UpdateMovementFlags(); // EG
     }
 }
 
@@ -2687,7 +2691,7 @@ void Creature::InitializeMovementFlags()
     if (GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_NO_MOVE_FLAGS_UPDATE)
         return;
 
-    if (GetMovementTemplate().Ground == CreatureGroundMovementType::Hover || HasAuraType(SPELL_AURA_HOVER) || GetAnimTier() == AnimTier::Hover)
+    if (GetMovementTemplate().Ground == CreatureGroundMovementType::Hover || HasAuraType(SPELL_AURA_HOVER) || (GetCreatureAddon() && AnimTier(GetCreatureAddon()->animTier) == AnimTier::Hover))
     {
         if (IsAlive())
             SetHover(true, true, true);
