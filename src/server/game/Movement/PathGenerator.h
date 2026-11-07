@@ -103,6 +103,7 @@ class TC_GAME_API PathGenerator
         dtNavMeshQuery const* _navMeshQuery;    // the nav mesh query used to find the path
 
         dtQueryFilter _filter;  // use single filter for all movements, update it when needed
+        Optional<LiquidData> _sourceLiquidData; // EG
 
         void SetStartPosition(G3D::Vector3 const& point) { _startPosition = point; }
         void SetEndPosition(G3D::Vector3 const& point) { _actualEndPosition = point; _endPosition = point; }
