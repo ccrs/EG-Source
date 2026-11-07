@@ -5297,6 +5297,12 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->AttributesCu |= SPELL_ATTR0_CU_ALLOW_GHOST_TARGET;
     });
 
+    // Parachute (Flame Leviathan Smoke Trail)
+    ApplySpellFix({ 61242 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->AuraInterruptFlags |= AURA_INTERRUPT_FLAG_LANDING;
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];

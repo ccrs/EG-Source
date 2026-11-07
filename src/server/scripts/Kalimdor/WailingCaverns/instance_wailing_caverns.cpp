@@ -84,6 +84,11 @@ public:
                         }
                     }
                     break;
+                case DATA_MUTANUS_THE_DEVOURER: // EG
+                    if (state == DONE)
+                        if (Creature* disciple = GetCreature(DATA_DISCIPLE))
+                            disciple->AI()->DoAction(ACTION_MUTANUS_DEFEATED);
+                    break;
                 default:
                     break;
             }

@@ -18,6 +18,7 @@
 #ifndef _PATH_GENERATOR_H
 #define _PATH_GENERATOR_H
 
+#include "Duration.h"
 #include "MapDefines.h"
 #include "DetourNavMesh.h"
 #include "DetourNavMeshQuery.h"
@@ -104,9 +105,17 @@ class TC_GAME_API PathGenerator
 
         dtQueryFilter _filter;  // use single filter for all movements, update it when needed
         Optional<LiquidData> _sourceLiquidData; // EG
-        dtPolyRef _unreachableRetryWaterPoly;
-        dtPolyRef _unreachableRetryEndPoly;
-        uint16 _unreachableRetryIncludeFlags;
+
+        struct UnreachableSurfaceRetry // EG
+        {
+            dtPolyRef StartPoly = INVALID_POLYREF;
+            dtPolyRef WaterPoly = INVALID_POLYREF;
+            dtPolyRef EndPoly = INVALID_POLYREF;
+            uint16 IncludeFlags = 0;
+            TimePoint Expiry;
+        };
+
+        UnreachableSurfaceRetry _unreachableSurfaceRetry; // EG
 
         void SetStartPosition(G3D::Vector3 const& point) { _startPosition = point; }
         void SetEndPosition(G3D::Vector3 const& point) { _actualEndPosition = point; _endPosition = point; }

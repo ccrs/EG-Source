@@ -236,6 +236,12 @@ bool EG::CleanRaceMasquerade::Execute(uint64, uint32)
     return false;
 }
 
+float Creature::GetMinSwimDepth(bool swimming) const
+{
+    float const startDepth = std::max(CREATURE_SURFACE_SWIM_DEPTH, GetCollisionHeight() * CREATURE_SWIM_START_DEPTH_FACTOR);
+    return swimming ? startDepth * CREATURE_SWIM_STOP_DEPTH_RATIO : startDepth;
+}
+
 void Creature::ProcessDelayedLOSEntries()
 {
     if (_LOSQueue.empty() || !IsAlive() || HasUnitState(UNIT_STATE_SIGHTLESS) || !IsAIEnabled())
@@ -275,6 +281,19 @@ void Creature::InsertLOSEntry(ObjectGuid guid)
         _uniqueLOSEntries.insert(guid);
         _LOSQueue.push_back(guid);
     }
+}
+
+bool Creature::IsInSwimmableWater() const
+{
+    if (!IsInWater())
+        return false;
+
+    Optional<float> const liquidLevel = GetLiquidLevel();
+    float const floorZ = GetStaticFloorZ();
+    if (!liquidLevel || floorZ <= INVALID_HEIGHT)
+        return true;
+
+    return *liquidLevel - floorZ >= GetMinSwimDepth(IsSwimming());
 }
 
 void Creature::LoadCreaturesAddonAuras()

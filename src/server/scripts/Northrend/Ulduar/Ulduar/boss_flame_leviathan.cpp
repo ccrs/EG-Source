@@ -1384,32 +1384,6 @@ class achievement_orbit_uary : public AchievementCriteriaScript
         }
 };
 
-// 62399 - Overload Circuit
-class spell_overload_circuit : public AuraScript
-{
-    PrepareAuraScript(spell_overload_circuit);
-
-    bool Validate(SpellInfo const* /*spellInfo*/) override
-    {
-        return ValidateSpellInfo({ SPELL_SYSTEMS_SHUTDOWN });
-    }
-
-    void PeriodicTick(AuraEffect const* /*aurEff*/)
-    {
-        if (!GetTarget()->GetMap()->IsDungeon() || int32(GetTarget()->GetAppliedAuras().count(GetId())) < (GetTarget()->GetMap()->Is25ManRaid() ? 4 : 2))
-            return;
-
-        GetTarget()->CastSpell(nullptr, SPELL_SYSTEMS_SHUTDOWN, true);
-        if (Unit* veh = GetTarget()->GetVehicleBase())
-            veh->CastSpell(nullptr, SPELL_SYSTEMS_SHUTDOWN, true);
-    }
-
-    void Register() override
-    {
-        OnEffectPeriodic += AuraEffectPeriodicFn(spell_overload_circuit::PeriodicTick, EFFECT_1, SPELL_AURA_PERIODIC_DUMMY);
-    }
-};
-
 // 62292 - Blaze
 class spell_tar_blaze : public AuraScript
 {
@@ -2050,7 +2024,6 @@ void AddSC_boss_flame_leviathan()
     new achievement_nuked_from_orbit();
     new achievement_orbit_uary();
 
-    RegisterSpellScript(spell_overload_circuit);
     RegisterSpellScript(spell_tar_blaze);
     RegisterSpellScript(EG_spell_pool_of_tar_blaze_damage);
     RegisterSpellScript(spell_load_into_catapult);

@@ -34,6 +34,8 @@ class HomeMovementGenerator : public MovementGeneratorMedium< T, HomeMovementGen
         void DoDeactivate(T*);
         void DoFinalize(T*, bool, bool);
 
+        void UnitSpeedChanged() override { this->AddFlag(MOVEMENTGENERATOR_FLAG_SPEED_UPDATE_PENDING); }
+
     private:
         void SetTargetLocation(T*);
 };

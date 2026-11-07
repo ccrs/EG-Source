@@ -125,7 +125,7 @@ enum DiscipleMisc
 // 3678 - Disciple of Naralex
 struct npc_disciple_of_naralex : public ScriptedAI
 {
-    npc_disciple_of_naralex(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript()), _summons(creature), _eventStarted(false) { } // EG
+    npc_disciple_of_naralex(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript()), _summons(creature), _eventStarted(false), _awaitingMutanus(false) { } // EG
 
     void Reset() override
     {
@@ -197,6 +197,11 @@ struct npc_disciple_of_naralex : public ScriptedAI
     {
         if (action == ACTION_ALL_DONE)
             Talk(SAY_ALL_DONE);
+        else if (action == ACTION_MUTANUS_DEFEATED && _awaitingMutanus) // EG
+        {
+            _awaitingMutanus = false;
+            _events.ScheduleEvent(EVENT_PROGRESS_21, 0s);
+        }
     }
 
     void WaypointPathEnded(uint32/* waypointId*/, uint32 pathId) override
@@ -324,6 +329,12 @@ struct npc_disciple_of_naralex : public ScriptedAI
                         break;
                     case EVENT_PROGRESS_21:
                     {
+                        if (_instance->GetBossState(DATA_MUTANUS_THE_DEVOURER) != DONE) // EG
+                        {
+                            _awaitingMutanus = true;
+                            break;
+                        }
+
                         if (Creature* naralex = _instance->GetCreature(DATA_NARALEX))
                         {
                             naralex->SetStandState(UNIT_STAND_STATE_STAND);
@@ -446,6 +457,7 @@ private:
     InstanceScript* _instance;
     SummonList _summons; // EG
     bool _eventStarted; // EG
+    bool _awaitingMutanus; // EG
 };
 
 void AddSC_wailing_caverns()
