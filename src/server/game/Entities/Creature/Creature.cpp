@@ -2687,13 +2687,15 @@ void Creature::InitializeMovementFlags()
     if (GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_NO_MOVE_FLAGS_UPDATE)
         return;
 
-    if (GetMovementTemplate().Ground == CreatureGroundMovementType::Hover || HasAuraType(SPELL_AURA_HOVER))
+    if (GetMovementTemplate().Ground == CreatureGroundMovementType::Hover || HasAuraType(SPELL_AURA_HOVER) || GetAnimTier() == AnimTier::Hover)
     {
         if (IsAlive())
             SetHover(true, true, true);
         else
             AddStoredMovementFlag(MOVEMENTFLAG_HOVER);
     }
+    else
+        RemoveStoredMovementFlag(MOVEMENTFLAG_HOVER);
 
     bool isInAir = IsInAir(*this, GetFloorZ());
     if (GetMovementTemplate().Flight == CreatureFlightMovementType::DisableGravity)
@@ -2703,6 +2705,9 @@ void Creature::InitializeMovementFlags()
         else
             AddStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
     }
+    else
+        RemoveStoredMovementFlag(MOVEMENTFLAG_DISABLE_GRAVITY);
+
     if (GetMovementTemplate().Flight == CreatureFlightMovementType::CanFly)
     {
         if (isInAir)
@@ -2710,8 +2715,15 @@ void Creature::InitializeMovementFlags()
         else
             AddStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
     }
-    if (CanEnterWater() && CanSwim() && IsInWater())
+    else
+        RemoveStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
+
+    if ((Unit::CanSwim() || IsPet()) && IsInWater())
         SetSwim(true, true);
+    else if (HasPersistentSwimCapability())
+        AddStoredMovementFlag(MOVEMENTFLAG_SWIMMING);
+    else
+        RemoveStoredMovementFlag(MOVEMENTFLAG_SWIMMING);
 }
 
 void Creature::UpdateMovementFlags()
@@ -2757,11 +2769,11 @@ void Creature::UpdateMovementFlags()
 
     if (IsInWater())
     {
-        if (CanSwim() && !IsSwimming() && HasStoredMovementFlag(MOVEMENTFLAG_SWIMMING))
+        if (CanSwim() && !IsSwimming())
             SetSwim(true, true);
     }
     else if (IsSwimming())
-        SetSwim(false, true);
+        SetSwim(false, HasPersistentSwimCapability());
 }
 
 CreatureMovementData const& Creature::GetMovementTemplate() const
@@ -2792,6 +2804,11 @@ bool Creature::CanEnterWater() const
         return true;
 
     return GetMovementTemplate().IsSwimAllowed();
+}
+
+bool Creature::HasPersistentSwimCapability() const
+{
+    return IsPet() || (HasUnitFlag(UNIT_FLAG_CAN_SWIM) && Unit::CanSwim());
 }
 
 void Creature::AllLootRemovedFromCorpse()
