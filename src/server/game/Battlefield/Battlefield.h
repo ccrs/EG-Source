@@ -123,6 +123,7 @@ enum BattlefieldValue : uint8
     BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START,
     BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END,
     BATTLEFIELD_VALUE_TIME_NEXT_RESURRECTION,
+    BATTLEFIELD_VALUE_TIME_LAST_BUILDING_UPDATE,
     BATTLEFIELD_VALUE_MAX
 };
 
@@ -285,7 +286,7 @@ public:
     Creature* GetCreature(ObjectGuid guid) const;
     GameObject* GetGameObject(ObjectGuid guid) const;
     void SendWorldStateToMap(uint32 variable, uint32 value) const;
-    void SetSpawnGroupActive(uint32 spawnGroupId, bool active) const;
+    void SetSpawnGroupSpawned(uint32 spawnGroupId, bool spawned);
 
 protected:
     void InitializePhaseTimes();

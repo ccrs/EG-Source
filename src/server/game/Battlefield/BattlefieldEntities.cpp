@@ -108,7 +108,7 @@ void BattlefieldBuilding::SaveWorldState()
     sWorld->setWorldState(Info.WorldState, State);
 }
 
-void BattlefieldBuilding::Update(std::vector<Player*> const& /*players*/, Seconds /*diff*/)
+void BattlefieldBuilding::Update(std::vector<Player*> const& /*players*/, Milliseconds /*diff*/)
 {
     UpdateSpawnGroups();
 }
@@ -139,14 +139,6 @@ GameObjectDestructibleState BattlefieldBuilding::GetDestructibleState() const
         return GO_DESTRUCTIBLE_INTACT;
 
     return GameObjectDestructibleState((State - BATTLEFIELD_BUILDING_STATE_NEUTRAL_INTACT) % 3);
-}
-
-void BattlefieldBuilding::UpdateSpawnGroups() const
-{
-    PvPTeamId const factionPvPTeamId = GetFactionPvPTeamId();
-    for (PvPTeamId spawnTeam : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE })
-        if (uint32 const spawnGroupId = SpawnGroupIds[spawnTeam])
-            Battle->SetSpawnGroupActive(spawnGroupId, spawnTeam == factionPvPTeamId);
 }
 
 std::vector<GameObject*> BattlefieldBuilding::GetGameObjects() const
@@ -184,6 +176,14 @@ void BattlefieldBuilding::UpdateWorldState()
 {
     SaveWorldState();
     Battle->SendWorldStateToMap(Info.WorldState, State);
+}
+
+void BattlefieldBuilding::UpdateSpawnGroups() const
+{
+    PvPTeamId const factionPvPTeamId = GetFactionPvPTeamId();
+    for (PvPTeamId spawnTeam : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE })
+        if (uint32 const spawnGroupId = SpawnGroupIds[spawnTeam])
+            Battle->SetSpawnGroupSpawned(spawnGroupId, spawnTeam == factionPvPTeamId);
 }
 
 BattlefieldDestructibleBuilding::BattlefieldDestructibleBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info) : BattlefieldBuilding(battlefield, info)
@@ -285,7 +285,7 @@ void BattlefieldCapturePoint::OnObjectCreate(WorldObject* object)
 void BattlefieldCapturePoint::InitializeState()
 {
     PvPTeamId owner = Battle->GetControllingTeam();
-    if (Capturable && Battle->IsEnabled())
+    if (Capturable && KeepsOwner && Battle->IsEnabled())
     {
         uint64 const savedState = sWorld->getWorldState(Info.WorldState);
         if (savedState == BATTLEFIELD_BUILDING_STATE_HORDE_INTACT)
@@ -312,7 +312,7 @@ void BattlefieldCapturePoint::ChangeTeam()
         SetOwner(Battle->GetControllingTeam());
 }
 
-void BattlefieldCapturePoint::Update(std::vector<Player*> const& players, Seconds diff)
+void BattlefieldCapturePoint::Update(std::vector<Player*> const& players, Milliseconds diff)
 {
     BattlefieldBuilding::Update(players, diff);
 
@@ -363,7 +363,7 @@ void BattlefieldCapturePoint::Update(std::vector<Player*> const& players, Second
         fullTime = maxTime - (maxTime - minTime) * float(std::clamp<uint32>(std::abs(superiority), minSuperiority, maxSuperiority) - minSuperiority) / float(maxSuperiority - minSuperiority);
 
     float const previousSlider = _slider;
-    _slider = std::clamp(_slider + (superiority > 0 ? 100.0f : -100.0f) * float(diff.count()) / fullTime, 0.0f, 100.0f);
+    _slider = std::clamp(_slider + (superiority > 0 ? 100.0f : -100.0f) * std::chrono::duration<float>(diff).count() / fullTime, 0.0f, 100.0f);
     if (uint32(_slider) != uint32(previousSlider))
         SendCaptureBarValue();
 
@@ -449,6 +449,9 @@ BattlefieldGraveyard::BattlefieldGraveyard(Battlefield* battlefield, Battlefield
 
 void BattlefieldGraveyard::AddPlayerToResurrectionQueue(Player* player)
 {
+    if (player->IsAlive())
+        return;
+
     if (ResurrectionQueue.insert(player->GetGUID()).second)
         player->CastSpell(player, SPELL_BATTLEFIELD_WAITING_FOR_RESURRECT, true);
 }
@@ -473,10 +476,16 @@ void BattlefieldGraveyard::ResurrectPlayers()
         if (Creature* spirit = Battle->GetCreature(*spiritIt->second.begin()))
             spirit->CastSpell(spirit, SPELL_BATTLEFIELD_SPIRIT_HEAL, true);
 
-    for (ObjectGuid playerGuid : ResurrectionQueue)
+    GuidUnorderedSet const resurrectionQueue = std::move(ResurrectionQueue);
+    ResurrectionQueue.clear();
+    for (ObjectGuid playerGuid : resurrectionQueue)
     {
         Player* player = ObjectAccessor::FindPlayer(playerGuid);
-        if (!player || player->IsAlive() || player->GetZoneId() != Battle->GetZoneId())
+        if (!player)
+            continue;
+
+        player->RemoveAurasDueToSpell(SPELL_BATTLEFIELD_WAITING_FOR_RESURRECT);
+        if (player->IsAlive() || player->GetZoneId() != Battle->GetZoneId())
             continue;
 
         player->CastSpell(player, SPELL_BATTLEFIELD_RESURRECTION_VISUAL, true);
@@ -484,8 +493,6 @@ void BattlefieldGraveyard::ResurrectPlayers()
         player->CastSpell(player, SPELL_BATTLEFIELD_SPIRIT_HEAL_MANA, true);
         player->SpawnCorpseBones(false);
     }
-
-    ResurrectionQueue.clear();
 }
 
 void BattlefieldGraveyard::SetOwner(PvPTeamId pvpTeamId)
@@ -507,7 +514,7 @@ void BattlefieldGraveyard::SetOwner(PvPTeamId pvpTeamId)
     for (ObjectGuid playerGuid : resurrectionQueue)
     {
         Player* player = ObjectAccessor::FindPlayer(playerGuid);
-        if (!player || player->GetTeamId() == TeamIdByPvPTeamId(pvpTeamId))
+        if (!player || player->IsAlive() || player->GetTeamId() == TeamIdByPvPTeamId(pvpTeamId))
             continue;
 
         if (BattlefieldGraveyard const* graveyard = Battle->GetClosestGraveyard(player))

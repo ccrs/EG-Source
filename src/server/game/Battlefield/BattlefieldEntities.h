@@ -147,11 +147,10 @@ public:
     virtual PvPTeamId GetFactionPvPTeamId() const { return GetPvPTeamId(); }
     virtual void Reset() { }
     virtual void ChangeTeam() { }
-    virtual void Update(std::vector<Player*> const& players, Seconds diff);
+    virtual void Update(std::vector<Player*> const& players, Milliseconds diff);
     virtual bool Damage();
     virtual bool Destroy();
     GameObjectDestructibleState GetDestructibleState() const;
-    void UpdateSpawnGroups() const;
 
     BattlefieldBuildingType BuildingType;
     BattlefieldBuildingState State;
@@ -161,6 +160,7 @@ protected:
     std::vector<GameObject*> GetGameObjects() const;
     bool SetState(PvPTeamId pvpTeamId, GameObjectDestructibleState destructibleState);
     void UpdateWorldState();
+    void UpdateSpawnGroups() const;
 };
 
 class BattlefieldDestructibleBuilding : public BattlefieldBuilding
@@ -201,7 +201,7 @@ public:
     void InitializeState() override;
     void Reset() override;
     void ChangeTeam() override;
-    void Update(std::vector<Player*> const& players, Seconds diff) override;
+    void Update(std::vector<Player*> const& players, Milliseconds diff) override;
 
     virtual void SetOwner(PvPTeamId pvpTeamId);
     virtual void Attack(PvPTeamId /*pvpTeamId*/) { }

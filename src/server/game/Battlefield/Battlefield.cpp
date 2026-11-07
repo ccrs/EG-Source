@@ -59,6 +59,7 @@ Battlefield::~Battlefield()
 bool Battlefield::SetupBattlefield()
 {
     ScheduleNextGraveyardResurrect();
+    Values.Set(BATTLEFIELD_VALUE_TIME_LAST_BUILDING_UPDATE, GameTime::Now());
     QueueEvent<BattlefieldBuildingUpdateEvent>(ObjectGuid::Empty, Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_BUILDING_UPDATE));
     return true;
 }
@@ -734,11 +735,13 @@ void Battlefield::ProcessBuildingUpdate(BattlefieldEventKey /*key*/)
             if (Player* player = ObjectAccessor::FindPlayer(playerGuid))
                 players.push_back(player);
 
-    Seconds const interval = Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_BUILDING_UPDATE);
+    TimePoint const now = GameTime::Now();
+    Milliseconds const diff = std::chrono::duration_cast<Milliseconds>(now - Values.Get<TimePoint>(BATTLEFIELD_VALUE_TIME_LAST_BUILDING_UPDATE));
+    Values.Set(BATTLEFIELD_VALUE_TIME_LAST_BUILDING_UPDATE, now);
     for (BattlefieldBuildingContainer::value_type const& pair : _buildings)
-        pair.second->Update(players, interval);
+        pair.second->Update(players, diff);
 
-    QueueEvent<BattlefieldBuildingUpdateEvent>(ObjectGuid::Empty, interval);
+    QueueEvent<BattlefieldBuildingUpdateEvent>(ObjectGuid::Empty, Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_BUILDING_UPDATE));
 }
 
 void Battlefield::ProcessBattleStatusClear(BattlefieldEventKey /*key*/)
@@ -972,14 +975,14 @@ void Battlefield::SendWorldStateToMap(uint32 variable, uint32 value) const
             player->SendDirectMessage(packet);
 }
 
-void Battlefield::SetSpawnGroupActive(uint32 spawnGroupId, bool active) const
+void Battlefield::SetSpawnGroupSpawned(uint32 spawnGroupId, bool spawned)
 {
     Map* battleMap = GetBattleMap();
-    if (!battleMap || battleMap->IsSpawnGroupActive(spawnGroupId) == active)
+    if (!battleMap || battleMap->IsSpawnGroupActive(spawnGroupId) == spawned)
         return;
 
-    if (active)
-        battleMap->SpawnGroupSpawn(spawnGroupId, true);
+    if (spawned)
+        battleMap->SpawnGroupSpawn(spawnGroupId, true, true);
     else
         battleMap->SpawnGroupDespawn(spawnGroupId, true);
 }

@@ -379,29 +379,26 @@ uint8 BattlefieldWintergrasp::GetWintergraspGraveyardId(Creature* creature) cons
 {
     switch (creature->GetSpawnId())
     {
-        case 88315: // Horde base spirit
-            return GRAVEYARD_HORDE;
-        case 88321: // Alliance base spirit
-            return GRAVEYARD_ALLIANCE;
-        case 88319: // Broken Temple graveyard areaId != Broken Temple workshop areaId
-        case 88313:
+        case SPAWNID_WINTERGRASP_TAUNKA_SPIRIT_GUIDE_KEEP:
+        case SPAWNID_WINTERGRASP_DWARVEN_SPIRIT_GUIDE_KEEP:
+            return GRAVEYARD_KEEP;
+        case SPAWNID_WINTERGRASP_TAUNKA_SPIRIT_GUIDE_WORKSHOP_NE:
+        case SPAWNID_WINTERGRASP_DWARVEN_SPIRIT_GUIDE_WORKSHOP_NE:
+            return GRAVEYARD_WORKSHOP_NE;
+        case SPAWNID_WINTERGRASP_TAUNKA_SPIRIT_GUIDE_WORKSHOP_NW:
+        case SPAWNID_WINTERGRASP_DWARVEN_SPIRIT_GUIDE_WORKSHOP_NW:
             return GRAVEYARD_WORKSHOP_NW;
+        case SPAWNID_WINTERGRASP_TAUNKA_SPIRIT_GUIDE_WORKSHOP_SW:
+        case SPAWNID_WINTERGRASP_DWARVEN_SPIRIT_GUIDE_WORKSHOP_SW:
+            return GRAVEYARD_WORKSHOP_SW;
+        case SPAWNID_WINTERGRASP_TAUNKA_SPIRIT_GUIDE_WORKSHOP_SE:
+        case SPAWNID_WINTERGRASP_DWARVEN_SPIRIT_GUIDE_WORKSHOP_SE:
+            return GRAVEYARD_WORKSHOP_SE;
+        case SPAWNID_WINTERGRASP_TAUNKA_SPIRIT_GUIDE_HORDE_LANDING:
+            return GRAVEYARD_HORDE;
+        case SPAWNID_WINTERGRASP_DWARVEN_SPIRIT_GUIDE_ALLIANCE_LANDING:
+            return GRAVEYARD_ALLIANCE;
         default:
-            switch (creature->GetAreaId())
-            {
-                case AREA_WINTERGRASP_FORTRESS:
-                    return GRAVEYARD_KEEP;
-                case AREA_THE_SUNKEN_RING:
-                    return GRAVEYARD_WORKSHOP_NE;
-                case AREA_THE_BROKEN_TEMPLE:
-                    return GRAVEYARD_WORKSHOP_NW;
-                case AREA_WESTPARK_WORKSHOP:
-                    return GRAVEYARD_WORKSHOP_SW;
-                case AREA_EASTPARK_WORKSHOP:
-                    return GRAVEYARD_WORKSHOP_SE;
-                default:
-                    break;
-            }
             break;
     }
 
@@ -624,13 +621,13 @@ void WintergraspGraveyard::InitializeState()
     switch (Info.Id)
     {
         case GRAVEYARD_KEEP:
-            State = Battle->GetControllingTeam() == PVP_TEAM_HORDE ? BATTLEFIELD_GRAVEYARD_STATE_HORDE : BATTLEFIELD_GRAVEYARD_STATE_ALLIANCE;
+            SetOwner(Battle->GetControllingTeam());
             break;
         case GRAVEYARD_HORDE:
-            State = BATTLEFIELD_GRAVEYARD_STATE_HORDE;
+            SetOwner(PVP_TEAM_HORDE);
             break;
         case GRAVEYARD_ALLIANCE:
-            State = BATTLEFIELD_GRAVEYARD_STATE_ALLIANCE;
+            SetOwner(PVP_TEAM_ALLIANCE);
             break;
         default:
             break;
