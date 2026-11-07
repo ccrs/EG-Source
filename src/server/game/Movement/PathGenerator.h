@@ -104,6 +104,9 @@ class TC_GAME_API PathGenerator
 
         dtQueryFilter _filter;  // use single filter for all movements, update it when needed
         Optional<LiquidData> _sourceLiquidData; // EG
+        dtPolyRef _unreachableRetryWaterPoly;
+        dtPolyRef _unreachableRetryEndPoly;
+        uint16 _unreachableRetryIncludeFlags;
 
         void SetStartPosition(G3D::Vector3 const& point) { _startPosition = point; }
         void SetEndPosition(G3D::Vector3 const& point) { _actualEndPosition = point; _endPosition = point; }
