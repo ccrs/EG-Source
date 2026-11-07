@@ -47,6 +47,22 @@ public:
             LoadObjectData(creatureData, nullptr);
         }
 
+        void OnCreatureCreate(Creature* creature) override // EG
+        {
+            InstanceScript::OnCreatureCreate(creature);
+
+            switch (creature->GetEntry())
+            {
+                case NPC_DISCIPLE:
+                case NPC_NARALEX:
+                    if (GetBossState(DATA_MUTANUS_THE_DEVOURER) == DONE)
+                        creature->DespawnOrUnsummon(0s, 7_days);
+                    break;
+                default:
+                    break;
+            }
+        }
+
         bool SetBossState(uint32 type, EncounterState state) override
         {
             if (!InstanceScript::SetBossState(type, state))
