@@ -18,7 +18,6 @@
 #ifndef _PATH_GENERATOR_H
 #define _PATH_GENERATOR_H
 
-#include "Duration.h"
 #include "MapDefines.h"
 #include "DetourNavMesh.h"
 #include "DetourNavMeshQuery.h"
@@ -106,17 +105,6 @@ class TC_GAME_API PathGenerator
         dtQueryFilter _filter;  // use single filter for all movements, update it when needed
         Optional<LiquidData> _sourceLiquidData; // EG
 
-        struct UnreachableSurfaceRetry // EG
-        {
-            dtPolyRef StartPoly = INVALID_POLYREF;
-            dtPolyRef WaterPoly = INVALID_POLYREF;
-            dtPolyRef EndPoly = INVALID_POLYREF;
-            uint16 IncludeFlags = 0;
-            TimePoint Expiry;
-        };
-
-        UnreachableSurfaceRetry _unreachableSurfaceRetry; // EG
-
         void SetStartPosition(G3D::Vector3 const& point) { _startPosition = point; }
         void SetEndPosition(G3D::Vector3 const& point) { _actualEndPosition = point; _endPosition = point; }
         void SetActualEndPosition(G3D::Vector3 const& point) { _actualEndPosition = point; }
@@ -134,6 +122,7 @@ class TC_GAME_API PathGenerator
 
         dtPolyRef GetPathPolyByPosition(dtPolyRef const* polyPath, uint32 polyPathSize, float const* Point, float* Distance = nullptr) const;
         dtPolyRef GetPolyByLocation(float const* Point, float* Distance) const;
+        dtPolyRef FindLiquidSurfacePoly(G3D::Vector3 const& pos, float level) const; // EG
         bool HaveTile(G3D::Vector3 const& p) const;
 
         void BuildPolyPath(G3D::Vector3 const& startPos, G3D::Vector3 const& endPos);

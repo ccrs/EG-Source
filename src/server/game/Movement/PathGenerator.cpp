@@ -22,14 +22,11 @@
 #include "MMapManager.h"
 #include "Log.h"
 #include "DisableMgr.h"
-#include "GameTime.h"
 #include "DetourCommon.h"
 #include "DetourNavMeshQuery.h"
 #include "Metric.h"
 
-static constexpr float SURFACE_RETRY_TERRAIN_TOLERANCE = 0.5f; // EG
-static constexpr float SURFACE_RETRY_TERRAIN_STEP = 1.0f; // EG
-static constexpr Seconds SURFACE_RETRY_UNREACHABLE_DURATION = 5s; // EG
+static constexpr float LIQUID_COLUMN_FLOOR_TOLERANCE = 0.5f; // EG
 
 ////////////////// PathGenerator //////////////////
 PathGenerator::PathGenerator(WorldObject const* owner) :
@@ -161,13 +158,25 @@ dtPolyRef PathGenerator::GetPolyByLocation(float const* point, float* distance) 
     return INVALID_POLYREF;
 }
 
+dtPolyRef PathGenerator::FindLiquidSurfacePoly(G3D::Vector3 const& pos, float level) const
+{
+    if (_source->GetMap()->GetHeight(_source->GetPhaseMask(), pos.x, pos.y, level) > pos.z + LIQUID_COLUMN_FLOOR_TOLERANCE)
+        return INVALID_POLYREF;
+
+    dtQueryFilter liquidFilter;
+    liquidFilter.setIncludeFlags(NAV_WATER | NAV_MAGMA_SLIME);
+    float const point[VERTEX_SIZE] = { pos.y, level, pos.x };
+    float const extents[VERTEX_SIZE] = { 3.0f, 5.0f, 3.0f };
+    dtPolyRef polyRef = INVALID_POLYREF;
+    if (dtStatusFailed(_navMeshQuery->findNearestPoly(point, extents, &liquidFilter, &polyRef, nullptr)))
+        return INVALID_POLYREF;
+
+    return polyRef;
+}
+
 void PathGenerator::BuildPolyPath(G3D::Vector3 const& startPos, G3D::Vector3 const& endPos)
 {
     // *** getting start/end poly logic ***
-
-    dtPolyRef surfaceRetryWaterPoly = INVALID_POLYREF; // EG
-    dtPolyRef partialPath[MAX_PATH_LENGTH];
-    uint32 partialLength = 0;
 
     float distToStartPoly, distToEndPoly;
     float startPoint[VERTEX_SIZE] = {startPos.y, startPos.z, startPos.x};
@@ -175,6 +184,39 @@ void PathGenerator::BuildPolyPath(G3D::Vector3 const& startPos, G3D::Vector3 con
 
     dtPolyRef startPoly = GetPolyByLocation(startPoint, &distToStartPoly);
     dtPolyRef endPoly = GetPolyByLocation(endPoint, &distToEndPoly);
+
+    dtPolyRef startAlt = INVALID_POLYREF; // EG
+    dtPolyRef endAlt = INVALID_POLYREF;
+    bool endAltChecked = false;
+    Creature const* creature = _useRaycast ? nullptr : _source->ToCreature();
+    bool const swimmer = creature && creature->CanSwim() && !creature->CanFly();
+    auto findEndAlt = [&]() -> dtPolyRef
+    {
+        endAltChecked = true;
+        uint16 polyFlags = 0;
+        LiquidData endLiquid;
+        if (dtStatusFailed(_navMesh->getPolyFlags(endPoly, &polyFlags)) || (polyFlags & (NAV_WATER | NAV_MAGMA_SLIME)) || !(_source->GetMap()->GetLiquidStatus(_source->GetPhaseMask(), endPos.x, endPos.y, endPos.z, {}, &endLiquid, creature->GetCollisionHeight()) & MAP_LIQUID_STATUS_SWIMMING))
+            return INVALID_POLYREF;
+
+        return FindLiquidSurfacePoly(endPos, endLiquid.level);
+    };
+
+    if (swimmer)
+    {
+        uint16 polyFlags = 0;
+        if (_sourceLiquidData && dtStatusSucceed(_navMesh->getPolyFlags(startPoly, &polyFlags)) && !(polyFlags & (NAV_WATER | NAV_MAGMA_SLIME)))
+            startAlt = FindLiquidSurfacePoly(startPos, _sourceLiquidData->level);
+
+        if (startAlt != INVALID_POLYREF && creature->IsInSwimmableWater())
+        {
+            endAlt = findEndAlt();
+            if (endAlt == INVALID_POLYREF)
+            {
+                std::swap(startPoly, startAlt);
+                distToStartPoly = 0.0f;
+            }
+        }
+    }
 
     _type = PathType(PATHFIND_NORMAL);
 
@@ -448,37 +490,22 @@ void PathGenerator::BuildPolyPath(G3D::Vector3 const& startPos, G3D::Vector3 con
             return;
         }
 
-        Creature const* creature = _source->ToCreature();
-        uint16 startPolyFlags = 0;
-        if (_pathPolyRefs[_polyLength - 1] != endPoly && creature && creature->CanSwim() && creature->IsInSwimmableWater() // EG
-            && dtStatusSucceed(_navMesh->getPolyFlags(startPoly, &startPolyFlags)) && !(startPolyFlags & (NAV_WATER | NAV_MAGMA_SLIME)))
+        if (swimmer && _pathPolyRefs[_polyLength - 1] != endPoly) // EG
         {
-            if (_sourceLiquidData)
+            if (!endAltChecked)
+                endAlt = findEndAlt();
+
+            if (startAlt != INVALID_POLYREF || endAlt != INVALID_POLYREF)
             {
-                dtQueryFilter waterFilter;
-                waterFilter.setIncludeFlags(NAV_WATER | NAV_MAGMA_SLIME);
-                float const waterPoint[VERTEX_SIZE] = { startPos.y, _sourceLiquidData->level, startPos.x };
-                float const extents[VERTEX_SIZE] = { 3.0f, 5.0f, 3.0f };
-                dtPolyRef waterPoly = INVALID_POLYREF;
-                bool const foundWaterPoly = dtStatusSucceed(_navMeshQuery->findNearestPoly(waterPoint, extents, &waterFilter, &waterPoly, nullptr)) && waterPoly != INVALID_POLYREF;
-                bool const knownUnreachable = startPoly == _unreachableSurfaceRetry.StartPoly && waterPoly == _unreachableSurfaceRetry.WaterPoly
-                    && endPoly == _unreachableSurfaceRetry.EndPoly && _filter.getIncludeFlags() == _unreachableSurfaceRetry.IncludeFlags
-                    && GameTime::Now() < _unreachableSurfaceRetry.Expiry;
-                if (foundWaterPoly && !knownUnreachable)
+                dtPolyRef const retryStart = startAlt != INVALID_POLYREF ? startAlt : startPoly;
+                dtPolyRef const retryEnd = endAlt != INVALID_POLYREF ? endAlt : endPoly;
+                dtPolyRef retryPath[MAX_PATH_LENGTH];
+                int retryLength = 0;
+                if (dtStatusSucceed(_navMeshQuery->findPath(retryStart, retryEnd, startPoint, endPoint, &_filter, retryPath, &retryLength, MAX_PATH_LENGTH)) && retryLength && retryPath[retryLength - 1] == retryEnd)
                 {
-                    dtPolyRef retryPath[MAX_PATH_LENGTH];
-                    int retryLength = 0;
-                    if (dtStatusSucceed(_navMeshQuery->findPath(waterPoly, endPoly, startPoint, endPoint, &_filter, retryPath, &retryLength, MAX_PATH_LENGTH))
-                        && retryLength && retryPath[retryLength - 1] == endPoly)
-                    {
-                        memcpy(partialPath, _pathPolyRefs, _polyLength * sizeof(dtPolyRef));
-                        partialLength = _polyLength;
-                        memcpy(_pathPolyRefs, retryPath, retryLength * sizeof(dtPolyRef));
-                        _polyLength = uint32(retryLength);
-                        surfaceRetryWaterPoly = waterPoly;
-                    }
-                    else
-                        _unreachableSurfaceRetry = { startPoly, waterPoly, endPoly, _filter.getIncludeFlags(), GameTime::Now() + SURFACE_RETRY_UNREACHABLE_DURATION };
+                    memcpy(_pathPolyRefs, retryPath, retryLength * sizeof(dtPolyRef));
+                    _polyLength = uint32(retryLength);
+                    endPoly = retryEnd;
                 }
             }
         }
@@ -494,50 +521,6 @@ void PathGenerator::BuildPolyPath(G3D::Vector3 const& startPos, G3D::Vector3 con
 
     // generate the point-path out of our up-to-date poly-path
     BuildPointPath(startPoint, endPoint);
-
-    if (surfaceRetryWaterPoly != INVALID_POLYREF) // EG
-    {
-        bool restorePartialPath = (_type & (PATHFIND_NOPATH | PATHFIND_SHORT | PATHFIND_SHORTCUT)) || _pathPoints.size() < 2;
-        if (!restorePartialPath)
-        {
-            Map const* map = _source->GetMap();
-            G3D::Vector3 const& riseEnd = _pathPoints[1];
-            float const collisionHeight = _source->GetCollisionHeight();
-
-            restorePartialPath = !map->isInLineOfSight(startPos.x, startPos.y, startPos.z + collisionHeight, riseEnd.x, riseEnd.y, riseEnd.z + collisionHeight,
-                _source->GetPhaseMask(), LINEOFSIGHT_ALL_CHECKS, VMAP::ModelIgnoreFlags::Nothing);
-
-            if (!restorePartialPath)
-            {
-                G3D::Vector3 const rise = riseEnd - startPos;
-                uint32 const steps = std::max<uint32>(1, uint32(std::ceil(rise.length() / SURFACE_RETRY_TERRAIN_STEP)));
-                int32 side = 0;
-                for (uint32 i = 0; i <= steps && !restorePartialPath; ++i)
-                {
-                    G3D::Vector3 const point = startPos + rise * (float(i) / float(steps));
-                    float const terrainZ = map->GetGridHeight(point.x, point.y);
-                    if (terrainZ <= INVALID_HEIGHT || std::fabs(point.z - terrainZ) <= SURFACE_RETRY_TERRAIN_TOLERANCE)
-                        continue;
-
-                    int32 const pointSide = point.z > terrainZ ? 1 : -1;
-                    if (!side)
-                        side = pointSide;
-                    else if (pointSide != side)
-                        restorePartialPath = true;
-                }
-            }
-        }
-
-        if (restorePartialPath)
-        {
-            _unreachableSurfaceRetry = { startPoly, surfaceRetryWaterPoly, endPoly, _filter.getIncludeFlags(), GameTime::Now() + SURFACE_RETRY_UNREACHABLE_DURATION };
-            memcpy(_pathPolyRefs, partialPath, partialLength * sizeof(dtPolyRef));
-            _polyLength = partialLength;
-            _type = PATHFIND_INCOMPLETE;
-            AddFarFromPolyFlags(startFarFromPoly, endFarFromPoly);
-            BuildPointPath(startPoint, endPoint);
-        }
-    }
 }
 
 void PathGenerator::BuildPointPath(const float *startPoint, const float *endPoint)
