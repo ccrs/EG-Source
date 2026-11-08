@@ -27,6 +27,7 @@ EndScriptData */
 #include "LootMgr.h"
 #include "Map.h"
 #include "MotionMaster.h"
+#include "MoveSplineInit.h"
 #include "ObjectAccessor.h"
 #include "ScriptedCreature.h"
 #include "ScriptMgr.h"
@@ -658,6 +659,7 @@ struct boss_stormcaller_brundir : public BossAI
                 case EVENT_LIGHTNING_TENDRILS:
                 {
                     me->GetMotionMaster()->Clear(MOTION_PRIORITY_NORMAL);
+                    me->StopMoving();
                     me->AttackStop();
                     DoCast(me, SPELL_LIGHTNING_TENDRILS);
                     DoCast(me, SPELL_LIGHTNING_TENDRILS_VISUAL);
@@ -677,8 +679,13 @@ struct boss_stormcaller_brundir : public BossAI
                 case EVENT_TAKEOFF:
                 {
                     me->SetDisableGravity(true);
-                    Position takeoffPos(me->GetPositionX(), me->GetPositionY(), me->GetFloorZ() + HOVER_HEIGHT, me->GetOrientation());
-                    me->GetMotionMaster()->MoveTakeoff(POINT_BRUNDIR_TAKEOFF, takeoffPos, 7.0f);
+                    Position const takeoffPos(me->GetPositionX(), me->GetPositionY(), me->GetFloorZ() + HOVER_HEIGHT, me->GetOrientation());
+                    std::function<void(Movement::MoveSplineInit&)> initializer = [takeoffPos](Movement::MoveSplineInit& init)
+                    {
+                        init.MoveTo(takeoffPos.GetPositionX(), takeoffPos.GetPositionY(), takeoffPos.GetPositionZ(), false);
+                        init.SetVelocity(30.0f);
+                    };
+                    me->GetMotionMaster()->LaunchMoveSpline(std::move(initializer), POINT_BRUNDIR_TAKEOFF);
                     break;
                 }
                 case EVENT_FLIGHT:
