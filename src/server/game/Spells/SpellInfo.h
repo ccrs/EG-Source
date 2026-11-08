@@ -166,6 +166,7 @@ enum SpellCustomAttributes
     SPELL_ATTR0_CU_CAN_TARGET_ANY_PRIVATE_OBJECT = 0x02000000, // reserved for master branch
     SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET         = 0x04000000, // EG - force SMSG_SPELL_COOLDOWN on cast
     SPELL_ATTR0_CU_UNINTERRUPTIBLE               = 0x08000000, // EG - cast cannot be stopped by interrupt effects or silence auras
+    SPELL_ATTR0_CU_ALLOW_GHOST_TARGET            = 0x10000000, // EG - can target ghosts as well as living units
 
     SPELL_ATTR0_CU_NEGATIVE                      = SPELL_ATTR0_CU_NEGATIVE_EFF0 | SPELL_ATTR0_CU_NEGATIVE_EFF1 | SPELL_ATTR0_CU_NEGATIVE_EFF2
 };
