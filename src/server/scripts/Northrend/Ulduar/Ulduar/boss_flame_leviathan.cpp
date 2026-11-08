@@ -746,6 +746,8 @@ struct boss_flame_leviathan_defense_turret : public TurretAI
 {
     boss_flame_leviathan_defense_turret(Creature* creature) : TurretAI(creature) { }
 
+    void EnterEvadeMode(EvadeReason /*why*/) override { }
+
     void DamageTaken(Unit* who, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
     {
         if (!CanAIAttack(who))
@@ -754,9 +756,7 @@ struct boss_flame_leviathan_defense_turret : public TurretAI
 
     bool CanAIAttack(Unit const* who) const override
     {
-        if (!who || who->GetTypeId() != TYPEID_PLAYER || !who->GetVehicle() || who->GetVehicleBase()->GetEntry() != NPC_SEAT)
-            return false;
-        return true;
+        return who && who->GetTypeId() == TYPEID_PLAYER && who->GetVehicleBase() && who->GetVehicleBase() == me->GetVehicleBase();
     }
 };
 

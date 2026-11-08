@@ -5303,6 +5303,12 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->AuraInterruptFlags |= AURA_INTERRUPT_FLAG_LANDING;
     });
 
+    // Hookshot Aura (Flame Leviathan)
+    ApplySpellFix({ 62336 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).TriggerSpell = 0;
+    });
+
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)
     {
         SpellInfo* spellInfo = mSpellInfoMap[i];
