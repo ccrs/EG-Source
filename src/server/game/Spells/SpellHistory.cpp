@@ -315,9 +315,8 @@ void SpellHistory::StartCooldown(SpellInfo const* spellInfo, uint32 itemId, Spel
             }
         }
 
-        // EG - force SMSG_SPELL_COOLDOWN on cast
-        if (spellInfo->HasAttribute(SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET))
-            needsCooldownPacket = true;
+        if (spell && spellInfo->HasAttribute(SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET)) // EG
+            needsCooldownPacket = false;
 
         // replace negative cooldowns by 0
         if (cooldown < 0)

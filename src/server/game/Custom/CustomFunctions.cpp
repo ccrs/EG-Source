@@ -35,7 +35,9 @@
 #include "ScriptMgr.h"
 #include "SmartAI.h"
 #include "Spell.h"
+#include "SpellHistory.h"
 #include "SpellMgr.h"
+#include "SpellPackets.h"
 #include "TemporarySummon.h"
 #include "Transport.h"
 #include "Unit.h"
@@ -438,6 +440,27 @@ Item* Player::GetWeaponForDamageMods(WeaponAttackType attackType) const
         return nullptr;
 
     return item;
+}
+
+void Spell::SendForcedSpellCooldown()
+{
+    Unit* unitCaster = m_caster->ToUnit();
+    if (!unitCaster || IsIgnoringCooldowns() || m_spellInfo->IsCooldownStartedOnEvent() || m_spellInfo->IsPassive())
+        return;
+
+    Player* player = unitCaster->GetCharmerOrOwnerPlayerOrPlayerItself();
+    if (!player)
+        return;
+
+    uint32 cooldown = unitCaster->GetSpellHistory()->GetRemainingCooldown(m_spellInfo);
+    if (!cooldown)
+        return;
+
+    WorldPackets::Spells::SpellCooldown spellCooldown;
+    spellCooldown.Caster = unitCaster->GetGUID();
+    spellCooldown.Flags = SPELL_COOLDOWN_FLAG_NONE;
+    spellCooldown.SpellCooldowns.emplace_back(m_spellInfo->Id, cooldown);
+    player->SendDirectMessage(spellCooldown.Write());
 }
 
 void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicleExitParameters params)

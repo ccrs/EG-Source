@@ -376,6 +376,7 @@ class TC_GAME_API Spell
         void SendSpellStart();
         void SendSpellGo();
         void SendSpellCooldown();
+        void SendForcedSpellCooldown(); // EG
         void SendLogExecute();
         void ExecuteLogEffectTakeTargetPower(uint8 effIndex, Unit* target, uint32 powerType, uint32 powerTaken, float gainMultiplier);
         void ExecuteLogEffectExtraAttacks(uint8 effIndex, Unit* victim, uint32 attCount);
