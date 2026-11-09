@@ -31,6 +31,7 @@
 #include "ObjectGuid.h"
 #include "Optional.h"
 #include "OutdoorPvPMgr.h"
+#include "Pet.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
 #include "ScriptMgr.h"
