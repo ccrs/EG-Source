@@ -434,7 +434,11 @@ void Group::ConvertFromBattlefieldGroup()
     InitializeStoredGroup(ObjectAccessor::FindConnectedPlayer(m_leaderGuid));
     for (MemberSlot const& member : m_memberSlots)
     {
-        InitializeStoredMember(member, ObjectAccessor::FindConnectedPlayer(member.guid));
+        Player* player = ObjectAccessor::FindConnectedPlayer(member.guid);
+        InitializeStoredMember(member, player);
+        if (player && !player->GetGroup())
+            player->SetGroup(this, member.group);
+
         sScriptMgr->OnGroupAddMember(this, member.guid);
     }
 
