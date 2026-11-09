@@ -2722,7 +2722,7 @@ void Creature::InitializeMovementFlags()
     else
         RemoveStoredMovementFlag(MOVEMENTFLAG_CAN_FLY);
 
-    if ((Unit::CanSwim() || IsPet()) && IsInWater())
+    if ((Unit::CanSwim() || IsPet()) && IsInSwimmableWater())
         SetSwim(true, true);
     else if (HasPersistentSwimCapability())
         AddStoredMovementFlag(MOVEMENTFLAG_SWIMMING);
@@ -2771,13 +2771,9 @@ void Creature::UpdateMovementFlags()
         if (IsAlive() && !IsHovering() && HasStoredMovementFlag(MOVEMENTFLAG_HOVER))
             SetHover(true, true, true);
 
-    if (IsInWater())
-    {
-        if (CanSwim() && !IsSwimming())
-            SetSwim(true, true);
-    }
-    else if (IsSwimming())
-        SetSwim(false, HasPersistentSwimCapability());
+    bool const shouldSwim = CanSwim() && IsInSwimmableWater();
+    if (shouldSwim != IsSwimming())
+        SetSwim(shouldSwim, HasPersistentSwimCapability());
 }
 
 CreatureMovementData const& Creature::GetMovementTemplate() const
@@ -3046,7 +3042,11 @@ bool Creature::SetSwim(bool enable, bool temporally/* = false*/)
     else
         RemoveStoredMovementFlag(MOVEMENTFLAG_SWIMMING);
 
-    return Unit::SetSwim(enable, temporally);
+    if (!Unit::SetSwim(enable, temporally))
+        return false;
+
+    PropagateSpeedChange();
+    return true;
 }
 
 bool Creature::SetCanFly(bool enable, bool packetOnly/* = false*/, bool temporally/* = false*/)

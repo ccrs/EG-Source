@@ -283,6 +283,9 @@ struct TC_GAME_API CreatureMovementData
 static const uint32 CREATURE_REGEN_INTERVAL = 2 * IN_MILLISECONDS;
 static const uint32 PET_FOCUS_REGEN_INTERVAL = 4 * IN_MILLISECONDS;
 static const uint32 CREATURE_NOPATH_EVADE_TIME = 5 * IN_MILLISECONDS;
+static constexpr float CREATURE_SURFACE_SWIM_DEPTH = 1.0f; // EG - swimmers stay this far below the surface, so the water must be at least this deep
+static constexpr float CREATURE_SWIM_START_DEPTH_FACTOR = 0.75f; // EG - water depth, relative to the collision height, at which a creature starts swimming
+static constexpr float CREATURE_SWIM_STOP_DEPTH_RATIO = 0.75f; // EG - a swimming creature stops in water shallower than this fraction of its start depth
 
 static const uint8 MAX_KILL_CREDIT = 2;
 static const uint32 MAX_CREATURE_MODELS = 4;

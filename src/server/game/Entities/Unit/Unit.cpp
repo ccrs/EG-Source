@@ -3223,6 +3223,10 @@ void Unit::ProcessPositionDataChanged(PositionFullTerrainStatus const& data)
 {
     ZLiquidStatus oldLiquidStatus = GetLiquidStatus();
     WorldObject::ProcessPositionDataChanged(data);
+    if (data.liquidInfo) // EG
+        _liquidLevel = data.liquidInfo->level;
+    else
+        _liquidLevel.reset();
     ProcessTerrainStatusUpdate(oldLiquidStatus, data.liquidInfo);
 }
 

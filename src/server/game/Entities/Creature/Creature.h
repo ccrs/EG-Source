@@ -396,6 +396,8 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool HasStoredMovementFlag(uint32 flag) const { return (_storedMovementFlags & flag) != 0; }
         uint32 GetStoredMovementFlags() const { return _storedMovementFlags; }
         bool HasPersistentSwimCapability() const;
+        float GetMinSwimDepth(bool swimming) const;
+        bool IsInSwimmableWater() const;
 
         void ProcessDelayedLOSEntries();
         LOSLockStatus GetLOSLockStatus() const { return _moveInLOSLockStatus; }
