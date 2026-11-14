@@ -12845,6 +12845,8 @@ void Unit::_ExitVehicle(Position const* exitPosition)
     // If we ask for a specific exit position, use that one. Otherwise allow scripts to modify it
     if (exitPosition)
         pos = *exitPosition;
+    else if (parameters.ExitPosition)
+        pos = *parameters.ExitPosition;
     else
     {
         // Start from vehicle world position. Keep vehicle orientation so that
