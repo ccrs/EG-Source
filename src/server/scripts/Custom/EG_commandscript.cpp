@@ -250,10 +250,6 @@ public:
         if (!player)
             return false;
 
-        // EG - Hardcore
-        if (CheckHardcore(handler, player))
-            return true;
-
         if (active)
         {
             player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_TRANSMOG_HIDE);
@@ -276,10 +272,6 @@ public:
         if (!player)
             return false;
 
-        // EG - Hardcore
-        if (CheckHardcore(handler, player))
-            return true;
-
         if (active)
         {
             player->RemoveCustomFlag(CustomFlagsIndex::CUSTOM_TRANSMOG_FLAGS, CustomFlags::CUSTOM_FLAG_TRANSMOG_HIDE_LEGENDARY);
@@ -301,10 +293,6 @@ public:
         Player* player = handler->GetSession()->GetPlayer();
         if (!player)
             return false;
-
-        // EG - Hardcore
-        if (CheckHardcore(handler, player))
-            return true;
 
         if (active)
         {
@@ -420,10 +408,6 @@ public:
         if (!player)
             return false;
 
-        // EG - Hardcore
-        if (CheckHardcore(handler, player))
-            return true;
-
         if (value > 11)
         {
             handler->SendSysMessage("Please use a value between 0 and 11.\nDisconnect and reconnect to see this setting applied.");
@@ -506,10 +490,6 @@ public:
         Player* player = handler->GetSession()->GetPlayer();
         if (!player)
             return false;
-
-        // EG - Hardcore
-        if (CheckHardcore(handler, player))
-            return true;
 
         CustomFlags flag = CustomFlags::CUSTOM_FLAG_NONE;
         switch (player->GetClass())
