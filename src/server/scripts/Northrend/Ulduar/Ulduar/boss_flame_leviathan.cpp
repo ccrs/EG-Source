@@ -185,6 +185,11 @@ enum FlameLeviathanMiscellanousData
     FOUR_SEATS                = 4,
 };
 
+enum FlameLeviathanActions
+{
+    ACTION_DEFENSE_TURRET_DESTROYED = 11
+};
+
 Position const FlameLeviathanCenter = { 354.8771f, -12.90240f, 409.803650f, 3.14f };
 Position const FlameLeviathanInfernoStart = { 390.93f, -13.91f, 409.81f, 3.14f };
 
@@ -202,15 +207,9 @@ Position const FlameLeviathanHodirBeacons[HODIR_SPAWNS] =
     { 326.0777f, -74.99034f, 409.887f, 0.0f },
 };
 
-static void ThrowOffSeatRider(Unit* seat)
+static int8 GetPairedSeatId(Unit const* seat)
 {
-    Vehicle* kit = seat->GetVehicleKit();
-    Unit* rider = kit ? kit->GetPassenger(SEAT_PLAYER) : nullptr;
-    if (!rider)
-        return;
-
-    seat->CastSpell(rider, SPELL_SMOKE_TRAIL, true);
-    rider->ExitVehicle();
+    return seat->GetTransSeat() ^ (seat->GetMap()->Is25ManRaid() ? 2 : 1);
 }
 
 struct boss_flame_leviathan : public BossAI
@@ -223,7 +222,8 @@ struct boss_flame_leviathan : public BossAI
     void Initialize()
     {
         ActiveTowersCount = 0;
-        Shutdown = 0;
+        DestroyedTurrets = 0;
+        Overloaded = false;
         ActiveTowers = false;
         Shutout = true;
         Unbroken = true;
@@ -262,8 +262,8 @@ struct boss_flame_leviathan : public BossAI
         me->RemoveAurasDueToSpell(SPELL_BUFF_TOWER_OF_LIFE);
 
         ActiveTowersCount = 0;
-        //resets shutdown counter to 0.  2 or 4 depending on raid mode
-        Shutdown = 0;
+        DestroyedTurrets = 0;
+        Overloaded = false;
         _pursueTarget.Clear();
 
         me->SetReactState(REACT_DEFENSIVE);
@@ -369,15 +369,54 @@ struct boss_flame_leviathan : public BossAI
 
     void SpellHit(WorldObject* /*caster*/, SpellInfo const* spellInfo) override
     {
-        if (spellInfo->Id == SPELL_START_THE_ENGINE)
-            if (Vehicle* vehicleKit = me->GetVehicleKit())
-                vehicleKit->InstallAllAccessories(false);
+        if (spellInfo->Id == SPELL_START_THE_ENGINE && me->GetVehicleKit())
+        {
+            DestroyedTurrets = 0;
+            for (auto const& [_, seat] : me->GetVehicleKit()->Seats)
+            {
+                Unit* passenger = ObjectAccessor::GetUnit(*me, seat.Passenger.Guid);
+                Vehicle* seatKit = passenger && passenger->GetEntry() == NPC_SEAT ? passenger->GetVehicleKit() : nullptr;
+                if (!seatKit)
+                    continue;
+
+                if (Unit* rider = seatKit->GetPassenger(SEAT_PLAYER))
+                {
+                    passenger->CastSpell(rider, SPELL_SMOKE_TRAIL, true);
+                    rider->ExitVehicle();
+                }
+
+                seatKit->InstallAllAccessories(false);
+            }
+        }
 
         if (spellInfo->Id == SPELL_ELECTROSHOCK)
             me->InterruptSpell(CURRENT_CHANNELED_SPELL);
 
         if (spellInfo->Id == SPELL_OVERLOAD_CIRCUIT)
-            ++Shutdown;
+            Overloaded = true;
+    }
+
+    void SetOverloadDevicesClickable(bool clickable)
+    {
+        for (auto const& [_, seat] : me->GetVehicleKit()->Seats)
+        {
+            if (Unit* passenger = ObjectAccessor::GetUnit(*me, seat.Passenger.Guid))
+                if (passenger->GetEntry() == NPC_SEAT)
+                    if (Vehicle* seatKit = passenger->GetVehicleKit())
+                        if (Unit* device = seatKit->GetPassenger(SEAT_DEVICE))
+                        {
+                            if (clickable)
+                            {
+                                device->SetNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
+                                device->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                            }
+                            else
+                            {
+                                device->RemoveNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
+                                device->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                            }
+                        }
+        }
     }
 
     uint32 GetData(uint32 type) const override
@@ -412,9 +451,11 @@ struct boss_flame_leviathan : public BossAI
 
         events.Update(diff);
 
-        if (Shutdown >= RAID_MODE(TWO_SEATS, FOUR_SEATS))
+        if (Overloaded)
         {
-            Shutdown = 0;
+            Overloaded = false;
+            DestroyedTurrets = 0;
+            SetOverloadDevicesClickable(false);
             events.CancelEvent(EVENT_SHUTDOWN);
             events.ScheduleEvent(EVENT_SHUTDOWN, 4s);
             me->RemoveAurasDueToSpell(SPELL_OVERLOAD_CIRCUIT);
@@ -452,9 +493,16 @@ struct boss_flame_leviathan : public BossAI
                     Talk(EMOTE_OVERLOAD);
                     me->CastSpell(me, SPELL_SYSTEMS_SHUTDOWN, true);
                     for (auto const& [_, seat] : me->GetVehicleKit()->Seats)
+                    {
                         if (Unit* passenger = ObjectAccessor::GetUnit(*me, seat.Passenger.Guid))
                             if (passenger->GetEntry() == NPC_SEAT)
-                                ThrowOffSeatRider(passenger);
+                                if (Vehicle* seatKit = passenger->GetVehicleKit())
+                                    if (Unit* rider = seatKit->GetPassenger(SEAT_PLAYER))
+                                    {
+                                        passenger->CastSpell(rider, SPELL_SMOKE_TRAIL, true);
+                                        rider->ExitVehicle();
+                                    }
+                    }
                     if (Shutout)
                         Shutout = false;
                     events.ScheduleEvent(EVENT_REPAIR, 4s);
@@ -591,6 +639,10 @@ struct boss_flame_leviathan : public BossAI
                     return;
                 }
                 break;
+            case ACTION_DEFENSE_TURRET_DESTROYED:
+                if (++DestroyedTurrets >= RAID_MODE(TWO_SEATS, FOUR_SEATS))
+                    SetOverloadDevicesClickable(true);
+                break;
             default:
                 break;
         }
@@ -641,7 +693,8 @@ private:
     }
 
     ObjectGuid _pursueTarget;
-    uint8 Shutdown;
+    uint8 DestroyedTurrets;
+    bool Overloaded;
     bool ActiveTowers;
     bool Shutout;
     bool Unbroken;
@@ -670,26 +723,55 @@ struct boss_flame_leviathan_seat : public ScriptedAI
             else if (Creature* leviathan = me->GetVehicleCreatureBase())
                 leviathan->AI()->Talk(SAY_PLAYER_RIDING);
 
-            if (Unit* turretPassenger = me->GetVehicleKit()->GetPassenger(SEAT_TURRET))
-                if (Creature* turret = turretPassenger->ToCreature())
+            for (int8 pairedSeatId : { me->GetTransSeat(), GetPairedSeatId(me) })
+            {
+                Unit* seat = me->GetVehicle()->GetPassenger(pairedSeatId);
+                if (!seat || seat->GetEntry() != NPC_SEAT)
+                    continue;
+
+                Vehicle* seatKit = seat->GetVehicleKit();
+                Unit* turretPassenger = seatKit ? seatKit->GetPassenger(SEAT_TURRET) : nullptr;
+                if (Creature* turret = turretPassenger ? turretPassenger->ToCreature() : nullptr)
                 {
-                    turret->ReplaceAllUnitFlags(UnitFlags(0)); // unselectable
+                    turret->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                     turret->AI()->AttackStart(who);
                 }
+            }
 
             me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
         }
-        else if (seatId == SEAT_TURRET)
+        else if (seatId == SEAT_TURRET && apply)
         {
-            if (apply)
+            Creature* turret = who->ToCreature();
+            if (!turret)
                 return;
 
-            if (Unit* device = ASSERT_NOTNULL(me->GetVehicleKit())->GetPassenger(SEAT_DEVICE))
+            for (int8 pairedSeatId : { me->GetTransSeat(), GetPairedSeatId(me) })
             {
-                device->SetNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
-                device->ReplaceAllUnitFlags(UnitFlags(0)); // unselectable
+                Unit* seat = me->GetVehicle()->GetPassenger(pairedSeatId);
+                Vehicle* seatKit = seat && seat->GetEntry() == NPC_SEAT ? seat->GetVehicleKit() : nullptr;
+                if (Unit* rider = seatKit ? seatKit->GetPassenger(SEAT_PLAYER) : nullptr)
+                {
+                    turret->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                    turret->AI()->AttackStart(rider);
+                    break;
+                }
             }
         }
+    }
+
+    void GetUnitVehicleExitParameters(UnitVehicleExitParameters& parameters, Unit* passenger) override
+    {
+        Unit* leviathan = me->GetVehicleBase();
+        if (!leviathan || passenger->GetTypeId() != TYPEID_PLAYER)
+            return;
+
+        float const angle = leviathan->GetAbsoluteAngle(me);
+        Position exitPosition = me->GetPosition();
+        exitPosition.m_positionX += std::cos(angle) * 15.0f;
+        exitPosition.m_positionY += std::sin(angle) * 15.0f;
+        exitPosition.SetOrientation(passenger->GetOrientation());
+        parameters.ExitPosition = exitPosition;
     }
 };
 
@@ -754,9 +836,23 @@ struct boss_flame_leviathan_defense_turret : public TurretAI
             damage = 0;
     }
 
+    void JustDied(Unit* /*killer*/) override
+    {
+        if (InstanceScript* instance = me->GetInstanceScript())
+            if (instance->GetBossState(DATA_FLAME_LEVIATHAN) == IN_PROGRESS)
+                if (Creature* leviathan = instance->GetCreature(DATA_FLAME_LEVIATHAN))
+                    leviathan->AI()->DoAction(ACTION_DEFENSE_TURRET_DESTROYED);
+    }
+
     bool CanAIAttack(Unit const* who) const override
     {
-        return who && who->GetTypeId() == TYPEID_PLAYER && who->GetVehicleBase() && who->GetVehicleBase() == me->GetVehicleBase();
+        Unit const* ownSeat = me->GetVehicleBase();
+        Unit const* leviathan = ownSeat ? ownSeat->GetVehicleBase() : nullptr;
+        Unit const* riderSeat = who && who->GetTypeId() == TYPEID_PLAYER ? who->GetVehicleBase() : nullptr;
+        if (!leviathan || !riderSeat || riderSeat->GetEntry() != NPC_SEAT || riderSeat->GetVehicleBase() != leviathan)
+            return false;
+
+        return riderSeat == ownSeat || riderSeat->GetTransSeat() == GetPairedSeatId(ownSeat);
     }
 };
 
@@ -775,7 +871,6 @@ struct boss_flame_leviathan_overload_device : public PassiveAI
         {
             me->RemoveNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
             me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-            ThrowOffSeatRider(me->GetVehicleBase());
         }
     }
 };
@@ -1830,6 +1925,37 @@ class EG_spell_flame_leviathan_hookshot : public SpellScript
     }
 };
 
+// 62399 - Overload Circuit
+class EG_spell_flame_leviathan_overload_circuit : public SpellScript
+{
+    PrepareSpellScript(EG_spell_flame_leviathan_overload_circuit);
+
+    SpellCastResult CheckCast()
+    {
+        Unit* device = GetCaster();
+        Unit* clicker = GetOriginalCaster();
+        Unit* deviceSeat = device->GetVehicleBase();
+        Unit* clickerSeat = clicker ? clicker->GetVehicleBase() : nullptr;
+        Unit* leviathan = deviceSeat ? deviceSeat->GetVehicleBase() : nullptr;
+        if (!leviathan || !clickerSeat || clickerSeat->GetEntry() != NPC_SEAT || clickerSeat->GetVehicleBase() != leviathan)
+            return SPELL_FAILED_DONT_REPORT;
+
+        if (!device->HasNpcFlag(UNIT_NPC_FLAG_SPELLCLICK) || device->HasUnitFlag(UNIT_FLAG_UNINTERACTIBLE))
+            return SPELL_FAILED_DONT_REPORT;
+
+        InstanceScript* instance = device->GetInstanceScript();
+        if (!instance || instance->GetBossState(DATA_FLAME_LEVIATHAN) != IN_PROGRESS)
+            return SPELL_FAILED_DONT_REPORT;
+
+        return SPELL_CAST_OK;
+    }
+
+    void Register() override
+    {
+        OnCheckCast += SpellCheckCastFn(EG_spell_flame_leviathan_overload_circuit::CheckCast);
+    }
+};
+
 // 62910 - Mimiron's Inferno
 class EG_spell_flame_leviathan_mimirons_inferno : public SpellScript
 {
@@ -2033,6 +2159,7 @@ void AddSC_boss_flame_leviathan()
     RegisterSpellScript(spell_vehicle_throw_passenger);
     RegisterSpellScript(EG_spell_flame_leviathan_hookshot);
     RegisterSpellScript(EG_spell_flame_leviathan_hookshot_aura);
+    RegisterSpellScript(EG_spell_flame_leviathan_overload_circuit);
     RegisterSpellScript(EG_spell_flame_leviathan_mimirons_inferno);
     RegisterSpellScript(EG_spell_flame_leviathan_grab_crate_triggered);
     RegisterSpellScript(EG_spell_salvaged_vehicle_ride_gate);
