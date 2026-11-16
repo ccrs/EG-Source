@@ -832,7 +832,7 @@ struct boss_flame_leviathan_defense_turret : public TurretAI
 
     void DamageTaken(Unit* who, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) override
     {
-        if (!CanAIAttack(who))
+        if (!GetRiderSeat(who))
             damage = 0;
     }
 
@@ -847,12 +847,20 @@ struct boss_flame_leviathan_defense_turret : public TurretAI
     bool CanAIAttack(Unit const* who) const override
     {
         Unit const* ownSeat = me->GetVehicleBase();
+        Unit const* riderSeat = GetRiderSeat(who);
+        return riderSeat && (riderSeat == ownSeat || riderSeat->GetTransSeat() == GetPairedSeatId(ownSeat));
+    }
+
+private:
+    Unit const* GetRiderSeat(Unit const* who) const
+    {
+        Unit const* ownSeat = me->GetVehicleBase();
         Unit const* leviathan = ownSeat ? ownSeat->GetVehicleBase() : nullptr;
         Unit const* riderSeat = who && who->GetTypeId() == TYPEID_PLAYER ? who->GetVehicleBase() : nullptr;
         if (!leviathan || !riderSeat || riderSeat->GetEntry() != NPC_SEAT || riderSeat->GetVehicleBase() != leviathan)
-            return false;
+            return nullptr;
 
-        return riderSeat == ownSeat || riderSeat->GetTransSeat() == GetPairedSeatId(ownSeat);
+        return riderSeat;
     }
 };
 
