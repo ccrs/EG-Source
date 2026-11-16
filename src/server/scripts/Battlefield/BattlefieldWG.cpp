@@ -16,9 +16,12 @@
  */
 
 #include "BattlefieldWG.h"
+#include "AreaBoundary.h"
 #include "Creature.h"
 #include "CreatureTextMgr.h"
+#include "GameObject.h"
 #include "Map.h"
+#include "MapReference.h"
 #include "MapUtils.h"
 #include "ObjectMgr.h"
 #include "Player.h"
@@ -32,6 +35,8 @@ static WorldLocation const WintergraspDefenderBattleLocation(MAPID_WINTERGRASP, 
 static WorldLocation const WintergraspAllianceAttackerBattleLocation(MAPID_WINTERGRASP, 5095.0f, 2180.0f, 366.0f, 0.0f);
 static WorldLocation const WintergraspHordeAttackerBattleLocation(MAPID_WINTERGRASP, 5025.857f, 3674.629f, 362.737f, 0.0f);
 static WorldLocation const WintergraspKickLocation(MAPID_WINTERGRASP, 5748.0f, 2698.0f, 697.4f, 0.0f);
+static RectangleBoundary const WintergraspTitanRelicChamberBoundary(5400.0f, 5490.0f, 2803.0f, 2878.0f);
+static ZRangeBoundary const WintergraspTitanRelicChamberHeightBoundary(415.0f, 435.0f);
 
 static std::vector<BattlefieldBuildingInfo> const WintergraspBuildingInfo =
 {
@@ -190,16 +195,13 @@ bool BattlefieldWintergrasp::SetPhase(BattlefieldPhase phase)
     switch (phase)
     {
         case BATTLEFIELD_PHASE_PREPARATION:
+            SendStalkerText(SAY_WINTERGRASP_BATTLE_ABOUT_TO_BEGIN);
             SendWorldStateToAll(WORLDSTATE_WINTERGRASP_ICON_ACTIVE, 1);
             break;
         case BATTLEFIELD_PHASE_BATTLE:
-            if (Map* battleMap = GetBattleMap())
-                if (CreatureData const* stalkerData = sObjectMgr->GetCreatureData(SPAWNID_WINTERGRASP_INVISIBLE_STALKER))
-                    battleMap->LoadGrid(stalkerData->spawnPoint.GetPositionX(), stalkerData->spawnPoint.GetPositionY());
-
-            if (Creature* stalker = GetCreature(_stalkerGUID))
-                stalker->setActive(true);
-
+            SendStalkerText(SAY_WINTERGRASP_BATTLE_BEGIN);
+            SetKeepCollisionsOpen(false);
+            SetSpawnGroupSpawned(GetAttackingTeam() == PVP_TEAM_HORDE ? SPAWNGROUP_WINTERGRASP_TITAN_RELIC_HORDE : SPAWNGROUP_WINTERGRASP_TITAN_RELIC_ALLIANCE, true);
             SendWorldStateToMap(WORLDSTATE_WINTERGRASP_CONTROL, WINTERGRASP_CONTROL_BATTLE);
             SendWorldStateToMap(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, 0);
             SendWorldStateToMap(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, 0);
@@ -209,13 +211,16 @@ bool BattlefieldWintergrasp::SetPhase(BattlefieldPhase phase)
             break;
         case BATTLEFIELD_PHASE_IDLE:
         {
-            if (Creature* stalker = GetCreature(_stalkerGUID))
-                stalker->setActive(false);
-
             SendWorldStateToAll(WORLDSTATE_WINTERGRASP_ICON_ACTIVE, 0);
             if (oldPhase != BATTLEFIELD_PHASE_BATTLE)
                 break;
 
+            for (ObjectGuid relicGuid : _titanRelicGUIDs)
+                if (GameObject* relic = GetGameObject(relicGuid))
+                    relic->SendObjectDeSpawnAnim(relicGuid);
+
+            SetSpawnGroupSpawned(SPAWNGROUP_WINTERGRASP_TITAN_RELIC_HORDE, false);
+            SetSpawnGroupSpawned(SPAWNGROUP_WINTERGRASP_TITAN_RELIC_ALLIANCE, false);
             SendWorldStateToAll(WORLDSTATE_WINTERGRASP_SHOW_COOLDOWN, 1);
             SendWorldStateToAll(WORLDSTATE_WINTERGRASP_SHOW_BATTLE_TIMER, 0);
 
@@ -232,6 +237,7 @@ bool BattlefieldWintergrasp::SetPhase(BattlefieldPhase phase)
                 uint32 const count = uint32(sWorld->getWorldState(counterWorldState)) + 1;
                 sWorld->setWorldState(counterWorldState, count);
                 SendWorldStateToAll(counterWorldState, count);
+                SendStalkerText(uint8((GetControllingTeam() == PVP_TEAM_HORDE ? SAY_WINTERGRASP_FORTRESS_DEFENDED_HORDE : SAY_WINTERGRASP_FORTRESS_DEFENDED_ALLIANCE) + (captured ? 1 : 0)));
             }
 
             SendWorldStateToMap(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, GetControllingTeam() == PVP_TEAM_HORDE ? 1 : 0);
@@ -333,6 +339,45 @@ void BattlefieldWintergrasp::OnCreatureRemove(Creature* object)
     }
 }
 
+void BattlefieldWintergrasp::OnGameObjectCreate(GameObject* object)
+{
+    Battlefield::OnGameObjectCreate(object);
+
+    switch (object->GetEntry())
+    {
+        case GO_WINTERGRASP_TITAN_RELIC_HORDE:
+            _titanRelicGUIDs[PVP_TEAM_HORDE] = object->GetGUID();
+            if (IsVaultGateDestroyed())
+                object->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
+            break;
+        case GO_WINTERGRASP_TITAN_RELIC_ALLIANCE:
+            _titanRelicGUIDs[PVP_TEAM_ALLIANCE] = object->GetGUID();
+            if (IsVaultGateDestroyed())
+                object->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
+            break;
+        case GO_WINTERGRASP_KEEP_COLLISION_WALL:
+            _keepCollisionWallGUID = object->GetGUID();
+            if (IsVaultGateDestroyed())
+                object->SetGoState(GO_STATE_ACTIVE);
+            break;
+        case GO_WINTERGRASP_KEEP_DOOR_COLLISION:
+            _keepDoorCollisionGUID = object->GetGUID();
+            if (IsVaultGateDestroyed())
+                object->SetGoState(GO_STATE_ACTIVE);
+            break;
+        default:
+            break;
+    }
+}
+
+void BattlefieldWintergrasp::ProcessEvent(WorldObject* object, uint32 eventId)
+{
+    Battlefield::ProcessEvent(object, eventId);
+
+    if (eventId == EVENT_WINTERGRASP_TITAN_RELIC)
+        QueueEvent<BattlefieldBattleCaptureEvent>();
+}
+
 void BattlefieldWintergrasp::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
 {
     Battlefield::FillInitialWorldStates(packet);
@@ -375,6 +420,29 @@ void BattlefieldWintergrasp::SendGlobalWorldStates(Player const* player) const
     player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_CONTROL, GetControlState()); // 3804
 }
 
+void BattlefieldWintergrasp::ProcessBuildingUpdate(BattlefieldEventKey key)
+{
+    Battlefield::ProcessBuildingUpdate(key);
+
+    if (!IsBattleTime() || IsVaultGateDestroyed())
+        return;
+
+    Map* battleMap = GetBattleMap();
+    if (!battleMap)
+        return;
+
+    TeamId const attackingTeamId = GetAttackingTeamId();
+    for (MapReference const& reference : battleMap->GetPlayers())
+    {
+        Player* player = reference.GetSource();
+        if (!player || player->GetTeamId() != attackingTeamId || player->IsGameMaster() || player->IsInFlight() || player->IsBeingTeleported())
+            continue;
+
+        if (WintergraspTitanRelicChamberBoundary.IsWithinBoundary(player) && WintergraspTitanRelicChamberHeightBoundary.IsWithinBoundary(player))
+            TeleportPlayerToBattle(player);
+    }
+}
+
 uint8 BattlefieldWintergrasp::GetWintergraspGraveyardId(Creature* creature) const
 {
     switch (creature->GetSpawnId())
@@ -407,6 +475,12 @@ uint8 BattlefieldWintergrasp::GetWintergraspGraveyardId(Creature* creature) cons
 
 void BattlefieldWintergrasp::SendStalkerText(uint8 textGroup) const
 {
+    Map* battleMap = GetBattleMap();
+    CreatureData const* stalkerData = sObjectMgr->GetCreatureData(SPAWNID_WINTERGRASP_INVISIBLE_STALKER);
+    if (!battleMap || !stalkerData)
+        return;
+
+    battleMap->LoadGrid(stalkerData->spawnPoint.GetPositionX(), stalkerData->spawnPoint.GetPositionY());
     if (Creature* stalker = GetCreature(_stalkerGUID))
         sCreatureTextMgr->SendChat(stalker, textGroup);
 }
@@ -438,10 +512,23 @@ void BattlefieldWintergrasp::HandleSouthernTowerDestroyed()
         SetPhaseTime(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END) - WINTERGRASP_SOUTHERN_TOWERS_TIME_REDUCTION.count());
 }
 
+void BattlefieldWintergrasp::HandleVaultGateDestroyed()
+{
+    SetKeepCollisionsOpen(true);
+    for (ObjectGuid relicGuid : _titanRelicGUIDs)
+        if (GameObject* relic = GetGameObject(relicGuid))
+            relic->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
+}
+
 void BattlefieldWintergrasp::SendVehicleLimits() const
 {
     SendWorldStateToMap(WORLDSTATE_WINTERGRASP_MAX_VEHICLE_HORDE, GetVehicleLimit(PVP_TEAM_HORDE));
     SendWorldStateToMap(WORLDSTATE_WINTERGRASP_MAX_VEHICLE_ALLIANCE, GetVehicleLimit(PVP_TEAM_ALLIANCE));
+}
+
+bool BattlefieldWintergrasp::CanUseTitanRelic(Player const* player) const
+{
+    return IsVaultGateDestroyed() && player->GetTeamId() == GetAttackingTeamId() && IsPlayerInBattle(player);
 }
 
 bool BattlefieldWintergrasp::IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 newArea) const
@@ -497,6 +584,19 @@ uint32 BattlefieldWintergrasp::GetVehicleLimit(PvPTeamId pvpTeamId) const
     return limit;
 }
 
+bool BattlefieldWintergrasp::IsVaultGateDestroyed() const
+{
+    BattlefieldBuilding const* vaultGate = GetBuilding(BUILDING_FORTRESS_VAULT_GATE);
+    return vaultGate && vaultGate->GetDestructibleState() == GO_DESTRUCTIBLE_DESTROYED;
+}
+
+void BattlefieldWintergrasp::SetKeepCollisionsOpen(bool open) const
+{
+    for (ObjectGuid collisionGuid : { _keepCollisionWallGUID, _keepDoorCollisionGUID })
+        if (GameObject* collision = GetGameObject(collisionGuid))
+            collision->SetGoState(open ? GO_STATE_ACTIVE : GO_STATE_READY);
+}
+
 WintergraspBuilding::WintergraspBuilding(BattlefieldWintergrasp* wintergrasp, BattlefieldBuildingInfo const info) : BattlefieldDestructibleBuilding(wintergrasp, info), _wintergrasp(wintergrasp)
 {
 }
@@ -532,6 +632,9 @@ bool WintergraspBuilding::Destroy()
 {
     if (!BattlefieldDestructibleBuilding::Destroy())
         return false;
+
+    if (BuildingType == BATTLEFIELD_BUILDING_TYPE_DOOR_LAST)
+        _wintergrasp->HandleVaultGateDestroyed();
 
     if (!_wintergrasp->IsBattleTime())
         return true;

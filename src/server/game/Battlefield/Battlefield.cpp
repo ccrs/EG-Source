@@ -749,6 +749,12 @@ void Battlefield::ProcessBattleStatusClear(BattlefieldEventKey /*key*/)
     ClearBattleStatus();
 }
 
+void Battlefield::ProcessBattleCapture(BattlefieldEventKey /*key*/)
+{
+    if (SetBattleResult(BATTLEFIELD_BATTLE_RESULT_CAPTURED))
+        SetPhase(BATTLEFIELD_PHASE_IDLE);
+}
+
 void Battlefield::HandleBattlefieldRaidMemberRemoved(ObjectGuid playerGuid, RemoveMethod method)
 {
     if (IsBattleTime() && (method == GROUP_REMOVEMETHOD_KICK || method == GROUP_REMOVEMETHOD_LEAVE))
@@ -862,6 +868,11 @@ bool Battlefield::SetBattleResult(BattlefieldBattleResult result)
 bool Battlefield::CanJoinBattle(Player const* player) const
 {
     return !player->IsGameMaster() && player->GetLevel() >= Values.Get<uint32>(BATTLEFIELD_VALUE_LIMIT_PLAYER_LEVEL);
+}
+
+bool Battlefield::IsPlayerInBattle(Player const* player) const
+{
+    return _battlefieldPlayers.Contains(player->GetGUID(), player->GetTeamId(), BATTLEFIELD_PLAYER_STATE_IN_BATTLE);
 }
 
 PvPTeamId Battlefield::GetAttackingTeam() const

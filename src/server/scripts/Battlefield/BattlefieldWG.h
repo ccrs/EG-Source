@@ -193,7 +193,11 @@ enum WintergraspGameObjects
     GO_WINTERGRASP_FACTORY_BANNER_SE_HORDE = 194960,
     GO_WINTERGRASP_FACTORY_BANNER_SE_ALLIANCE = 194959,
     GO_WINTERGRASP_FACTORY_BANNER_SW_HORDE = 194963,
-    GO_WINTERGRASP_FACTORY_BANNER_SW_ALLIANCE = 194962
+    GO_WINTERGRASP_FACTORY_BANNER_SW_ALLIANCE = 194962,
+    GO_WINTERGRASP_TITAN_RELIC_HORDE = 192829,
+    GO_WINTERGRASP_TITAN_RELIC_ALLIANCE = 192834,
+    GO_WINTERGRASP_KEEP_COLLISION_WALL = 194323,
+    GO_WINTERGRASP_KEEP_DOOR_COLLISION = 194162
 };
 
 enum WintergraspSpawnGroups
@@ -210,7 +214,14 @@ enum WintergraspSpawnGroups
     SPAWNGROUP_WINTERGRASP_WORKSHOP_SE_GUARDS_HORDE,
     SPAWNGROUP_WINTERGRASP_WORKSHOP_SE_GUARDS_ALLIANCE,
     SPAWNGROUP_WINTERGRASP_WORKSHOP_SW_GUARDS_HORDE,
-    SPAWNGROUP_WINTERGRASP_WORKSHOP_SW_GUARDS_ALLIANCE
+    SPAWNGROUP_WINTERGRASP_WORKSHOP_SW_GUARDS_ALLIANCE,
+    SPAWNGROUP_WINTERGRASP_TITAN_RELIC_HORDE,
+    SPAWNGROUP_WINTERGRASP_TITAN_RELIC_ALLIANCE
+};
+
+enum WintergraspEventIds
+{
+    EVENT_WINTERGRASP_TITAN_RELIC = 22097
 };
 
 enum WintergraspSpells
@@ -491,13 +502,18 @@ public:
     uint32 GetFaction(PvPTeamId pvpTeamId) const override;
     void OnCreatureCreate(Creature* object) override;
     void OnCreatureRemove(Creature* object) override;
+    void OnGameObjectCreate(GameObject* object) override;
+    void ProcessEvent(WorldObject* object, uint32 eventId) override;
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void SendGlobalWorldStates(Player const* player) const override;
+    void ProcessBuildingUpdate(BattlefieldEventKey key) override;
 
     uint8 GetWintergraspGraveyardId(Creature* creature) const;
     void SendStalkerText(uint8 textGroup) const;
     void HandleSouthernTowerDestroyed();
+    void HandleVaultGateDestroyed();
     void SendVehicleLimits() const;
+    bool CanUseTitanRelic(Player const* player) const;
 
     bool IsFlyingMountAllowed() const override { return !IsEnabled() || (IsEnabled() && !IsBattleTime()); }
     bool IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 newArea) const override;
@@ -505,6 +521,8 @@ public:
 private:
     uint32 GetControlState() const;
     uint32 GetVehicleLimit(PvPTeamId pvpTeamId) const;
+    bool IsVaultGateDestroyed() const;
+    void SetKeepCollisionsOpen(bool open) const;
 
     typedef std::unique_ptr<WintergraspBuilding> WintergraspBuildingPointer;
     typedef std::unique_ptr<WintergraspCapturePoint> WintergraspCapturePointPointer;
@@ -515,6 +533,9 @@ private:
 
     ObjectGuid _stalkerGUID;
     std::array<ObjectGuid, PVP_TEAMS_COUNT> _commanderGUIDs;
+    std::array<ObjectGuid, PVP_TEAMS_COUNT> _titanRelicGUIDs;
+    ObjectGuid _keepCollisionWallGUID;
+    ObjectGuid _keepDoorCollisionGUID;
 };
 
 #endif

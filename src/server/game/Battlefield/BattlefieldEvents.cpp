@@ -143,3 +143,9 @@ void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BUILDING_UPDATE>::Handle(Battlefiel
 {
     battlefield.ProcessBuildingUpdate(GetKey());
 }
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_CAPTURE>::Handle(Battlefield& battlefield)
+{
+    battlefield.ProcessBattleCapture(GetKey());
+}

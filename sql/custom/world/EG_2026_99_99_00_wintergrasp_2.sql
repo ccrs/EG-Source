@@ -408,3 +408,20 @@ INSERT INTO `spawn_group` (`groupId`, `spawnType`, `spawnId`) VALUES
 (1014, 0, 300295),
 (1014, 0, 300296),
 (1014, 0, 300297);
+
+-- Titan Relic
+UPDATE `gameobject_template` SET `ScriptName` = 'go_wg_titan_relic' WHERE `entry` IN (192829, 192834);
+DELETE FROM `spawn_group_template` WHERE `groupId` IN (1015, 1016);
+INSERT INTO `spawn_group_template` (`groupId`, `groupName`, `groupFlags`) VALUES
+(1015, 'Wintergrasp - Titan Relic (Horde)', 4),
+(1016, 'Wintergrasp - Titan Relic (Alliance)', 4);
+DELETE FROM `gameobject` WHERE `guid` IN (200049, 200050, 200051);
+DELETE FROM `gameobject_addon` WHERE `guid` IN (200049, 200050, 200051);
+INSERT INTO `gameobject` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `position_x`, `position_y`, `position_z`, `orientation`, `rotation0`, `rotation1`, `rotation2`, `rotation3`, `spawntimesecs`, `animprogress`, `state`, `VerifiedBuild`) VALUES
+(200049, 192829, 571, 4197, 4575, 1, 1, 5440.379, 2840.4934, 430.28162, 4.4505903, 0, 0, -0.7933531, 0.6087617, 0, 255, 1, 12340),
+(200050, 192834, 571, 4197, 4575, 1, 1, 5440.379, 2840.4934, 430.28162, 4.4505903, 0, 0, -0.7933531, 0.6087617, 0, 255, 1, 12340),
+(200051, 194162, 571, 4197, 4575, 1, 1, 5397.1084, 2841.54, 425.90143, 3.1415927, 0, 0, -1, 0, 180, 255, 1, 12340);
+DELETE FROM `spawn_group` WHERE `groupId` IN (1015, 1016);
+INSERT INTO `spawn_group` (`groupId`, `spawnType`, `spawnId`) VALUES
+(1015, 1, 200049),
+(1016, 1, 200050);

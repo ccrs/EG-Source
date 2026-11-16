@@ -245,8 +245,9 @@ public:
     void ProcessBattleKick(BattlefieldEventKey key, Player* player);
     void ProcessBuildingDamage(BattlefieldEventKey key, ObjectGuid objectGuid);
     void ProcessBuildingDestroy(BattlefieldEventKey key, ObjectGuid objectGuid);
-    void ProcessBuildingUpdate(BattlefieldEventKey key);
+    virtual void ProcessBuildingUpdate(BattlefieldEventKey key);
     void ProcessBattleStatusClear(BattlefieldEventKey key);
+    void ProcessBattleCapture(BattlefieldEventKey key);
     void HandleBattlefieldRaidMemberRemoved(ObjectGuid playerGuid, RemoveMethod method);
     void HandlePlayerLogout(Player* player);
     void HandlePlayerAddToMap(Player* player);
@@ -266,6 +267,7 @@ public:
     bool IsInPreparation() const { return _phase == BATTLEFIELD_PHASE_PREPARATION; }
     bool IsBattleTime() const { return _phase == BATTLEFIELD_PHASE_BATTLE; }
     bool CanJoinBattle(Player const* player) const;
+    bool IsPlayerInBattle(Player const* player) const;
     // enum PvPTeamId
     PvPTeamId GetControllingTeam() const { return Values.Get<PvPTeamId>(BATTLEFIELD_VALUE_STATE_CONTROLLING_TEAM); }
     // enum PvPTeamId

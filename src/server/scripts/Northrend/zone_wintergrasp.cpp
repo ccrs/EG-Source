@@ -366,6 +366,17 @@ private:
     TimeTracker _checkTimer;
 };
 
+struct go_wg_titan_relic : public GameObjectAI
+{
+    go_wg_titan_relic(GameObject* gameObject) : GameObjectAI(gameObject) { }
+
+    bool OnGossipHello(Player* player) override
+    {
+        BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP));
+        return !wintergrasp || !wintergrasp->CanUseTitanRelic(player);
+    }
+};
+
 // 56659 - Build Demolisher (Force)
 // 56662 - Build Siege Vehicle (Force)
 // 56664 - Build Catapult (Force)
@@ -615,6 +626,7 @@ void AddSC_wintergrasp()
     RegisterCreatureAI(npc_wg_spirit_guide);
     RegisterCreatureAI(npc_wg_demolisher_engineer);
     RegisterGameObjectAI(go_wg_vehicle_teleporter);
+    RegisterGameObjectAI(go_wg_titan_relic);
     RegisterSpellScript(spell_wintergrasp_force_building);
     RegisterSpellScript(spell_wintergrasp_grab_passenger);
     RegisterSpellScript(spell_wintergrasp_activate_robotic_arms);
