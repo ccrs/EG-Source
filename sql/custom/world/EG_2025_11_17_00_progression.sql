@@ -7,7 +7,6 @@ INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, 
 (2, 631, 15, '', '', 'Icecrown Citadel'),
 (2, 632, 3, '', '', 'The Forge of Souls'),
 (2, 649, 15, '', '', 'Trial of the Crusader'),
-(2, 650, 3, '', '', 'Trial of the Champion'),
 (2, 658, 3, '', '', 'Pit of Saron'),
 (2, 668, 3, '', '', 'Halls of Reflection'),
 (2, 724, 15, '', '', 'Ruby Sanctum'),
@@ -16,7 +15,6 @@ INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, 
 (8, 631, 15, '', '', 'Icecrown Citadel'),
 (8, 632, 3, '', '', 'The Forge of Souls'),
 (8, 649, 15, '', '', 'Trial of the Crusader'),
-(8, 650, 3, '', '', 'Trial of the Champion'),
 (8, 658, 3, '', '', 'Pit of Saron'),
 (8, 668, 3, '', '', 'Halls of Reflection'),
 (8, 724, 15, '', '', 'Ruby Sanctum');
@@ -75,7 +73,8 @@ INSERT INTO `quest_pool_members` (`questId`, `poolId`, `poolIndex`, `description
 (13253, 5800, 8, 'Loken'),
 (13254, 5800, 9, 'Anub\'arak'),
 (13255, 5800, 10, 'Herald Volazj'),
-(13256, 5800, 11, 'Cyanigosa');
+(13256, 5800, 11, 'Cyanigosa'),
+(14199, 5800, 12, 'The Black Knight');
 
 DELETE FROM `creature_queststarter` WHERE `id` = 20735;
 INSERT INTO `creature_queststarter` (`id`, `quest`) VALUES
@@ -91,6 +90,7 @@ INSERT INTO `creature_queststarter` (`id`, `quest`) VALUES
 (20735, 13254),
 (20735, 13255),
 (20735, 13256),
+(20735, 14199),
 (20735, 24579),
 (20735, 24580),
 (20735, 24581),
@@ -118,6 +118,7 @@ INSERT INTO `creature_questender` (`id`, `quest`) VALUES
 (20735, 13254),
 (20735, 13255),
 (20735, 13256),
+(20735, 14199),
 (20735, 24579),
 (20735, 24580),
 (20735, 24581),
@@ -226,6 +227,7 @@ UPDATE `creature_loot_template` SET `item` = 40753 WHERE `item` = 47241 AND `ent
 31370, -- Slad'ran (1)
 30810, -- Svala Sorrowgrave (1)
 29448, -- Thaddius (1)
+35490, -- The Black Knight (1)
 31360, -- The Prophet Tharon'ja (1)
 31362, -- Trollgore (1)
 31559, -- Varos Cloudstrider (1)
@@ -240,6 +242,9 @@ UPDATE `gameobject_loot_template` SET `item` = 40753 WHERE `item` = 47241 AND `e
 26094, -- Alexstrasza's Gift
 26097, -- Alexstrasza's Gift
 24524, -- Cache of Eregos
+27414, -- Champion's Cache (1)
+27417, -- Confessor's Cache (1)
+27416, -- Eadric's Cache (1)
 25192, -- Four Horsemen Chest
 25193, -- Four Horsemen Chest
 24589, -- Dark Runed Chest
