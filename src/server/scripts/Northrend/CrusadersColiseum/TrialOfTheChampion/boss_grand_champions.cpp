@@ -891,7 +891,7 @@ struct npc_toc5_hostile_argent_mount : public npc_toc5_champion_mount
             return;
 
         me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
-        DoCast(passenger, SPELL_MOUNT_FULL_HEAL);
+        DoCast(passenger, SPELL_MOUNT_FULL_HEAL, true);
     }
 };
 
