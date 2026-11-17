@@ -15,1025 +15,1242 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* ScriptData
-SDName: boss_grand_champions
-SD%Complete: 50 %
-SDComment: Is missing the ai to make the npcs look for a new mount and use it.
-SDCategory: Trial Of the Champion
-EndScriptData */
-
-#include "ScriptMgr.h"
+#include "trial_of_the_champion.h"
+#include "CombatAI.h"
+#include "Containers.h"
 #include "InstanceScript.h"
 #include "Map.h"
+#include "MotionMaster.h"
+#include "MovementGenerator.h"
 #include "ObjectAccessor.h"
-#include "Player.h"
-#include "ScriptedEscortAI.h"
-#include "trial_of_the_champion.h"
+#include "ScriptedCreature.h"
+#include "ScriptMgr.h"
+#include "SpellAuraEffects.h"
+#include "SpellInfo.h"
+#include "SpellMgr.h"
+#include "SpellScript.h"
+#include "TaskScheduler.h"
 #include "Vehicle.h"
 
-enum Spells
+enum GrandChampionsMisc
 {
-    //Vehicle
-    SPELL_CHARGE                    = 63010,
-    SPELL_SHIELD_BREAKER            = 68504,
-    SPELL_SHIELD                    = 66482,
+    SPELL_DEFEND_PERIODIC = 64101,
+    SPELL_DEFEND = 62719,
+    SPELL_DEFEND_PLAYER = 62552,
+    SPELL_LESSER_DEFEND = 64100,
+    SPELL_SHIELD_BREAKER = 68504,
+    SPELL_CHARGE = 68301,
+    SPELL_CHARGE_VEHICLE = 68307,
+    SPELL_CHARGE_DAMAGE = 68321,
+    SPELL_LESSER_CHARGE = 63010,
+    SPELL_FEAR_SELF = 68326,
+    SPELL_UNHORSED = 65918,
+    SPELL_TRAMPLED = 67867,
+    SPELL_RIDE_ARGENT_MOUNT = 69692,
+    SPELL_MOUNT_FULL_HEAL = 69693,
+    SPELL_KNEEL = 68442,
+    SPELL_PENNANT_SELECTOR = 67347,
+    SPELL_SPECTATOR_FX_CHANT = 66677,
 
-    // Marshal Jacob Alerius && Mokra the Skullcrusher || Warrior
-    SPELL_MORTAL_STRIKE             = 68783,
-    SPELL_MORTAL_STRIKE_H           = 68784,
-    SPELL_BLADESTORM                = 63784,
-    SPELL_INTERCEPT                 = 67540,
-    SPELL_ROLLING_THROW             = 47115, //not implemented in the AI yet...
+    SPELL_PENNANT_ORGRIMMAR = 63433,
+    SPELL_PENNANT_SILVERMOON = 63403,
+    SPELL_PENNANT_THUNDER_BLUFF = 63436,
+    SPELL_PENNANT_SENJIN = 63399,
+    SPELL_PENNANT_UNDERCITY = 63430,
+    SPELL_PENNANT_STORMWIND = 62594,
+    SPELL_PENNANT_GNOMEREGAN = 63396,
+    SPELL_PENNANT_EXODAR = 63423,
+    SPELL_PENNANT_DARNASSUS = 63406,
+    SPELL_PENNANT_IRONFORGE = 63427,
 
-    // Ambrose Boltspark && Eressea Dawnsinger || Mage
-    SPELL_FIREBALL                  = 66042,
-    SPELL_FIREBALL_H                = 68310,
-    SPELL_BLAST_WAVE                = 66044,
-    SPELL_BLAST_WAVE_H              = 68312,
-    SPELL_HASTE                     = 66045,
-    SPELL_POLYMORPH                 = 66043,
-    SPELL_POLYMORPH_H               = 68311,
+    SPELL_MORTAL_STRIKE = 67542,
+    SPELL_BLADESTORM = 67541,
+    SPELL_ROLLING_THROW = 67546,
+    SPELL_ROLLING_THROW_GRAB = 67730,
+    SPELL_INTERCEPT = 67540,
 
-    // Colosos && Runok Wildmane || Shaman
-    SPELL_CHAIN_LIGHTNING           = 67529,
-    SPELL_CHAIN_LIGHTNING_H         = 68319,
-    SPELL_EARTH_SHIELD              = 67530,
-    SPELL_HEALING_WAVE              = 67528,
-    SPELL_HEALING_WAVE_H            = 68318,
-    SPELL_HEX_OF_MENDING            = 67534,
+    SPELL_FIREBALL = 66042,
+    SPELL_POLYMORPH = 66043,
+    SPELL_BLAST_WAVE = 66044,
+    SPELL_HASTE = 66045,
 
-    // Jaelyne Evensong && Zul'tore || Hunter
-    SPELL_DISENGAGE                 = 68340, //not implemented in the AI yet...
-    SPELL_LIGHTNING_ARROWS          = 66083,
-    SPELL_MULTI_SHOT                = 66081,
-    SPELL_SHOOT                     = 65868,
-    SPELL_SHOOT_H                   = 67988,
+    SPELL_CHAIN_LIGHTNING = 67529,
+    SPELL_HEALING_WAVE = 67528,
+    SPELL_EARTH_SHIELD = 67530,
+    SPELL_HEX_OF_MENDING = 67534,
+    SPELL_HEX_OF_MENDING_HEAL = 67535,
 
-    // Lana Stouthammer Evensong && Deathstalker Visceri || Rouge
-    SPELL_EVISCERATE                = 67709,
-    SPELL_EVISCERATE_H              = 68317,
-    SPELL_FAN_OF_KNIVES             = 67706,
-    SPELL_POISON_BOTTLE             = 67701
+    SPELL_SHOOT = 65868,
+    SPELL_MULTI_SHOT = 66081,
+    SPELL_LIGHTNING_ARROWS = 66083,
+    SPELL_LIGHTNING_ARROWS_PROC = 66085,
+    SPELL_DISENGAGE = 68340,
+    SPELL_DISENGAGE_JUMP = 68339,
+
+    SPELL_DEADLY_POISON = 67711,
+    SPELL_EVISCERATE = 67709,
+    SPELL_FAN_OF_KNIVES = 67706,
+    SPELL_POISON_BOTTLE = 67701,
+
+    ITEM_CHAMPION_LANCE = 46106,
+
+    SAY_TRAMPLED = 0,
+
+    POINT_REMOUNT,
+    POINT_LEAVE,
+
+    STATE_MOUNTED = 0,
+    STATE_UNHORSED,
+    STATE_LEAVING,
+    STATE_ON_FOOT,
+    STATE_DEFEATED
 };
 
-enum Seats
+struct GrandChampionAI : public ScriptedAI
 {
-    SEAT_ID_0                       = 0
-};
+    GrandChampionAI(Creature* creature) : ScriptedAI(creature), Instance(creature->GetInstanceScript()), _state(STATE_MOUNTED), _active(false), _paused(false)
+    {
+        Scheduler.SetValidator([this]
+        {
+            return !me->HasUnitState(UNIT_STATE_CASTING);
+        });
+    }
 
-/*
-struct Point
-{
-    float x, y, z;
-};
+    void JustAppeared() override
+    {
+        ScriptedAI::JustAppeared();
 
-const Point MovementPoint[] =
-{
-  {746.84f, 623.15f, 411.41f},
-  {747.96f, 620.29f, 411.09f},
-  {750.23f, 618.35f, 411.09f}
-};
-*/
-void AggroAllPlayers(Creature* temp)
-{
-    Map::PlayerList const& PlList = temp->GetMap()->GetPlayers();
+        DoCastSelf(SPELL_PENNANT_SELECTOR, true);
 
-    if (PlList.isEmpty())
+        if (Instance->GetData(DATA_CHAMPION_FOOT_PHASE))
+        {
+            _state = STATE_ON_FOOT;
+            me->SetFaction(FACTION_MONSTER_2);
+            me->SetReactState(REACT_AGGRESSIVE);
+            me->SetImmuneToPC(false);
+            return;
+        }
+
+        _slotHome = me->GetHomePosition();
+        me->SetReactState(REACT_PASSIVE);
+        me->SetImmuneToPC(true);
+        me->SetVirtualItem(0, ITEM_CHAMPION_LANCE);
+        SetCombatMovement(false);
+        DoCastSelf(SPELL_DEFEND_PERIODIC, true);
+        DoCastSelf(SPELL_SPECTATOR_FX_CHANT, true);
+    }
+
+    uint32 GetData(uint32 type) const override
+    {
+        return type == DATA_CHAMPION_MOUNTED && _state == STATE_MOUNTED ? 1 : 0;
+    }
+
+    void DoAction(int32 action) override
+    {
+        switch (action)
+        {
+            case ACTION_ENGAGE:
+                _active = true;
+                _paused = false;
+                me->SetFaction(FACTION_MONSTER_2);
+                me->SetImmuneToPC(false);
+                me->SetReactState(REACT_AGGRESSIVE);
+                if (_state == STATE_UNHORSED)
+                    break;
+
+                if (Creature* mount = GetMount())
+                {
+                    if (mount->GetEntry() != NPC_ARGENT_BATTLEWORG_ALLIANCE && mount->GetEntry() != NPC_ARGENT_WARHORSE_HORDE)
+                        mount->SetFaction(FACTION_MONSTER_2);
+                    mount->SetImmuneToPC(false);
+                }
+                DoZoneInCombat();
+                break;
+            case ACTION_NO_ALIVE_PLAYERS:
+            {
+                if (_state != STATE_MOUNTED && _state != STATE_UNHORSED)
+                {
+                    if (me->IsEngaged())
+                        EnterEvadeMode(EVADE_REASON_OTHER);
+                    break;
+                }
+
+                if (!_active || _paused)
+                    break;
+
+                _paused = true;
+                Instance->SetData(DATA_MOUNTED_WIPE, 0);
+                me->SetReactState(REACT_PASSIVE);
+                me->SetImmuneToPC(true);
+                if (_state == STATE_UNHORSED || !me->GetVehicle())
+                {
+                    if (me->IsEngaged())
+                    {
+                        me->CombatStop(true);
+                        EngagementOver();
+                    }
+                    me->SetFullHealth();
+                }
+                else if (me->IsEngaged())
+                    ResetMounted();
+
+                if (_state != STATE_MOUNTED)
+                    break;
+
+                Scheduler.CancelAll();
+                if (Creature* mount = GetMount())
+                {
+                    ReturnMountHome(mount);
+                    mount->SetImmuneToPC(true);
+                }
+                break;
+            }
+            case ACTION_RESET:
+                if (_state == STATE_DEFEATED)
+                {
+                    _state = STATE_ON_FOOT;
+                    me->RemoveAurasDueToSpell(SPELL_KNEEL);
+                    me->RemoveUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                    me->SetIsCombatDisallowed(false);
+                    me->SetReactState(REACT_AGGRESSIVE);
+                    me->SetFullHealth();
+                }
+
+                if (_state == STATE_ON_FOOT && me->IsEngaged())
+                    EnterEvadeMode(EVADE_REASON_OTHER);
+                break;
+            case ACTION_LEAVE:
+                _state = STATE_LEAVING;
+                Scheduler.CancelAll();
+                me->InterruptNonMeleeSpells(true);
+                me->RemoveAurasDueToSpell(SPELL_TRAMPLED);
+                me->RemoveAurasDueToSpell(SPELL_UNHORSED);
+                me->SetReactState(REACT_PASSIVE);
+                me->SetImmuneToPC(true);
+                me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+                me->CombatStop(true);
+                me->GetMotionMaster()->Clear();
+                me->DespawnOrUnsummon(17s);
+                Scheduler.Schedule(3s, [this](TaskContext context)
+                {
+                    me->CombatStop(true);
+                    DoCastSelf(SPELL_FULL_HEAL, true);
+                    context.Schedule(3s, [this](TaskContext /*context*/)
+                    {
+                        me->SetWalk(false);
+                        me->GetMotionMaster()->MovePoint(POINT_LEAVE, { .Destination = Position(746.672f, 666.688f, 411.758f), .Velocity = 10.0f });
+                    });
+                });
+                break;
+            default:
+                break;
+        }
+    }
+
+    void AttackStart(Unit* who) override
+    {
+        if (_state != STATE_MOUNTED && _state != STATE_ON_FOOT)
             return;
 
-    for (Map::PlayerList::const_iterator i = PlList.begin(); i != PlList.end(); ++i)
-    {
-        if (Player* player = i->GetSource())
-        {
-            if (player->IsGameMaster())
-                continue;
-
-            if (player->IsAlive())
-            {
-                temp->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-                temp->SetImmuneToPC(true);
-                temp->SetReactState(REACT_AGGRESSIVE);
-                temp->EngageWithTarget(player);
-            }
-        }
-    }
-}
-
-bool GrandChampionsOutVehicle(Creature* me)
-{
-    InstanceScript* instance = me->GetInstanceScript();
-
-    if (!instance)
-        return false;
-
-    Creature* pGrandChampion1 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_GRAND_CHAMPION_1));
-    Creature* pGrandChampion2 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_GRAND_CHAMPION_2));
-    Creature* pGrandChampion3 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_GRAND_CHAMPION_3));
-
-    if (pGrandChampion1 && pGrandChampion2 && pGrandChampion3)
-    {
-        if (!pGrandChampion1->HasUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT) &&
-            !pGrandChampion2->HasUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT) &&
-            !pGrandChampion3->HasUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
-            return true;
+        ScriptedAI::AttackStart(who);
     }
 
-    return false;
-}
-
-/*
-* Generic AI for vehicles used by npcs in ToC, it needs more improvements.  *
-* Script Complete: 25%.                                                     *
-*/
-
-class generic_vehicleAI_toc5 : public CreatureScript
-{
-public:
-    generic_vehicleAI_toc5() : CreatureScript("generic_vehicleAI_toc5") { }
-
-    struct generic_vehicleAI_toc5AI : public EscortAI
+    void JustEngagedWith(Unit* /*who*/) override
     {
-        generic_vehicleAI_toc5AI(Creature* creature) : EscortAI(creature)
+        if (_state != STATE_MOUNTED && _state != STATE_UNHORSED && _state != STATE_ON_FOOT)
+            return;
+
+        if (_state != STATE_ON_FOOT)
         {
-            Initialize();
-            SetDespawnAtEnd(false);
-            uiWaypointPath = 0;
-
-            instance = creature->GetInstanceScript();
-        }
-
-        void Initialize()
-        {
-            uiChargeTimer = 5000;
-            uiShieldBreakerTimer = 8000;
-            uiBuffTimer = urand(30000, 60000);
-        }
-
-        InstanceScript* instance;
-
-        uint32 uiChargeTimer;
-        uint32 uiShieldBreakerTimer;
-        uint32 uiBuffTimer;
-
-        uint32 uiWaypointPath;
-
-        void Reset() override
-        {
-            Initialize();
-        }
-
-        void SetData(uint32 uiType, uint32 /*uiData*/) override
-        {
-            switch (uiType)
+            if (_state == STATE_MOUNTED)
             {
-                case 1:
-                    AddWaypoint(0, 747.36f, 634.07f, 411.572f, true);
-                    AddWaypoint(1, 780.43f, 607.15f, 411.82f, true);
-                    AddWaypoint(2, 785.99f, 599.41f, 411.92f, true);
-                    AddWaypoint(3, 778.44f, 601.64f, 411.79f, true);
-                    uiWaypointPath = 1;
-                    break;
-                case 2:
-                    AddWaypoint(0, 747.35f, 634.07f, 411.57f, true);
-                    AddWaypoint(1, 768.72f, 581.01f, 411.92f, true);
-                    AddWaypoint(2, 763.55f, 590.52f, 411.71f, true);
-                    uiWaypointPath = 2;
-                    break;
-                case 3:
-                    AddWaypoint(0, 747.35f, 634.07f, 411.57f, true);
-                    AddWaypoint(1, 784.02f, 645.33f, 412.39f, true);
-                    AddWaypoint(2, 775.67f, 641.91f, 411.91f, true);
-                    uiWaypointPath = 3;
-                    break;
+                if (Creature* mount = GetMount())
+                    mount->SetImmuneToPC(false);
+                ScheduleMountedAbilities();
             }
-
-            if (uiType <= 3)
-                Start(false);
+            return;
         }
 
-        void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
+        Instance->SetBossState(DATA_GRAND_CHAMPIONS, IN_PROGRESS);
+        me->CallForHelp(50.0f);
+        DoZoneInCombat();
+        ScheduleFootAbilities();
+    }
+
+    void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo*/) override
+    {
+        if (_state == STATE_LEAVING || _state == STATE_DEFEATED)
         {
-            switch (waypointId)
+            damage = 0;
+            return;
+        }
+
+        if (damage < me->GetHealth())
+            return;
+
+        damage = me->GetHealth() - 1;
+
+        if (Unit* mount = me->GetVehicleBase())
+        {
+            mount->CastSpell(me, SPELL_UNHORSED, true);
+            me->ExitVehicle();
+            if (Creature* mountCreature = mount->ToCreature())
+                mountCreature->DespawnOrUnsummon(2s);
+
+            _state = STATE_UNHORSED;
+            _mountGUID.Clear();
+            Scheduler.CancelAll();
+            me->AttackStop();
+            me->RemoveAurasDueToSpell(SPELL_DEFEND_PERIODIC);
+            me->RemoveAurasDueToSpell(SPELL_DEFEND);
+            me->LoadEquipment(1, true);
+
+            Scheduler.Schedule(10s, [this](TaskContext seek)
             {
-                case 2:
-                    if (uiWaypointPath == 3 || uiWaypointPath == 2)
-                        instance->SetData(DATA_MOVEMENT_DONE, instance->GetData(DATA_MOVEMENT_DONE)+1);
-                    break;
-                case 3:
-                    instance->SetData(DATA_MOVEMENT_DONE, instance->GetData(DATA_MOVEMENT_DONE)+1);
-                    break;
-            }
-        }
-
-        void JustEngagedWith(Unit* /*who*/) override
-        {
-            DoCastSpellShield();
-        }
-
-        void DoCastSpellShield()
-        {
-            for (uint8 i = 0; i < 3; ++i)
-                DoCast(me, SPELL_SHIELD, true);
-        }
-
-        void UpdateAI(uint32 uiDiff) override
-        {
-            EscortAI::UpdateAI(uiDiff);
-
-            if (!UpdateVictim())
-                return;
-
-            if (uiBuffTimer <= uiDiff)
-            {
-                if (!me->HasAura(SPELL_SHIELD))
-                    DoCastSpellShield();
-
-                uiBuffTimer = urand(30000, 45000);
-            }else uiBuffTimer -= uiDiff;
-
-            if (uiChargeTimer <= uiDiff)
-            {
-                Map::PlayerList const& players = me->GetMap()->GetPlayers();
-                if (!players.isEmpty())
+                Creature* mount = ObjectAccessor::GetCreature(*me, _mountGUID);
+                if (!mount || !IsFreeMount(mount))
                 {
-                    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+                    mount = nullptr;
+                    std::vector<Creature*> mounts;
+                    me->GetCreatureListWithEntryInGrid(mounts, me->GetMap()->ToInstanceMap()->GetTeamIdInInstance() == TEAM_ALLIANCE ? NPC_ARGENT_BATTLEWORG_ALLIANCE : NPC_ARGENT_WARHORSE_HORDE, 100.0f);
+                    for (Creature* candidate : mounts)
                     {
-                        Player* player = itr->GetSource();
-                        if (player && !player->IsGameMaster() && me->IsInRange(player, 8.0f, 25.0f, false))
-                        {
-                            ResetThreatList();
-                            AddThreat(player, 1.0f);
-                            DoCast(player, SPELL_CHARGE);
-                            break;
-                        }
+                        if (!IsFreeMount(candidate))
+                            continue;
+
+                        if (!mount || me->GetDistance(candidate) < me->GetDistance(mount))
+                            mount = candidate;
                     }
+
+                    _mountGUID = mount ? mount->GetGUID() : ObjectGuid::Empty;
+                    if (mount)
+                        me->GetMotionMaster()->Clear();
                 }
-                uiChargeTimer = 5000;
-            }else uiChargeTimer -= uiDiff;
 
-            //dosen't work at all
-            if (uiShieldBreakerTimer <= uiDiff)
-            {
-                Vehicle* pVehicle = me->GetVehicleKit();
-                if (!pVehicle)
-                    return;
-
-                if (Unit* pPassenger = pVehicle->GetPassenger(SEAT_ID_0))
+                if (mount && !me->HasUnitState(UNIT_STATE_STUNNED) && me->GetMotionMaster()->GetCurrentMovementGeneratorType() != POINT_MOTION_TYPE)
                 {
-                    Map::PlayerList const& players = me->GetMap()->GetPlayers();
-                    if (!players.isEmpty())
+                    me->SetWalk(true);
+                    me->GetMotionMaster()->MovePoint(POINT_REMOUNT, mount->GetNearPosition(3.0f, mount->GetRelativeAngle(me)));
+                }
+
+                seek.Repeat(1s);
+            });
+
+            Instance->SetData(DATA_CHAMPION_UNHORSED, 0);
+            return;
+        }
+
+        if (_state != STATE_ON_FOOT)
+            return;
+
+        damage = 0;
+        me->SetHealth(1);
+        _state = STATE_DEFEATED;
+        Scheduler.CancelAll();
+        me->InterruptNonMeleeSpells(true);
+        me->RemoveAurasDueToSpell(SPELL_BLADESTORM);
+        me->RemoveAurasDueToSpell(SPELL_LIGHTNING_ARROWS);
+        if (Vehicle* vehicle = me->GetVehicleKit())
+            vehicle->RemoveAllPassengers();
+        me->AttackStop();
+        me->SetReactState(REACT_PASSIVE);
+        me->SetIsCombatDisallowed(true);
+        me->CombatStop(true);
+        me->GetMotionMaster()->Clear();
+        me->GetMotionMaster()->MoveIdle();
+        DoCastSelf(SPELL_KNEEL, true);
+        me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+        Instance->SetData(DATA_CHAMPION_DEFEATED, 0);
+    }
+
+    void MovementInform(uint32 type, uint32 pointId) override
+    {
+        if (type != POINT_MOTION_TYPE)
+            return;
+
+        switch (pointId)
+        {
+            case POINT_REMOUNT:
+                if (Creature* mount = ObjectAccessor::GetCreature(*me, _mountGUID))
+                {
+                    if (_state != STATE_UNHORSED || !IsFreeMount(mount))
+                        break;
+
+                    _state = STATE_MOUNTED;
+                    Scheduler.CancelAll();
+                    me->SetVirtualItem(0, ITEM_CHAMPION_LANCE);
+                    DoCast(mount, SPELL_RIDE_ARGENT_MOUNT, true);
+                    DoCastSelf(SPELL_DEFEND_PERIODIC, true);
+                    if (_paused)
                     {
-                        for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
-                        {
-                            Player* player = itr->GetSource();
-                            if (player && !player->IsGameMaster() && me->IsInRange(player, 10.0f, 30.0f, false))
-                            {
-                                pPassenger->CastSpell(player, SPELL_SHIELD_BREAKER, true);
-                                break;
-                            }
-                        }
+                        ReturnMountHome(mount);
+                        break;
                     }
-                }
-                uiShieldBreakerTimer = 7000;
-            }else uiShieldBreakerTimer -= uiDiff;
 
-            DoMeleeAttackIfReady();
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return GetTrialOfTheChampionAI<generic_vehicleAI_toc5AI>(creature);
-    }
-};
-
-class boss_warrior_toc5 : public CreatureScript
-{
-public:
-    boss_warrior_toc5() : CreatureScript("boss_warrior_toc5") { }
-
-    // Marshal Jacob Alerius && Mokra the Skullcrusher || Warrior
-    struct boss_warrior_toc5AI : public ScriptedAI
-    {
-        boss_warrior_toc5AI(Creature* creature) : ScriptedAI(creature)
-        {
-            Initialize();
-            instance = creature->GetInstanceScript();
-
-            bDone = false;
-            bHome = false;
-
-            uiPhase = 0;
-            uiPhaseTimer = 0;
-
-            me->SetReactState(REACT_PASSIVE);
-            // THIS IS A HACK, SHOULD BE REMOVED WHEN THE EVENT IS FULL SCRIPTED
-            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-            me->SetImmuneToPC(true);
-        }
-
-        void Initialize()
-        {
-            uiBladeStormTimer = urand(15000, 20000);
-            uiInterceptTimer = 7000;
-            uiMortalStrikeTimer = urand(8000, 12000);
-        }
-
-        InstanceScript* instance;
-
-        uint8 uiPhase;
-        uint32 uiPhaseTimer;
-
-        uint32 uiBladeStormTimer;
-        uint32 uiInterceptTimer;
-        uint32 uiMortalStrikeTimer;
-
-        bool bDone;
-        bool bHome;
-
-        void Reset() override
-        {
-            Initialize();
-        }
-
-        void JustReachedHome() override
-        {
-            ScriptedAI::JustReachedHome();
-
-            if (!bHome)
-                return;
-
-            uiPhaseTimer = 15000;
-            uiPhase = 1;
-
-            bHome = false;
-        }
-
-        void UpdateAI(uint32 uiDiff) override
-        {
-            if (!bDone && GrandChampionsOutVehicle(me))
-            {
-                bDone = true;
-
-                if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_1))
-                    me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_2))
-                    me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_3))
-                    me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
-
-                EnterEvadeMode();
-                bHome = true;
-            }
-
-            if (uiPhaseTimer <= uiDiff)
-            {
-                if (uiPhase == 1)
-                {
-                    AggroAllPlayers(me);
-                    uiPhase = 0;
-                }
-            }else uiPhaseTimer -= uiDiff;
-
-            if (!UpdateVictim() || !me->m_movementInfo.transport.guid.IsEmpty())
-                return;
-
-            if (uiInterceptTimer <= uiDiff)
-            {
-                Map::PlayerList const& players = me->GetMap()->GetPlayers();
-                if (!players.isEmpty())
-                {
-                    for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+                    if (me->IsEngaged() && !me->IsInCombat())
                     {
-                        Player* player = itr->GetSource();
-                        if (player && !player->IsGameMaster() && me->IsInRange(player, 8.0f, 25.0f, false))
-                        {
-                            ResetThreatList();
-                            AddThreat(player, 5.0f);
-                            DoCast(player, SPELL_INTERCEPT);
-                            break;
-                        }
+                        me->CombatStop(true);
+                        EngagementOver();
                     }
-                }
-                uiInterceptTimer = 7000;
-            } else uiInterceptTimer -= uiDiff;
 
-            if (uiBladeStormTimer <= uiDiff)
-            {
-                DoCastVictim(SPELL_BLADESTORM);
-                uiBladeStormTimer = urand(15000, 20000);
-            } else uiBladeStormTimer -= uiDiff;
+                    mount->SetImmuneToPC(false);
+                    bool const engaged = me->IsEngaged();
+                    if (engaged)
+                        ScheduleMountedAbilities();
 
-            if (uiMortalStrikeTimer <= uiDiff)
-            {
-                DoCastVictim(SPELL_MORTAL_STRIKE);
-                uiMortalStrikeTimer = urand(8000, 12000);
-            } else uiMortalStrikeTimer -= uiDiff;
-
-            DoMeleeAttackIfReady();
-        }
-
-        void JustDied(Unit* /*killer*/) override
-        {
-            instance->SetBossState(BOSS_GRAND_CHAMPIONS, DONE);
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return GetTrialOfTheChampionAI<boss_warrior_toc5AI>(creature);
-    }
-};
-
-class boss_mage_toc5 : public CreatureScript
-{
-public:
-    boss_mage_toc5() : CreatureScript("boss_mage_toc5") { }
-
-    // Ambrose Boltspark && Eressea Dawnsinger || Mage
-    struct boss_mage_toc5AI : public ScriptedAI
-    {
-        boss_mage_toc5AI(Creature* creature) : ScriptedAI(creature)
-        {
-            Initialize();
-            instance = creature->GetInstanceScript();
-
-            bDone = false;
-            bHome = false;
-
-            uiPhase = 0;
-            uiPhaseTimer = 0;
-
-            me->SetReactState(REACT_PASSIVE);
-            // THIS IS A HACK, SHOULD BE REMOVED WHEN THE EVENT IS FULL SCRIPTED
-            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-            me->SetImmuneToPC(true);
-        }
-
-        void Initialize()
-        {
-            uiFireBallTimer = 5000;
-            uiPolymorphTimer = 8000;
-            uiBlastWaveTimer = 12000;
-            uiHasteTimer = 22000;
-        }
-
-        InstanceScript* instance;
-
-        uint8 uiPhase;
-        uint32 uiPhaseTimer;
-
-        uint32 uiFireBallTimer;
-        uint32 uiBlastWaveTimer;
-        uint32 uiHasteTimer;
-        uint32 uiPolymorphTimer;
-
-        bool bDone;
-        bool bHome;
-
-        void Reset() override
-        {
-            Initialize();
-        }
-
-        void JustReachedHome() override
-        {
-            ScriptedAI::JustReachedHome();
-
-            if (!bHome)
-                return;
-
-            uiPhaseTimer = 15000;
-            uiPhase = 1;
-
-            bHome = false;
-        }
-
-        void UpdateAI(uint32 uiDiff) override
-        {
-            if (!bDone && GrandChampionsOutVehicle(me))
-            {
-                bDone = true;
-
-                if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_1))
-                    me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_2))
-                    me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_3))
-                    me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
-
-                instance->SetBossState(BOSS_GRAND_CHAMPIONS, IN_PROGRESS);
-
-                EnterEvadeMode();
-                bHome = true;
-            }
-
-            if (uiPhaseTimer <= uiDiff)
-            {
-                if (uiPhase == 1)
-                {
-                    AggroAllPlayers(me);
-                    uiPhase = 0;
-                }
-            }else uiPhaseTimer -= uiDiff;
-
-            if (uiFireBallTimer <= uiDiff)
-            {
-                if (me->GetVictim())
-                    DoCastVictim(SPELL_FIREBALL);
-                uiFireBallTimer = 5000;
-            } else uiFireBallTimer -= uiDiff;
-
-            if (!UpdateVictim() || !me->m_movementInfo.transport.guid.IsEmpty())
-                return;
-
-            if (uiFireBallTimer <= uiDiff)
-            {
-                DoCastVictim(SPELL_FIREBALL);
-                uiFireBallTimer = 5000;
-            } else uiFireBallTimer -= uiDiff;
-
-            if (uiPolymorphTimer <= uiDiff)
-            {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
-                    DoCast(target, SPELL_POLYMORPH);
-                uiPolymorphTimer = 8000;
-            } else uiPolymorphTimer -= uiDiff;
-
-            if (uiBlastWaveTimer <= uiDiff)
-            {
-                DoCastAOE(SPELL_BLAST_WAVE, false);
-                uiBlastWaveTimer = 13000;
-            } else uiBlastWaveTimer -= uiDiff;
-
-            if (uiHasteTimer <= uiDiff)
-            {
-                me->InterruptNonMeleeSpells(true);
-
-                DoCast(me, SPELL_HASTE);
-                uiHasteTimer = 22000;
-            } else uiHasteTimer -= uiDiff;
-
-            DoMeleeAttackIfReady();
-        }
-
-        void JustDied(Unit* /*killer*/) override
-        {
-            instance->SetBossState(BOSS_GRAND_CHAMPIONS, DONE);
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return GetTrialOfTheChampionAI<boss_mage_toc5AI>(creature);
-    }
-};
-
-class boss_shaman_toc5 : public CreatureScript
-{
-public:
-    boss_shaman_toc5() : CreatureScript("boss_shaman_toc5") { }
-
-    // Colosos && Runok Wildmane || Shaman
-    struct boss_shaman_toc5AI : public ScriptedAI
-    {
-        boss_shaman_toc5AI(Creature* creature) : ScriptedAI(creature)
-        {
-            Initialize();
-            instance = creature->GetInstanceScript();
-
-            bDone = false;
-            bHome = false;
-
-            uiPhase = 0;
-            uiPhaseTimer = 0;
-
-            me->SetReactState(REACT_PASSIVE);
-            // THIS IS A HACK, SHOULD BE REMOVED WHEN THE EVENT IS FULL SCRIPTED
-            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-            me->SetImmuneToPC(true);
-        }
-
-        void Initialize()
-        {
-            uiChainLightningTimer = 16000;
-            uiHealingWaveTimer = 12000;
-            uiEartShieldTimer = urand(30000, 35000);
-            uiHexMendingTimer = urand(20000, 25000);
-        }
-
-        InstanceScript* instance;
-
-        uint8 uiPhase;
-        uint32 uiPhaseTimer;
-
-        uint32 uiChainLightningTimer;
-        uint32 uiEartShieldTimer;
-        uint32 uiHealingWaveTimer;
-        uint32 uiHexMendingTimer;
-
-        bool bDone;
-        bool bHome;
-
-        void Reset() override
-        {
-            Initialize();
-        }
-
-        void JustEngagedWith(Unit* who) override
-        {
-            DoCast(me, SPELL_EARTH_SHIELD);
-            DoCast(who, SPELL_HEX_OF_MENDING);
-        };
-
-        void JustReachedHome() override
-        {
-            ScriptedAI::JustReachedHome();
-
-            if (!bHome)
-                return;
-
-            uiPhaseTimer = 15000;
-            uiPhase = 1;
-
-            bHome = false;
-        }
-
-        void UpdateAI(uint32 uiDiff) override
-        {
-            if (!bDone && GrandChampionsOutVehicle(me))
-            {
-                bDone = true;
-
-                if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_1))
-                    me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_2))
-                    me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_3))
-                    me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
-
-                instance->SetBossState(BOSS_GRAND_CHAMPIONS, IN_PROGRESS);
-
-                EnterEvadeMode();
-                bHome = true;
-            }
-
-            if (uiPhaseTimer <= uiDiff)
-            {
-                if (uiPhase == 1)
-                {
-                    AggroAllPlayers(me);
-                    uiPhase = 0;
-                }
-            }else uiPhaseTimer -= uiDiff;
-
-            if (!UpdateVictim() || !me->m_movementInfo.transport.guid.IsEmpty())
-                return;
-
-            if (uiChainLightningTimer <= uiDiff)
-            {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
-                    DoCast(target, SPELL_CHAIN_LIGHTNING);
-
-                uiChainLightningTimer = 16000;
-            } else uiChainLightningTimer -= uiDiff;
-
-            if (uiHealingWaveTimer <= uiDiff)
-            {
-                bool bChance = roll_chance_i(50);
-
-                if (!bChance)
-                {
-                    if (Unit* pFriend = DoSelectLowestHpFriendly(40))
-                        DoCast(pFriend, SPELL_HEALING_WAVE);
-                } else
-                    DoCast(me, SPELL_HEALING_WAVE);
-
-                uiHealingWaveTimer = 12000;
-            } else uiHealingWaveTimer -= uiDiff;
-
-            if (uiEartShieldTimer <= uiDiff)
-            {
-                DoCast(me, SPELL_EARTH_SHIELD);
-
-                uiEartShieldTimer = urand(30000, 35000);
-            } else uiEartShieldTimer -= uiDiff;
-
-            if (uiHexMendingTimer <= uiDiff)
-            {
-                DoCastVictim(SPELL_HEX_OF_MENDING, true);
-
-                uiHexMendingTimer = urand(20000, 25000);
-            } else uiHexMendingTimer -= uiDiff;
-
-            DoMeleeAttackIfReady();
-        }
-
-        void JustDied(Unit* /*killer*/) override
-        {
-            instance->SetBossState(BOSS_GRAND_CHAMPIONS, DONE);
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return GetTrialOfTheChampionAI<boss_shaman_toc5AI>(creature);
-    }
-};
-
-class boss_hunter_toc5 : public CreatureScript
-{
-public:
-    boss_hunter_toc5() : CreatureScript("boss_hunter_toc5") { }
-
-        // Jaelyne Evensong && Zul'tore || Hunter
-    struct boss_hunter_toc5AI : public ScriptedAI
-    {
-        boss_hunter_toc5AI(Creature* creature) : ScriptedAI(creature)
-        {
-            Initialize();
-            instance = creature->GetInstanceScript();
-
-            bDone = false;
-            bHome = false;
-
-            uiPhase = 0;
-            uiPhaseTimer = 0;
-
-            me->SetReactState(REACT_PASSIVE);
-            // THIS IS A HACK, SHOULD BE REMOVED WHEN THE EVENT IS FULL SCRIPTED
-            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-            me->SetImmuneToPC(true);
-        }
-
-        void Initialize()
-        {
-            uiShootTimer = 12000;
-            uiMultiShotTimer = 0;
-            uiLightningArrowsTimer = 7000;
-
-            uiTargetGUID.Clear();
-
-            bShoot = false;
-        }
-
-        InstanceScript* instance;
-
-        uint8 uiPhase;
-        uint32 uiPhaseTimer;
-
-        uint32 uiShootTimer;
-        uint32 uiMultiShotTimer;
-        uint32 uiLightningArrowsTimer;
-
-        ObjectGuid uiTargetGUID;
-
-        bool bShoot;
-        bool bDone;
-        bool bHome;
-
-        void Reset() override
-        {
-            Initialize();
-        }
-
-        void JustReachedHome() override
-        {
-            ScriptedAI::JustReachedHome();
-
-            if (!bHome)
-                return;
-
-            uiPhaseTimer = 15000;
-            uiPhase = 1;
-
-            bHome = false;
-        }
-
-        void UpdateAI(uint32 uiDiff) override
-        {
-            if (!bDone && GrandChampionsOutVehicle(me))
-            {
-                bDone = true;
-
-                if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_1))
-                    me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_2))
-                    me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_3))
-                    me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
-
-                instance->SetBossState(BOSS_GRAND_CHAMPIONS, IN_PROGRESS);
-
-                EnterEvadeMode();
-                bHome = true;
-            }
-
-            if (uiPhaseTimer <= uiDiff)
-            {
-                if (uiPhase == 1)
-                {
-                    AggroAllPlayers(me);
-                    uiPhase = 0;
-                }
-            }else uiPhaseTimer -= uiDiff;
-
-            if (!UpdateVictim() || !me->m_movementInfo.transport.guid.IsEmpty())
-                return;
-
-            if (uiLightningArrowsTimer <= uiDiff)
-            {
-                DoCastAOE(SPELL_LIGHTNING_ARROWS, false);
-                uiLightningArrowsTimer = 7000;
-            } else uiLightningArrowsTimer -= uiDiff;
-
-            if (uiShootTimer <= uiDiff)
-            {
-                if (Unit* target = SelectTarget(SelectTargetMethod::MaxDistance, 0, 30.0f))
-                {
-                    uiTargetGUID = target->GetGUID();
-                    DoCast(target, SPELL_SHOOT);
-                }
-                uiShootTimer = 12000;
-                uiMultiShotTimer = 3000;
-                bShoot = true;
-            } else uiShootTimer -= uiDiff;
-
-            if (bShoot && uiMultiShotTimer <= uiDiff)
-            {
-                me->InterruptNonMeleeSpells(true);
-                Unit* target = ObjectAccessor::GetUnit(*me, uiTargetGUID);
-
-                if (target && me->IsInRange(target, 5.0f, 30.0f, false))
-                {
-                    DoCast(target, SPELL_MULTI_SHOT);
-                }
-                else
-                {
-                    Map::PlayerList const& players = me->GetMap()->GetPlayers();
-                    if (!players.isEmpty())
+                    Scheduler.Schedule(1s, [this, engaged](TaskContext /*context*/)
                     {
-                        for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
-                        {
-                            Player* player = itr->GetSource();
-                            if (player && !player->IsGameMaster() && me->IsInRange(player, 5.0f, 30.0f, false))
-                            {
-                                DoCast(player, SPELL_MULTI_SHOT);
-                                break;
-                            }
-                        }
-                    }
+                        DoCastSelf(SPELL_FEAR_SELF);
+                        if (!engaged)
+                            DoZoneInCombat();
+                    });
                 }
-                bShoot = false;
-            } else uiMultiShotTimer -= uiDiff;
-
-            DoMeleeAttackIfReady();
+                break;
+            case POINT_LEAVE:
+                me->DespawnOrUnsummon();
+                break;
+            default:
+                break;
         }
+    }
 
-        void JustDied(Unit* /*killer*/) override
-        {
-            instance->SetBossState(BOSS_GRAND_CHAMPIONS, DONE);
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
+    void EnterEvadeMode(EvadeReason why) override
     {
-        return GetTrialOfTheChampionAI<boss_hunter_toc5AI>(creature);
+        switch (_state)
+        {
+            case STATE_MOUNTED:
+                if (!_paused)
+                    ResetMounted();
+                break;
+            case STATE_ON_FOOT:
+                Scheduler.CancelAll();
+                ScriptedAI::EnterEvadeMode(why);
+                if (Instance->GetBossState(DATA_GRAND_CHAMPIONS) == IN_PROGRESS)
+                    Instance->SetBossState(DATA_GRAND_CHAMPIONS, FAIL);
+                break;
+            default:
+                break;
+        }
+    }
+
+    void JustReachedHome() override
+    {
+        if (_state == STATE_ON_FOOT)
+            DoCastSelf(SPELL_PENNANT_SELECTOR, true);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        Scheduler.Update(diff);
+
+        if ((_state != STATE_MOUNTED && _state != STATE_ON_FOOT) || !UpdateVictim())
+            return;
+
+        DoMeleeAttackIfReady();
+    }
+
+protected:
+    virtual void ScheduleFootAbilities() = 0;
+
+    InstanceScript* Instance;
+    TaskScheduler Scheduler;
+
+private:
+    Creature* GetMount() const
+    {
+        if (Creature* mount = me->GetVehicleCreatureBase())
+            return mount;
+
+        return ObjectAccessor::GetCreature(*me, _mountGUID);
+    }
+
+    bool IsFreeMount(Creature const* mount) const
+    {
+        return mount->IsAlive() && mount->GetVehicleKit() && !mount->HasAuraType(SPELL_AURA_CONTROL_VEHICLE) && !mount->HasUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+    }
+
+    void ResetMounted()
+    {
+        Scheduler.CancelAll();
+        ScriptedAI::EnterEvadeMode(EVADE_REASON_OTHER);
+        me->SetFullHealth();
+        DoCastSelf(SPELL_PENNANT_SELECTOR, true);
+        DoCastSelf(SPELL_DEFEND_PERIODIC, true);
+        if (Creature* mount = me->GetVehicleCreatureBase())
+            ReturnMountHome(mount);
+    }
+
+    void ReturnMountHome(Creature* mount)
+    {
+        me->SetHomePosition(_slotHome);
+        mount->CombatStop(true);
+        mount->SetHomePosition(_slotHome);
+        mount->GetMotionMaster()->MoveTargetedHome();
+    }
+
+    void ScheduleMountedAbilities()
+    {
+        Scheduler.Schedule(1s, 7s, [this](TaskContext charge)
+        {
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [this](Unit* candidate)
+            {
+                return me->IsInRange(candidate, 8.0f, 25.0f);
+            }))
+                DoCast(target, SPELL_CHARGE);
+            charge.Repeat(7s, 14s);
+        })
+        .Schedule(1s, 9s, [this](TaskContext shieldBreaker)
+        {
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [this](Unit* candidate)
+            {
+                return me->IsInRange(candidate, 10.0f, 30.0f);
+            }))
+                DoCast(target, SPELL_SHIELD_BREAKER);
+            shieldBreaker.Repeat(3s, 14s);
+        })
+        .Schedule(6s, 12s, [this](TaskContext fearSelf)
+        {
+            DoCastSelf(SPELL_FEAR_SELF);
+            fearSelf.Repeat(9s, 13s);
+        });
+    }
+
+    ObjectGuid _mountGUID;
+    Position _slotHome;
+    uint8 _state;
+    bool _active;
+    bool _paused;
+};
+
+struct boss_warrior_toc5 : public GrandChampionAI
+{
+    boss_warrior_toc5(Creature* creature) : GrandChampionAI(creature) { }
+
+    void OnSpellFailed(SpellInfo const* spellInfo) override
+    {
+        if (spellInfo->Id != SPELL_ROLLING_THROW)
+            return;
+
+        if (Vehicle* vehicle = me->GetVehicleKit())
+            vehicle->RemoveAllPassengers();
+    }
+
+    void ScheduleFootAbilities() override
+    {
+        Scheduler.Schedule(14s, 16s, [this](TaskContext mortalStrike)
+        {
+            if (DoCastVictim(SPELL_MORTAL_STRIKE) != SPELL_CAST_OK)
+            {
+                mortalStrike.Repeat(1s);
+                return;
+            }
+
+            mortalStrike.Repeat(15s, 25s);
+        })
+        .Schedule(19s, 27s, [this](TaskContext bladestorm)
+        {
+            DoCastSelf(SPELL_BLADESTORM);
+            bladestorm.Repeat(45s, 57s);
+        })
+        .Schedule(20s, 29s, [this](TaskContext rollingThrow)
+        {
+            if (me->GetVehicleKit())
+            {
+                DoCastVictim(SPELL_ROLLING_THROW_GRAB, true);
+                DoCastSelf(SPELL_ROLLING_THROW);
+                rollingThrow.Schedule(2s, [this](TaskContext /*context*/)
+                {
+                    if (Vehicle* vehicle = me->GetVehicleKit())
+                        vehicle->RemoveAllPassengers();
+                });
+            }
+            rollingThrow.Repeat(30s, 35s);
+        })
+        .Schedule(1s, [this](TaskContext /*intercept*/)
+        {
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [this](Unit* candidate)
+            {
+                return candidate->GetTypeId() == TYPEID_PLAYER && me->IsInRange(candidate, 8.0f, 25.0f);
+            }))
+                DoCast(target, SPELL_INTERCEPT);
+        });
     }
 };
 
-class boss_rouge_toc5 : public CreatureScript
+struct boss_mage_toc5 : public GrandChampionAI
 {
-public:
-    boss_rouge_toc5() : CreatureScript("boss_rouge_toc5") { }
+    boss_mage_toc5(Creature* creature) : GrandChampionAI(creature) { }
 
-    // Lana Stouthammer Evensong && Deathstalker Visceri || Rouge
-    struct boss_rouge_toc5AI : public ScriptedAI
+    void AttackStart(Unit* who) override
     {
-        boss_rouge_toc5AI(Creature* creature) : ScriptedAI(creature)
+        if (!who || me->GetVehicleBase() || me->HasReactState(REACT_PASSIVE))
         {
-            Initialize();
-            instance = creature->GetInstanceScript();
-
-            bDone = false;
-            bHome = false;
-
-            uiPhase = 0;
-            uiPhaseTimer = 0;
-
-            me->SetReactState(REACT_PASSIVE);
-            // THIS IS A HACK, SHOULD BE REMOVED WHEN THE EVENT IS FULL SCRIPTED
-            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-            me->SetImmuneToPC(true);
+            GrandChampionAI::AttackStart(who);
+            return;
         }
 
-        void Initialize()
+        AttackStartCaster(who, 20.0f);
+    }
+
+    void ScheduleFootAbilities() override
+    {
+        Scheduler.Schedule(1s, [this](TaskContext fireball)
         {
-            uiEviscerateTimer = 8000;
-            uiFanKivesTimer = 14000;
-            uiPosionBottleTimer = 19000;
-        }
-
-        InstanceScript* instance;
-
-        uint8 uiPhase;
-        uint32 uiPhaseTimer;
-        uint32 uiEviscerateTimer;
-        uint32 uiFanKivesTimer;
-        uint32 uiPosionBottleTimer;
-
-        bool bDone;
-        bool bHome;
-
-        void Reset() override
+            DoCastVictim(SPELL_FIREBALL);
+            fireball.Repeat(3s, 5s);
+        })
+        .Schedule(10s, 14s, [this](TaskContext polymorph)
         {
-            Initialize();
-        }
-
-        void JustReachedHome() override
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+                DoCast(target, SPELL_POLYMORPH);
+            polymorph.Repeat(20s, 28s);
+        })
+        .Schedule(7s, 19s, [this](TaskContext blastWave)
         {
-            ScriptedAI::JustReachedHome();
-
-            if (!bHome)
-                return;
-
-            uiPhaseTimer = 15000;
-            uiPhase = 1;
-
-            bHome = false;
-        }
-
-        void UpdateAI(uint32 uiDiff) override
-        {
-            if (!bDone && GrandChampionsOutVehicle(me))
+            if (SelectTarget(SelectTargetMethod::Random, 0, 10.0f, true))
             {
-                bDone = true;
-
-                if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_1))
-                    me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_2))
-                    me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_3))
-                    me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
-
-                instance->SetBossState(BOSS_GRAND_CHAMPIONS, IN_PROGRESS);
-
-                EnterEvadeMode();
-                bHome = true;
+                DoCastSelf(SPELL_BLAST_WAVE);
+                blastWave.Repeat(15s, 20s);
             }
-
-            if (uiPhaseTimer <= uiDiff)
-            {
-                if (uiPhase == 1)
-                {
-                    AggroAllPlayers(me);
-                    uiPhase = 0;
-                }
-            } else uiPhaseTimer -= uiDiff;
-
-            if (!UpdateVictim() || !me->m_movementInfo.transport.guid.IsEmpty())
-                return;
-
-            if (uiEviscerateTimer <= uiDiff)
-            {
-                DoCastVictim(SPELL_EVISCERATE);
-                uiEviscerateTimer = 8000;
-            } else uiEviscerateTimer -= uiDiff;
-
-            if (uiFanKivesTimer <= uiDiff)
-            {
-                DoCastAOE(SPELL_FAN_OF_KNIVES, false);
-                uiFanKivesTimer = 14000;
-            } else uiFanKivesTimer -= uiDiff;
-
-            if (uiPosionBottleTimer <= uiDiff)
-            {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
-                    DoCast(target, SPELL_POISON_BOTTLE);
-                uiPosionBottleTimer = 19000;
-            } else uiPosionBottleTimer -= uiDiff;
-
-            DoMeleeAttackIfReady();
-        }
-
-        void JustDied(Unit* /*killer*/) override
+            else
+                blastWave.Repeat(2s);
+        })
+        .Schedule(10s, 18s, [this](TaskContext haste)
         {
-            instance->SetBossState(BOSS_GRAND_CHAMPIONS, DONE);
-        }
-    };
+            DoCastSelf(SPELL_HASTE);
+            haste.Repeat(22s, 28s);
+        });
+    }
+};
 
-    CreatureAI* GetAI(Creature* creature) const override
+struct boss_shaman_toc5 : public GrandChampionAI
+{
+    boss_shaman_toc5(Creature* creature) : GrandChampionAI(creature) { }
+
+    void ScheduleFootAbilities() override
     {
-        return GetTrialOfTheChampionAI<boss_rouge_toc5AI>(creature);
+        Scheduler.Schedule(7s, 10s, [this](TaskContext chainLightning)
+        {
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+                DoCast(target, SPELL_CHAIN_LIGHTNING);
+            chainLightning.Repeat(8s, 12s);
+        })
+        .Schedule(9s, 12s, [this](TaskContext healingWave)
+        {
+            Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f);
+            if (target && target->GetHealthPct() <= 70.0f)
+            {
+                DoCast(target, SPELL_HEALING_WAVE);
+                healingWave.Repeat(6s, 10s);
+            }
+            else
+                healingWave.Repeat(2s);
+        })
+        .Schedule(13s, 20s, [this](TaskContext earthShield)
+        {
+            std::list<Creature*> allies = DoFindFriendlyMissingBuff(40.0f, sSpellMgr->GetSpellIdForDifficulty(SPELL_EARTH_SHIELD, me));
+            if (!allies.empty())
+                DoCast(Trinity::Containers::SelectRandomContainerElement(allies), SPELL_EARTH_SHIELD);
+            earthShield.Repeat(25s, 30s);
+        })
+        .Schedule(20s, 25s, [this](TaskContext hexOfMending)
+        {
+            DoCastVictim(SPELL_HEX_OF_MENDING);
+            hexOfMending.Repeat(20s, 25s);
+        });
+    }
+};
+
+struct boss_hunter_toc5 : public GrandChampionAI
+{
+    boss_hunter_toc5(Creature* creature) : GrandChampionAI(creature) { }
+
+    void AttackStart(Unit* who) override
+    {
+        if (!who || me->GetVehicleBase() || me->HasReactState(REACT_PASSIVE))
+        {
+            GrandChampionAI::AttackStart(who);
+            return;
+        }
+
+        AttackStartCaster(who, 20.0f);
+    }
+
+    void ScheduleFootAbilities() override
+    {
+        Scheduler.Schedule(1s, [this](TaskContext shoot)
+        {
+            if (me->GetVictim() && !me->IsWithinMeleeRange(me->GetVictim()))
+                DoCastVictim(SPELL_SHOOT);
+            shoot.Repeat(2s, 3s);
+        })
+        .Schedule(7s, 12s, [this](TaskContext multiShot)
+        {
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [this](Unit* candidate)
+            {
+                return me->IsInRange(candidate, 5.0f, 30.0f);
+            }))
+                DoCast(target, SPELL_MULTI_SHOT);
+            multiShot.Repeat(10s, 16s);
+        })
+        .Schedule(18s, 23s, [this](TaskContext lightningArrows)
+        {
+            DoCastSelf(SPELL_LIGHTNING_ARROWS);
+            lightningArrows.Schedule(3s, [this](TaskContext /*context*/)
+            {
+                DoCastSelf(SPELL_LIGHTNING_ARROWS_PROC, true);
+            });
+            lightningArrows.Repeat(30s, 34s);
+        })
+        .Schedule(24s, [this](TaskContext disengage)
+        {
+            if (me->GetVictim() && me->IsWithinMeleeRange(me->GetVictim()))
+            {
+                DoCastVictim(SPELL_DISENGAGE);
+                disengage.Repeat(22s, 30s);
+            }
+            else
+                disengage.Repeat(1s);
+        });
+    }
+};
+
+struct boss_rogue_toc5 : public GrandChampionAI
+{
+    boss_rogue_toc5(Creature* creature) : GrandChampionAI(creature) { }
+
+    void JustAppeared() override
+    {
+        GrandChampionAI::JustAppeared();
+
+        if (Instance->GetData(DATA_CHAMPION_FOOT_PHASE))
+            DoCastSelf(SPELL_DEADLY_POISON, true);
+    }
+
+    void JustReachedHome() override
+    {
+        GrandChampionAI::JustReachedHome();
+
+        if (Instance->GetData(DATA_CHAMPION_FOOT_PHASE))
+            DoCastSelf(SPELL_DEADLY_POISON, true);
+    }
+
+    void ScheduleFootAbilities() override
+    {
+        Scheduler.Schedule(4s, 11s, [this](TaskContext fanOfKnives)
+        {
+            DoCastSelf(SPELL_FAN_OF_KNIVES);
+            fanOfKnives.Repeat(10s, 14s);
+        })
+        .Schedule(12s, 15s, [this](TaskContext poisonBottle)
+        {
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
+                DoCast(target, SPELL_POISON_BOTTLE);
+            poisonBottle.Repeat(16s, 18s);
+        })
+        .Schedule(10s, 17s, [this](TaskContext eviscerate)
+        {
+            DoCastVictim(SPELL_EVISCERATE);
+            eviscerate.Repeat(30s, 34s);
+        });
+    }
+};
+
+struct npc_toc5_lesser_champion : public ScriptedAI
+{
+    npc_toc5_lesser_champion(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript()), _active(false) { }
+
+    void JustAppeared() override
+    {
+        ScriptedAI::JustAppeared();
+
+        me->SetReactState(REACT_PASSIVE);
+        me->SetImmuneToAll(true);
+        DoCastSelf(SPELL_LESSER_DEFEND, true);
+    }
+
+    void DoAction(int32 action) override
+    {
+        switch (action)
+        {
+            case ACTION_ENGAGE:
+                _active = true;
+                me->SetFaction(FACTION_MONSTER_2);
+                me->SetImmuneToAll(false);
+                me->SetReactState(REACT_AGGRESSIVE);
+                if (me->IsInEvadeMode())
+                {
+                    me->GetMotionMaster()->Clear();
+                    me->ClearUnitState(UNIT_STATE_EVADE);
+                    me->SetFullHealth();
+                }
+                DoZoneInCombat();
+                break;
+            case ACTION_NO_ALIVE_PLAYERS:
+                if (!_active)
+                    break;
+
+                _instance->SetData(DATA_MOUNTED_WIPE, 0);
+                me->SetReactState(REACT_PASSIVE);
+                me->SetImmuneToAll(true);
+                if (me->IsEngaged())
+                    EnterEvadeMode(EVADE_REASON_OTHER);
+                break;
+            default:
+                break;
+        }
+    }
+
+    void JustEngagedWith(Unit* /*who*/) override
+    {
+        _scheduler.Schedule(1s, 14s, [this](TaskContext charge)
+        {
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [this](Unit* candidate)
+            {
+                return me->IsInRange(candidate, 8.0f, 25.0f);
+            }))
+                DoCast(target, SPELL_LESSER_CHARGE);
+            else
+                charge.Repeat(1s);
+        });
+    }
+
+    void JustDied(Unit* /*killer*/) override
+    {
+        me->Dismount();
+    }
+
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        _scheduler.CancelAll();
+        ScriptedAI::EnterEvadeMode(why);
+        DoCastSelf(SPELL_LESSER_DEFEND, true);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        _scheduler.Update(diff);
+        DoMeleeAttackIfReady();
+    }
+
+private:
+    InstanceScript* _instance;
+    TaskScheduler _scheduler;
+    bool _active;
+};
+
+struct npc_toc5_champion_mount : public ScriptedAI
+{
+    npc_toc5_champion_mount(Creature* creature) : ScriptedAI(creature) { }
+
+    void Reset() override
+    {
+        me->SetReactState(REACT_PASSIVE);
+    }
+
+    void EnterEvadeMode(EvadeReason /*why*/) override { }
+
+    void UpdateAI(uint32 /*diff*/) override
+    {
+        Unit* rider = me->GetVehicleKit() ? me->GetVehicleKit()->GetPassenger(0) : nullptr;
+        Unit* target = rider ? rider->GetVictim() : nullptr;
+        if (!target)
+        {
+            if (!_chaseGUID.IsEmpty())
+            {
+                _chaseGUID.Clear();
+                me->GetMotionMaster()->Remove(CHASE_MOTION_TYPE);
+            }
+            return;
+        }
+
+        if (target->GetGUID() == _chaseGUID && me->GetMotionMaster()->HasMovementGenerator([](MovementGenerator const* movement)
+        {
+            return movement->GetMovementGeneratorType() == CHASE_MOTION_TYPE;
+        }))
+            return;
+
+        _chaseGUID = target->GetGUID();
+        me->GetMotionMaster()->MoveChase(target, Optional<ChaseRange>(), Optional<ChaseAngle>(), false);
+    }
+
+private:
+    ObjectGuid _chaseGUID;
+};
+
+struct npc_toc5_hostile_argent_mount : public npc_toc5_champion_mount
+{
+    npc_toc5_hostile_argent_mount(Creature* creature) : npc_toc5_champion_mount(creature) { }
+
+    void PassengerBoarded(Unit* passenger, int8 /*seatId*/, bool apply) override
+    {
+        if (!apply || passenger->GetTypeId() != TYPEID_UNIT)
+            return;
+
+        me->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
+        DoCast(passenger, SPELL_MOUNT_FULL_HEAL);
+    }
+};
+
+struct npc_toc5_argent_mount : public VehicleAI
+{
+    npc_toc5_argent_mount(Creature* creature) : VehicleAI(creature) { }
+
+    void PassengerBoarded(Unit* passenger, int8 /*seatId*/, bool apply) override
+    {
+        if (apply || passenger->GetTypeId() != TYPEID_PLAYER)
+            return;
+
+        passenger->RemoveAurasDueToSpell(SPELL_DEFEND_PLAYER);
+        me->RemoveAurasDueToSpell(SPELL_DEFEND_PLAYER);
+    }
+};
+
+// 68301 - Charge
+class spell_toc5_champion_charge : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_champion_charge);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_CHARGE_VEHICLE });
+    }
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        if (Unit* mount = GetCaster()->GetVehicleBase())
+            mount->CastSpell(GetHitUnit(), SPELL_CHARGE_VEHICLE, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_champion_charge::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 68307 - Charge
+class spell_toc5_champion_charge_vehicle : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_champion_charge_vehicle);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_CHARGE_DAMAGE });
+    }
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        if (Vehicle* vehicle = GetCaster()->GetVehicleKit())
+            if (Unit* rider = vehicle->GetPassenger(0))
+                rider->CastSpell(GetHitUnit(), SPELL_CHARGE_DAMAGE, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_champion_charge_vehicle::HandleScript, EFFECT_1, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 67866 - Trample
+class spell_toc5_trample : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_trample);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_TRAMPLED });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Creature* target = GetHitCreature();
+        if (!target || target->GetVehicleBase() || target->HasUnitState(UNIT_STATE_STUNNED) || target->HasUnitState(UNIT_STATE_CASTING))
+            return;
+
+        switch (target->GetEntry())
+        {
+            case NPC_MOKRA:
+            case NPC_ERESSEA:
+            case NPC_RUNOK:
+            case NPC_ZULTORE:
+            case NPC_VISCERI:
+            case NPC_JACOB:
+            case NPC_AMBROSE:
+            case NPC_COLOSOS:
+            case NPC_JAELYNE:
+            case NPC_LANA:
+                if (InstanceScript* instance = target->GetInstanceScript())
+                    if (instance->GetBossState(DATA_GRAND_CHAMPIONS) != SPECIAL)
+                        break;
+                target->CastSpell(target, SPELL_TRAMPLED, false);
+                target->AI()->Talk(SAY_TRAMPLED, target);
+                break;
+            default:
+                break;
+        }
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_trample::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+// 64101 - Defend
+class spell_toc5_champion_defend : public AuraScript
+{
+    PrepareAuraScript(spell_toc5_champion_defend);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_DEFEND });
+    }
+
+    bool Load() override
+    {
+        return GetUnitOwner()->GetMapId() == TrialOfTheChampionMapId;
+    }
+
+    void HandleApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        GetTarget()->CastSpell(GetTarget(), SPELL_DEFEND, true);
+    }
+
+    void HandlePeriodic(AuraEffect const* /*aurEff*/)
+    {
+        GetTarget()->CastSpell(GetTarget(), SPELL_DEFEND, true);
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(spell_toc5_champion_defend::HandleApply, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_toc5_champion_defend::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
+// 67534 - Hex of Mending
+class spell_toc5_hex_of_mending : public AuraScript
+{
+    PrepareAuraScript(spell_toc5_hex_of_mending);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_HEX_OF_MENDING_HEAL });
+    }
+
+    void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
+    {
+        PreventDefaultAction();
+
+        HealInfo* healInfo = eventInfo.GetHealInfo();
+        if (!healInfo || !healInfo->GetHeal())
+            return;
+
+        CastSpellExtraArgs args(aurEff);
+        args.OriginalCaster = GetCasterGUID();
+        args.AddSpellBP0(healInfo->GetHeal());
+        GetTarget()->CastSpell(GetTarget(), SPELL_HEX_OF_MENDING_HEAL, args);
+    }
+
+    void Register() override
+    {
+        OnEffectProc += AuraEffectProcFn(spell_toc5_hex_of_mending::HandleProc, EFFECT_0, SPELL_AURA_DUMMY);
+    }
+};
+
+// 68340 - Disengage
+class spell_toc5_disengage : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_disengage);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_DISENGAGE_JUMP });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        GetCaster()->CastSpell(GetCaster(), SPELL_DISENGAGE_JUMP, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_disengage::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+// 67730 - Rolling Throw
+class spell_toc5_rolling_throw_grab : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_rolling_throw_grab);
+
+    bool Validate(SpellInfo const* spellInfo) override
+    {
+        return ValidateSpellInfo({ uint32(spellInfo->GetEffect(EFFECT_0).CalcValue()) });
+    }
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        GetHitUnit()->CastSpell(GetCaster(), uint32(GetEffectValue()), true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_rolling_throw_grab::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 67546 - Rolling Throw
+class spell_toc5_rolling_throw : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_rolling_throw);
+
+    void HandleAfterCast()
+    {
+        if (Vehicle* vehicle = GetCaster()->GetVehicleKit())
+            vehicle->RemoveAllPassengers();
+    }
+
+    void Register() override
+    {
+        AfterCast += SpellCastFn(spell_toc5_rolling_throw::HandleAfterCast);
+    }
+};
+
+static constexpr std::array<std::pair<uint32, uint32>, 10> ChampionPennants =
+{{
+    { NPC_MOKRA, SPELL_PENNANT_ORGRIMMAR },
+    { NPC_ERESSEA, SPELL_PENNANT_SILVERMOON },
+    { NPC_RUNOK, SPELL_PENNANT_THUNDER_BLUFF },
+    { NPC_ZULTORE, SPELL_PENNANT_SENJIN },
+    { NPC_VISCERI, SPELL_PENNANT_UNDERCITY },
+    { NPC_JACOB, SPELL_PENNANT_STORMWIND },
+    { NPC_AMBROSE, SPELL_PENNANT_GNOMEREGAN },
+    { NPC_COLOSOS, SPELL_PENNANT_EXODAR },
+    { NPC_JAELYNE, SPELL_PENNANT_DARNASSUS },
+    { NPC_LANA, SPELL_PENNANT_IRONFORGE }
+}};
+
+static constexpr std::array<std::pair<uint32, uint32>, 10> ChampionForceChants =
+{{
+    { NPC_MOKRA, SPELL_FORCE_CHANT_ORC },
+    { NPC_ERESSEA, SPELL_FORCE_CHANT_BLOOD_ELF },
+    { NPC_RUNOK, SPELL_FORCE_CHANT_TAUREN },
+    { NPC_ZULTORE, SPELL_FORCE_CHANT_TROLL },
+    { NPC_VISCERI, SPELL_FORCE_CHANT_UNDEAD },
+    { NPC_JACOB, SPELL_FORCE_CHANT_HUMAN },
+    { NPC_AMBROSE, SPELL_FORCE_CHANT_GNOME },
+    { NPC_COLOSOS, SPELL_FORCE_CHANT_DRAENEI },
+    { NPC_JAELYNE, SPELL_FORCE_CHANT_NIGHT_ELF },
+    { NPC_LANA, SPELL_FORCE_CHANT_DWARF }
+}};
+
+// 67347 - Argent Dungeon - Champion - NPC Pennant Selector
+class spell_toc5_champion_pennant_selector : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_champion_pennant_selector);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return std::all_of(ChampionPennants.begin(), ChampionPennants.end(), [](std::pair<uint32, uint32> const& pennant)
+        {
+            return ValidateSpellInfo({ pennant.second });
+        });
+    }
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        Unit* caster = GetCaster();
+        auto pennant = std::find_if(ChampionPennants.begin(), ChampionPennants.end(), [caster](std::pair<uint32, uint32> const& candidate)
+        {
+            return candidate.first == caster->GetEntry();
+        });
+
+        if (pennant != ChampionPennants.end())
+            caster->CastSpell(caster, pennant->second, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_champion_pennant_selector::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 66677 - Argent Raid - Spectator - Master - FX - Chant
+class spell_toc5_champion_spectator_chant : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_champion_spectator_chant);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return std::all_of(ChampionForceChants.begin(), ChampionForceChants.end(), [](std::pair<uint32, uint32> const& chant)
+        {
+            return ValidateSpellInfo({ chant.second });
+        });
+    }
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        Unit* caster = GetCaster();
+        auto chant = std::find_if(ChampionForceChants.begin(), ChampionForceChants.end(), [caster](std::pair<uint32, uint32> const& candidate)
+        {
+            return candidate.first == caster->GetEntry();
+        });
+
+        if (chant == ChampionForceChants.end())
+            return;
+
+        caster->m_Events.AddEventAtOffset([caster, spellId = chant->second]
+        {
+            caster->CastSpell(caster, spellId, true);
+        }, 400ms);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_champion_spectator_chant::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 69693 - Full Heal
+class spell_toc5_argent_mount_full_heal : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_argent_mount_full_heal);
+
+    void HandleHeal(SpellEffIndex /*effIndex*/)
+    {
+        SetEffectValue(0);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_argent_mount_full_heal::HandleHeal, EFFECT_0, SPELL_EFFECT_HEAL_MAX_HEALTH);
     }
 };
 
 void AddSC_boss_grand_champions()
 {
-    new generic_vehicleAI_toc5();
-    new boss_warrior_toc5();
-    new boss_mage_toc5();
-    new boss_shaman_toc5();
-    new boss_hunter_toc5();
-    new boss_rouge_toc5();
+    RegisterTrialOfTheChampionCreatureAI(boss_warrior_toc5);
+    RegisterTrialOfTheChampionCreatureAI(boss_mage_toc5);
+    RegisterTrialOfTheChampionCreatureAI(boss_shaman_toc5);
+    RegisterTrialOfTheChampionCreatureAI(boss_hunter_toc5);
+    RegisterTrialOfTheChampionCreatureAI(boss_rogue_toc5);
+    RegisterTrialOfTheChampionCreatureAI(npc_toc5_lesser_champion);
+    RegisterTrialOfTheChampionCreatureAI(npc_toc5_champion_mount);
+    RegisterTrialOfTheChampionCreatureAI(npc_toc5_hostile_argent_mount);
+    RegisterTrialOfTheChampionCreatureAI(npc_toc5_argent_mount);
+    RegisterSpellScript(spell_toc5_champion_charge);
+    RegisterSpellScript(spell_toc5_champion_charge_vehicle);
+    RegisterSpellScript(spell_toc5_trample);
+    RegisterSpellScript(spell_toc5_champion_defend);
+    RegisterSpellScript(spell_toc5_hex_of_mending);
+    RegisterSpellScript(spell_toc5_disengage);
+    RegisterSpellScript(spell_toc5_rolling_throw_grab);
+    RegisterSpellScript(spell_toc5_rolling_throw);
+    RegisterSpellScript(spell_toc5_champion_pennant_selector);
+    RegisterSpellScript(spell_toc5_champion_spectator_chant);
+    RegisterSpellScript(spell_toc5_argent_mount_full_heal);
 }
