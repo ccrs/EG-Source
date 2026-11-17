@@ -169,8 +169,10 @@ class TC_GAME_API MotionMaster
         void MoveChase(Unit* target, float dist, bool checkLostTarget = true) { MoveChase(target, ChaseRange(dist), Optional<ChaseAngle>{}, checkLostTarget); }
         void MoveConfused();
         void MoveFleeing(Unit* enemy, uint32 time = 0);
-        void MovePoint(uint32 id, Position const& pos, bool generatePath = true, Optional<float> finalOrient = {}, bool forzeDestination = false);
-        void MovePoint(uint32 id, float x, float y, float z, bool generatePath = true, Optional<float> finalOrient = {}, bool forzeDestination = false);
+        // EG - MovePoint parameters
+        void MovePoint(uint32 id, MovePointParameters const& parameters);
+        void MovePoint(uint32 id, Position const& pos, bool generatePath = true, Optional<float> finalOrient = {}) { MovePoint(id, { .Destination = pos, .GeneratePath = generatePath, .FinalOrientation = finalOrient }); }
+        void MovePoint(uint32 id, float x, float y, float z, bool generatePath = true, Optional<float> finalOrient = {}) { MovePoint(id, { .Destination = { x, y, z }, .GeneratePath = generatePath, .FinalOrientation = finalOrient }); }
         /*
          *  Makes the unit move toward the target until it is at a certain distance from it. The unit then stops.
          *  Only works in 2D.

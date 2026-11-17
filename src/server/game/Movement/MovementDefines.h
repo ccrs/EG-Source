@@ -19,6 +19,8 @@
 #define TRINITY_MOVEMENTDEFINES_H
 
 #include "Common.h"
+#include "Optional.h"
+#include "Position.h"
 
 #define SPEED_CHARGE 42.0f // assume it is 25 yard per 0.6 second
 
@@ -112,6 +114,16 @@ struct TC_GAME_API ChaseAngle
     float UpperBound() const;
     float LowerBound() const;
     bool IsAngleOkay(float relativeAngle) const;
+};
+
+// EG - MovePoint parameters
+struct MovePointParameters
+{
+    Position Destination;
+    bool GeneratePath = true;
+    Optional<float> FinalOrientation;
+    bool ForceDestination = false;
+    Optional<float> Velocity;
 };
 
 inline bool IsInvalidMovementGeneratorType(uint8 const type) { return type == MAX_DB_MOTION_TYPE || type >= MAX_MOTION_TYPE; }

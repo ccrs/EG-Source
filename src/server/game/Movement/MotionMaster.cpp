@@ -716,28 +716,25 @@ void MotionMaster::MoveFleeing(Unit* enemy, uint32 time)
         Add(new FleeingMovementGenerator<Player>(enemy->GetGUID()));
 }
 
-// EG - forced-destination MovePoint (forzeDestination parameter)
-void MotionMaster::MovePoint(uint32 id, Position const& pos, bool generatePath/* = true*/, Optional<float> finalOrient/* = {}*/, bool forzeDestination/* = false*/)
+void MotionMaster::MovePoint(uint32 id, MovePointParameters const& parameters)
 {
-    MovePoint(id, pos.m_positionX, pos.m_positionY, pos.m_positionZ, generatePath, finalOrient, forzeDestination);
-}
-
-// EG - forced-destination MovePoint (forzeDestination parameter)
-void MotionMaster::MovePoint(uint32 id, float x, float y, float z, bool generatePath, Optional<float> finalOrient, bool forzeDestination/* = false*/)
-{
+    float const x = parameters.Destination.GetPositionX();
+    float const y = parameters.Destination.GetPositionY();
+    float const z = parameters.Destination.GetPositionZ();
+    float const speed = parameters.Velocity.value_or(0.0f);
     if (_owner->GetTypeId() == TYPEID_PLAYER)
     {
         TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::MovePoint: '{}', targeted point Id: {} (X: {}, Y: {}, Z: {})", _owner->GetGUID().ToString(), id, x, y, z);
-        PointMovementGenerator<Player>* newMovement = new PointMovementGenerator<Player>(id, x, y, z, generatePath, 0.0f, finalOrient);
-        if (forzeDestination)
+        PointMovementGenerator<Player>* newMovement = new PointMovementGenerator<Player>(id, x, y, z, parameters.GeneratePath, speed, parameters.FinalOrientation);
+        if (parameters.ForceDestination)
             newMovement->SetForzeDestination(true);
         Add(newMovement);
     }
     else
     {
         TC_LOG_DEBUG("movement.motionmaster", "MotionMaster::MovePoint: '{}', targeted point Id: {} (X: {}, Y: {}, Z: {})", _owner->GetGUID().ToString(), id, x, y, z);
-        PointMovementGenerator<Creature>* newMovement = new PointMovementGenerator<Creature>(id, x, y, z, generatePath, 0.0f, finalOrient);
-        if (forzeDestination)
+        PointMovementGenerator<Creature>* newMovement = new PointMovementGenerator<Creature>(id, x, y, z, parameters.GeneratePath, speed, parameters.FinalOrientation);
+        if (parameters.ForceDestination)
             newMovement->SetForzeDestination(true);
         Add(newMovement);
     }

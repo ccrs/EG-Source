@@ -27,7 +27,6 @@
 #include "SpellHistory.h"
 #include "SpellScript.h"
 #include "TemporarySummon.h"
-#include "Optional.h"
 
 enum HadronoxEvents
 {
@@ -177,7 +176,7 @@ struct boss_hadronox : public BossAI
         events.CancelEventGroup(1);
         me->SetHomePosition(hadronoxStep[step]);
         me->GetMotionMaster()->Remove(CHASE_MOTION_TYPE);
-        me->GetMotionMaster()->MovePoint(1, hadronoxStep[step], true, Optional<float>{ }, true);
+        me->GetMotionMaster()->MovePoint(1, { .Destination = hadronoxStep[step], .ForceDestination = true });
     }
 
     void SummonCrusherPack(HadronoxSummonGroups group)
