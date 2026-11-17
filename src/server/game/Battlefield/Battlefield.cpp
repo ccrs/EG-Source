@@ -124,7 +124,10 @@ bool Battlefield::SetPhase(BattlefieldPhase phase)
             {
                 _battlefieldPlayers.Insert(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_BATTLE_ENDED);
                 if (Player* player = ObjectAccessor::FindPlayer(playerGuid))
+                {
                     player->GetSession()->SendBfStateChange(GetId(), BATTLEFIELD_PLAYER_STATUS_BATTLE_ENDED);
+                    HandlePlayerLeaveBattle(player);
+                }
             }
         }
 
@@ -304,6 +307,23 @@ void Battlefield::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStat
 {
     for (BattlefieldBuildingContainer::value_type const& pair : _buildings)
         pair.second->FillInitialWorldStates(packet);
+}
+
+void Battlefield::ProcessBuildingUpdate(BattlefieldEventKey /*key*/)
+{
+    std::vector<Player*> players;
+    for (TeamId teamId : { TEAM_ALLIANCE, TEAM_HORDE })
+        for (ObjectGuid playerGuid : _battlefieldPlayers.List(teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE))
+            if (Player* player = ObjectAccessor::FindPlayer(playerGuid))
+                players.push_back(player);
+
+    TimePoint const now = GameTime::Now();
+    Milliseconds const diff = std::chrono::duration_cast<Milliseconds>(now - Values.Get<TimePoint>(BATTLEFIELD_VALUE_TIME_LAST_BUILDING_UPDATE));
+    Values.Set(BATTLEFIELD_VALUE_TIME_LAST_BUILDING_UPDATE, now);
+    for (BattlefieldBuildingContainer::value_type const& pair : _buildings)
+        pair.second->Update(players, diff);
+
+    QueueEvent<BattlefieldBuildingUpdateEvent>(ObjectGuid::Empty, Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_BUILDING_UPDATE));
 }
 
 void Battlefield::OnGameObjectCreate(GameObject* object)
@@ -616,6 +636,7 @@ void Battlefield::ProcessBattleAccept(BattlefieldEventKey key, Player* player)
     if (player->InBattleground())
         player->LeaveBattleground(false, true);
 
+    HandlePlayerJoinBattle(player);
     RemoveEvents(BATTLEFIELD_EVENT_RAID_REMOVE, playerGuid);
     ProcessRaidAdd(key, player);
     if (!relocated)
@@ -685,7 +706,10 @@ void Battlefield::ProcessBattleLeave(BattlefieldEventKey key, ObjectGuid playerG
         RemoveEvents(BATTLEFIELD_EVENT_BATTLE_LEAVE, playerGuid);
         RemoveEvents(BATTLEFIELD_EVENT_BATTLE_RAID_LEAVE, playerGuid);
         if (Player* player = ObjectAccessor::FindConnectedPlayer(playerGuid))
+        {
             player->GetSession()->SendBfLeaveMessage(GetId(), BATTLEFIELD_LEAVE_REASON_ZONE_EXIT, BATTLEFIELD_PLAYER_STATUS_NONE);
+            HandlePlayerLeaveBattle(player);
+        }
 
         ProcessRaidRemove(key, playerGuid);
         FillBattleSlots(false);
@@ -725,23 +749,6 @@ void Battlefield::ProcessBuildingDestroy(BattlefieldEventKey /*key*/, ObjectGuid
 {
     if (BattlefieldBuilding* building = GetBuildingByEntry(objectGuid.GetEntry()))
         building->Destroy();
-}
-
-void Battlefield::ProcessBuildingUpdate(BattlefieldEventKey /*key*/)
-{
-    std::vector<Player*> players;
-    for (TeamId teamId : { TEAM_ALLIANCE, TEAM_HORDE })
-        for (ObjectGuid playerGuid : _battlefieldPlayers.List(teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE))
-            if (Player* player = ObjectAccessor::FindPlayer(playerGuid))
-                players.push_back(player);
-
-    TimePoint const now = GameTime::Now();
-    Milliseconds const diff = std::chrono::duration_cast<Milliseconds>(now - Values.Get<TimePoint>(BATTLEFIELD_VALUE_TIME_LAST_BUILDING_UPDATE));
-    Values.Set(BATTLEFIELD_VALUE_TIME_LAST_BUILDING_UPDATE, now);
-    for (BattlefieldBuildingContainer::value_type const& pair : _buildings)
-        pair.second->Update(players, diff);
-
-    QueueEvent<BattlefieldBuildingUpdateEvent>(ObjectGuid::Empty, Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_BUILDING_UPDATE));
 }
 
 void Battlefield::ProcessBattleStatusClear(BattlefieldEventKey /*key*/)

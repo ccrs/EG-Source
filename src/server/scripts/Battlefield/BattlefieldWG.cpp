@@ -20,11 +20,13 @@
 #include "Creature.h"
 #include "CreatureTextMgr.h"
 #include "GameObject.h"
+#include "Group.h"
 #include "Map.h"
 #include "MapReference.h"
 #include "MapUtils.h"
 #include "ObjectMgr.h"
 #include "Player.h"
+#include "SpellAuras.h"
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldStatePackets.h"
@@ -122,6 +124,20 @@ static std::vector<BattlefieldGraveyardInfo> const WintergraspGraveyardInfo =
     { GRAVEYARD_HORDE, 0, NPC_WINTERGRASP_TAUNKA_SPIRIT_GUIDE, NPC_WINTERGRASP_DWARVEN_SPIRIT_GUIDE, 0, WORLDSAFELOC_WINTERGRASP_HORDE_STARTING_AREA, GOSSIP_WINTERGRASP_GRAVEYARD_HORDE, SPELL_WINTERGRASP_TELEPORT_HORDE_LANDING_ZONE },
     { GRAVEYARD_ALLIANCE, 0, NPC_WINTERGRASP_TAUNKA_SPIRIT_GUIDE, NPC_WINTERGRASP_DWARVEN_SPIRIT_GUIDE, 0, WORLDSAFELOC_WINTERGRASP_ALLIANCE_STARTING_AREA, GOSSIP_WINTERGRASP_GRAVEYARD_ALLIANCE, SPELL_WINTERGRASP_TELEPORT_ALLIANCE_LANDING_ZONE }
 };
+
+struct WintergraspRankInfo
+{
+    uint32 SpellId;
+    uint8 PromotionStacks;
+    uint32 PromotionSpellId;
+    uint8 PromotionText;
+};
+
+static std::array<WintergraspRankInfo, 2> const WintergraspRanks =
+{{
+    { SPELL_WINTERGRASP_RECRUIT, WINTERGRASP_RECRUIT_PROMOTION_STACKS, SPELL_WINTERGRASP_CORPORAL, SAY_WINTERGRASP_RANK_CORPORAL },
+    { SPELL_WINTERGRASP_CORPORAL, WINTERGRASP_CORPORAL_PROMOTION_STACKS, SPELL_WINTERGRASP_LIEUTENANT, SAY_WINTERGRASP_RANK_FIRST_LIEUTENANT }
+}};
 
 BattlefieldWintergrasp::BattlefieldWintergrasp() : Battlefield(BATTLEFIELD_BATTLEID_WINTERGRASP, BATTLEFIELD_ZONEID_WINTERGRASP)
 {
@@ -295,6 +311,71 @@ uint32 BattlefieldWintergrasp::GetFaction(PvPTeamId pvpTeamId) const
         default:
             return 0;
     }
+}
+
+void BattlefieldWintergrasp::HandlePlayerEnterZone(Player* player)
+{
+    Battlefield::HandlePlayerEnterZone(player);
+
+    if (!IsPlayerInBattle(player))
+        RemoveRankAuras(player);
+}
+
+void BattlefieldWintergrasp::HandleKill(Player* killer, Unit* victim)
+{
+    Battlefield::HandleKill(killer, victim);
+
+    if (killer == victim || !IsBattleTime())
+        return;
+
+    if (Player* playerVictim = victim->ToPlayer())
+    {
+        if (playerVictim->GetTeamId() == killer->GetTeamId())
+            return;
+    }
+    else
+    {
+        switch (victim->GetEntry())
+        {
+            case NPC_WINTERGRASP_CATAPULT:
+            case NPC_WINTERGRASP_DEMOLISHER:
+            case NPC_WINTERGRASP_SIEGE_ENGINE_ALLIANCE:
+            case NPC_WINTERGRASP_SIEGE_ENGINE_HORDE:
+            case NPC_WINTERGRASP_GUARD_HORDE:
+            case NPC_WINTERGRASP_GUARD_ALLIANCE:
+            case NPC_WINTERGRASP_TOWER_CANNON:
+                break;
+            default:
+                return;
+        }
+    }
+
+    Group* group = killer->GetGroup();
+    if (!group)
+    {
+        PromotePlayer(killer);
+        return;
+    }
+
+    for (GroupReference const* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+        if (Player* member = itr->GetSource())
+            if (member->IsInMap(victim) && member->GetExactDist2d(victim) <= WINTERGRASP_RANK_CREDIT_DISTANCE)
+                PromotePlayer(member);
+}
+
+void BattlefieldWintergrasp::HandlePlayerJoinBattle(Player* player)
+{
+    Battlefield::HandlePlayerJoinBattle(player);
+
+    RemoveRankAuras(player);
+    player->CastSpell(player, SPELL_WINTERGRASP_RECRUIT, true);
+}
+
+void BattlefieldWintergrasp::HandlePlayerLeaveBattle(Player* player)
+{
+    Battlefield::HandlePlayerLeaveBattle(player);
+
+    RemoveRankAuras(player);
 }
 
 void BattlefieldWintergrasp::OnCreatureCreate(Creature* object)
@@ -473,7 +554,7 @@ uint8 BattlefieldWintergrasp::GetWintergraspGraveyardId(Creature* creature) cons
     return 0;
 }
 
-void BattlefieldWintergrasp::SendStalkerText(uint8 textGroup) const
+void BattlefieldWintergrasp::SendStalkerText(uint8 textGroup, WorldObject const* whisperTarget /*= nullptr*/) const
 {
     Map* battleMap = GetBattleMap();
     CreatureData const* stalkerData = sObjectMgr->GetCreatureData(SPAWNID_WINTERGRASP_INVISIBLE_STALKER);
@@ -482,7 +563,7 @@ void BattlefieldWintergrasp::SendStalkerText(uint8 textGroup) const
 
     battleMap->LoadGrid(stalkerData->spawnPoint.GetPositionX(), stalkerData->spawnPoint.GetPositionY());
     if (Creature* stalker = GetCreature(_stalkerGUID))
-        sCreatureTextMgr->SendChat(stalker, textGroup);
+        sCreatureTextMgr->SendChat(stalker, textGroup, whisperTarget);
 }
 
 void BattlefieldWintergrasp::HandleSouthernTowerDestroyed()
@@ -595,6 +676,34 @@ void BattlefieldWintergrasp::SetKeepCollisionsOpen(bool open) const
     for (ObjectGuid collisionGuid : { _keepCollisionWallGUID, _keepDoorCollisionGUID })
         if (GameObject* collision = GetGameObject(collisionGuid))
             collision->SetGoState(open ? GO_STATE_ACTIVE : GO_STATE_READY);
+}
+
+void BattlefieldWintergrasp::RemoveRankAuras(Player* player) const
+{
+    for (uint32 spellId : { SPELL_WINTERGRASP_RECRUIT, SPELL_WINTERGRASP_CORPORAL, SPELL_WINTERGRASP_LIEUTENANT })
+        player->RemoveAurasDueToSpell(spellId);
+}
+
+void BattlefieldWintergrasp::PromotePlayer(Player* player) const
+{
+    if (!IsPlayerInBattle(player))
+        return;
+
+    for (WintergraspRankInfo const& rank : WintergraspRanks)
+    {
+        Aura* aura = player->GetAura(rank.SpellId);
+        if (!aura)
+            continue;
+
+        player->CastSpell(player, rank.SpellId, true);
+        if (aura->GetStackAmount() >= rank.PromotionStacks)
+        {
+            player->RemoveAurasDueToSpell(rank.SpellId);
+            player->CastSpell(player, rank.PromotionSpellId, true);
+            SendStalkerText(rank.PromotionText, player);
+        }
+        return;
+    }
 }
 
 WintergraspBuilding::WintergraspBuilding(BattlefieldWintergrasp* wintergrasp, BattlefieldBuildingInfo const info) : BattlefieldDestructibleBuilding(wintergrasp, info), _wintergrasp(wintergrasp)

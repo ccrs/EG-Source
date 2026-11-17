@@ -427,6 +427,9 @@ static Seconds constexpr WINTERGRASP_PREPARATION_DURATION = 15min;
 static Seconds constexpr WINTERGRASP_SOUTHERN_TOWERS_TIME_REDUCTION = 10min;
 static uint32 constexpr WINTERGRASP_VEHICLES_PER_WORKSHOP = 4;
 static uint32 constexpr WINTERGRASP_CAPTURE_NEUTRAL_PERCENT = 80;
+static uint8 constexpr WINTERGRASP_RECRUIT_PROMOTION_STACKS = 6;
+static uint8 constexpr WINTERGRASP_CORPORAL_PROMOTION_STACKS = 10;
+static float constexpr WINTERGRASP_RANK_CREDIT_DISTANCE = 40.0f;
 
 namespace WorldPackets
 {
@@ -500,6 +503,10 @@ public:
     bool TeleportPlayerToBattle(Player* player) override;
     void TeleportPlayerOutOfBattle(Player* player) override;
     uint32 GetFaction(PvPTeamId pvpTeamId) const override;
+    void HandlePlayerEnterZone(Player* player) override;
+    void HandleKill(Player* killer, Unit* victim) override;
+    void HandlePlayerJoinBattle(Player* player) override;
+    void HandlePlayerLeaveBattle(Player* player) override;
     void OnCreatureCreate(Creature* object) override;
     void OnCreatureRemove(Creature* object) override;
     void OnGameObjectCreate(GameObject* object) override;
@@ -509,7 +516,7 @@ public:
     void ProcessBuildingUpdate(BattlefieldEventKey key) override;
 
     uint8 GetWintergraspGraveyardId(Creature* creature) const;
-    void SendStalkerText(uint8 textGroup) const;
+    void SendStalkerText(uint8 textGroup, WorldObject const* whisperTarget = nullptr) const;
     void HandleSouthernTowerDestroyed();
     void HandleVaultGateDestroyed();
     void SendVehicleLimits() const;
@@ -523,6 +530,8 @@ private:
     uint32 GetVehicleLimit(PvPTeamId pvpTeamId) const;
     bool IsVaultGateDestroyed() const;
     void SetKeepCollisionsOpen(bool open) const;
+    void RemoveRankAuras(Player* player) const;
+    void PromotePlayer(Player* player) const;
 
     typedef std::unique_ptr<WintergraspBuilding> WintergraspBuildingPointer;
     typedef std::unique_ptr<WintergraspCapturePoint> WintergraspCapturePointPointer;

@@ -199,6 +199,8 @@ public:
     virtual void HandlePlayerLeaveZone(Player* player);
     // Called when a player inside the battlefield zone kills a unit
     virtual void HandleKill(Player* /*killer*/, Unit* /*victim*/) { }
+    virtual void HandlePlayerJoinBattle(Player* /*player*/) { }
+    virtual void HandlePlayerLeaveBattle(Player* /*player*/) { }
     // Called when a player queries a gossip from a spirit healer
     virtual void SendAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid source);
     // Called when a player moves into a resurrection queue
@@ -213,6 +215,7 @@ public:
     virtual bool IsFlyingMountAllowed() const { return true; }
     // Is the referenced SpellArea spellId allowed for the referenced player and newArea?
     virtual bool IsSpellAreaAllowed(uint32 /*spellId*/, Player const* /*player*/, uint32 /*newArea*/) const { return false; }
+    virtual void ProcessBuildingUpdate(BattlefieldEventKey key);
 
     void OnGameObjectCreate(GameObject* object) override;
     void OnGameObjectRemove(GameObject* object) override;
@@ -245,7 +248,6 @@ public:
     void ProcessBattleKick(BattlefieldEventKey key, Player* player);
     void ProcessBuildingDamage(BattlefieldEventKey key, ObjectGuid objectGuid);
     void ProcessBuildingDestroy(BattlefieldEventKey key, ObjectGuid objectGuid);
-    virtual void ProcessBuildingUpdate(BattlefieldEventKey key);
     void ProcessBattleStatusClear(BattlefieldEventKey key);
     void ProcessBattleCapture(BattlefieldEventKey key);
     void HandleBattlefieldRaidMemberRemoved(ObjectGuid playerGuid, RemoveMethod method);
