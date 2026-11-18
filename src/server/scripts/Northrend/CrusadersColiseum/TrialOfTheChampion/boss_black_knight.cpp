@@ -565,6 +565,22 @@ class spell_black_knight_ghoul_explode_risen_ghoul : public SpellScript
     }
 };
 
+// 67802 - Desecration Arm
+class spell_black_knight_desecration_arm : public SpellScript
+{
+    PrepareSpellScript(spell_black_knight_desecration_arm);
+
+    void RandomizeDest(SpellDestination& dest)
+    {
+        dest.Relocate(GetCaster()->GetRandomPoint(dest._position, 7.0f));
+    }
+
+    void Register() override
+    {
+        OnDestinationTargetSelect += SpellDestinationTargetSelectFn(spell_black_knight_desecration_arm::RandomizeDest, EFFECT_0, TARGET_DEST_DEST_RANDOM);
+    }
+};
+
 // 67693 - Black Knight Res
 class spell_black_knight_res : public SpellScript
 {
@@ -615,6 +631,7 @@ void AddSC_boss_black_knight()
     RegisterTrialOfTheChampionCreatureAI(npc_black_knight_skeletal_gryphon);
     RegisterSpellScript(spell_black_knight_ghoul_explode);
     RegisterSpellScript(spell_black_knight_ghoul_explode_risen_ghoul);
+    RegisterSpellScript(spell_black_knight_desecration_arm);
     RegisterSpellScript(spell_black_knight_res);
     RegisterSpellScript(spell_toc5_random_aggro_periodic);
 }
