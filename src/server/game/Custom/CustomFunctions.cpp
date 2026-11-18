@@ -189,6 +189,9 @@ bool EG::AnyFriendlyUnitInObjectRangeCheck::operator()(Unit const* unit) const
     if (_options.Alive && !unit->IsAlive())
         return false;
 
+    if (_options.MaxHealthPct && unit->GetHealthPct() > *_options.MaxHealthPct)
+        return false;
+
     if (_options.IncludeSelf && _source == unit)
         return true;
 

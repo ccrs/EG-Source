@@ -551,6 +551,7 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
             bool IncludeSelf = true;
             bool Alive = true;
             std::unordered_set<uint32> ExcludedEntries;
+            Optional<float> MaxHealthPct;
         };
         Unit* DoFindLowestHPFriendlyInRange(float range) const // EG
         {
