@@ -340,7 +340,7 @@ struct npc_fel_orc_neophyte : public BroggokPrisionerBaseAI
         Scheduler
             .Schedule(5s, 10s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_CHARGE);
                 task.Repeat(20s, 30s);
             })

@@ -289,7 +289,7 @@ struct boss_sacrolash : public BossAI
                     events.Repeat(10s, 15s);
                     break;
                 case EVENT_CONFOUNDING_BLOW:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_CONFOUNDING_BLOW);
                     events.Repeat(20s, 30s);
                     break;

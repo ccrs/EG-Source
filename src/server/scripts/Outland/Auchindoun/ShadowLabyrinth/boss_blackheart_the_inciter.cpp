@@ -145,7 +145,7 @@ struct boss_blackheart_the_inciter : public BossAI
                     events.Repeat(15s, 30s);
                     break;
                 case EVENT_CHARGE_ATTACK:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_CHARGE);
                     events.Repeat(15s, 25s);
                     break;

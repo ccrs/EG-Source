@@ -132,7 +132,7 @@ struct boss_gruul : public BossAI
                 events.Repeat(8s);
                 break;
             case EVENT_CAVE_IN:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_CAVE_IN, TRIGGERED_IGNORE_SPELL_AND_CATEGORY_CD);
                 events.Repeat(8s);
                 break;

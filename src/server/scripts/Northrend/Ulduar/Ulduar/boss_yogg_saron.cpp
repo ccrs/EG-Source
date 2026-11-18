@@ -1341,7 +1341,7 @@ struct npc_corruptor_tentacle : public ScriptedAI
             switch (eventId)
             {
                 case EVENT_CAST_RANDOM_SPELL:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, RAND(SPELL_BLACK_PLAGUE, SPELL_CURSE_OF_DOOM, SPELL_APATHY, SPELL_DRAINING_POISON));
                     _events.ScheduleEvent(EVENT_CAST_RANDOM_SPELL, 3s);
                     break;

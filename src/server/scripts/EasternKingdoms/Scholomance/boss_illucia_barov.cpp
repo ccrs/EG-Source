@@ -76,12 +76,12 @@ struct boss_illucia_barov : public BossAI
                     events.Repeat(20s, 30s);
                     break;
                 case EVENT_DOMINATE_MIND:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 0.0f, true))
                         DoCast(target, SPELL_DOMINATE_MIND);
                     events.Repeat(25s, 40s);
                     break;
                 case EVENT_FEAR:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_FEAR);
                     events.Repeat(15s, 25s);
                     break;

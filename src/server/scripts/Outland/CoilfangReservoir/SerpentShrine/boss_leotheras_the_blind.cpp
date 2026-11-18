@@ -514,7 +514,7 @@ struct npc_greyheart_spellbinder : public ScriptedAI
             })
             .Schedule(10s, 20s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 20.0f))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 20.0f, true))
                     DoCast(target, SPELL_MIND_BLAST);
                 task.Repeat(15s, 25s);
             })

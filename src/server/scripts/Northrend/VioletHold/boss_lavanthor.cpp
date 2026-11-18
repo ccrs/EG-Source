@@ -82,7 +82,7 @@ struct boss_lavanthor : public BossAI
 
         scheduler.Schedule(10s, [this](TaskContext task)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 50.0f))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 50.0f, true))
                 DoCast(target, SPELL_LAVA_BURN);
             task.Repeat(15s, 23s);
         });

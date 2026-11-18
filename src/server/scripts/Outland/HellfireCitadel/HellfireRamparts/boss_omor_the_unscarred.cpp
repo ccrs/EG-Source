@@ -155,7 +155,7 @@ struct boss_omor_the_unscarred : public BossAI
                         events.Repeat(3s, 4s);
                     break;
                 case EVENT_TREACHEROUS_AURA:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_TREACHEROUS_AURA);
                     events.Repeat(30s, 40s);
                     break;

@@ -257,7 +257,7 @@ class spell_mother_shahraz_saber_lash : public AuraScript
         PreventDefaultAction();
 
         uint32 triggerSpell = aurEff->GetSpellEffectInfo().TriggerSpell;
-        if (Unit* target = GetUnitOwner()->GetAI()->SelectTarget(SelectTargetMethod::Random, 0))
+        if (Unit* target = GetUnitOwner()->GetAI()->SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
             GetUnitOwner()->CastSpell(target, triggerSpell, true);
     }
 
@@ -285,7 +285,7 @@ class spell_mother_shahraz_generic_periodic : public AuraScript
         PreventDefaultAction();
 
         uint32 triggerSpell = aurEff->GetSpellEffectInfo().TriggerSpell;
-        if (Unit* target = GetUnitOwner()->GetAI()->SelectTarget(SelectTargetMethod::Random, 0))
+        if (Unit* target = GetUnitOwner()->GetAI()->SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
             GetUnitOwner()->CastSpell(target, triggerSpell, true);
     }
 

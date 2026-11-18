@@ -87,12 +87,12 @@ struct npc_ymirjar_flamebearer: public ScriptedAI
             switch (eventId)
             {
                 case EVENT_FIREBALL:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_FIREBALL);
                     _events.RescheduleEvent(EVENT_FIREBALL, 5s);
                     break;
                 case EVENT_TACTICAL_BLINK:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_TACTICAL_BLINK);
                     DoCast(me, SPELL_HELLFIRE);
                     _events.RescheduleEvent(EVENT_TACTICAL_BLINK, 12s);

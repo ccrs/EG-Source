@@ -109,7 +109,7 @@ struct boss_golemagg : public BossAI
             switch (eventId)
             {
                 case EVENT_PYROBLAST:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_PYROBLAST);
                     events.Repeat(3s, 13s);
                     break;

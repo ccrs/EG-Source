@@ -78,7 +78,7 @@ struct boss_archavon : public BossAI
             switch (eventId)
             {
                 case EVENT_ROCK_SHARDS:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_ROCK_SHARDS);
                     events.ScheduleEvent(EVENT_ROCK_SHARDS, 15s);
                     break;

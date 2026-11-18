@@ -507,7 +507,7 @@ public:
                 })
                 .Schedule(Seconds(3), Seconds(6), [this](TaskContext ChainsOfIce)
                 {
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_CHAINS_OF_ICE, true);
                     ChainsOfIce.Repeat(Seconds(20),Seconds(25));
                 });

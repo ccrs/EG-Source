@@ -146,7 +146,7 @@ struct boss_high_king_maulgar : public BossAI
                 })
                 .Schedule(10s, 15s, [this](TaskContext task)
                 {
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_BERSERKER_CHARGE);
                     task.Repeat(20s);
                 });
@@ -299,7 +299,7 @@ struct boss_kiggler_the_crazed : public OgreBaseAI
             })
             .Schedule(5s, 10s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_GREATER_POLYMORPH);
                 task.Repeat(10s, 35s);
             })

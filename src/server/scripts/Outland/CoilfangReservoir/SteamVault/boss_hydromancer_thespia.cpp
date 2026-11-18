@@ -87,17 +87,17 @@ struct boss_hydromancer_thespia : public BossAI
         switch (eventId)
         {
             case EVENT_LIGHTNING_CLOUD:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                     DoCast(target, SPELL_LIGHTNING_CLOUD);
                 events.Repeat(20s, 35s);
                 break;
             case EVENT_LUNG_BURST:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 40.0f))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 40.0f, true))
                     DoCast(target, SPELL_LUNG_BURST);
                 events.Repeat(20s, 30s);
                 break;
             case EVENT_ENVELOPING_WINDS:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 35.0f))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 35.0f, true))
                     DoCast(target, SPELL_ENVELOPING_WINDS);
                 events.Repeat(25s, 40s);
                 break;

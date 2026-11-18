@@ -1030,7 +1030,7 @@ struct npc_azure_binder : public violet_hold_trashAI
 
             _scheduler.Schedule(4s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, _instance->GetData(DATA_MAIN_EVENT_STATE) == IN_PROGRESS))
                     DoCast(target, SPELL_ARCANE_BARRAGE);
                 task.Repeat(6s);
             });
@@ -1045,7 +1045,7 @@ struct npc_azure_binder : public violet_hold_trashAI
 
             _scheduler.Schedule(4s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 40.0f))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 40.0f, true))
                     DoCast(target, SPELL_FROSTBOLT);
                 task.Repeat(6s);
             });
@@ -1074,7 +1074,7 @@ struct npc_azure_mage_slayer : public violet_hold_trashAI
             _scheduler.Schedule(5s, [this](TaskContext task)
             {
                 // wrong spellid?
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                     DoCast(target, SPELL_SPELL_LOCK);
                 task.Repeat(9s);
             });
@@ -1112,7 +1112,7 @@ struct npc_azure_stalker : public violet_hold_trashAI
     {
         _scheduler.Schedule(8s, [this](TaskContext task)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 40.0f))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 40.0f, true))
                 DoCast(target, SPELL_TACTICAL_BLINK);
 
             task.Schedule(1300ms, [this](TaskContext /*task*/)
@@ -1138,14 +1138,14 @@ struct npc_azure_spellbreaker : public violet_hold_trashAI
         {
             _scheduler.Schedule(5s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                     DoCast(target, SPELL_ARCANE_BLAST);
                 task.Repeat(6s);
             });
 
             _scheduler.Schedule(4s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                     DoCast(target, SPELL_SLOW);
                 task.Repeat(5s);
             });
@@ -1154,7 +1154,7 @@ struct npc_azure_spellbreaker : public violet_hold_trashAI
         {
             _scheduler.Schedule(5s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                     DoCast(target, SPELL_CHAINS_OF_ICE);
                 task.Repeat(7s);
             });
@@ -1198,7 +1198,7 @@ struct npc_azure_sorceror : public violet_hold_trashAI
     {
         _scheduler.Schedule(4s, [this](TaskContext task)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 35.0f))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 35.0f, true))
                 DoCast(target, SPELL_ARCANE_STREAM);
             task.Repeat(5s, 10s);
         });

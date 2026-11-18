@@ -297,7 +297,7 @@ struct boss_grand_warlock_nethekurse : public BossAI
                     events.Repeat(8s);
                     break;
                 case EVENT_DEATH_COIL:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_DEATH_COIL);
                     events.Repeat(10s, 20s);
                     break;

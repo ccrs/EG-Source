@@ -163,7 +163,7 @@ struct boss_pathaleon_the_calculator : public BossAI
                     events.Repeat(50s);
                     break;
                 case EVENT_MANA_TAP:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [](Unit const* unit) { return unit && unit->GetPowerType() == POWER_MANA; }))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [](Unit const* unit) { return unit && unit->IsPlayer() && unit->GetPowerType() == POWER_MANA; }))
                         DoCast(target, SPELL_MANA_TAP);
                     events.Repeat(20s, 30s);
                     break;
@@ -221,7 +221,7 @@ struct npc_nether_wraith : public ScriptedAI
     {
         _scheduler.Schedule(0s, 10s, [this](TaskContext task)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                 DoCast(target, SPELL_ARCANE_BOLT);
             task.Repeat(5s, 10s);
         });

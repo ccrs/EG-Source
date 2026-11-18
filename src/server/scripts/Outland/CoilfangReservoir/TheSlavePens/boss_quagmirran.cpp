@@ -69,7 +69,7 @@ struct boss_quagmirran : public BossAI
             switch (eventId)
             {
                 case EVENT_ACID_SPRAY:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 35.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 35.0f, true))
                         DoCast(target, SPELL_ACID_SPRAY);
                     events.Repeat(40s, 50s);
                     break;

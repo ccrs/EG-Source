@@ -100,7 +100,7 @@ struct boss_gal_darah : public BossAI
         {
             summon->CastSpell(summon, SPELL_STAMPEDE_SPIRIT, true);
             summon->CastSpell(summon, SPELL_STAMPEDE_SPIRIT_2, true);
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                 summon->CastSpell(target, SPELL_STAMPEDE_SPIRIT_CHARGE);
         }
     }

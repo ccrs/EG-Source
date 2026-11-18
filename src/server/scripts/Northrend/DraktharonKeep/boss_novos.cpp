@@ -152,7 +152,7 @@ struct boss_novos : public BossAI
                     events.Repeat(15s);
                     break;
                 case EVENT_ATTACK:
-                    if (Unit* victim = SelectTarget(SelectTargetMethod::Random))
+                    if (Unit* victim = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(victim, RAND(SPELL_ARCANE_BLAST, SPELL_BLIZZARD, SPELL_FROSTBOLT, SPELL_WRATH_OF_MISERY));
                     events.Repeat(3s);
                     break;

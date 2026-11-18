@@ -129,7 +129,7 @@ struct boss_laj : public BossAI
 
                 // Abilities
                 case EVENT_ALLERGIC_REACTION:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 8.f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 8.f, true))
                         DoCast(target, SPELL_ALLERGIC_REACTION);
                     events.Repeat(20s, 30s);
                     break;

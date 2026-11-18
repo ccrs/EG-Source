@@ -306,7 +306,7 @@ struct boss_majordomo : public BossAI
                     events.Repeat(25s, 30s);
                     break;
                 case EVENT_TELEPORT_RANDOM:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 0.0f, true))
                         DoCast(target, SPELL_TELEPORT_RANDOM);
                     events.Repeat(25s, 30s);
                     break;

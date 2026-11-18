@@ -231,7 +231,7 @@ struct boss_high_astromancer_solarian : public BossAI
                 // Phase 1 (Looks like combat timers keep tick while in split phase, boss just doesn't cast spells)
                 case EVENT_ARCANE_MISSILES:
                     if (me->GetReactState() != REACT_PASSIVE)
-                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                             DoCast(target, SPELL_ARCANE_MISSILES);
                     events.Repeat(3600ms);
                     break;

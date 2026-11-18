@@ -180,7 +180,7 @@ struct boss_volazj : public BossAI
         })
         .Schedule(15s, [this](TaskContext task)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                 DoCast(target, SPELL_SHIVER);
             task.Repeat();
         });

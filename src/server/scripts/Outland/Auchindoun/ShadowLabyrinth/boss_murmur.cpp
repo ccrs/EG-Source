@@ -129,7 +129,7 @@ struct boss_murmur : public BossAI
                     events.Repeat(15s);
                     break;
                 case EVENT_SONIC_SHOCK:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 20.0f, false))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 20.0f, true))
                         DoCast(target, SPELL_SONIC_SHOCK);
                     events.Repeat(10s, 20s);
                     break;

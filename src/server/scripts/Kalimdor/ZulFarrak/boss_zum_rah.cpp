@@ -112,7 +112,7 @@ public:
                         DoCast(me,SPELL_HEALING_WAVE);
                         break;
                     case EVENT_SHADOWBOLT_VOLLEY:
-                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                             DoCast(target, SPELL_SHADOWBOLT_VOLLEY);
                         events.ScheduleEvent(EVENT_SHADOWBOLT_VOLLEY, 9s);
                         break;

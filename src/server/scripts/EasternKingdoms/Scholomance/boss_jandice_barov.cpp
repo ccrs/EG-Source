@@ -87,7 +87,7 @@ struct boss_jandice_barov : public ScriptedAI
                     _events.Repeat(25s, 30s);
                     break;
                 case EVENT_BANISH:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_BANISH);
                     _events.Repeat(15s, 25s);
                     break;

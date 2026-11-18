@@ -121,7 +121,7 @@ struct boss_emalon : public BossAI
             switch (eventId)
             {
                 case EVENT_CHAIN_LIGHTNING:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_CHAIN_LIGHTNING);
                     events.ScheduleEvent(EVENT_CHAIN_LIGHTNING, 25s);
                     break;

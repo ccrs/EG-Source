@@ -213,7 +213,7 @@ struct boss_kirtonos_the_herald : public BossAI
                     events.Repeat(30s, 50s);
                     break;
                 case EVENT_DOMINATE_MIND:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 0.0f, true))
                         DoCast(target, SPELL_DOMINATE_MIND);
                     events.Repeat(30s, 50s);
                     break;

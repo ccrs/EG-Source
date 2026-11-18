@@ -160,12 +160,12 @@ struct boss_dathrohan_balnazzar : public BossAI
                     events.Repeat(20s, 30s);
                     break;
                 case EVENT_SLEEP:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_SLEEP);
                     events.Repeat(15s, 20s);
                     break;
                 case EVENT_DOMINATION:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 0.0f, true))
                         DoCast(target, SPELL_DOMINATION);
                     events.Repeat(20s, 25s);
                     break;

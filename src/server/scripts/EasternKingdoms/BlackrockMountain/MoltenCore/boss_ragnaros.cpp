@@ -283,7 +283,7 @@ struct boss_ragnaros : public BossAI
                     events.Repeat(25s, 30s);
                     break;
                 case EVENT_MIGHT_OF_RAGNAROS:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_MIGHT_OF_RAGNAROS);
                     events.Repeat(9s, 12s);
                     break;

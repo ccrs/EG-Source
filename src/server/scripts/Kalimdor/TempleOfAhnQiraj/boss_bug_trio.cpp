@@ -195,7 +195,7 @@ struct boss_vem : public BossAI
             switch (eventId)
             {
                 case EVENT_VEM_CHARGE:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_CHARGE);
                     events.Repeat(15s, 25s);
                     break;

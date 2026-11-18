@@ -88,7 +88,7 @@ struct boss_pandemonius : public BossAI
         switch (eventId)
         {
             case EVENT_VOID_BLAST:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
                     DoCast(target, SPELL_VOID_BLAST);
                 events.Repeat(25s, 35s);
                 events.DelayEvents(2500ms, DARK_SHELL_EVENT_GROUP);
@@ -115,7 +115,7 @@ class spell_pandemonius_void_blast : public SpellScript
             return;
 
         if (Creature* caster = GetCaster()->ToCreature())
-            if (Unit* target = caster->AI()->SelectTarget(SelectTargetMethod::Random, 0, 100.0f))
+            if (Unit* target = caster->AI()->SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
                 caster->CastSpell(target, GetSpellInfo()->Id, CastSpellExtraArgs()
                     .AddSpellMod(SPELLVALUE_BASE_POINT2, castIndex + 1));
     }

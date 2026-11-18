@@ -198,22 +198,22 @@ struct boss_harbinger_skyriss : public BossAI
             switch (eventId)
             {
                 case EVENT_MIND_REND:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_MIND_REND);
                     events.Repeat(8s, 12s);
                     break;
                 case EVENT_FEAR:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_FEAR);
                     events.Repeat(15s, 25s);
                     break;
                 case EVENT_DOMINATION:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 0.0f, true))
                         DoCast(target, SPELL_DOMINATION);
                     events.Repeat(25s, 35s);
                     break;
                 case EVENT_MANA_BURN:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [](Unit const* unit) { return unit && unit->GetPowerType() == POWER_MANA; }))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [](Unit const* unit) { return unit && unit->IsPlayer() && unit->GetPowerType() == POWER_MANA; }))
                         DoCast(target, SPELL_MANA_BURN);
                     events.Repeat(10s, 20s);
                     break;
@@ -291,7 +291,7 @@ struct boss_harbinger_skyriss_illusion : public ScriptedAI
             })
             .Schedule(2s, 10s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, IsHeroic() ? SPELL_MIND_REND_IMAGE_H : SPELL_MIND_REND_IMAGE);
                 task.Repeat(8s, 12s);
             });

@@ -374,7 +374,7 @@ struct npc_omen : public ScriptedAI
                 events.ScheduleEvent(EVENT_CAST_CLEAVE, 8s, 10s);
                 break;
             case EVENT_CAST_STARFALL:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_OMEN_STARFALL);
                 events.ScheduleEvent(EVENT_CAST_STARFALL, 14s, 16s);
                 break;

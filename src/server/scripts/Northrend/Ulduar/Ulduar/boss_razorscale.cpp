@@ -579,12 +579,12 @@ struct boss_razorscale : public BossAI
                     Talk(EMOTE_BERSERK, me);
                     break;
                 case EVENT_FIREBALL:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_FIREBALL);
                     events.Repeat(Seconds(2), Seconds(3));
                     break;
                 case EVENT_DEVOURING_FLAME:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_DEVOURING_FLAME);
                     if (_permaGround)
                         events.Repeat(Seconds(10), Seconds(12));

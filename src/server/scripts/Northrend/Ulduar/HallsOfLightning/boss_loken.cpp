@@ -143,7 +143,7 @@ struct boss_loken : public BossAI
             switch (eventId)
             {
                 case EVENT_ARC_LIGHTNING:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_ARC_LIGHTNING);
                     events.ScheduleEvent(EVENT_ARC_LIGHTNING, 15s, 16s);
                     break;

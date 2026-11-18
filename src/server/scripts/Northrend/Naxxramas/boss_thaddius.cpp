@@ -464,7 +464,7 @@ public:
                 DoMeleeAttackIfReady();
             }
             else if (ballLightningUnlocked)
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_BALL_LIGHTNING);
         }
     }
@@ -628,7 +628,7 @@ public:
                 creatureCaster->AI()->Talk(EMOTE_TESLA_LINK_BREAKS);
                 me->RemoveAura(SPELL_STALAGG_CHAIN_VISUAL);
             }
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
             {
                 creatureCaster->CastStop(SPELL_TESLA_SHOCK);
                 creatureCaster->CastSpell(target, SPELL_TESLA_SHOCK,true);
@@ -868,7 +868,7 @@ public:
                 creatureCaster->AI()->Talk(EMOTE_TESLA_LINK_BREAKS);
                 me->RemoveAura(SPELL_STALAGG_CHAIN_VISUAL);
             }
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
             {
                 creatureCaster->CastStop(SPELL_TESLA_SHOCK);
                 creatureCaster->CastSpell(target, SPELL_TESLA_SHOCK,true);

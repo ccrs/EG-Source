@@ -21,6 +21,7 @@
 
 #include "ScriptMgr.h"
 #include "Containers.h"
+#include "GridNotifiers.h"
 #include "ScriptedCreature.h"
 #include "SpellAuras.h"
 #include "SpellScript.h"
@@ -77,7 +78,7 @@ struct boss_hungarfen : public BossAI
         {
             scheduler.Schedule(3s, 5s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_ACID_GEYSER);
                 task.Repeat(10s, 15s);
             });
@@ -196,6 +197,7 @@ class spell_hungarfen_putrid_mushroom_primer : public SpellScript
 
     void FilterTargets(std::list<WorldObject*>& targets)
     {
+        targets.remove_if(Trinity::ObjectTypeIdCheck(TYPEID_PLAYER, false));
         Trinity::Containers::RandomResize(targets, 1);
     }
 

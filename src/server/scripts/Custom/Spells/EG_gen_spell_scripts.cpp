@@ -762,6 +762,61 @@ class EG_spell_varos_arcane_beam_visual : public SpellScript
     }
 };
 
+enum AQ20AttackOrderMisc
+{
+    SPELL_ATTACK_ORDER_TAUNT = 25473
+};
+
+// 25471 - Attack Order
+class EG_spell_ruins_of_ahnqiraj_attack_order : public AuraScript
+{
+    PrepareAuraScript(EG_spell_ruins_of_ahnqiraj_attack_order);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_ATTACK_ORDER_TAUNT });
+    }
+
+    void AfterApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        GetTarget()->CastSpell(nullptr, SPELL_ATTACK_ORDER_TAUNT, true);
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(EG_spell_ruins_of_ahnqiraj_attack_order::AfterApply, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+enum NetherstormRingOfFlameMisc
+{
+    SPELL_RING_OF_FLAME_IMMOLATION = 35995
+};
+
+// 35831 - Ring of Flame
+class EG_spell_netherstorm_ring_of_flame : public AuraScript
+{
+    PrepareAuraScript(EG_spell_netherstorm_ring_of_flame);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_RING_OF_FLAME_IMMOLATION });
+    }
+
+    void AfterRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        if (GetAura()->IsRemoved())
+            return;
+
+        GetTarget()->CastSpell(nullptr, SPELL_RING_OF_FLAME_IMMOLATION, true);
+    }
+
+    void Register() override
+    {
+        AfterEffectRemove += AuraEffectRemoveFn(EG_spell_netherstorm_ring_of_flame::AfterRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
@@ -789,4 +844,6 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_varos_summon_arcane_beam);
     RegisterSpellScript(EG_spell_varos_arcane_beam_spawn_trigger);
     RegisterSpellScript(EG_spell_varos_arcane_beam_visual);
+    RegisterSpellScript(EG_spell_ruins_of_ahnqiraj_attack_order);
+    RegisterSpellScript(EG_spell_netherstorm_ring_of_flame);
 }

@@ -95,7 +95,7 @@ class SkarvaldChargePredicate
 
         bool operator() (WorldObject* target) const
         {
-            return target->GetDistance2d(_me) >= 5.0f && target->GetDistance2d(_me) <= 30.0f;
+            return target->GetTypeId() == TYPEID_PLAYER && target->GetDistance2d(_me) >= 5.0f && target->GetDistance2d(_me) <= 30.0f;
         }
 
     private:

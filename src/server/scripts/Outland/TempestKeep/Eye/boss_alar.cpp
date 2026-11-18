@@ -421,7 +421,7 @@ struct boss_alar : public BossAI
 
                 // Phase 2
                 case EVENT_FLAME_RING:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_SUMMON_FLAME_RING);
                     events.Repeat(30s, 45s);
                     break;
@@ -430,7 +430,7 @@ struct boss_alar : public BossAI
                     events.Repeat(60s);
                     break;
                 case EVENT_CHARGE_ALAR:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_CHARGE);
                     events.Repeat(30s, 35s);
                     break;
@@ -463,7 +463,7 @@ struct boss_alar : public BossAI
                     break;
                 case EVENT_DIVE_BOMB_4:
                     me->RemoveAurasDueToSpell(SPELL_DIVE_BOMB_VISUAL);
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     {
                         me->NearTeleportTo(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), target->GetOrientation());
                         DoCast(target, SPELL_DIVE_BOMB);

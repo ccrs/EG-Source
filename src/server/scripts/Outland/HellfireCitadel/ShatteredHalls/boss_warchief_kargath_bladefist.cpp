@@ -163,7 +163,7 @@ struct boss_warchief_kargath_bladefist : public BossAI
                     }
                     break;
                 case EVENT_CHARGE_H:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_CHARGE_H);
                     break;
                 case EVENT_SUMMON_PORTAL:

@@ -32,6 +32,7 @@
 #include "Containers.h"
 #include "GameObject.h"
 #include "GameObjectAI.h"
+#include "GridNotifiers.h"
 #include "InstanceScript.h"
 #include "MotionMaster.h"
 #include "ObjectMgr.h"
@@ -403,7 +404,7 @@ struct boss_lady_vashj : public BossAI
                     events.Repeat(2s, 4s);
                     break;
                 case EVENT_MULTI_SHOT:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_MULTI_SHOT);
                     events.Repeat(10s, 20s);
                     break;
@@ -473,7 +474,7 @@ struct boss_lady_vashj : public BossAI
 
                 // Phase 2
                 case EVENT_FORKED_LIGHTNING:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_FORKED_LIGHTNING);
                     events.Repeat(2s, 10s);
                     break;
@@ -591,7 +592,7 @@ struct npc_tainted_elemental : public ScriptedAI
             })
             .Schedule(0s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_POISON_BOLT);
                 task.Repeat(2s);
             })
@@ -808,6 +809,7 @@ class spell_lady_vashj_spore_drop_effect : public SpellScript
 
     void FilterTargets(std::list<WorldObject*>& targets)
     {
+        targets.remove_if(Trinity::ObjectTypeIdCheck(TYPEID_PLAYER, false));
         Trinity::Containers::RandomResize(targets, 1);
     }
 

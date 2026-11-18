@@ -160,7 +160,7 @@ struct boss_teron_gorefiend : public BossAI
                     DoCast(SPELL_BERSERK);
                     break;
                 case EVENT_INCINERATE:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_INCINERATE);
                     Talk(SAY_INCINERATE);
                     events.Repeat(12s, 20s);
@@ -210,7 +210,7 @@ struct npc_doom_blossom : public NullCreatureAI
         DoZoneInCombat();
         _scheduler.Schedule(12s, [this](TaskContext shadowBolt)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                 DoCast(target, SPELL_SHADOWBOLT);
 
             shadowBolt.Repeat(2s);
