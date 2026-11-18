@@ -294,6 +294,7 @@ public:
 
 protected:
     void InitializePhaseTimes();
+    virtual void ClearBattleStatus();
 
     Map* GetBattleMap() const;
     void SendWorldStateToAll(uint32 variable, uint32 value) const;
@@ -326,7 +327,6 @@ private:
     BattlefieldPlayerStatus RemoveFromQueue(ObjectGuid playerGuid, TeamId teamId);
     void InviteToBattle(Player* player, bool battleStart);
     void FillBattleSlots(bool battleStart);
-    void ClearBattleStatus();
     void ScheduleNextPhaseAdvance();
     void ScheduleNextGraveyardResurrect();
 

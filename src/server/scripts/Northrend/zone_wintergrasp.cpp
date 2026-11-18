@@ -19,10 +19,13 @@
 #include "Battlefield.h"
 #include "BattlefieldMgr.h"
 #include "Battlefield/BattlefieldWG.h"
+#include "CombatAI.h"
 #include "ConditionMgr.h"
 #include "Creature.h"
+#include "DBCStructure.h"
 #include "GameObject.h"
 #include "GameObjectAI.h"
+#include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
@@ -39,24 +42,12 @@
 
 enum ZoneWintergraspNPCTexts
 {
-    NPC_TEXT_HORDE_HOW_CAN_I_HELP        = 13759,
-    NPC_TEXT_HORDE_SORRY_ONLY_OFFICER    = 13761,
-    NPC_TEXT_ALLIANCE_HOW_CAN_I_HELP     = 13798,
-    NPC_TEXT_ALLIANCE_SORRY_ONLY_OFFICER = 14172,
-    NPC_TEXT_SORRY_USED_ALL_PARTS        = 13786,
-
     NPC_TEXT_HORDE_NOBATTLE              = 14775,
     NPC_TEXT_HORDE_QUEUE                 = 14790,
     NPC_TEXT_HORDE_BATTLE                = 14777,
     NPC_TEXT_ALLIANCE_NOBATTLE           = 14782,
     NPC_TEXT_ALLIANCE_QUEUE              = 14791,
     NPC_TEXT_ALLIANCE_BATTLE             = 14781
-};
-
-enum ZoneWintergraspGossipMenuIds
-{
-    GOSSIP_MENU_ENGINEER_HORDE    = 9904,
-    GOSSIP_MENU_ENGINEER_ALLIANCE = 9923,
 };
 
 enum ZoneWintergraspGossipMenuOptionIds
@@ -125,88 +116,26 @@ static std::vector<uint32> const wintergraspVehicleIds =
 
 struct npc_wg_demolisher_engineer : public ScriptedAI
 {
-    npc_wg_demolisher_engineer(Creature* creature) : ScriptedAI(creature)
-    {
-    }
-
-    void Reset() override
-    {
-    }
-
-    bool OnGossipHello(Player* player) override
-    {
-        if (me->IsQuestGiver())
-            player->PrepareQuestMenu(me->GetGUID());
-
-        if (CanBuild())
-        {
-            if (player->HasAura(SPELL_WINTERGRASP_CORPORAL))
-            {
-                AddGossipItemFor(player, me->GetEntry() == NPC_WINTERGRASP_GOBLIN_MECHANIC ? GOSSIP_MENU_ENGINEER_HORDE : GOSSIP_MENU_ENGINEER_ALLIANCE, GOSSIP_MENU_OPTION_ENGINEER_CATAPULT, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
-                SendGossipMenuFor(player, me->GetEntry() == NPC_WINTERGRASP_GOBLIN_MECHANIC ? NPC_TEXT_HORDE_HOW_CAN_I_HELP : NPC_TEXT_ALLIANCE_HOW_CAN_I_HELP, me);
-                return true;
-            }
-            else if (player->HasAura(SPELL_WINTERGRASP_LIEUTENANT))
-            {
-                AddGossipItemFor(player, me->GetEntry() == NPC_WINTERGRASP_GOBLIN_MECHANIC ? GOSSIP_MENU_ENGINEER_HORDE : GOSSIP_MENU_ENGINEER_ALLIANCE, GOSSIP_MENU_OPTION_ENGINEER_CATAPULT, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
-                AddGossipItemFor(player, me->GetEntry() == NPC_WINTERGRASP_GOBLIN_MECHANIC ? GOSSIP_MENU_ENGINEER_HORDE : GOSSIP_MENU_ENGINEER_ALLIANCE, GOSSIP_MENU_OPTION_ENGINEER_DEMOLISHER, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-                AddGossipItemFor(player, me->GetEntry() == NPC_WINTERGRASP_GOBLIN_MECHANIC ? GOSSIP_MENU_ENGINEER_HORDE : GOSSIP_MENU_ENGINEER_ALLIANCE, GOSSIP_MENU_OPTION_ENGINEER_SIEGE_ENGINE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-                SendGossipMenuFor(player, me->GetEntry() == NPC_WINTERGRASP_GOBLIN_MECHANIC ? NPC_TEXT_HORDE_HOW_CAN_I_HELP : NPC_TEXT_ALLIANCE_HOW_CAN_I_HELP, me);
-                return true;
-            }
-            else
-            {
-                SendGossipMenuFor(player, me->GetEntry() == NPC_WINTERGRASP_GOBLIN_MECHANIC ? NPC_TEXT_HORDE_SORRY_ONLY_OFFICER : NPC_TEXT_ALLIANCE_SORRY_ONLY_OFFICER, me);
-                return true;
-            }
-        }
-
-        SendGossipMenuFor(player, NPC_TEXT_SORRY_USED_ALL_PARTS, me);
-        return true;
-    }
+    npc_wg_demolisher_engineer(Creature* creature) : ScriptedAI(creature) { }
 
     bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
     {
-        uint32 const action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
         CloseGossipMenuFor(player);
-
-        if (CanBuild())
+        switch (gossipListId)
         {
-            uint32 const selection = action - GOSSIP_ACTION_INFO_DEF;
-            switch (selection)
-            {
-                case 0:
-                    DoCast(player, SPELL_BUILD_CATAPULT_FORCE, true);
-                    break;
-                case 1:
-                    DoCast(player, SPELL_BUILD_DEMOLISHER_FORCE, true);
-                    break;
-                case 2:
-                    DoCast(player, player->GetTeamId() == TEAM_ALLIANCE ? SPELL_BUILD_SIEGE_VEHICLE_FORCE_ALLIANCE : SPELL_BUILD_SIEGE_VEHICLE_FORCE_HORDE, true);
-                    break;
-                default:
-                    break;
-            }
+            case GOSSIP_MENU_OPTION_ENGINEER_CATAPULT:
+                DoCast(player, SPELL_BUILD_CATAPULT_FORCE, true);
+                break;
+            case GOSSIP_MENU_OPTION_ENGINEER_DEMOLISHER:
+                DoCast(player, SPELL_BUILD_DEMOLISHER_FORCE, true);
+                break;
+            case GOSSIP_MENU_OPTION_ENGINEER_SIEGE_ENGINE:
+                DoCast(player, player->GetTeamId() == TEAM_ALLIANCE ? SPELL_BUILD_SIEGE_VEHICLE_FORCE_ALLIANCE : SPELL_BUILD_SIEGE_VEHICLE_FORCE_HORDE, true);
+                break;
+            default:
+                break;
         }
         return true;
-    }
-
-private:
-    bool CanBuild() const
-    {
-        Battlefield* wintergrasp = sBattlefieldMgr->GetEnabledBattlefield(me->GetZoneId());
-        if (!wintergrasp || !wintergrasp->IsBattleTime())
-            return false;
-
-        switch (me->GetEntry())
-        {
-            case NPC_WINTERGRASP_GOBLIN_MECHANIC:
-                //return (wintergrasp->GetData(BATTLEFIELD_WG_DATA_MAX_VEHICLE_H) > wintergrasp->GetData(BATTLEFIELD_WG_DATA_VEHICLE_H));
-            case NPC_WINTERGRASP_GNOMISH_ENGINEER:
-                //return (wintergrasp->GetData(BATTLEFIELD_WG_DATA_MAX_VEHICLE_A) > wintergrasp->GetData(BATTLEFIELD_WG_DATA_VEHICLE_A));
-            default:
-                return false;
-        }
     }
 };
 
@@ -314,6 +243,55 @@ struct npc_wg_queue : public ScriptedAI
     }
 };
 
+struct npc_wg_siege_machine : public VehicleAI
+{
+    npc_wg_siege_machine(Creature* creature) : VehicleAI(creature), _checkTimer(1000) { }
+
+    void IsSummonedBy(WorldObject* summoner) override
+    {
+        Player* builder = summoner->ToPlayer();
+        if (!builder)
+            return;
+
+        PvPTeamId const pvpTeamId = PvPTeamIdByTeamId(builder->GetTeamId());
+        if (Battlefield* wintergrasp = sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP))
+            me->SetFaction(wintergrasp->GetFaction(pvpTeamId));
+
+        DoCast(builder, SPELL_WINTERGRASP_GRAB_PASSENGER, true);
+        DoCastSelf(pvpTeamId == PVP_TEAM_HORDE ? SPELL_WINTERGRASP_HORDE_FLAG : SPELL_WINTERGRASP_ALLIANCE_FLAG, true);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        VehicleAI::UpdateAI(diff);
+
+        _checkTimer.Update(diff);
+        if (!_checkTimer.Passed())
+            return;
+
+        _checkTimer.Reset(1000);
+        Vehicle* vehicle = me->GetVehicleKit();
+        if (!vehicle)
+            return;
+
+        for (SeatMap::value_type const& seat : vehicle->Seats)
+        {
+            if (!seat.second.SeatInfo->HasFlag(VEHICLE_SEAT_FLAG_CAN_CONTROL))
+                continue;
+
+            Unit* driver = ObjectAccessor::GetUnit(*me, seat.second.Passenger.Guid);
+            if (!driver || driver->HasAura(SPELL_WINTERGRASP_LIEUTENANT) || (me->GetEntry() == NPC_WINTERGRASP_CATAPULT && driver->HasAura(SPELL_WINTERGRASP_CORPORAL)))
+                continue;
+
+            driver->ExitVehicle();
+            return;
+        }
+    }
+
+private:
+    TimeTracker _checkTimer;
+};
+
 struct go_wg_vehicle_teleporter : public GameObjectAI
 {
     go_wg_vehicle_teleporter(GameObject* gameObject) : GameObjectAI(gameObject), _checkTimer(1000) { }
@@ -392,19 +370,47 @@ class spell_wintergrasp_force_building : public SpellScript
             SPELL_BUILD_CATAPULT_FORCE,
             SPELL_BUILD_DEMOLISHER_FORCE,
             SPELL_BUILD_SIEGE_VEHICLE_FORCE_HORDE,
-            SPELL_BUILD_SIEGE_VEHICLE_FORCE_ALLIANCE
+            SPELL_BUILD_SIEGE_VEHICLE_FORCE_ALLIANCE,
+            SPELL_ACTIVATE_CONTROL_ARMS
         });
     }
 
     void HandleScript(SpellEffIndex effIndex)
     {
         PreventHitDefaultEffect(effIndex);
-        GetHitUnit()->CastSpell(GetHitUnit(), GetEffectValue(), false);
+        Unit* target = GetHitUnit();
+        if (target->CastSpell(target, GetEffectValue(), false) == SPELL_CAST_OK)
+            target->CastSpell(nullptr, SPELL_ACTIVATE_CONTROL_ARMS, true);
     }
 
     void Register() override
     {
         OnEffectHitTarget += SpellEffectFn(spell_wintergrasp_force_building::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 56575 - Build Demolisher
+// 56661 - Build Siege Engine
+// 56663 - Build Catapult
+// 61408 - Build Siege Engine
+class spell_wintergrasp_build_vehicle : public SpellScript
+{
+    PrepareSpellScript(spell_wintergrasp_build_vehicle);
+
+    SpellCastResult CheckCast()
+    {
+        Player* player = GetCaster()->ToPlayer();
+        BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP));
+        if (player && wintergrasp && wintergrasp->CanBuildVehicle(PvPTeamIdByTeamId(player->GetTeamId())))
+            return SPELL_CAST_OK;
+
+        SetCustomCastResultMessage(SPELL_CUSTOM_ERROR_CANT_BUILD_MORE_VEHICLES);
+        return SPELL_FAILED_CUSTOM_ERROR;
+    }
+
+    void Register() override
+    {
+        OnCheckCast += SpellCheckCastFn(spell_wintergrasp_build_vehicle::CheckCast);
     }
 };
 
@@ -620,14 +626,36 @@ class condition_is_wintergrasp_alliance : public ConditionScript
         }
 };
 
+class condition_wintergrasp_vehicle_limit : public ConditionScript
+{
+    public:
+        condition_wintergrasp_vehicle_limit(char const* scriptName, bool buildable) : ConditionScript(scriptName), _buildable(buildable) { }
+
+        bool OnConditionCheck(Condition const* condition, ConditionSourceInfo& sourceInfo) override
+        {
+            WorldObject* target = sourceInfo.mConditionTargets[condition->ConditionTarget];
+            Player* player = target ? target->ToPlayer() : nullptr;
+            BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP));
+            if (!player || !wintergrasp)
+                return false;
+
+            return wintergrasp->CanBuildVehicle(PvPTeamIdByTeamId(player->GetTeamId())) == _buildable;
+        }
+
+    private:
+        bool _buildable;
+};
+
 void AddSC_wintergrasp()
 {
     RegisterCreatureAI(npc_wg_queue);
     RegisterCreatureAI(npc_wg_spirit_guide);
     RegisterCreatureAI(npc_wg_demolisher_engineer);
+    RegisterCreatureAI(npc_wg_siege_machine);
     RegisterGameObjectAI(go_wg_vehicle_teleporter);
     RegisterGameObjectAI(go_wg_titan_relic);
     RegisterSpellScript(spell_wintergrasp_force_building);
+    RegisterSpellScript(spell_wintergrasp_build_vehicle);
     RegisterSpellScript(spell_wintergrasp_grab_passenger);
     RegisterSpellScript(spell_wintergrasp_activate_robotic_arms);
     new achievement_wg_didnt_stand_a_chance();
@@ -637,4 +665,6 @@ void AddSC_wintergrasp()
     RegisterSpellScript(spell_wintergrasp_waiting_to_resurrect);
     new condition_is_wintergrasp_horde();
     new condition_is_wintergrasp_alliance();
+    new condition_wintergrasp_vehicle_limit("condition_wintergrasp_vehicle_buildable", true);
+    new condition_wintergrasp_vehicle_limit("condition_wintergrasp_vehicle_limit_reached", false);
 }

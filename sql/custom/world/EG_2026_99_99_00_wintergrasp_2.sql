@@ -425,3 +425,59 @@ DELETE FROM `spawn_group` WHERE `groupId` IN (1015, 1016);
 INSERT INTO `spawn_group` (`groupId`, `spawnType`, `spawnId`) VALUES
 (1015, 1, 200049),
 (1016, 1, 200050);
+
+-- Siege vehicles
+UPDATE `creature_template` SET `gossip_menu_id` = 9904 WHERE `entry` = 30400;
+UPDATE `creature_template` SET `gossip_menu_id` = 9923 WHERE `entry` = 30499;
+UPDATE `creature_template` SET `ScriptName` = 'npc_wg_siege_machine' WHERE `entry` IN (27881, 28094, 28312, 32627);
+DELETE FROM `gossip_menu` WHERE `MenuID` IN (9904, 9923);
+INSERT INTO `gossip_menu` (`MenuID`, `TextID`, `VerifiedBuild`) VALUES
+(9904, 13759, 0),
+(9904, 13761, 0),
+(9904, 13786, 0),
+(9923, 13786, 0),
+(9923, 13798, 0),
+(9923, 14172, 0);
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` IN (14, 15) AND `SourceGroup` IN (9904, 9923);
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `ConditionStringValue1`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES
+(14, 9904, 13759, 0, 0, 1, 0, 33280, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - officer text - Corporal'),
+(14, 9904, 13759, 0, 0, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_buildable', 'Goblin Mechanic - officer text - vehicle can be built'),
+(14, 9904, 13786, 0, 0, 1, 0, 33280, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - no parts text - Corporal'),
+(14, 9904, 13786, 0, 0, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_limit_reached', 'Goblin Mechanic - no parts text - vehicle limit reached'),
+(14, 9904, 13759, 0, 1, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - officer text - First Lieutenant'),
+(14, 9904, 13759, 0, 1, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_buildable', 'Goblin Mechanic - officer text - vehicle can be built'),
+(14, 9904, 13786, 0, 1, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - no parts text - First Lieutenant'),
+(14, 9904, 13786, 0, 1, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_limit_reached', 'Goblin Mechanic - no parts text - vehicle limit reached'),
+(14, 9904, 13761, 0, 0, 1, 0, 33280, 0, 0, '', 1, 0, 0, '', 'Goblin Mechanic - only officers text - not Corporal'),
+(14, 9904, 13761, 0, 0, 1, 0, 55629, 0, 0, '', 1, 0, 0, '', 'Goblin Mechanic - only officers text - not First Lieutenant'),
+(15, 9904, 0, 0, 0, 1, 0, 33280, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - build catapult - Corporal'),
+(15, 9904, 0, 0, 1, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - build catapult - First Lieutenant'),
+(15, 9904, 1, 0, 0, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - build demolisher - First Lieutenant'),
+(15, 9904, 2, 0, 0, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - build siege engine - First Lieutenant'),
+(14, 9923, 13798, 0, 0, 1, 0, 33280, 0, 0, '', 0, 0, 0, '', 'Gnomish Engineer - officer text - Corporal'),
+(14, 9923, 13798, 0, 0, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_buildable', 'Gnomish Engineer - officer text - vehicle can be built'),
+(14, 9923, 13786, 0, 0, 1, 0, 33280, 0, 0, '', 0, 0, 0, '', 'Gnomish Engineer - no parts text - Corporal'),
+(14, 9923, 13786, 0, 0, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_limit_reached', 'Gnomish Engineer - no parts text - vehicle limit reached'),
+(14, 9923, 13798, 0, 1, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Gnomish Engineer - officer text - First Lieutenant'),
+(14, 9923, 13798, 0, 1, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_buildable', 'Gnomish Engineer - officer text - vehicle can be built'),
+(14, 9923, 13786, 0, 1, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Gnomish Engineer - no parts text - First Lieutenant'),
+(14, 9923, 13786, 0, 1, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_limit_reached', 'Gnomish Engineer - no parts text - vehicle limit reached'),
+(14, 9923, 14172, 0, 0, 1, 0, 33280, 0, 0, '', 1, 0, 0, '', 'Gnomish Engineer - only officers text - not Corporal'),
+(14, 9923, 14172, 0, 0, 1, 0, 55629, 0, 0, '', 1, 0, 0, '', 'Gnomish Engineer - only officers text - not First Lieutenant'),
+(15, 9923, 0, 0, 0, 1, 0, 33280, 0, 0, '', 0, 0, 0, '', 'Gnomish Engineer - build catapult - Corporal'),
+(15, 9923, 0, 0, 1, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Gnomish Engineer - build catapult - First Lieutenant'),
+(15, 9923, 1, 0, 0, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Gnomish Engineer - build demolisher - First Lieutenant'),
+(15, 9923, 2, 0, 0, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Gnomish Engineer - build siege engine - First Lieutenant');
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 13 AND `SourceEntry` IN (49899, 56575, 56661, 56663, 61408);
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `ConditionStringValue1`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES
+(13, 1, 56575, 0, 0, 31, 0, 3, 23472, 0, '', 0, 0, 0, '', 'Build Demolisher - target World Trigger'),
+(13, 1, 56661, 0, 0, 31, 0, 3, 23472, 0, '', 0, 0, 0, '', 'Build Siege Engine - target World Trigger'),
+(13, 1, 56663, 0, 0, 31, 0, 3, 23472, 0, '', 0, 0, 0, '', 'Build Catapult - target World Trigger'),
+(13, 1, 61408, 0, 0, 31, 0, 3, 23472, 0, '', 0, 0, 0, '', 'Build Siege Engine - target World Trigger'),
+(13, 1, 49899, 0, 0, 31, 0, 3, 27852, 0, '', 0, 0, 0, '', 'Activate Robotic Arms - target Wintergrasp Control Arms');
+DELETE FROM `spell_script_names` WHERE `spell_id` IN (56575, 56661, 56663, 61408);
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(56575, 'spell_wintergrasp_build_vehicle'),
+(56661, 'spell_wintergrasp_build_vehicle'),
+(56663, 'spell_wintergrasp_build_vehicle'),
+(61408, 'spell_wintergrasp_build_vehicle');

@@ -1025,6 +1025,18 @@ void Battlefield::InitializePhaseTimes()
     ScheduleNextPhaseAdvance();
 }
 
+void Battlefield::ClearBattleStatus()
+{
+    for (TeamId teamId : { TEAM_ALLIANCE, TEAM_HORDE })
+    {
+        for (ObjectGuid playerGuid : _battlefieldPlayers.List(teamId, BATTLEFIELD_PLAYER_STATE_BATTLE_ENDED))
+            if (Player* player = ObjectAccessor::FindPlayer(playerGuid))
+                player->GetSession()->SendBfStateChange(GetId(), BATTLEFIELD_PLAYER_STATUS_NONE);
+
+        _battlefieldPlayers.EraseAll(teamId, BATTLEFIELD_PLAYER_STATE_BATTLE_ENDED);
+    }
+}
+
 Map* Battlefield::GetBattleMap() const
 {
     uint32 const mapId = Values.Get<uint32>(BATTLEFIELD_VALUE_ID_MAP);
@@ -1096,18 +1108,6 @@ void Battlefield::FillBattleSlots(bool battleStart)
 
         for (Player* player : priorityPlayers)
             InviteToBattle(player, battleStart);
-    }
-}
-
-void Battlefield::ClearBattleStatus()
-{
-    for (TeamId teamId : { TEAM_ALLIANCE, TEAM_HORDE })
-    {
-        for (ObjectGuid playerGuid : _battlefieldPlayers.List(teamId, BATTLEFIELD_PLAYER_STATE_BATTLE_ENDED))
-            if (Player* player = ObjectAccessor::FindPlayer(playerGuid))
-                player->GetSession()->SendBfStateChange(GetId(), BATTLEFIELD_PLAYER_STATUS_NONE);
-
-        _battlefieldPlayers.EraseAll(teamId, BATTLEFIELD_PLAYER_STATE_BATTLE_ENDED);
     }
 }
 

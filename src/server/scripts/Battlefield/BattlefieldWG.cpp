@@ -24,9 +24,11 @@
 #include "Map.h"
 #include "MapReference.h"
 #include "MapUtils.h"
+#include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "SpellAuras.h"
+#include "TemporarySummon.h"
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldStatePackets.h"
@@ -376,6 +378,8 @@ void BattlefieldWintergrasp::HandlePlayerLeaveBattle(Player* player)
     Battlefield::HandlePlayerLeaveBattle(player);
 
     RemoveRankAuras(player);
+    if (IsVehiclePassenger(player))
+        player->ExitVehicle();
 }
 
 void BattlefieldWintergrasp::OnCreatureCreate(Creature* object)
@@ -400,6 +404,14 @@ void BattlefieldWintergrasp::OnCreatureCreate(Creature* object)
                 if (BattlefieldGraveyard* graveyard = GetGraveyard(graveyardId))
                     graveyard->OnObjectCreate(object);
             break;
+        case NPC_WINTERGRASP_CATAPULT:
+        case NPC_WINTERGRASP_DEMOLISHER:
+        case NPC_WINTERGRASP_SIEGE_ENGINE_ALLIANCE:
+        case NPC_WINTERGRASP_SIEGE_ENGINE_HORDE:
+            if (TempSummon* summon = object->ToTempSummon())
+                if (Player* builder = ObjectAccessor::GetPlayer(*object, summon->GetSummonerGUID()))
+                    AddVehicle(object->GetGUID(), PvPTeamIdByTeamId(builder->GetTeamId()));
+            break;
         default:
             break;
     }
@@ -415,9 +427,22 @@ void BattlefieldWintergrasp::OnCreatureRemove(Creature* object)
                 if (BattlefieldGraveyard* graveyard = GetGraveyard(graveyardId))
                     graveyard->OnObjectRemove(object);
             break;
+        case NPC_WINTERGRASP_CATAPULT:
+        case NPC_WINTERGRASP_DEMOLISHER:
+        case NPC_WINTERGRASP_SIEGE_ENGINE_ALLIANCE:
+        case NPC_WINTERGRASP_SIEGE_ENGINE_HORDE:
+            RemoveVehicle(object->GetGUID());
+            break;
         default:
             break;
     }
+}
+
+void BattlefieldWintergrasp::OnUnitDeath(Unit* unit)
+{
+    Battlefield::OnUnitDeath(unit);
+
+    RemoveVehicle(unit->GetGUID());
 }
 
 void BattlefieldWintergrasp::OnGameObjectCreate(GameObject* object)
@@ -474,7 +499,9 @@ void BattlefieldWintergrasp::FillInitialWorldStates(WorldPackets::WorldState::In
         packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END))); // 3781
     }
 
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_VEHICLE_HORDE, GetVehicleCount(PVP_TEAM_HORDE));
     packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_MAX_VEHICLE_HORDE, GetVehicleLimit(PVP_TEAM_HORDE));
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_VEHICLE_ALLIANCE, GetVehicleCount(PVP_TEAM_ALLIANCE));
     packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_MAX_VEHICLE_ALLIANCE, GetVehicleLimit(PVP_TEAM_ALLIANCE));
     packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_CAPTURE_NEUTRAL_PERCENT, WINTERGRASP_CAPTURE_NEUTRAL_PERCENT);
 }
@@ -612,6 +639,11 @@ bool BattlefieldWintergrasp::CanUseTitanRelic(Player const* player) const
     return IsVaultGateDestroyed() && player->GetTeamId() == GetAttackingTeamId() && IsPlayerInBattle(player);
 }
 
+bool BattlefieldWintergrasp::CanBuildVehicle(PvPTeamId pvpTeamId) const
+{
+    return IsBattleTime() && GetVehicleCount(pvpTeamId) < GetVehicleLimit(pvpTeamId);
+}
+
 bool BattlefieldWintergrasp::IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 newArea) const
 {
     if (!player)
@@ -647,12 +679,24 @@ bool BattlefieldWintergrasp::IsSpellAreaAllowed(uint32 spellId, Player const* pl
     return true;
 }
 
+void BattlefieldWintergrasp::ClearBattleStatus()
+{
+    Battlefield::ClearBattleStatus();
+
+    DespawnVehicles();
+}
+
 uint32 BattlefieldWintergrasp::GetControlState() const
 {
     if (IsBattleTime())
         return WINTERGRASP_CONTROL_BATTLE;
 
     return GetControllingTeam() == PVP_TEAM_HORDE ? WINTERGRASP_CONTROL_HORDE : WINTERGRASP_CONTROL_ALLIANCE;
+}
+
+uint32 BattlefieldWintergrasp::GetVehicleCount(PvPTeamId pvpTeamId) const
+{
+    return uint32(_vehicleGUIDs[pvpTeamId].size());
 }
 
 uint32 BattlefieldWintergrasp::GetVehicleLimit(PvPTeamId pvpTeamId) const
@@ -704,6 +748,53 @@ void BattlefieldWintergrasp::PromotePlayer(Player* player) const
         }
         return;
     }
+}
+
+void BattlefieldWintergrasp::SendVehicleCount(PvPTeamId pvpTeamId) const
+{
+    SendWorldStateToMap(pvpTeamId == PVP_TEAM_HORDE ? WORLDSTATE_WINTERGRASP_VEHICLE_HORDE : WORLDSTATE_WINTERGRASP_VEHICLE_ALLIANCE, GetVehicleCount(pvpTeamId));
+}
+
+void BattlefieldWintergrasp::AddVehicle(ObjectGuid vehicleGuid, PvPTeamId pvpTeamId)
+{
+    if (_vehicleGUIDs[pvpTeamId].insert(vehicleGuid).second)
+        SendVehicleCount(pvpTeamId);
+}
+
+void BattlefieldWintergrasp::RemoveVehicle(ObjectGuid vehicleGuid)
+{
+    for (PvPTeamId pvpTeamId : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE })
+    {
+        if (!_vehicleGUIDs[pvpTeamId].erase(vehicleGuid))
+            continue;
+
+        SendVehicleCount(pvpTeamId);
+        return;
+    }
+}
+
+void BattlefieldWintergrasp::DespawnVehicles()
+{
+    for (GuidUnorderedSet const& vehicleGuids : _vehicleGUIDs)
+    {
+        GuidVector const guids(vehicleGuids.begin(), vehicleGuids.end());
+        for (ObjectGuid vehicleGuid : guids)
+        {
+            RemoveVehicle(vehicleGuid);
+            if (Creature* vehicle = GetCreature(vehicleGuid))
+                vehicle->DespawnOrUnsummon();
+        }
+    }
+}
+
+bool BattlefieldWintergrasp::IsVehiclePassenger(Unit const* unit) const
+{
+    for (Unit const* vehicleBase = unit->GetVehicleBase(); vehicleBase; vehicleBase = vehicleBase->GetVehicleBase())
+        for (GuidUnorderedSet const& vehicleGuids : _vehicleGUIDs)
+            if (vehicleGuids.contains(vehicleBase->GetGUID()))
+                return true;
+
+    return false;
 }
 
 WintergraspBuilding::WintergraspBuilding(BattlefieldWintergrasp* wintergrasp, BattlefieldBuildingInfo const info) : BattlefieldDestructibleBuilding(wintergrasp, info), _wintergrasp(wintergrasp)

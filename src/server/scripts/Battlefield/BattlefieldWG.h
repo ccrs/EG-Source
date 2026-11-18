@@ -509,6 +509,7 @@ public:
     void HandlePlayerLeaveBattle(Player* player) override;
     void OnCreatureCreate(Creature* object) override;
     void OnCreatureRemove(Creature* object) override;
+    void OnUnitDeath(Unit* unit) override;
     void OnGameObjectCreate(GameObject* object) override;
     void ProcessEvent(WorldObject* object, uint32 eventId) override;
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
@@ -521,17 +522,27 @@ public:
     void HandleVaultGateDestroyed();
     void SendVehicleLimits() const;
     bool CanUseTitanRelic(Player const* player) const;
+    bool CanBuildVehicle(PvPTeamId pvpTeamId) const;
 
     bool IsFlyingMountAllowed() const override { return !IsEnabled() || (IsEnabled() && !IsBattleTime()); }
     bool IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 newArea) const override;
 
+protected:
+    void ClearBattleStatus() override;
+
 private:
     uint32 GetControlState() const;
+    uint32 GetVehicleCount(PvPTeamId pvpTeamId) const;
     uint32 GetVehicleLimit(PvPTeamId pvpTeamId) const;
     bool IsVaultGateDestroyed() const;
     void SetKeepCollisionsOpen(bool open) const;
     void RemoveRankAuras(Player* player) const;
     void PromotePlayer(Player* player) const;
+    void SendVehicleCount(PvPTeamId pvpTeamId) const;
+    void AddVehicle(ObjectGuid vehicleGuid, PvPTeamId pvpTeamId);
+    void RemoveVehicle(ObjectGuid vehicleGuid);
+    void DespawnVehicles();
+    bool IsVehiclePassenger(Unit const* unit) const;
 
     typedef std::unique_ptr<WintergraspBuilding> WintergraspBuildingPointer;
     typedef std::unique_ptr<WintergraspCapturePoint> WintergraspCapturePointPointer;
@@ -545,6 +556,7 @@ private:
     std::array<ObjectGuid, PVP_TEAMS_COUNT> _titanRelicGUIDs;
     ObjectGuid _keepCollisionWallGUID;
     ObjectGuid _keepDoorCollisionGUID;
+    std::array<GuidUnorderedSet, PVP_TEAMS_COUNT> _vehicleGUIDs;
 };
 
 #endif

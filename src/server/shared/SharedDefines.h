@@ -3601,6 +3601,18 @@ constexpr TeamId TeamIdByPvPTeamId(PvPTeamId value)
     return TEAM_NEUTRAL;
 }
 
+constexpr PvPTeamId PvPTeamIdByTeamId(TeamId value)
+{
+    switch (value)
+    {
+        case TEAM_HORDE: return PVP_TEAM_HORDE;
+        case TEAM_ALLIANCE: return PVP_TEAM_ALLIANCE;
+        case TEAM_NEUTRAL: return PVP_TEAM_NEUTRAL;
+        default: break;
+    }
+    return PVP_TEAM_NEUTRAL;
+}
+
 // indexes of BattlemasterList.dbc
 enum BattlegroundTypeId : uint32
 {
