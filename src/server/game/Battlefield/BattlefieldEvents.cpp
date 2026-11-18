@@ -139,9 +139,9 @@ void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BUILDING_DESTROY>::Handle(Battlefie
 }
 
 template<>
-void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BUILDING_UPDATE>::Handle(Battlefield& battlefield)
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_PERIODIC_UPDATE>::Handle(Battlefield& battlefield)
 {
-    battlefield.ProcessBuildingUpdate(GetKey());
+    battlefield.ProcessPeriodicUpdate(GetKey());
 }
 
 template<>

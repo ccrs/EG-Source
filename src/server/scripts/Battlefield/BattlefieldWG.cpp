@@ -365,23 +365,6 @@ void BattlefieldWintergrasp::HandleKill(Player* killer, Unit* victim)
                 PromotePlayer(member);
 }
 
-void BattlefieldWintergrasp::HandlePlayerJoinBattle(Player* player)
-{
-    Battlefield::HandlePlayerJoinBattle(player);
-
-    RemoveRankAuras(player);
-    player->CastSpell(player, SPELL_WINTERGRASP_RECRUIT, true);
-}
-
-void BattlefieldWintergrasp::HandlePlayerLeaveBattle(Player* player)
-{
-    Battlefield::HandlePlayerLeaveBattle(player);
-
-    RemoveRankAuras(player);
-    if (IsVehiclePassenger(player))
-        player->ExitVehicle();
-}
-
 void BattlefieldWintergrasp::OnCreatureCreate(Creature* object)
 {
     switch (object->GetEntry())
@@ -528,29 +511,6 @@ void BattlefieldWintergrasp::SendGlobalWorldStates(Player const* player) const
     player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_CONTROL, GetControlState()); // 3804
 }
 
-void BattlefieldWintergrasp::ProcessBuildingUpdate(BattlefieldEventKey key)
-{
-    Battlefield::ProcessBuildingUpdate(key);
-
-    if (!IsBattleTime() || IsVaultGateDestroyed())
-        return;
-
-    Map* battleMap = GetBattleMap();
-    if (!battleMap)
-        return;
-
-    TeamId const attackingTeamId = GetAttackingTeamId();
-    for (MapReference const& reference : battleMap->GetPlayers())
-    {
-        Player* player = reference.GetSource();
-        if (!player || player->GetTeamId() != attackingTeamId || player->IsGameMaster() || player->IsInFlight() || player->IsBeingTeleported())
-            continue;
-
-        if (WintergraspTitanRelicChamberBoundary.IsWithinBoundary(player) && WintergraspTitanRelicChamberHeightBoundary.IsWithinBoundary(player))
-            TeleportPlayerToBattle(player);
-    }
-}
-
 uint8 BattlefieldWintergrasp::GetWintergraspGraveyardId(Creature* creature) const
 {
     switch (creature->GetSpawnId())
@@ -684,6 +644,40 @@ void BattlefieldWintergrasp::ClearBattleStatus()
     Battlefield::ClearBattleStatus();
 
     DespawnVehicles();
+}
+
+void BattlefieldWintergrasp::OnPlayerJoinBattle(Player* player)
+{
+    RemoveRankAuras(player);
+    player->CastSpell(player, SPELL_WINTERGRASP_RECRUIT, true);
+}
+
+void BattlefieldWintergrasp::OnPlayerLeaveBattle(Player* player)
+{
+    RemoveRankAuras(player);
+    if (IsVehiclePassenger(player))
+        player->ExitVehicle();
+}
+
+void BattlefieldWintergrasp::OnPeriodicUpdate(Milliseconds /*diff*/)
+{
+    if (!IsBattleTime() || IsVaultGateDestroyed())
+        return;
+
+    Map* battleMap = GetBattleMap();
+    if (!battleMap)
+        return;
+
+    TeamId const attackingTeamId = GetAttackingTeamId();
+    for (MapReference const& reference : battleMap->GetPlayers())
+    {
+        Player* player = reference.GetSource();
+        if (!player || player->GetTeamId() != attackingTeamId || player->IsGameMaster() || player->IsInFlight() || player->IsBeingTeleported())
+            continue;
+
+        if (WintergraspTitanRelicChamberBoundary.IsWithinBoundary(player) && WintergraspTitanRelicChamberHeightBoundary.IsWithinBoundary(player))
+            TeleportPlayerToBattle(player);
+    }
 }
 
 uint32 BattlefieldWintergrasp::GetControlState() const

@@ -505,8 +505,6 @@ public:
     uint32 GetFaction(PvPTeamId pvpTeamId) const override;
     void HandlePlayerEnterZone(Player* player) override;
     void HandleKill(Player* killer, Unit* victim) override;
-    void HandlePlayerJoinBattle(Player* player) override;
-    void HandlePlayerLeaveBattle(Player* player) override;
     void OnCreatureCreate(Creature* object) override;
     void OnCreatureRemove(Creature* object) override;
     void OnUnitDeath(Unit* unit) override;
@@ -514,7 +512,6 @@ public:
     void ProcessEvent(WorldObject* object, uint32 eventId) override;
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void SendGlobalWorldStates(Player const* player) const override;
-    void ProcessBuildingUpdate(BattlefieldEventKey key) override;
 
     uint8 GetWintergraspGraveyardId(Creature* creature) const;
     void SendStalkerText(uint8 textGroup, WorldObject const* whisperTarget = nullptr) const;
@@ -529,6 +526,9 @@ public:
 
 protected:
     void ClearBattleStatus() override;
+    void OnPlayerJoinBattle(Player* player) override;
+    void OnPlayerLeaveBattle(Player* player) override;
+    void OnPeriodicUpdate(Milliseconds diff) override;
 
 private:
     uint32 GetControlState() const;

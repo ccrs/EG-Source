@@ -113,7 +113,7 @@ enum BattlefieldValue : uint8
     BATTLEFIELD_VALUE_DURATION_BATTLE_INVITE,
     BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START,
     BATTLEFIELD_VALUE_INTERVAL_RESURRECTION,
-    BATTLEFIELD_VALUE_INTERVAL_BUILDING_UPDATE,
+    BATTLEFIELD_VALUE_INTERVAL_PERIODIC_UPDATE,
     BATTLEFIELD_VALUE_DELAY_PHASE_BATTLE_RESTART,
     BATTLEFIELD_VALUE_DELAY_BATTLE_LOGOUT_LEAVE,
     BATTLEFIELD_VALUE_DELAY_BATTLE_FILL,
@@ -123,7 +123,7 @@ enum BattlefieldValue : uint8
     BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START,
     BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END,
     BATTLEFIELD_VALUE_TIME_NEXT_RESURRECTION,
-    BATTLEFIELD_VALUE_TIME_LAST_BUILDING_UPDATE,
+    BATTLEFIELD_VALUE_TIME_LAST_PERIODIC_UPDATE,
     BATTLEFIELD_VALUE_MAX
 };
 
@@ -199,8 +199,6 @@ public:
     virtual void HandlePlayerLeaveZone(Player* player);
     // Called when a player inside the battlefield zone kills a unit
     virtual void HandleKill(Player* /*killer*/, Unit* /*victim*/) { }
-    virtual void HandlePlayerJoinBattle(Player* /*player*/) { }
-    virtual void HandlePlayerLeaveBattle(Player* /*player*/) { }
     // Called when a player queries a gossip from a spirit healer
     virtual void SendAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid source);
     // Called when a player moves into a resurrection queue
@@ -215,7 +213,6 @@ public:
     virtual bool IsFlyingMountAllowed() const { return true; }
     // Is the referenced SpellArea spellId allowed for the referenced player and newArea?
     virtual bool IsSpellAreaAllowed(uint32 /*spellId*/, Player const* /*player*/, uint32 /*newArea*/) const { return false; }
-    virtual void ProcessBuildingUpdate(BattlefieldEventKey key);
 
     void OnGameObjectCreate(GameObject* object) override;
     void OnGameObjectRemove(GameObject* object) override;
@@ -248,6 +245,7 @@ public:
     void ProcessBattleKick(BattlefieldEventKey key, Player* player);
     void ProcessBuildingDamage(BattlefieldEventKey key, ObjectGuid objectGuid);
     void ProcessBuildingDestroy(BattlefieldEventKey key, ObjectGuid objectGuid);
+    void ProcessPeriodicUpdate(BattlefieldEventKey key);
     void ProcessBattleStatusClear(BattlefieldEventKey key);
     void ProcessBattleCapture(BattlefieldEventKey key);
     void HandleBattlefieldRaidMemberRemoved(ObjectGuid playerGuid, RemoveMethod method);
@@ -295,6 +293,9 @@ public:
 protected:
     void InitializePhaseTimes();
     virtual void ClearBattleStatus();
+    virtual void OnPlayerJoinBattle(Player* /*player*/) { }
+    virtual void OnPlayerLeaveBattle(Player* /*player*/) { }
+    virtual void OnPeriodicUpdate(Milliseconds /*diff*/) { }
 
     Map* GetBattleMap() const;
     void SendWorldStateToAll(uint32 variable, uint32 value) const;
