@@ -27,6 +27,8 @@
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "ScriptMgr.h"
+#include "ScriptSystem.h"
+#include "SplineChain.h"
 #include "TaskScheduler.h"
 #include "TemporarySummon.h"
 #include "Vehicle.h"
@@ -123,6 +125,18 @@ enum InstanceTrialOfTheChampionMisc
     SAY_BLACK_KNIGHT_INTRO_2,
     SAY_BLACK_KNIGHT_INTRO_3,
 
+    SPLINE_CHAIN_ARGENT_POST_1 = 1,
+    SPLINE_CHAIN_ARGENT_POST_2 = 2,
+    SPLINE_CHAIN_ARGENT_POST_3 = 3,
+    SPLINE_CHAIN_GATE_CENTRE = 1,
+    SPLINE_CHAIN_GATE_LEFT = 2,
+    SPLINE_CHAIN_GATE_RIGHT = 3,
+    SPLINE_CHAIN_POST_CENTRE = 4,
+    SPLINE_CHAIN_POST_LEFT = 5,
+    SPLINE_CHAIN_POST_RIGHT = 6,
+    SPLINE_CHAIN_HERALD_ARGENT_FIGHT = 1,
+    SPLINE_CHAIN_HERALD_ARGENT_RETURN = 2,
+
     SPAWN_ID_BUNNY_SUMMONER = 143293,
     SPAWN_ID_BUNNY_RETAINER = 143295,
     SPAWN_ID_BUNNY_CROWD = 143296,
@@ -190,29 +204,71 @@ enum InstanceTrialOfTheChampionMisc
     CRITERIA_CONFESSOR_VEZAX = 11926,
     CRITERIA_CONFESSOR_ALGALON = 11927,
 
-    SUMMON_GROUP_MOKRA = 1,
-    SUMMON_GROUP_ERESSEA = 2,
-    SUMMON_GROUP_RUNOK = 3,
-    SUMMON_GROUP_ZULTORE = 4,
-    SUMMON_GROUP_VISCERI = 5,
-    SUMMON_GROUP_JACOB = 6,
-    SUMMON_GROUP_AMBROSE = 7,
-    SUMMON_GROUP_COLOSOS = 8,
-    SUMMON_GROUP_JAELYNE = 9,
-    SUMMON_GROUP_LANA = 10,
-    SUMMON_GROUP_ARGENT_SOLDIERS = 11,
+    SUMMON_GROUP_MOKRA_CENTRE = 1,
+    SUMMON_GROUP_ERESSEA_CENTRE = 2,
+    SUMMON_GROUP_RUNOK_CENTRE = 3,
+    SUMMON_GROUP_ZULTORE_CENTRE = 4,
+    SUMMON_GROUP_VISCERI_CENTRE = 5,
+    SUMMON_GROUP_JACOB_CENTRE = 6,
+    SUMMON_GROUP_AMBROSE_CENTRE = 7,
+    SUMMON_GROUP_COLOSOS_CENTRE = 8,
+    SUMMON_GROUP_JAELYNE_CENTRE = 9,
+    SUMMON_GROUP_LANA_CENTRE = 10,
+    SUMMON_GROUP_ARGENT_SOLDIERS_1 = 11,
     SUMMON_GROUP_BLACK_KNIGHT = 12,
-    SUMMON_GROUP_MOKRA_GATE = 13,
-    SUMMON_GROUP_ERESSEA_GATE = 14,
-    SUMMON_GROUP_RUNOK_GATE = 15,
-    SUMMON_GROUP_ZULTORE_GATE = 16,
-    SUMMON_GROUP_VISCERI_GATE = 17,
-    SUMMON_GROUP_JACOB_GATE = 18,
-    SUMMON_GROUP_AMBROSE_GATE = 19,
-    SUMMON_GROUP_COLOSOS_GATE = 20,
-    SUMMON_GROUP_JAELYNE_GATE = 21,
-    SUMMON_GROUP_LANA_GATE = 22,
+    SUMMON_GROUP_MOKRA_GATE_CENTRE = 13,
+    SUMMON_GROUP_ERESSEA_GATE_CENTRE = 14,
+    SUMMON_GROUP_RUNOK_GATE_CENTRE = 15,
+    SUMMON_GROUP_ZULTORE_GATE_CENTRE = 16,
+    SUMMON_GROUP_VISCERI_GATE_CENTRE = 17,
+    SUMMON_GROUP_JACOB_GATE_CENTRE = 18,
+    SUMMON_GROUP_AMBROSE_GATE_CENTRE = 19,
+    SUMMON_GROUP_COLOSOS_GATE_CENTRE = 20,
+    SUMMON_GROUP_JAELYNE_GATE_CENTRE = 21,
+    SUMMON_GROUP_LANA_GATE_CENTRE = 22,
     SUMMON_GROUP_FOOT_SLOT_1 = 23,
+    SUMMON_GROUP_ARGENT_SOLDIERS_2 = 26,
+    SUMMON_GROUP_ARGENT_SOLDIERS_3 = 27,
+    SUMMON_GROUP_MOKRA_LEFT = 28,
+    SUMMON_GROUP_ERESSEA_LEFT = 29,
+    SUMMON_GROUP_RUNOK_LEFT = 30,
+    SUMMON_GROUP_ZULTORE_LEFT = 31,
+    SUMMON_GROUP_VISCERI_LEFT = 32,
+    SUMMON_GROUP_JACOB_LEFT = 33,
+    SUMMON_GROUP_AMBROSE_LEFT = 34,
+    SUMMON_GROUP_COLOSOS_LEFT = 35,
+    SUMMON_GROUP_JAELYNE_LEFT = 36,
+    SUMMON_GROUP_LANA_LEFT = 37,
+    SUMMON_GROUP_MOKRA_RIGHT = 38,
+    SUMMON_GROUP_ERESSEA_RIGHT = 39,
+    SUMMON_GROUP_RUNOK_RIGHT = 40,
+    SUMMON_GROUP_ZULTORE_RIGHT = 41,
+    SUMMON_GROUP_VISCERI_RIGHT = 42,
+    SUMMON_GROUP_JACOB_RIGHT = 43,
+    SUMMON_GROUP_AMBROSE_RIGHT = 44,
+    SUMMON_GROUP_COLOSOS_RIGHT = 45,
+    SUMMON_GROUP_JAELYNE_RIGHT = 46,
+    SUMMON_GROUP_LANA_RIGHT = 47,
+    SUMMON_GROUP_MOKRA_GATE_LEFT = 48,
+    SUMMON_GROUP_ERESSEA_GATE_LEFT = 49,
+    SUMMON_GROUP_RUNOK_GATE_LEFT = 50,
+    SUMMON_GROUP_ZULTORE_GATE_LEFT = 51,
+    SUMMON_GROUP_VISCERI_GATE_LEFT = 52,
+    SUMMON_GROUP_JACOB_GATE_LEFT = 53,
+    SUMMON_GROUP_AMBROSE_GATE_LEFT = 54,
+    SUMMON_GROUP_COLOSOS_GATE_LEFT = 55,
+    SUMMON_GROUP_JAELYNE_GATE_LEFT = 56,
+    SUMMON_GROUP_LANA_GATE_LEFT = 57,
+    SUMMON_GROUP_MOKRA_GATE_RIGHT = 58,
+    SUMMON_GROUP_ERESSEA_GATE_RIGHT = 59,
+    SUMMON_GROUP_RUNOK_GATE_RIGHT = 60,
+    SUMMON_GROUP_ZULTORE_GATE_RIGHT = 61,
+    SUMMON_GROUP_VISCERI_GATE_RIGHT = 62,
+    SUMMON_GROUP_JACOB_GATE_RIGHT = 63,
+    SUMMON_GROUP_AMBROSE_GATE_RIGHT = 64,
+    SUMMON_GROUP_COLOSOS_GATE_RIGHT = 65,
+    SUMMON_GROUP_JAELYNE_GATE_RIGHT = 66,
+    SUMMON_GROUP_LANA_GATE_RIGHT = 67,
     SUMMON_GROUP_EADRIC = 1,
     SUMMON_GROUP_PALETRESS = 2,
 
@@ -282,26 +338,54 @@ struct GrandChampionInfo
     uint32 Entry;
     uint32 MountEntry;
     uint8 HeraldText;
-    uint8 SummonGroup;
-    uint8 GateSummonGroup;
+    std::array<uint8, 3> SummonGroups;
+    std::array<uint8, 3> GateSummonGroups;
 };
 
 static constexpr std::array<std::array<GrandChampionInfo, 5>, 2> GrandChampions =
 {{
     {{
-        { NPC_MOKRA, NPC_MOKRA_MOUNT, SAY_HERALD_MOKRA_AMBROSE, SUMMON_GROUP_MOKRA, SUMMON_GROUP_MOKRA_GATE },
-        { NPC_ERESSEA, NPC_ERESSEA_MOUNT, SAY_HERALD_ERESSEA_COLOSOS, SUMMON_GROUP_ERESSEA, SUMMON_GROUP_ERESSEA_GATE },
-        { NPC_RUNOK, NPC_RUNOK_MOUNT, SAY_HERALD_RUNOK_LANA, SUMMON_GROUP_RUNOK, SUMMON_GROUP_RUNOK_GATE },
-        { NPC_ZULTORE, NPC_ZULTORE_MOUNT, SAY_HERALD_ZULTORE_JAELYNE, SUMMON_GROUP_ZULTORE, SUMMON_GROUP_ZULTORE_GATE },
-        { NPC_VISCERI, NPC_VISCERI_MOUNT, SAY_HERALD_VISCERI_JACOB, SUMMON_GROUP_VISCERI, SUMMON_GROUP_VISCERI_GATE }
+        { NPC_MOKRA, NPC_MOKRA_MOUNT, SAY_HERALD_MOKRA_AMBROSE, { SUMMON_GROUP_MOKRA_CENTRE, SUMMON_GROUP_MOKRA_LEFT, SUMMON_GROUP_MOKRA_RIGHT }, { SUMMON_GROUP_MOKRA_GATE_CENTRE, SUMMON_GROUP_MOKRA_GATE_LEFT, SUMMON_GROUP_MOKRA_GATE_RIGHT } },
+        { NPC_ERESSEA, NPC_ERESSEA_MOUNT, SAY_HERALD_ERESSEA_COLOSOS, { SUMMON_GROUP_ERESSEA_CENTRE, SUMMON_GROUP_ERESSEA_LEFT, SUMMON_GROUP_ERESSEA_RIGHT }, { SUMMON_GROUP_ERESSEA_GATE_CENTRE, SUMMON_GROUP_ERESSEA_GATE_LEFT, SUMMON_GROUP_ERESSEA_GATE_RIGHT } },
+        { NPC_RUNOK, NPC_RUNOK_MOUNT, SAY_HERALD_RUNOK_LANA, { SUMMON_GROUP_RUNOK_CENTRE, SUMMON_GROUP_RUNOK_LEFT, SUMMON_GROUP_RUNOK_RIGHT }, { SUMMON_GROUP_RUNOK_GATE_CENTRE, SUMMON_GROUP_RUNOK_GATE_LEFT, SUMMON_GROUP_RUNOK_GATE_RIGHT } },
+        { NPC_ZULTORE, NPC_ZULTORE_MOUNT, SAY_HERALD_ZULTORE_JAELYNE, { SUMMON_GROUP_ZULTORE_CENTRE, SUMMON_GROUP_ZULTORE_LEFT, SUMMON_GROUP_ZULTORE_RIGHT }, { SUMMON_GROUP_ZULTORE_GATE_CENTRE, SUMMON_GROUP_ZULTORE_GATE_LEFT, SUMMON_GROUP_ZULTORE_GATE_RIGHT } },
+        { NPC_VISCERI, NPC_VISCERI_MOUNT, SAY_HERALD_VISCERI_JACOB, { SUMMON_GROUP_VISCERI_CENTRE, SUMMON_GROUP_VISCERI_LEFT, SUMMON_GROUP_VISCERI_RIGHT }, { SUMMON_GROUP_VISCERI_GATE_CENTRE, SUMMON_GROUP_VISCERI_GATE_LEFT, SUMMON_GROUP_VISCERI_GATE_RIGHT } }
     }},
     {{
-        { NPC_JACOB, NPC_JACOB_MOUNT, SAY_HERALD_VISCERI_JACOB, SUMMON_GROUP_JACOB, SUMMON_GROUP_JACOB_GATE },
-        { NPC_AMBROSE, NPC_AMBROSE_MOUNT, SAY_HERALD_MOKRA_AMBROSE, SUMMON_GROUP_AMBROSE, SUMMON_GROUP_AMBROSE_GATE },
-        { NPC_COLOSOS, NPC_COLOSOS_MOUNT, SAY_HERALD_ERESSEA_COLOSOS, SUMMON_GROUP_COLOSOS, SUMMON_GROUP_COLOSOS_GATE },
-        { NPC_JAELYNE, NPC_JAELYNE_MOUNT, SAY_HERALD_ZULTORE_JAELYNE, SUMMON_GROUP_JAELYNE, SUMMON_GROUP_JAELYNE_GATE },
-        { NPC_LANA, NPC_LANA_MOUNT, SAY_HERALD_RUNOK_LANA, SUMMON_GROUP_LANA, SUMMON_GROUP_LANA_GATE }
+        { NPC_JACOB, NPC_JACOB_MOUNT, SAY_HERALD_VISCERI_JACOB, { SUMMON_GROUP_JACOB_CENTRE, SUMMON_GROUP_JACOB_LEFT, SUMMON_GROUP_JACOB_RIGHT }, { SUMMON_GROUP_JACOB_GATE_CENTRE, SUMMON_GROUP_JACOB_GATE_LEFT, SUMMON_GROUP_JACOB_GATE_RIGHT } },
+        { NPC_AMBROSE, NPC_AMBROSE_MOUNT, SAY_HERALD_MOKRA_AMBROSE, { SUMMON_GROUP_AMBROSE_CENTRE, SUMMON_GROUP_AMBROSE_LEFT, SUMMON_GROUP_AMBROSE_RIGHT }, { SUMMON_GROUP_AMBROSE_GATE_CENTRE, SUMMON_GROUP_AMBROSE_GATE_LEFT, SUMMON_GROUP_AMBROSE_GATE_RIGHT } },
+        { NPC_COLOSOS, NPC_COLOSOS_MOUNT, SAY_HERALD_ERESSEA_COLOSOS, { SUMMON_GROUP_COLOSOS_CENTRE, SUMMON_GROUP_COLOSOS_LEFT, SUMMON_GROUP_COLOSOS_RIGHT }, { SUMMON_GROUP_COLOSOS_GATE_CENTRE, SUMMON_GROUP_COLOSOS_GATE_LEFT, SUMMON_GROUP_COLOSOS_GATE_RIGHT } },
+        { NPC_JAELYNE, NPC_JAELYNE_MOUNT, SAY_HERALD_ZULTORE_JAELYNE, { SUMMON_GROUP_JAELYNE_CENTRE, SUMMON_GROUP_JAELYNE_LEFT, SUMMON_GROUP_JAELYNE_RIGHT }, { SUMMON_GROUP_JAELYNE_GATE_CENTRE, SUMMON_GROUP_JAELYNE_GATE_LEFT, SUMMON_GROUP_JAELYNE_GATE_RIGHT } },
+        { NPC_LANA, NPC_LANA_MOUNT, SAY_HERALD_RUNOK_LANA, { SUMMON_GROUP_LANA_CENTRE, SUMMON_GROUP_LANA_LEFT, SUMMON_GROUP_LANA_RIGHT }, { SUMMON_GROUP_LANA_GATE_CENTRE, SUMMON_GROUP_LANA_GATE_LEFT, SUMMON_GROUP_LANA_GATE_RIGHT } }
     }}
+}};
+
+static constexpr std::array<uint16, 3> ChampionPostSplineChains =
+{
+    SPLINE_CHAIN_POST_CENTRE,
+    SPLINE_CHAIN_POST_LEFT,
+    SPLINE_CHAIN_POST_RIGHT
+};
+
+static constexpr std::array<uint16, 3> ChampionGateSplineChains =
+{
+    SPLINE_CHAIN_GATE_CENTRE,
+    SPLINE_CHAIN_GATE_LEFT,
+    SPLINE_CHAIN_GATE_RIGHT
+};
+
+struct ArgentSoldierPost
+{
+    uint8 SummonGroup;
+    uint16 SplineChain;
+    float Facing;
+};
+
+static constexpr std::array<ArgentSoldierPost, 3> ArgentSoldierPosts =
+{{
+    { SUMMON_GROUP_ARGENT_SOLDIERS_1, SPLINE_CHAIN_ARGENT_POST_1, 5.3407f },
+    { SUMMON_GROUP_ARGENT_SOLDIERS_2, SPLINE_CHAIN_ARGENT_POST_2, 4.6600f },
+    { SUMMON_GROUP_ARGENT_SOLDIERS_3, SPLINE_CHAIN_ARGENT_POST_3, 3.9619f }
 }};
 
 static constexpr std::array<uint32, 3> SummonChampionSpells =
@@ -352,15 +436,7 @@ static std::array<Position, 8> const FireworkSpots =
     { 712.521f, 655.648f, 424.593f }
 }};
 
-static std::array<Position, 3> const ArgentSoldierPosts =
-{{
-    { 717.998f, 649.101f, 411.925f },
-    { 746.686f, 653.094f, 411.605f },
-    { 777.108f, 649.010f, 411.930f }
-}};
-
 static Position const ArenaCenter = { 746.977f, 618.793f, 411.971f, 0.0f };
-static Position const HeraldArgentFightSpot = { 734.245f, 674.726f, 412.369f, 4.714f };
 
 static constexpr std::array<std::pair<uint32, uint32>, 25> ConfessorCriteria =
 {{
@@ -482,7 +558,7 @@ public:
             LoadDoorData(TrialOfTheChampionDoors);
             LoadObjectData(TrialOfTheChampionCreatures, TrialOfTheChampionGameObjects);
 
-            _scheduler.Schedule(1s, [this](TaskContext context)
+            _scheduler.Schedule(5s, [this](TaskContext context)
             {
                 bool livingPlayers = false;
                 for (MapReference const& ref : instance->GetPlayers())
@@ -499,8 +575,7 @@ public:
                 bool const wiped = !livingPlayers && (mounted || _phase == PHASE_CHAMPIONS_FOOT || _phase == PHASE_ARGENT || _phase == PHASE_BLACK_KNIGHT);
                 if (wiped && !_wiped)
                 {
-                    GuidVector const summons = _summonGUIDs;
-                    for (ObjectGuid const& guid : summons)
+                    for (ObjectGuid const& guid : GuidVector(_summonGUIDs))
                     {
                         Creature* summon = instance->GetCreature(guid);
                         if (summon && summon->IsAlive() && summon->IsAIEnabled())
@@ -509,7 +584,7 @@ public:
 
                     if (mounted)
                     {
-                        for (ObjectGuid const& guid : _playerMountGUIDs)
+                        for (ObjectGuid const& guid : GuidVector(_playerMountGUIDs))
                         {
                             Creature* mount = instance->GetCreature(guid);
                             if (mount && mount->IsAlive() && mount->GetVehicleKit() && !mount->GetVehicleKit()->IsVehicleInUse())
@@ -595,12 +670,11 @@ public:
                             _scheduler.Schedule(1s, [this, type](TaskContext /*context*/)
                             {
                                 _scheduler.CancelGroup(GROUP_STAGE);
-                                for (ObjectGuid const& guid : _summonGUIDs)
+                                for (ObjectGuid const& guid : GuidVector(_summonGUIDs))
                                 {
                                     if (Creature* summon = instance->GetCreature(guid))
                                         summon->DespawnOrUnsummon();
                                 }
-                                _summonGUIDs.clear();
 
                                 _phase = PHASE_IDLE;
                                 _championGUIDs = { };
@@ -645,6 +719,23 @@ public:
             {
                 if (GetChampionInfo(slot).Entry == creature->GetEntry())
                     _championGUIDs[slot] = creature->GetGUID();
+            }
+        }
+
+        void OnCreatureRemove(Creature* creature) override
+        {
+            InstanceScript::OnCreatureRemove(creature);
+
+            ObjectGuid const guid = creature->GetGUID();
+            for (GuidVector* guids : { &_summonGUIDs, &_playerMountGUIDs, &_hostileMountGUIDs, &_argentSoldierGUIDs, &_waveGUIDs[0], &_waveGUIDs[1], &_waveGUIDs[2] })
+            {
+                guids->erase(std::remove(guids->begin(), guids->end(), guid), guids->end());
+            }
+
+            for (ObjectGuid& championGUID : _championGUIDs)
+            {
+                if (championGUID == guid)
+                    championGUID.Clear();
             }
         }
 
@@ -755,6 +846,7 @@ public:
                     if (data == GOSSIP_OPTION_START && _phase == PHASE_CHAMPIONS_PAUSED)
                     {
                         _phase = PHASE_CHAMPIONS_MOUNTED;
+                        _wiped = false;
                         if (Creature* herald = GetCreature(DATA_HERALD))
                             herald->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
 
@@ -774,7 +866,7 @@ public:
                             herald->CastSpell(herald, SPELL_GET_PLAYER_COUNT);
                             herald->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                             herald->SetWalk(true);
-                            herald->GetMotionMaster()->MovePoint(0, { .Destination = Position(732.524f, 663.007f, 412.393f), .GeneratePath = true, .FinalOrientation = 4.714f, .Velocity = HeraldVelocity });
+                            herald->GetMotionMaster()->MovePoint(1, { .Destination = Position(732.524f, 663.007f, 412.393f), .GeneratePath = true, .FinalOrientation = 4.714f, .Velocity = HeraldVelocity });
                             if (_phase == PHASE_CHAMPIONS_INTRO_GATE)
                                 herald->AI()->Talk(SAY_HERALD_PRESENT_TEAM);
                         }
@@ -927,7 +1019,7 @@ public:
                             herald->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                             herald->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                             herald->SetWalk(true);
-                            herald->GetMotionMaster()->MovePoint(0, { .Destination = Position(746.356f, 620.694f, 411.989f), .Velocity = HeraldVelocity });
+                            herald->GetMotionMaster()->MovePoint(1, { .Destination = Position(746.356f, 620.694f, 411.989f), .Velocity = HeraldVelocity });
                         }
 
                         _scheduler.Schedule(3s, GROUP_STAGE, [this](TaskContext context)
@@ -939,57 +1031,27 @@ public:
                             {
                                 HandleGameObject(ObjectGuid::Empty, true, GetGameObject(DATA_MAIN_GATE));
 
-                                std::list<TempSummon*> soldiers;
                                 if (Creature* bunny = instance->GetCreature(_summonerBunnyGUID))
-                                    bunny->SummonCreatureGroup(SUMMON_GROUP_ARGENT_SOLDIERS, &soldiers);
-                                _phase = PHASE_ARGENT;
-
-                                std::vector<TempSummon*> lightwielders;
-                                for (TempSummon* soldier : soldiers)
                                 {
-                                    _argentSoldierGUIDs.push_back(soldier->GetGUID());
-                                    if (soldier->GetEntry() == NPC_ARGENT_LIGHTWIELDER)
-                                        lightwielders.push_back(soldier);
-                                }
-
-                                std::sort(lightwielders.begin(), lightwielders.end(), [](TempSummon const* left, TempSummon const* right)
-                                {
-                                    return left->GetPositionX() < right->GetPositionX();
-                                });
-
-                                for (std::size_t i = 0; i < lightwielders.size() && i < std::size(ArgentSoldierPosts); ++i)
-                                {
-                                    Position const post(ArgentSoldierPosts[i].GetPositionX(), ArgentSoldierPosts[i].GetPositionY(), ArgentSoldierPosts[i].GetPositionZ(), ArgentSoldierPosts[i].GetAbsoluteAngle(ArenaCenter));
-                                    lightwielders[i]->SetHomePosition(post);
-                                    lightwielders[i]->AI()->DoAction(ACTION_POST_ASSIGNED);
-                                    lightwielders[i]->SetWalk(true);
-                                    lightwielders[i]->GetMotionMaster()->MovePoint(POINT_ARGENT_POST, { .Destination = post, .GeneratePath = true, .FinalOrientation = post.GetOrientation(), .Velocity = 3.2f });
-                                }
-
-                                for (TempSummon* soldier : soldiers)
-                                {
-                                    if (soldier->GetEntry() == NPC_ARGENT_LIGHTWIELDER || lightwielders.empty())
-                                        continue;
-
-                                    std::size_t const leader = std::distance(lightwielders.begin(), std::min_element(lightwielders.begin(), lightwielders.end(), [soldier](TempSummon const* left, TempSummon const* right)
+                                    for (ArgentSoldierPost const& post : ArgentSoldierPosts)
                                     {
-                                        return soldier->GetDistance(left) < soldier->GetDistance(right);
-                                    }));
+                                        std::list<TempSummon*> soldiers;
+                                        bunny->SummonCreatureGroup(post.SummonGroup, &soldiers);
+                                        for (TempSummon* soldier : soldiers)
+                                        {
+                                            _argentSoldierGUIDs.push_back(soldier->GetGUID());
+                                            std::vector<SplineChainLink> const* chain = sScriptSystemMgr->GetSplineChain(soldier, post.SplineChain);
+                                            if (!chain)
+                                                continue;
 
-                                    if (leader >= std::size(ArgentSoldierPosts))
-                                        continue;
-
-                                    Position const& post = ArgentSoldierPosts[leader];
-                                    bool const monk = soldier->GetEntry() == NPC_ARGENT_MONK;
-                                    float const facing = post.GetAbsoluteAngle(ArenaCenter);
-                                    float const angle = facing + (monk ? 1.30f : -1.24f);
-                                    float const distance = monk ? 5.42f : 5.05f;
-                                    Position const slot(post.GetPositionX() + distance * std::cos(angle), post.GetPositionY() + distance * std::sin(angle), post.GetPositionZ(), facing);
-                                    soldier->SetHomePosition(slot);
-                                    soldier->AI()->DoAction(ACTION_POST_ASSIGNED);
-                                    soldier->SetWalk(true);
-                                    soldier->GetMotionMaster()->MovePoint(POINT_ARGENT_POST, { .Destination = slot, .GeneratePath = true, .FinalOrientation = slot.GetOrientation(), .Velocity = 3.2f });
+                                            G3D::Vector3 const& end = chain->back().Points.back();
+                                            soldier->SetHomePosition(end.x, end.y, end.z, post.Facing);
+                                            soldier->AI()->DoAction(ACTION_POST_ASSIGNED);
+                                            soldier->GetMotionMaster()->MoveAlongSplineChain(POINT_ARGENT_POST, post.SplineChain, true);
+                                        }
+                                    }
                                 }
+                                _phase = PHASE_ARGENT;
 
                                 context.Schedule(3s, GROUP_STAGE, [this](TaskContext context)
                                 {
@@ -1003,7 +1065,7 @@ public:
                                     {
                                         HandleGameObject(ObjectGuid::Empty, false, GetGameObject(DATA_MAIN_GATE));
                                         if (Creature* herald = GetCreature(DATA_HERALD))
-                                            herald->GetMotionMaster()->MovePoint(0, { .Destination = HeraldArgentFightSpot, .GeneratePath = true, .FinalOrientation = HeraldArgentFightSpot.GetOrientation(), .Velocity = HeraldVelocity });
+                                            herald->GetMotionMaster()->MoveAlongSplineChain(POINT_HERALD_ARGENT_FIGHT, SPLINE_CHAIN_HERALD_ARGENT_FIGHT, true);
 
                                         if (GetBossState(DATA_ARGENT_CHALLENGE) == SPECIAL && AllDead(_argentSoldierGUIDs))
                                             if (Creature* champion = GetCreature(DATA_ARGENT_CHALLENGE))
@@ -1053,7 +1115,7 @@ public:
                             herald->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                             herald->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);
                             herald->SetWalk(true);
-                            herald->GetMotionMaster()->MovePoint(0, { .Destination = Position(744.765f, 628.513f, 411.172f), .GeneratePath = true, .FinalOrientation = 1.0647f, .Velocity = HeraldVelocity });
+                            herald->GetMotionMaster()->MovePoint(1, { .Destination = Position(744.765f, 628.513f, 411.172f), .GeneratePath = true, .FinalOrientation = 1.0647f, .Velocity = HeraldVelocity });
                         }
 
                         if (Creature* bunny = instance->GetCreature(_summonerBunnyGUID))
@@ -1090,57 +1152,45 @@ public:
                 case DATA_SUMMON_CHAMPION:
                 {
                     Creature* bunny = instance->GetCreature(_summonerBunnyGUID);
-                    GrandChampionInfo const& info = GetChampionInfo(data);
-                    std::vector<TempSummonData> const* homeGroup = sObjectMgr->GetSummonGroup(NPC_SPECTATOR_BUNNY, SUMMONER_TYPE_CREATURE, info.SummonGroup);
-                    if (!bunny || !homeGroup)
+                    if (!bunny)
                         break;
 
+                    GrandChampionInfo const& info = GetChampionInfo(data);
                     bool const throughGate = _phase == PHASE_CHAMPIONS_INTRO_GATE;
-                    std::list<TempSummon*> summons;
-                    bunny->SummonCreatureGroup(throughGate ? info.GateSummonGroup : info.SummonGroup, &summons);
-
-                    for (TempSummon* summon : summons)
+                    std::array<uint8, 3> const& groups = throughGate ? info.GateSummonGroups : info.SummonGroups;
+                    std::array<uint16, 3> const& chains = throughGate ? ChampionGateSplineChains : ChampionPostSplineChains;
+                    for (std::size_t slot = 0; slot < groups.size(); ++slot)
                     {
-                        auto home = std::find_if(homeGroup->begin(), homeGroup->end(), [summon](TempSummonData const& summonData)
+                        std::list<TempSummon*> summons;
+                        bunny->SummonCreatureGroup(groups[slot], &summons);
+                        for (TempSummon* summon : summons)
                         {
-                            return summonData.entry == summon->GetEntry();
-                        });
+                            std::vector<SplineChainLink> const* chain = sScriptSystemMgr->GetSplineChain(summon, chains[slot]);
+                            Position home = summon->GetPosition();
+                            if (chain)
+                            {
+                                G3D::Vector3 const& end = chain->back().Points.back();
+                                home.Relocate(end.x, end.y, end.z);
+                            }
+                            home.SetOrientation(home.GetAbsoluteAngle(ArenaCenter));
+                            summon->SetHomePosition(home);
 
-                        if (home == homeGroup->end())
-                            continue;
+                            _scheduler.Schedule(throughGate ? 0s : 1s, GROUP_STAGE, [this, guid = summon->GetGUID(), chainId = chain ? chains[slot] : uint16(0), walk = !throughGate](TaskContext /*context*/)
+                            {
+                                Creature* walker = instance->GetCreature(guid);
+                                if (!walker)
+                                    return;
 
-                        if (summon->GetEntry() == info.MountEntry)
-                        {
-                            Position const mountHome(home->pos.GetPositionX(), home->pos.GetPositionY(), home->pos.GetPositionZ(), home->pos.GetAbsoluteAngle(ArenaCenter));
-                            summon->SetHomePosition(mountHome);
-                            if (Creature* champion = instance->GetCreature(_championGUIDs[data]))
-                                champion->SetHomePosition(mountHome);
+                                if (chainId)
+                                    walker->GetMotionMaster()->MoveAlongSplineChain(1, chainId, walk);
+                                else
+                                    walker->SetFacingTo(walker->GetHomePosition().GetOrientation());
+                            });
 
-                            if (throughGate)
-                                summon->GetMotionMaster()->MovePoint(0, mountHome, true, mountHome.GetOrientation());
-                            else
-                                summon->SetFacingTo(mountHome.GetOrientation());
-                            continue;
-                        }
-
-                        _waveGUIDs[data].push_back(summon->GetGUID());
-
-                        float const centreAngle = home->pos.GetAbsoluteAngle(ArenaCenter);
-                        float side = 0.0f;
-                        if (summon->GetOrientation() > 4.73f)
-                            side = -float(M_PI) / 2.0f;
-                        else if (summon->GetOrientation() < 4.69f)
-                            side = float(M_PI) / 2.0f;
-
-                        Position const post(home->pos.GetPositionX() + (side != 0.0f ? 5.0f * std::cos(centreAngle + side) : 0.0f), home->pos.GetPositionY() + (side != 0.0f ? 5.0f * std::sin(centreAngle + side) : 0.0f), home->pos.GetPositionZ(), centreAngle);
-                        summon->SetFacingTo(centreAngle);
-                        summon->SetHomePosition(post);
-                        if (throughGate)
-                            summon->GetMotionMaster()->MovePoint(0, post, true, centreAngle);
-                        else if (side != 0.0f)
-                        {
-                            summon->SetWalk(true);
-                            summon->GetMotionMaster()->MovePoint(0, { .Destination = post, .GeneratePath = true, .FinalOrientation = centreAngle, .Velocity = 3.1f });
+                            if (summon->GetEntry() != info.MountEntry)
+                                _waveGUIDs[data].push_back(summon->GetGUID());
+                            else if (Creature* champion = instance->GetCreature(_championGUIDs[data]))
+                                champion->SetHomePosition(home);
                         }
                     }
 
@@ -1166,9 +1216,13 @@ public:
                         break;
 
                     _phase = PHASE_CHAMPIONS_PAUSED;
-                    RestoreMounts();
                     if (Creature* herald = GetCreature(DATA_HERALD))
                         herald->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+
+                    _scheduler.Schedule(3s, GROUP_STAGE, [this](TaskContext /*context*/)
+                    {
+                        RestoreMounts();
+                    });
                     break;
                 case DATA_CHAMPION_UNHORSED:
                     if (_phase != PHASE_CHAMPIONS_MOUNTED || std::any_of(_championGUIDs.begin(), _championGUIDs.end(), [this](ObjectGuid const& guid)
@@ -1180,12 +1234,11 @@ public:
 
                     _phase = PHASE_CHAMPIONS_FOOT_TRANSITION;
 
-                    for (ObjectGuid const& guid : _playerMountGUIDs)
+                    for (ObjectGuid const& guid : GuidVector(_playerMountGUIDs))
                     {
                         if (Creature* mount = instance->GetCreature(guid))
                             mount->DespawnOrUnsummon();
                     }
-                    _playerMountGUIDs.clear();
 
                     for (ObjectGuid const& guid : _championGUIDs)
                     {
@@ -1195,12 +1248,11 @@ public:
 
                     _scheduler.Schedule(10s, GROUP_STAGE, [this](TaskContext context)
                     {
-                        for (ObjectGuid const& guid : _hostileMountGUIDs)
+                        for (ObjectGuid const& guid : GuidVector(_hostileMountGUIDs))
                         {
                             if (Creature* mount = instance->GetCreature(guid))
                                 mount->DespawnOrUnsummon();
                         }
-                        _hostileMountGUIDs.clear();
                         HandleGameObject(ObjectGuid::Empty, false, GetGameObject(DATA_NORTH_PORTCULLIS));
 
                         context.Schedule(12s, GROUP_STAGE, [this](TaskContext /*context*/)
@@ -1248,7 +1300,12 @@ public:
 
                     CrowdRoar();
                     RevealCache(DATA_CHAMPIONS_CACHE);
-                    OfferNextChallenge(HeraldCenterSpot, 10s);
+                    if (Creature* herald = GetCreature(DATA_HERALD))
+                    {
+                        herald->SetWalk(true);
+                        herald->GetMotionMaster()->MovePoint(1, { .Destination = HeraldCenterSpot, .GeneratePath = true, .FinalOrientation = HeraldCenterSpot.GetOrientation(), .Velocity = HeraldVelocity });
+                    }
+                    OfferNextChallenge(10s);
 
                     _scheduler.Schedule(7s, [this](TaskContext /*context*/)
                     {
@@ -1278,7 +1335,9 @@ public:
                     {
                         CrowdRoar();
                         RevealCache(_argentChampionEntry == NPC_EADRIC ? DATA_EADRIC_CACHE : DATA_CONFESSOR_CACHE);
-                        OfferNextChallenge(HeraldArgentSpot, 14s);
+                        if (Creature* herald = GetCreature(DATA_HERALD))
+                            herald->GetMotionMaster()->MoveAlongSplineChain(POINT_HERALD_ARGENT_RETURN, SPLINE_CHAIN_HERALD_ARGENT_RETURN, true);
+                        OfferNextChallenge(14s);
                     });
                     break;
                 case DATA_MEMORY_DIED:
@@ -1303,7 +1362,7 @@ public:
                             Creature* knight = GetCreature(DATA_BLACK_KNIGHT);
                             Creature* herald = GetCreature(DATA_HERALD);
                             if (knight && herald)
-                                knight->GetMotionMaster()->MovePoint(0, Position(747.785f, 632.490f, 411.414f), true, knight->GetAbsoluteAngle(herald));
+                                knight->GetMotionMaster()->MovePoint(1, Position(747.785f, 632.490f, 411.414f), true, knight->GetAbsoluteAngle(herald));
                         })
                         .Schedule(3s, GROUP_STAGE, [this](TaskContext /*context*/)
                         {
@@ -1350,7 +1409,7 @@ public:
                             if (Creature* knight = GetCreature(DATA_BLACK_KNIGHT))
                             {
                                 knight->SetWalk(true);
-                                knight->GetMotionMaster()->MovePoint(0, Position(747.211f, 622.748f, 411.417f));
+                                knight->GetMotionMaster()->MovePoint(1, Position(747.211f, 622.748f, 411.417f));
                             }
                         })
                         .Schedule(25s, GROUP_STAGE, [this](TaskContext /*context*/)
@@ -1560,14 +1619,8 @@ public:
             instance->SpawnGroupSpawn(instance->GetTeamIdInInstance() == TEAM_ALLIANCE ? SPAWN_GROUP_MOUNTS_ALLIANCE : SPAWN_GROUP_MOUNTS_HORDE, true);
         }
 
-        void OfferNextChallenge(Position const& spot, Milliseconds gossipDelay)
+        void OfferNextChallenge(Milliseconds gossipDelay)
         {
-            if (Creature* herald = GetCreature(DATA_HERALD))
-            {
-                herald->SetWalk(true);
-                herald->GetMotionMaster()->MovePoint(0, { .Destination = spot, .GeneratePath = true, .FinalOrientation = spot.GetOrientation(), .Velocity = HeraldVelocity });
-            }
-
             _scheduler.Schedule(gossipDelay, [this](TaskContext /*context*/)
             {
                 if (Creature* herald = GetCreature(DATA_HERALD))

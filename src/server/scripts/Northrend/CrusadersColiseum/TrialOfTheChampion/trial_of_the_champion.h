@@ -28,6 +28,7 @@ inline constexpr uint32 TrialOfTheChampionMapId = 650;
 
 inline Position const HeraldCenterSpot = { 743.249f, 630.199f, 412.080f, 4.714f };
 inline Position const HeraldArgentSpot = { 744.314f, 630.494f, 412.054f, 4.714f };
+inline Position const HeraldArgentFightSpot = { 734.245f, 674.726f, 412.369f, 4.714f };
 inline constexpr float HeraldVelocity = 3.75f;
 
 enum TrialOfTheChampionMisc
@@ -170,6 +171,8 @@ enum TrialOfTheChampionMisc
     ACTION_POST_ASSIGNED,
 
     POINT_ARGENT_POST = 1,
+    POINT_HERALD_ARGENT_FIGHT,
+    POINT_HERALD_ARGENT_RETURN,
 
     GOSSIP_OPTION_START = 0,
     GOSSIP_OPTION_NEXT_CHALLENGE,

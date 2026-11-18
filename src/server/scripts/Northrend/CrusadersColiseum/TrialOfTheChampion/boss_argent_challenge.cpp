@@ -112,10 +112,12 @@ enum ArgentChallengeMisc
 
     SAY_MEMORY_WAKING_NIGHTMARE = 0,
 
-    POINT_INTRO,
+    POINT_INTRO = 1,
     POINT_ENGAGE,
     POINT_DEFEAT,
-    POINT_EXIT
+    POINT_EXIT,
+
+    SPLINE_CHAIN_ARGENT_INTRO = 1
 };
 
 static Position const ArgentChampionIntroSpot = { 746.777f, 661.653f, 411.699f, 4.712f };
@@ -168,8 +170,7 @@ struct ArgentChampionAI : public ScriptedAI
         DoCastSelf(SPELL_FORCE_RESPONSE_CHEER_HORDE, true);
         Scheduler.Schedule(6s, [this](TaskContext /*context*/)
         {
-            me->SetWalk(true);
-            me->GetMotionMaster()->MovePoint(POINT_INTRO, ArgentChampionIntroSpot, true, ArgentChampionIntroSpot.GetOrientation());
+            me->GetMotionMaster()->MoveAlongSplineChain(POINT_INTRO, SPLINE_CHAIN_ARGENT_INTRO, true);
         });
     }
 
@@ -204,6 +205,12 @@ struct ArgentChampionAI : public ScriptedAI
 
     void MovementInform(uint32 type, uint32 pointId) override
     {
+        if (type == SPLINE_CHAIN_MOTION_TYPE && pointId == POINT_INTRO)
+        {
+            me->SetFacingTo(ArgentChampionIntroSpot.GetOrientation());
+            return;
+        }
+
         if (type != POINT_MOTION_TYPE)
             return;
 
@@ -308,7 +315,7 @@ struct boss_eadric : public ArgentChampionAI
         Talk(SAY_EADRIC_AGGRO);
         DoCastSelf(SPELL_VENGEANCE, true);
 
-        Scheduler.Schedule(11s, 18s, [this](TaskContext radiance)
+        Scheduler.Schedule(9s, 15s, [this](TaskContext radiance)
         {
             if (DoCastSelf(SPELL_RADIANCE) != SPELL_CAST_OK)
             {
@@ -317,9 +324,9 @@ struct boss_eadric : public ArgentChampionAI
             }
 
             Talk(SAY_EADRIC_RADIANCE);
-            radiance.Repeat(19s, 28s);
+            radiance.Repeat(16s, 23s);
         })
-        .Schedule(20s, 31s, [this](TaskContext hammer)
+        .Schedule(17s, 26s, [this](TaskContext hammer)
         {
             Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 55.0f, true);
             if (!target || DoCast(target, SPELL_HAMMER_OF_JUSTICE) != SPELL_CAST_OK)
@@ -330,7 +337,7 @@ struct boss_eadric : public ArgentChampionAI
 
             Talk(SAY_EADRIC_HAMMER_EMOTE, target);
             Talk(SAY_EADRIC_HAMMER);
-            hammer.Repeat(30s, 38s);
+            hammer.Repeat(25s, 32s);
         });
     }
 
@@ -380,21 +387,21 @@ struct boss_paletress : public ArgentChampionAI
 
         Scheduler.Schedule(1s, [this](TaskContext holySmite)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                 DoCast(target, SPELL_HOLY_SMITE);
-            holySmite.Repeat(1s, 3s);
+            holySmite.Repeat(1s, 2s);
         })
-        .Schedule(16s, 25s, [this](TaskContext holyFire)
+        .Schedule(13s, 21s, [this](TaskContext holyFire)
         {
             if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                 DoCast(target, SPELL_HOLY_FIRE);
-            holyFire.Repeat(19s, 26s);
+            holyFire.Repeat(16s, 22s);
         })
-        .Schedule(19s, 31s, [this](TaskContext renew)
+        .Schedule(16s, 26s, [this](TaskContext renew)
         {
             if (Unit* target = me->DoFindLowestHPFriendlyInRange(50.0f))
                 DoCast(target, SPELL_RENEW);
-            renew.Repeat(19s, 24s);
+            renew.Repeat(16s, 20s);
         });
     }
 
@@ -420,6 +427,7 @@ struct boss_paletress : public ArgentChampionAI
         _memoryPending = true;
         me->InterruptNonMeleeSpells(true);
         DoCastSelf(SPELL_HOLY_NOVA, true);
+        Scheduler.DelayAll(2s);
         Scheduler.Schedule(1s, [this](TaskContext /*context*/)
         {
             _memoryPending = false;
@@ -482,22 +490,22 @@ struct npc_memory : public ScriptedAI
         {
             me->SetControlled(false, UNIT_STATE_STUNNED);
         })
-        .Schedule(7s, 9s, [this](TaskContext shadowsOfThePast)
+        .Schedule(5s, 7s, [this](TaskContext shadowsOfThePast)
         {
             if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 40.0f, true))
                 DoCast(target, SPELL_SHADOWS_OF_THE_PAST);
-            shadowsOfThePast.Repeat(10s, 18s);
+            shadowsOfThePast.Repeat(8s, 15s);
         })
-        .Schedule(10s, 12s, [this](TaskContext oldWounds)
+        .Schedule(8s, 10s, [this](TaskContext oldWounds)
         {
             DoCastVictim(SPELL_OLD_WOUNDS);
-            oldWounds.Repeat(11s, 18s);
+            oldWounds.Repeat(9s, 15s);
         })
-        .Schedule(15s, 18s, [this](TaskContext wakingNightmare)
+        .Schedule(12s, 15s, [this](TaskContext wakingNightmare)
         {
             Talk(SAY_MEMORY_WAKING_NIGHTMARE);
             DoCastSelf(SPELL_WAKING_NIGHTMARE);
-            wakingNightmare.Repeat(27s, 33s);
+            wakingNightmare.Repeat(22s, 28s);
         });
     }
 
@@ -541,9 +549,17 @@ struct ArgentSoldierAI : public ScriptedAI
 
     void MovementInform(uint32 type, uint32 pointId) override
     {
-        if (type != POINT_MOTION_TYPE || pointId != POINT_ARGENT_POST)
+        if ((type != SPLINE_CHAIN_MOTION_TYPE && type != POINT_MOTION_TYPE) || pointId != POINT_ARGENT_POST)
             return;
 
+        Position const& post = me->GetHomePosition();
+        if (me->GetExactDist2d(post) > 0.5f)
+        {
+            me->GetMotionMaster()->MovePoint(POINT_ARGENT_POST, { .Destination = post, .FinalOrientation = post.GetOrientation() });
+            return;
+        }
+
+        me->SetFacingTo(post.GetOrientation());
         me->SetEmoteState(EMOTE_STATE_READY1H);
     }
 

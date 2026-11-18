@@ -134,15 +134,18 @@ struct boss_black_knight : public ScriptedAI
                     me->SetDisplayId(MODEL_SKELETON);
                     me->SetMaxHealth(me->GetMaxHealth() * (IsHeroic() ? 20 : 15) / (IsHeroic() ? 22 : 16));
                     me->SetFullHealth();
-                    DoCastSelf(SPELL_ARMY_OF_THE_DEAD);
                     ScheduleDeathKnightAbilities();
-                    _scheduler.Schedule(7s, 10s, [this](TaskContext desecration)
+                    _scheduler.Schedule(1s, [this](TaskContext /*context*/)
                     {
-                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 50.0f))
-                            DoCast(target, SPELL_DESECRATION);
-                        desecration.Repeat(16s);
+                        DoCastSelf(SPELL_ARMY_OF_THE_DEAD);
                     })
-                    .Schedule(11s, 12s, [this](TaskContext ghoulExplode)
+                    .Schedule(5s, 8s, [this](TaskContext desecration)
+                    {
+                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 50.0f, true))
+                            DoCast(target, SPELL_DESECRATION);
+                        desecration.Repeat(13s);
+                    })
+                    .Schedule(9s, 10s, [this](TaskContext ghoulExplode)
                     {
                         if (std::any_of(_summons.begin(), _summons.end(), [this](ObjectGuid const& guid)
                         {
@@ -150,7 +153,7 @@ struct boss_black_knight : public ScriptedAI
                             return summon && summon->IsAlive() && summon->GetEntry() == NPC_RISEN_CHAMPION;
                         }))
                             DoCastSelf(SPELL_GHOUL_EXPLODE);
-                        ghoulExplode.Repeat(12s, 15s);
+                        ghoulExplode.Repeat(10s, 12s);
                     });
                 }
                 else
@@ -161,13 +164,13 @@ struct boss_black_knight : public ScriptedAI
                     _scheduler.Schedule(6s, 8s, [this](TaskContext deathsBite)
                     {
                         DoCastSelf(SPELL_DEATHS_BITE);
-                        deathsBite.Repeat(2s, 4s);
+                        deathsBite.Repeat(2s);
                     })
                     .Schedule(1s, [this](TaskContext markedForDeath)
                     {
-                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f))
+                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                             DoCast(target, SPELL_MARKED_FOR_DEATH);
-                        markedForDeath.Repeat(10s, 12s);
+                        markedForDeath.Repeat(8s, 10s);
                     });
                 }
                 break;
@@ -185,7 +188,7 @@ struct boss_black_knight : public ScriptedAI
             DoCast(herald, me->GetMap()->ToInstanceMap()->GetTeamIdInInstance() == TEAM_ALLIANCE ? SPELL_RAISE_DEAD_ARELAS : SPELL_RAISE_DEAD_JAEREN, true);
 
         ScheduleDeathKnightAbilities();
-        _scheduler.Schedule(6s, 11s, [this](TaskContext /*deathsRespite*/)
+        _scheduler.Schedule(5s, 9s, [this](TaskContext /*deathsRespite*/)
         {
             if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 50.0f, true))
                 DoCast(target, SPELL_DEATHS_RESPITE);
@@ -296,12 +299,12 @@ struct boss_black_knight : public ScriptedAI
 private:
     void ScheduleDeathKnightAbilities()
     {
-        _scheduler.Schedule(5s, 9s, [this](TaskContext icyTouch)
+        _scheduler.Schedule(4s, 7s, [this](TaskContext icyTouch)
         {
             DoCastVictim(SPELL_ICY_TOUCH);
-            icyTouch.Repeat(10s, 12s);
+            icyTouch.Repeat(8s, 10s);
         })
-        .Schedule(6s, 10s, [this](TaskContext plagueStrike)
+        .Schedule(5s, 8s, [this](TaskContext plagueStrike)
         {
             if (DoCastVictim(SPELL_PLAGUE_STRIKE) != SPELL_CAST_OK)
             {
@@ -309,9 +312,9 @@ private:
                 return;
             }
 
-            plagueStrike.Repeat(10s, 14s);
+            plagueStrike.Repeat(8s, 11s);
         })
-        .Schedule(10s, 14s, [this](TaskContext obliterate)
+        .Schedule(8s, 11s, [this](TaskContext obliterate)
         {
             if (DoCastVictim(SPELL_OBLITERATE) != SPELL_CAST_OK)
             {
@@ -319,7 +322,7 @@ private:
                 return;
             }
 
-            obliterate.Repeat(22s, 35s);
+            obliterate.Repeat(18s, 29s);
         });
     }
 
@@ -365,6 +368,38 @@ struct npc_risen_ghoul : public ScriptedAI
             DoCastVictim(SPELL_CLAW);
             claw.Repeat(6s, 10s);
         });
+    }
+
+    void OnSpellStart(SpellInfo const* spellInfo) override
+    {
+        if (spellInfo->Id != sSpellMgr->GetSpellIdForDifficulty(SPELL_EXPLODE, me))
+            return;
+
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_STUN, true);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_SHACKLE, true);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_KNOCKOUT, true);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_FREEZE, true);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_DISORIENTED, true);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_BANISH, true);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_GRIP, true);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_HORROR, true);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_EFFECT, SPELL_EFFECT_KNOCK_BACK, true);
+    }
+
+    void OnSpellFailed(SpellInfo const* spellInfo) override
+    {
+        if (spellInfo->Id != sSpellMgr->GetSpellIdForDifficulty(SPELL_EXPLODE, me))
+            return;
+
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_STUN, false);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_SHACKLE, false);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_KNOCKOUT, false);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_FREEZE, false);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_DISORIENTED, false);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_BANISH, false);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_GRIP, false);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_MECHANIC, MECHANIC_HORROR, false);
+        me->ApplySpellImmune(spellInfo->Id, IMMUNITY_EFFECT, SPELL_EFFECT_KNOCK_BACK, false);
     }
 
     void SpellHitTarget(WorldObject* target, SpellInfo const* spellInfo) override

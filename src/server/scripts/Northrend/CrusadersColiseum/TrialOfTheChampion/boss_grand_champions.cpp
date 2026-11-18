@@ -96,7 +96,7 @@ enum GrandChampionsMisc
 
     SAY_TRAMPLED = 0,
 
-    POINT_REMOUNT,
+    POINT_REMOUNT = 1,
     POINT_LEAVE,
 
     STATE_MOUNTED = 0,
@@ -238,7 +238,7 @@ struct GrandChampionAI : public ScriptedAI
                     context.Schedule(3s, [this](TaskContext /*context*/)
                     {
                         me->SetWalk(false);
-                        me->GetMotionMaster()->MovePoint(POINT_LEAVE, { .Destination = Position(746.672f, 666.688f, 411.758f), .Velocity = 10.0f });
+                        me->GetMotionMaster()->MovePoint(POINT_LEAVE, { .Destination = Position(746.672f, 666.688f, 411.758f), .ForceDestination = true, .Velocity = 10.0f });
                     });
                 });
                 break;
@@ -490,23 +490,23 @@ private:
 
     void ScheduleMountedAbilities()
     {
-        Scheduler.Schedule(1s, 7s, [this](TaskContext charge)
+        Scheduler.Schedule(1s, 5s, [this](TaskContext charge)
         {
             if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [this](Unit* candidate)
             {
                 return me->IsInRange(candidate, 8.0f, 25.0f);
             }))
                 DoCast(target, SPELL_CHARGE);
-            charge.Repeat(7s, 14s);
+            charge.Repeat(5s, 11s);
         })
-        .Schedule(1s, 9s, [this](TaskContext shieldBreaker)
+        .Schedule(1s, 7s, [this](TaskContext shieldBreaker)
         {
             if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [this](Unit* candidate)
             {
                 return me->IsInRange(candidate, 10.0f, 30.0f);
             }))
                 DoCast(target, SPELL_SHIELD_BREAKER);
-            shieldBreaker.Repeat(3s, 14s);
+            shieldBreaker.Repeat(2s, 11s);
         })
         .Schedule(6s, 12s, [this](TaskContext fearSelf)
         {
@@ -537,7 +537,7 @@ struct boss_warrior_toc5 : public GrandChampionAI
 
     void ScheduleFootAbilities() override
     {
-        Scheduler.Schedule(14s, 16s, [this](TaskContext mortalStrike)
+        Scheduler.Schedule(11s, 13s, [this](TaskContext mortalStrike)
         {
             if (DoCastVictim(SPELL_MORTAL_STRIKE) != SPELL_CAST_OK)
             {
@@ -545,14 +545,14 @@ struct boss_warrior_toc5 : public GrandChampionAI
                 return;
             }
 
-            mortalStrike.Repeat(15s, 25s);
+            mortalStrike.Repeat(12s, 21s);
         })
-        .Schedule(19s, 27s, [this](TaskContext bladestorm)
+        .Schedule(16s, 22s, [this](TaskContext bladestorm)
         {
             DoCastSelf(SPELL_BLADESTORM);
-            bladestorm.Repeat(45s, 57s);
+            bladestorm.Repeat(38s, 48s);
         })
-        .Schedule(20s, 29s, [this](TaskContext rollingThrow)
+        .Schedule(17s, 24s, [this](TaskContext rollingThrow)
         {
             if (me->GetVehicleKit())
             {
@@ -564,15 +564,22 @@ struct boss_warrior_toc5 : public GrandChampionAI
                         vehicle->RemoveAllPassengers();
                 });
             }
-            rollingThrow.Repeat(30s, 35s);
+            rollingThrow.Repeat(25s, 29s);
         })
-        .Schedule(1s, [this](TaskContext /*intercept*/)
+        .Schedule(1s, [this](TaskContext intercept)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [this](Unit* candidate)
+            Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [this](Unit* candidate)
             {
                 return candidate->GetTypeId() == TYPEID_PLAYER && me->IsInRange(candidate, 8.0f, 25.0f);
-            }))
-                DoCast(target, SPELL_INTERCEPT);
+            });
+
+            if (!target || DoCast(target, SPELL_INTERCEPT) != SPELL_CAST_OK)
+            {
+                intercept.Repeat(1s);
+                return;
+            }
+
+            intercept.Repeat(25s, 29s);
         });
     }
 };
@@ -597,28 +604,28 @@ struct boss_mage_toc5 : public GrandChampionAI
         Scheduler.Schedule(1s, [this](TaskContext fireball)
         {
             DoCastVictim(SPELL_FIREBALL);
-            fireball.Repeat(3s, 5s);
+            fireball.Repeat(2s, 4s);
         })
-        .Schedule(10s, 14s, [this](TaskContext polymorph)
+        .Schedule(8s, 11s, [this](TaskContext polymorph)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                 DoCast(target, SPELL_POLYMORPH);
-            polymorph.Repeat(20s, 28s);
+            polymorph.Repeat(17s, 23s);
         })
-        .Schedule(7s, 19s, [this](TaskContext blastWave)
+        .Schedule(5s, 16s, [this](TaskContext blastWave)
         {
             if (SelectTarget(SelectTargetMethod::Random, 0, 10.0f, true))
             {
                 DoCastSelf(SPELL_BLAST_WAVE);
-                blastWave.Repeat(15s, 20s);
+                blastWave.Repeat(12s, 17s);
             }
             else
                 blastWave.Repeat(2s);
         })
-        .Schedule(10s, 18s, [this](TaskContext haste)
+        .Schedule(8s, 15s, [this](TaskContext haste)
         {
             DoCastSelf(SPELL_HASTE);
-            haste.Repeat(22s, 28s);
+            haste.Repeat(18s, 23s);
         });
     }
 };
@@ -629,34 +636,33 @@ struct boss_shaman_toc5 : public GrandChampionAI
 
     void ScheduleFootAbilities() override
     {
-        Scheduler.Schedule(7s, 10s, [this](TaskContext chainLightning)
+        Scheduler.Schedule(5s, 8s, [this](TaskContext chainLightning)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                 DoCast(target, SPELL_CHAIN_LIGHTNING);
-            chainLightning.Repeat(8s, 12s);
+            chainLightning.Repeat(8s, 10s);
         })
-        .Schedule(9s, 12s, [this](TaskContext healingWave)
+        .Schedule(7s, 10s, [this](TaskContext healingWave)
         {
-            Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f);
-            if (target && target->GetHealthPct() <= 70.0f)
+            if (Unit* target = me->DoFindLowestHPFriendlyInRange(40.0f))
             {
                 DoCast(target, SPELL_HEALING_WAVE);
-                healingWave.Repeat(6s, 10s);
+                healingWave.Repeat(5s, 8s);
             }
             else
                 healingWave.Repeat(2s);
         })
-        .Schedule(13s, 20s, [this](TaskContext earthShield)
+        .Schedule(11s, 17s, [this](TaskContext earthShield)
         {
             std::list<Creature*> allies = DoFindFriendlyMissingBuff(40.0f, sSpellMgr->GetSpellIdForDifficulty(SPELL_EARTH_SHIELD, me));
             if (!allies.empty())
                 DoCast(Trinity::Containers::SelectRandomContainerElement(allies), SPELL_EARTH_SHIELD);
-            earthShield.Repeat(25s, 30s);
+            earthShield.Repeat(21s, 25s);
         })
-        .Schedule(20s, 25s, [this](TaskContext hexOfMending)
+        .Schedule(17s, 21s, [this](TaskContext hexOfMending)
         {
             DoCastVictim(SPELL_HEX_OF_MENDING);
-            hexOfMending.Repeat(20s, 25s);
+            hexOfMending.Repeat(17s, 21s);
         });
     }
 };
@@ -682,32 +688,32 @@ struct boss_hunter_toc5 : public GrandChampionAI
         {
             if (me->GetVictim() && !me->IsWithinMeleeRange(me->GetVictim()))
                 DoCastVictim(SPELL_SHOOT);
-            shoot.Repeat(2s, 3s);
+            shoot.Repeat(1s, 2s);
         })
-        .Schedule(7s, 12s, [this](TaskContext multiShot)
+        .Schedule(5s, 10s, [this](TaskContext multiShot)
         {
             if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [this](Unit* candidate)
             {
-                return me->IsInRange(candidate, 5.0f, 30.0f);
+                return candidate->GetTypeId() == TYPEID_PLAYER && me->IsInRange(candidate, 5.0f, 30.0f);
             }))
                 DoCast(target, SPELL_MULTI_SHOT);
-            multiShot.Repeat(10s, 16s);
+            multiShot.Repeat(8s, 13s);
         })
-        .Schedule(18s, 23s, [this](TaskContext lightningArrows)
+        .Schedule(15s, 19s, [this](TaskContext lightningArrows)
         {
             DoCastSelf(SPELL_LIGHTNING_ARROWS);
             lightningArrows.Schedule(3s, [this](TaskContext /*context*/)
             {
                 DoCastSelf(SPELL_LIGHTNING_ARROWS_PROC, true);
             });
-            lightningArrows.Repeat(30s, 34s);
+            lightningArrows.Repeat(25s, 28s);
         })
-        .Schedule(24s, [this](TaskContext disengage)
+        .Schedule(20s, [this](TaskContext disengage)
         {
             if (me->GetVictim() && me->IsWithinMeleeRange(me->GetVictim()))
             {
                 DoCastVictim(SPELL_DISENGAGE);
-                disengage.Repeat(22s, 30s);
+                disengage.Repeat(18s, 25s);
             }
             else
                 disengage.Repeat(1s);
@@ -737,21 +743,21 @@ struct boss_rogue_toc5 : public GrandChampionAI
 
     void ScheduleFootAbilities() override
     {
-        Scheduler.Schedule(4s, 11s, [this](TaskContext fanOfKnives)
+        Scheduler.Schedule(3s, 9s, [this](TaskContext fanOfKnives)
         {
             DoCastSelf(SPELL_FAN_OF_KNIVES);
-            fanOfKnives.Repeat(10s, 14s);
+            fanOfKnives.Repeat(8s, 11s);
         })
-        .Schedule(12s, 15s, [this](TaskContext poisonBottle)
+        .Schedule(10s, 12s, [this](TaskContext poisonBottle)
         {
             if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                 DoCast(target, SPELL_POISON_BOTTLE);
-            poisonBottle.Repeat(16s, 18s);
+            poisonBottle.Repeat(13s, 15s);
         })
-        .Schedule(10s, 17s, [this](TaskContext eviscerate)
+        .Schedule(8s, 14s, [this](TaskContext eviscerate)
         {
             DoCastVictim(SPELL_EVISCERATE);
-            eviscerate.Repeat(30s, 34s);
+            eviscerate.Repeat(25s, 28s);
         });
     }
 };
@@ -815,6 +821,12 @@ struct npc_toc5_lesser_champion : public ScriptedAI
         });
     }
 
+    void MovementInform(uint32 type, uint32 /*pointId*/) override
+    {
+        if (type == SPLINE_CHAIN_MOTION_TYPE)
+            me->SetFacingTo(me->GetHomePosition().GetOrientation());
+    }
+
     void JustDied(Unit* /*killer*/) override
     {
         me->Dismount();
@@ -852,6 +864,12 @@ struct npc_toc5_champion_mount : public ScriptedAI
     }
 
     void EnterEvadeMode(EvadeReason /*why*/) override { }
+
+    void MovementInform(uint32 type, uint32 /*pointId*/) override
+    {
+        if (type == SPLINE_CHAIN_MOTION_TYPE)
+            me->SetFacingTo(me->GetHomePosition().GetOrientation());
+    }
 
     void UpdateAI(uint32 /*diff*/) override
     {

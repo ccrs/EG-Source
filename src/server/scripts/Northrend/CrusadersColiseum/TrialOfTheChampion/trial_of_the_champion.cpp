@@ -60,9 +60,27 @@ struct npc_announcer_toc5 : public ScriptedAI
             DoCastSelf(SPELL_HERALD_FEIGN_DEATH, true);
         }
         else if (_instance->GetBossState(DATA_ARGENT_CHALLENGE) == DONE)
-            me->GetMotionMaster()->MovePoint(0, { .Destination = HeraldArgentSpot, .GeneratePath = true, .FinalOrientation = HeraldArgentSpot.GetOrientation(), .Velocity = HeraldVelocity });
+            me->GetMotionMaster()->MovePoint(1, { .Destination = HeraldArgentSpot, .GeneratePath = true, .FinalOrientation = HeraldArgentSpot.GetOrientation(), .Velocity = HeraldVelocity });
         else if (_instance->GetBossState(DATA_GRAND_CHAMPIONS) == DONE)
-            me->GetMotionMaster()->MovePoint(0, { .Destination = HeraldCenterSpot, .GeneratePath = true, .FinalOrientation = HeraldCenterSpot.GetOrientation(), .Velocity = HeraldVelocity });
+            me->GetMotionMaster()->MovePoint(1, { .Destination = HeraldCenterSpot, .GeneratePath = true, .FinalOrientation = HeraldCenterSpot.GetOrientation(), .Velocity = HeraldVelocity });
+    }
+
+    void MovementInform(uint32 type, uint32 pointId) override
+    {
+        if (type != SPLINE_CHAIN_MOTION_TYPE)
+            return;
+
+        switch (pointId)
+        {
+            case POINT_HERALD_ARGENT_FIGHT:
+                me->SetFacingTo(HeraldArgentFightSpot.GetOrientation());
+                break;
+            case POINT_HERALD_ARGENT_RETURN:
+                me->SetFacingTo(HeraldArgentSpot.GetOrientation());
+                break;
+            default:
+                break;
+        }
     }
 
     bool OnGossipHello(Player* player) override
