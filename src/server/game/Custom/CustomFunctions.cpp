@@ -66,6 +66,8 @@
 #include "SharedDefines.h"
 #include "SmartAI.h"
 #include "Spell.h"
+#include "SpellAuraEffects.h"
+#include "SpellAuras.h"
 #include "SpellHistory.h"
 #include "SpellMgr.h"
 #include "SpellInfo.h"
@@ -1488,6 +1490,24 @@ void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicl
         if (toCreature->IsVehicle())
             toCreature->GetVehicleKit()->Reset(true);
     }
+}
+
+void Unit::HandleCharmLinkedAuras(Unit const* charmer, bool apply)
+{
+    std::vector<std::pair<AuraApplication*, AuraEffect*>> linkedEffects;
+    for (AuraApplicationMap::value_type const& pair : m_appliedAuras)
+    {
+        AuraApplication* aurApp = pair.second;
+        if (aurApp->GetBase()->GetCasterGUID() != charmer->GetGUID() || !aurApp->GetBase()->GetSpellInfo()->HasAura(SPELL_AURA_CONTROL_VEHICLE))
+            continue;
+
+        for (uint8 effIndex = 0; effIndex < MAX_SPELL_EFFECTS; ++effIndex)
+            if (aurApp->HasEffect(effIndex) && aurApp->GetBase()->GetEffect(effIndex)->GetAuraType() == SPELL_AURA_LINKED)
+                linkedEffects.emplace_back(aurApp, aurApp->GetBase()->GetEffect(effIndex));
+    }
+
+    for (auto const& [aurApp, aurEff] : linkedEffects)
+        aurEff->HandleEffect(aurApp, AURA_EFFECT_HANDLE_CHARM, apply);
 }
 
 void Unit::InterruptSpellsCastedOnMe(bool killDelayed, bool interruptFriendlySpells)

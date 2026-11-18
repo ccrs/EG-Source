@@ -703,6 +703,7 @@ void AuraEffect::HandleEffect(AuraApplication * aurApp, uint8 mode, bool apply)
         || mode == AURA_EFFECT_HANDLE_CHANGE_AMOUNT
         || mode == AURA_EFFECT_HANDLE_STAT
         || mode == AURA_EFFECT_HANDLE_SKILL
+        || mode == AURA_EFFECT_HANDLE_CHARM // EG
         || mode == AURA_EFFECT_HANDLE_REAPPLY
         || mode == (AURA_EFFECT_HANDLE_CHANGE_AMOUNT | AURA_EFFECT_HANDLE_REAPPLY));
 
@@ -4894,11 +4895,17 @@ void AuraEffect::HandleAuraLinked(AuraApplication const* aurApp, uint8 mode, boo
     if (!triggeredSpellInfo)
         return;
 
-    if (mode & AURA_EFFECT_HANDLE_REAL)
+    bool const charmDependent = triggeredSpellInfo->HasAttribute(SPELL_ATTR0_CU_VEHICLE_GEAR_SCALING) && target->IsVehicle(); // EG
+    bool const triggeredByCaster = charmDependent || triggeredSpellInfo->NeedsToBeTriggeredByCaster(m_spellInfo);
+
+    if ((mode & AURA_EFFECT_HANDLE_REAL) || (charmDependent && (mode & AURA_EFFECT_HANDLE_CHARM))) // EG
     {
         if (apply)
         {
-            Unit* caster = triggeredSpellInfo->NeedsToBeTriggeredByCaster(m_spellInfo) ? GetCaster() : target;
+            if (charmDependent && !(mode & AURA_EFFECT_HANDLE_CHARM)) // EG
+                return;
+
+            Unit* caster = triggeredByCaster ? GetCaster() : target; // EG
             if (!caster)
                 return;
 
@@ -4910,13 +4917,13 @@ void AuraEffect::HandleAuraLinked(AuraApplication const* aurApp, uint8 mode, boo
         }
         else
         {
-            ObjectGuid casterGUID = triggeredSpellInfo->NeedsToBeTriggeredByCaster(m_spellInfo) ? GetCasterGUID() : target->GetGUID();
+            ObjectGuid casterGUID = triggeredByCaster ? GetCasterGUID() : target->GetGUID(); // EG
             target->RemoveAura(triggeredSpellId, casterGUID);
         }
     }
     else if (mode & AURA_EFFECT_HANDLE_REAPPLY && apply)
     {
-        ObjectGuid casterGUID = triggeredSpellInfo->NeedsToBeTriggeredByCaster(m_spellInfo) ? GetCasterGUID() : target->GetGUID();
+        ObjectGuid casterGUID = triggeredByCaster ? GetCasterGUID() : target->GetGUID(); // EG
         // change the stack amount to be equal to stack amount of our aura
         if (Aura* triggeredAura = target->GetAura(triggeredSpellId, casterGUID))
             triggeredAura->ModStackAmount(GetBase()->GetStackAmount() - triggeredAura->GetStackAmount());

@@ -11702,6 +11702,7 @@ bool Unit::SetCharmedBy(Unit* charmer, CharmType type, AuraApplication const* au
                 SetUnitFlag(UNIT_FLAG_POSSESSED);
                 playerCharmer->SetClientControl(this, true);
                 playerCharmer->VehicleSpellInitialize();
+                HandleCharmLinkedAuras(charmer, true); // EG
                 break;
             case CHARM_TYPE_POSSESS:
                 SetUnitFlag(UNIT_FLAG_POSSESSED);
@@ -11809,6 +11810,7 @@ void Unit::RemoveCharmedBy(Unit* charmer)
                 playerCharmer->SetClientControl(this, false);
                 playerCharmer->SetClientControl(charmer, true);
                 RemoveUnitFlag(UNIT_FLAG_POSSESSED);
+                HandleCharmLinkedAuras(charmer, false); // EG
                 break;
             case CHARM_TYPE_POSSESS:
                 ClearUnitState(UNIT_STATE_POSSESSED);

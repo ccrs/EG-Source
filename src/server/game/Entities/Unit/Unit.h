@@ -1289,6 +1289,7 @@ class TC_GAME_API Unit : public WorldObject
         Unit* GetNextRandomRaidMemberOrPet(float radius);
         bool SetCharmedBy(Unit* charmer, CharmType type, AuraApplication const* aurApp = nullptr);
         void RemoveCharmedBy(Unit* charmer);
+        void HandleCharmLinkedAuras(Unit const* charmer, bool apply); // EG
         void RestoreFaction();
 
         ControlList m_Controlled;

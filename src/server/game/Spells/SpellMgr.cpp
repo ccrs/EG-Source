@@ -2785,6 +2785,19 @@ void SpellMgr::LoadSpellInfoCustomAttributes()
         if (spellInfo->SpellVisual[0] == 3879)
             spellInfo->AttributesCu |= SPELL_ATTR0_CU_CONE_BACK;
 
+        if (spellInfo->HasAura(SPELL_AURA_CONTROL_VEHICLE)) // EG
+        {
+            for (SpellEffectInfo const& spellEffectInfo : spellInfo->GetEffects())
+            {
+                if (!spellEffectInfo.IsAura(SPELL_AURA_LINKED))
+                    continue;
+
+                SpellInfo* linkedSpellInfo = _GetSpellInfo(spellEffectInfo.TriggerSpell);
+                if (linkedSpellInfo && linkedSpellInfo->GetEffect(EFFECT_0).IsAura(SPELL_AURA_MOD_HEALING_PCT) && linkedSpellInfo->GetEffect(EFFECT_1).IsAura(SPELL_AURA_MOD_DAMAGE_PERCENT_DONE) && linkedSpellInfo->GetEffect(EFFECT_2).IsAura(SPELL_AURA_MOD_INCREASE_HEALTH_PERCENT))
+                    linkedSpellInfo->AttributesCu |= SPELL_ATTR0_CU_VEHICLE_GEAR_SCALING;
+            }
+        }
+
         switch (spellInfo->SpellFamilyName)
         {
             case SPELLFAMILY_WARRIOR:
