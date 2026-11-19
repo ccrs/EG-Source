@@ -22,7 +22,6 @@
 #include "GameObject.h"
 #include "Group.h"
 #include "Map.h"
-#include "MapReference.h"
 #include "MapUtils.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
@@ -674,8 +673,19 @@ void BattlefieldWintergrasp::OnPlayerLeaveBattle(Player* player)
 {
     RemoveRankAuras(player);
     SetTenacity(player, 0);
-    if (IsVehiclePassenger(player))
-        player->ExitVehicle();
+    for (Unit const* vehicleBase = player->GetVehicleBase(); vehicleBase; vehicleBase = vehicleBase->GetVehicleBase())
+    {
+        bool const builtVehicle = std::any_of(_vehicleGUIDs.begin(), _vehicleGUIDs.end(), [vehicleBase](GuidUnorderedSet const& vehicleGuids) -> bool
+        {
+            return vehicleGuids.contains(vehicleBase->GetGUID());
+        });
+
+        if (builtVehicle)
+        {
+            player->ExitVehicle();
+            break;
+        }
+    }
 }
 
 void BattlefieldWintergrasp::OnPeriodicUpdate(std::vector<Player*> const& players, Milliseconds /*diff*/)
@@ -730,9 +740,9 @@ void BattlefieldWintergrasp::OnPeriodicUpdate(std::vector<Player*> const& player
         return;
 
     TeamId const attackingTeamId = GetAttackingTeamId();
-    for (MapReference const& reference : battleMap->GetPlayers())
+    for (ObjectGuid playerGuid : GetZonePlayers())
     {
-        Player* player = reference.GetSource();
+        Player* player = ObjectAccessor::GetPlayer(battleMap, playerGuid);
         if (!player || player->GetTeamId() != attackingTeamId || player->IsGameMaster() || player->IsInFlight() || player->IsBeingTeleported())
             continue;
 
@@ -842,16 +852,6 @@ void BattlefieldWintergrasp::DespawnVehicles()
     }
 }
 
-bool BattlefieldWintergrasp::IsVehiclePassenger(Unit const* unit) const
-{
-    for (Unit const* vehicleBase = unit->GetVehicleBase(); vehicleBase; vehicleBase = vehicleBase->GetVehicleBase())
-        for (GuidUnorderedSet const& vehicleGuids : _vehicleGUIDs)
-            if (vehicleGuids.contains(vehicleBase->GetGUID()))
-                return true;
-
-    return false;
-}
-
 void BattlefieldWintergrasp::SetTenacity(Player* player, uint32 stack) const
 {
     SetTenacityAura(player, player, SPELL_WINTERGRASP_TENACITY, stack);
@@ -860,10 +860,8 @@ void BattlefieldWintergrasp::SetTenacity(Player* player, uint32 stack) const
     std::array<uint32, 4> const& honorSpells = WintergraspTenacityHonorSpells[player->GetTeamId()];
     uint32 const honorSpellId = stack ? honorSpells[std::min<size_t>(stack, honorSpells.size()) - 1] : 0;
     for (uint32 spellId : honorSpells)
-    {
         if (spellId != honorSpellId)
             player->RemoveAurasDueToSpell(spellId);
-    }
 
     if (!honorSpellId)
         return;

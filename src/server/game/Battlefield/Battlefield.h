@@ -301,6 +301,7 @@ protected:
     void SendWorldStateToAll(uint32 variable, uint32 value) const;
     uint32 GetBattlePlayerCount(TeamId teamId) const;
     BattlefieldBuildingContainer const& GetBuildings() const { return _buildings; }
+    GuidUnorderedSet const& GetZonePlayers() const { return _playerGUIDs; }
 
     BattlefieldValues Values;
 

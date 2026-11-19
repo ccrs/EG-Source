@@ -548,7 +548,6 @@ private:
     void AddVehicle(ObjectGuid vehicleGuid, PvPTeamId pvpTeamId);
     void RemoveVehicle(ObjectGuid vehicleGuid);
     void DespawnVehicles();
-    bool IsVehiclePassenger(Unit const* unit) const;
     void SetTenacity(Player* player, uint32 stack) const;
     static void SetTenacityAura(Unit* caster, Unit* target, uint32 spellId, uint32 stack);
 
