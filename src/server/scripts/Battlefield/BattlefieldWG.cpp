@@ -26,14 +26,27 @@
 #include "MapUtils.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
+#include "Pet.h"
 #include "Player.h"
 #include "SpellAuras.h"
+#include "SpellInfo.h"
+#include "SpellMgr.h"
 #include "TemporarySummon.h"
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldStatePackets.h"
+#include <algorithm>
+#include <array>
 #include <unordered_map>
 #include <vector>
+
+static std::array<std::array<uint32, 4>, PVP_TEAMS_COUNT> const WintergraspTenacityHonorSpells =
+{
+    {
+        { SPELL_WINTERGRASP_HONORABLE, SPELL_WINTERGRASP_GREAT_HONOR, SPELL_WINTERGRASP_GREATER_HONOR, SPELL_WINTERGRASP_GREATEST_HONOR },
+        { SPELL_WINTERGRASP_LOK_REGAR, SPELL_WINTERGRASP_LOK_NARASH, SPELL_WINTERGRASP_LOKTAR, SPELL_WINTERGRASP_LOKTAR_OGAR }
+    }
+};
 
 static WorldLocation const WintergraspDefenderBattleLocation(MAPID_WINTERGRASP, 5333.0f, 2842.0f, 410.0f, 0.0f);
 static WorldLocation const WintergraspAllianceAttackerBattleLocation(MAPID_WINTERGRASP, 5095.0f, 2180.0f, 366.0f, 0.0f);
@@ -136,10 +149,12 @@ struct WintergraspRankInfo
 };
 
 static std::array<WintergraspRankInfo, 2> const WintergraspRanks =
-{{
-    { SPELL_WINTERGRASP_RECRUIT, WINTERGRASP_RECRUIT_PROMOTION_STACKS, SPELL_WINTERGRASP_CORPORAL, SAY_WINTERGRASP_RANK_CORPORAL },
-    { SPELL_WINTERGRASP_CORPORAL, WINTERGRASP_CORPORAL_PROMOTION_STACKS, SPELL_WINTERGRASP_LIEUTENANT, SAY_WINTERGRASP_RANK_FIRST_LIEUTENANT }
-}};
+{
+    {
+        { SPELL_WINTERGRASP_RECRUIT, WINTERGRASP_RECRUIT_PROMOTION_STACKS, SPELL_WINTERGRASP_CORPORAL, SAY_WINTERGRASP_RANK_CORPORAL },
+        { SPELL_WINTERGRASP_CORPORAL, WINTERGRASP_CORPORAL_PROMOTION_STACKS, SPELL_WINTERGRASP_LIEUTENANT, SAY_WINTERGRASP_RANK_FIRST_LIEUTENANT }
+    }
+};
 
 BattlefieldWintergrasp::BattlefieldWintergrasp() : Battlefield(BATTLEFIELD_BATTLEID_WINTERGRASP, BATTLEFIELD_ZONEID_WINTERGRASP)
 {
@@ -319,8 +334,11 @@ void BattlefieldWintergrasp::HandlePlayerEnterZone(Player* player)
 {
     Battlefield::HandlePlayerEnterZone(player);
 
-    if (!IsPlayerInBattle(player))
-        RemoveRankAuras(player);
+    if (IsPlayerInBattle(player))
+        return;
+
+    RemoveRankAuras(player);
+    SetTenacity(player, 0);
 }
 
 void BattlefieldWintergrasp::HandleKill(Player* killer, Unit* victim)
@@ -655,17 +673,60 @@ void BattlefieldWintergrasp::OnPlayerJoinBattle(Player* player)
 void BattlefieldWintergrasp::OnPlayerLeaveBattle(Player* player)
 {
     RemoveRankAuras(player);
+    SetTenacity(player, 0);
     if (IsVehiclePassenger(player))
         player->ExitVehicle();
 }
 
-void BattlefieldWintergrasp::OnPeriodicUpdate(Milliseconds /*diff*/)
+void BattlefieldWintergrasp::OnPeriodicUpdate(std::vector<Player*> const& players, Milliseconds /*diff*/)
 {
-    if (!IsBattleTime() || IsVaultGateDestroyed())
-        return;
+    TeamId tenacityTeamId = TEAM_NEUTRAL;
+    uint32 tenacityStack = 0;
+    uint32 const allianceCount = GetBattlePlayerCount(TEAM_ALLIANCE);
+    uint32 const hordeCount = GetBattlePlayerCount(TEAM_HORDE);
+    if (IsBattleTime() && allianceCount && hordeCount && allianceCount != hordeCount)
+    {
+        uint32 const smallCount = std::min(allianceCount, hordeCount);
+        uint32 const bigCount = std::max(allianceCount, hordeCount);
+        tenacityStack = std::min<uint32>((bigCount - smallCount) * 4 / smallCount, sSpellMgr->AssertSpellInfo(SPELL_WINTERGRASP_TENACITY)->StackAmount);
+        tenacityTeamId = allianceCount < hordeCount ? TEAM_ALLIANCE : TEAM_HORDE;
+    }
+
+    GuidUnorderedSet tenacityUnitGUIDs;
+    for (Player* player : players)
+    {
+        uint32 const stack = player->GetTeamId() == tenacityTeamId ? tenacityStack : 0;
+        SetTenacity(player, stack);
+        if (!stack)
+            continue;
+
+        for (Unit* controlled : player->m_Controlled)
+        {
+            if (controlled->IsPlayer() || controlled->IsTotem())
+                continue;
+
+            if (!controlled->HasAura(SPELL_WINTERGRASP_TENACITY_VEHICLE, player->GetGUID()))
+                controlled->RemoveAurasDueToSpell(SPELL_WINTERGRASP_TENACITY_VEHICLE);
+
+            SetTenacityAura(player, controlled, SPELL_WINTERGRASP_TENACITY_VEHICLE, stack);
+            tenacityUnitGUIDs.insert(controlled->GetGUID());
+        }
+    }
 
     Map* battleMap = GetBattleMap();
-    if (!battleMap)
+    if (battleMap)
+    {
+        for (ObjectGuid unitGuid : _tenacityUnitGUIDs)
+        {
+            if (!tenacityUnitGUIDs.contains(unitGuid))
+                if (Creature* unit = unitGuid.IsPet() ? battleMap->GetPet(unitGuid) : battleMap->GetCreature(unitGuid))
+                    unit->RemoveAurasDueToSpell(SPELL_WINTERGRASP_TENACITY_VEHICLE);
+        }
+    }
+
+    _tenacityUnitGUIDs = std::move(tenacityUnitGUIDs);
+
+    if (!battleMap || !IsBattleTime() || IsVaultGateDestroyed())
         return;
 
     TeamId const attackingTeamId = GetAttackingTeamId();
@@ -789,6 +850,46 @@ bool BattlefieldWintergrasp::IsVehiclePassenger(Unit const* unit) const
                 return true;
 
     return false;
+}
+
+void BattlefieldWintergrasp::SetTenacity(Player* player, uint32 stack) const
+{
+    SetTenacityAura(player, player, SPELL_WINTERGRASP_TENACITY, stack);
+    SetTenacityAura(player, player, SPELL_WINTERGRASP_TENACITY_HEALING, stack);
+
+    std::array<uint32, 4> const& honorSpells = WintergraspTenacityHonorSpells[player->GetTeamId()];
+    uint32 const honorSpellId = stack ? honorSpells[std::min<size_t>(stack, honorSpells.size()) - 1] : 0;
+    for (uint32 spellId : honorSpells)
+    {
+        if (spellId != honorSpellId)
+            player->RemoveAurasDueToSpell(spellId);
+    }
+
+    if (!honorSpellId)
+        return;
+
+    if (Aura* honorAura = player->GetAura(honorSpellId))
+    {
+        if (honorAura->GetDuration() * 2 < honorAura->GetMaxDuration())
+            honorAura->RefreshDuration();
+    }
+    else
+        player->CastSpell(player, honorSpellId, true);
+}
+
+void BattlefieldWintergrasp::SetTenacityAura(Unit* caster, Unit* target, uint32 spellId, uint32 stack)
+{
+    Aura* aura = target->GetAura(spellId, caster->GetGUID());
+    if (!stack)
+    {
+        if (aura)
+            aura->Remove();
+
+        return;
+    }
+
+    if (!aura || aura->GetStackAmount() != stack)
+        caster->SetAuraStack(spellId, target, stack);
 }
 
 WintergraspBuilding::WintergraspBuilding(BattlefieldWintergrasp* wintergrasp, BattlefieldBuildingInfo const info) : BattlefieldDestructibleBuilding(wintergrasp, info), _wintergrasp(wintergrasp)

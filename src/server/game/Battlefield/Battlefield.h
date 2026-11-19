@@ -295,10 +295,11 @@ protected:
     virtual void ClearBattleStatus();
     virtual void OnPlayerJoinBattle(Player* /*player*/) { }
     virtual void OnPlayerLeaveBattle(Player* /*player*/) { }
-    virtual void OnPeriodicUpdate(Milliseconds /*diff*/) { }
+    virtual void OnPeriodicUpdate(std::vector<Player*> const& /*players*/, Milliseconds /*diff*/) { }
 
     Map* GetBattleMap() const;
     void SendWorldStateToAll(uint32 variable, uint32 value) const;
+    uint32 GetBattlePlayerCount(TeamId teamId) const;
     BattlefieldBuildingContainer const& GetBuildings() const { return _buildings; }
 
     BattlefieldValues Values;

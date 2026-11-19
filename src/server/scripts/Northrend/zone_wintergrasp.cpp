@@ -538,21 +538,16 @@ class spell_wintergrasp_tenacity_refresh : public AuraScript
         return !triggeredSpellId || ValidateSpellInfo({ triggeredSpellId });
     }
 
-    void Refresh(AuraEffect const* aurEff)
+    void Refresh(AuraEffect const* /*aurEff*/)
     {
         PreventDefaultAction();
 
-        if (uint32 triggeredSpellId = aurEff->GetSpellEffectInfo().CalcValue())
+        Battlefield* wintergrasp = sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP); // EG
+        Player* owner = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
+        if (!wintergrasp || !wintergrasp->IsBattleTime() || !owner || !wintergrasp->IsPlayerInBattle(owner) || (GetTarget() != owner && !owner->m_Controlled.contains(GetTarget())))
         {
-            int32 bp = 0;
-            if (AuraEffect const* healEffect = GetEffect(EFFECT_0))
-                bp = healEffect->GetAmount();
-
-            CastSpellExtraArgs args(aurEff);
-            args
-                .AddSpellMod(SPELLVALUE_BASE_POINT0, bp)
-                .AddSpellMod(SPELLVALUE_BASE_POINT1, bp);
-            GetTarget()->CastSpell(nullptr, triggeredSpellId, args);
+            Remove();
+            return;
         }
 
         RefreshDuration();

@@ -748,7 +748,7 @@ void Battlefield::ProcessPeriodicUpdate(BattlefieldEventKey /*key*/)
     for (BattlefieldBuildingContainer::value_type const& pair : _buildings)
         pair.second->Update(players, diff);
 
-    OnPeriodicUpdate(diff);
+    OnPeriodicUpdate(players, diff);
     QueueEvent<BattlefieldPeriodicUpdateEvent>(ObjectGuid::Empty, Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PERIODIC_UPDATE));
 }
 
@@ -1050,6 +1050,11 @@ void Battlefield::SendWorldStateToAll(uint32 variable, uint32 value) const
     worldState.VariableID = variable;
     worldState.Value = value;
     sWorld->SendGlobalMessage(worldState.Write());
+}
+
+uint32 Battlefield::GetBattlePlayerCount(TeamId teamId) const
+{
+    return _battlefieldPlayers.Count(teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE);
 }
 
 BattlefieldPlayerStatus Battlefield::RemoveFromQueue(ObjectGuid playerGuid, TeamId teamId)

@@ -481,3 +481,19 @@ INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (56661, 'spell_wintergrasp_build_vehicle'),
 (56663, 'spell_wintergrasp_build_vehicle'),
 (61408, 'spell_wintergrasp_build_vehicle');
+
+-- Tenacity
+UPDATE `spell_dbc` SET `StackAmount` = 20, `EffectBasePoints1` = 18, `EffectBasePoints2` = 18 WHERE `Id` = 47802;
+DELETE FROM `spell_custom_attr` WHERE `entry` IN (47802, 58549, 58553, 58554, 58555, 58556, 58557, 58558, 58559, 58560, 59911);
+INSERT INTO `spell_custom_attr` (`entry`, `attributes`) VALUES
+(47802, 16777216), -- Tenacity
+(58549, 16777216), -- Tenacity
+(58553, 16777216), -- Honorable
+(58554, 16777216), -- Lok-Regar
+(58555, 16777216), -- Great Honor
+(58556, 16777216), -- Greater Honor
+(58557, 16777216), -- Greatest Honor
+(58558, 16777216), -- Lok-Narash!
+(58559, 16777216), -- Lok'tar
+(58560, 16777216), -- Lok'tar ogar!
+(59911, 16777216); -- Tenacity

@@ -232,11 +232,17 @@ enum WintergraspSpells
     SPELL_WINTERGRASP_LIEUTENANT = 55629,
     SPELL_WINTERGRASP_TENACITY = 58549,
     SPELL_WINTERGRASP_TENACITY_VEHICLE = 59911,
+    SPELL_WINTERGRASP_TENACITY_HEALING = 47802,
     SPELL_WINTERGRASP_TOWER_CONTROL = 62064,
     SPELL_WINTERGRASP_SPIRITUAL_IMMUNITY = 58729,
+    SPELL_WINTERGRASP_HONORABLE = 58553,
+    SPELL_WINTERGRASP_LOK_REGAR = 58554,
     SPELL_WINTERGRASP_GREAT_HONOR = 58555,
     SPELL_WINTERGRASP_GREATER_HONOR = 58556,
     SPELL_WINTERGRASP_GREATEST_HONOR = 58557,
+    SPELL_WINTERGRASP_LOK_NARASH = 58558,
+    SPELL_WINTERGRASP_LOKTAR = 58559,
+    SPELL_WINTERGRASP_LOKTAR_OGAR = 58560,
     SPELL_WINTERGRASP_ALLIANCE_FLAG = 14268,
     SPELL_WINTERGRASP_HORDE_FLAG = 14267,
     SPELL_WINTERGRASP_GRAB_PASSENGER = 61178,
@@ -528,7 +534,7 @@ protected:
     void ClearBattleStatus() override;
     void OnPlayerJoinBattle(Player* player) override;
     void OnPlayerLeaveBattle(Player* player) override;
-    void OnPeriodicUpdate(Milliseconds diff) override;
+    void OnPeriodicUpdate(std::vector<Player*> const& players, Milliseconds diff) override;
 
 private:
     uint32 GetControlState() const;
@@ -543,6 +549,8 @@ private:
     void RemoveVehicle(ObjectGuid vehicleGuid);
     void DespawnVehicles();
     bool IsVehiclePassenger(Unit const* unit) const;
+    void SetTenacity(Player* player, uint32 stack) const;
+    static void SetTenacityAura(Unit* caster, Unit* target, uint32 spellId, uint32 stack);
 
     typedef std::unique_ptr<WintergraspBuilding> WintergraspBuildingPointer;
     typedef std::unique_ptr<WintergraspCapturePoint> WintergraspCapturePointPointer;
@@ -557,6 +565,7 @@ private:
     ObjectGuid _keepCollisionWallGUID;
     ObjectGuid _keepDoorCollisionGUID;
     std::array<GuidUnorderedSet, PVP_TEAMS_COUNT> _vehicleGUIDs;
+    GuidUnorderedSet _tenacityUnitGUIDs;
 };
 
 #endif
