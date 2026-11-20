@@ -204,19 +204,27 @@ enum WintergraspSpawnGroups
 {
     SPAWNGROUP_WINTERGRASP_FORTRESS_TELEPORTERS = 1000,
     SPAWNGROUP_WINTERGRASP_FORTRESS_GATE_GUARDS_HORDE = 1003,
-    SPAWNGROUP_WINTERGRASP_FORTRESS_GATE_GUARDS_ALLIANCE,
-    SPAWNGROUP_WINTERGRASP_TOWER_1_GUARDS_HORDE,
-    SPAWNGROUP_WINTERGRASP_TOWER_1_GUARDS_ALLIANCE,
-    SPAWNGROUP_WINTERGRASP_TOWER_2_GUARDS_HORDE,
-    SPAWNGROUP_WINTERGRASP_TOWER_2_GUARDS_ALLIANCE,
-    SPAWNGROUP_WINTERGRASP_TOWER_3_GUARDS_HORDE,
-    SPAWNGROUP_WINTERGRASP_TOWER_3_GUARDS_ALLIANCE,
-    SPAWNGROUP_WINTERGRASP_WORKSHOP_SE_GUARDS_HORDE,
-    SPAWNGROUP_WINTERGRASP_WORKSHOP_SE_GUARDS_ALLIANCE,
-    SPAWNGROUP_WINTERGRASP_WORKSHOP_SW_GUARDS_HORDE,
-    SPAWNGROUP_WINTERGRASP_WORKSHOP_SW_GUARDS_ALLIANCE,
-    SPAWNGROUP_WINTERGRASP_TITAN_RELIC_HORDE,
-    SPAWNGROUP_WINTERGRASP_TITAN_RELIC_ALLIANCE
+    SPAWNGROUP_WINTERGRASP_FORTRESS_GATE_GUARDS_ALLIANCE = 1004,
+    SPAWNGROUP_WINTERGRASP_TOWER_1_GUARDS_HORDE = 1005,
+    SPAWNGROUP_WINTERGRASP_TOWER_1_GUARDS_ALLIANCE = 1006,
+    SPAWNGROUP_WINTERGRASP_TOWER_2_GUARDS_HORDE = 1007,
+    SPAWNGROUP_WINTERGRASP_TOWER_2_GUARDS_ALLIANCE = 1008,
+    SPAWNGROUP_WINTERGRASP_TOWER_3_GUARDS_HORDE = 1009,
+    SPAWNGROUP_WINTERGRASP_TOWER_3_GUARDS_ALLIANCE = 1010,
+    SPAWNGROUP_WINTERGRASP_WORKSHOP_SE_GUARDS_HORDE = 1011,
+    SPAWNGROUP_WINTERGRASP_WORKSHOP_SE_GUARDS_ALLIANCE = 1012,
+    SPAWNGROUP_WINTERGRASP_WORKSHOP_SW_GUARDS_HORDE = 1013,
+    SPAWNGROUP_WINTERGRASP_WORKSHOP_SW_GUARDS_ALLIANCE = 1014,
+    SPAWNGROUP_WINTERGRASP_TITAN_RELIC_HORDE = 1015,
+    SPAWNGROUP_WINTERGRASP_TITAN_RELIC_ALLIANCE = 1016,
+    SPAWNGROUP_WINTERGRASP_FORTRESS_CANNONS = 1021,
+    SPAWNGROUP_WINTERGRASP_FORTRESS_TOWER_1_CANNONS = 1022,
+    SPAWNGROUP_WINTERGRASP_FORTRESS_TOWER_2_CANNONS = 1023,
+    SPAWNGROUP_WINTERGRASP_FORTRESS_TOWER_3_CANNONS = 1024,
+    SPAWNGROUP_WINTERGRASP_FORTRESS_TOWER_4_CANNONS = 1025,
+    SPAWNGROUP_WINTERGRASP_TOWER_1_CANNONS = 1026,
+    SPAWNGROUP_WINTERGRASP_TOWER_2_CANNONS = 1027,
+    SPAWNGROUP_WINTERGRASP_TOWER_3_CANNONS = 1028
 };
 
 enum WintergraspEventIds
@@ -279,7 +287,7 @@ enum WintergraspSpells
     SPELL_WINTERGRASP_HORDE_CONTROLS_FACTORY_PHASE_SHIFT = 56618, // ADDS PHASE 16
     SPELL_WINTERGRASP_ALLIANCE_CONTROLS_FACTORY_PHASE_SHIFT = 56617, // ADDS PHASE 32
     SPELL_WINTERGRASP_HORDE_CONTROL_PHASE_SHIFT = 55773, // ADDS PHASE 64
-    SPELL_WINTERGRASP_ALLIANCE_CONTROL_PHASE_SHIFT = 55774  // ADDS PHASE 128
+    SPELL_WINTERGRASP_ALLIANCE_CONTROL_PHASE_SHIFT = 55774 // ADDS PHASE 128
 };
 
 enum WintergraspWorldstates
@@ -449,14 +457,27 @@ class BattlefieldWintergrasp;
 class Creature;
 class WorldObject;
 
+class WintergraspZone : public BattlefieldZone
+{
+public:
+    explicit WintergraspZone(BattlefieldWintergrasp* wintergrasp);
+    ~WintergraspZone() { }
+
+    void OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo) override;
+    std::vector<BattlefieldObjectInfo> const* GetObjectInfos() const override;
+
+private:
+    BattlefieldWintergrasp* _wintergrasp;
+};
+
 class WintergraspBuilding : public BattlefieldDestructibleBuilding
 {
 public:
     explicit WintergraspBuilding(BattlefieldWintergrasp* wintergrasp, BattlefieldBuildingInfo const info);
     ~WintergraspBuilding() { }
 
-    void OnObjectCreate(WorldObject* object) override;
-    void OnObjectRemove(WorldObject* object) override;
+    void OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo) override;
+    std::vector<BattlefieldObjectInfo> const* GetObjectInfos() const override;
     bool Damage() override;
     bool Destroy() override;
 
@@ -472,8 +493,7 @@ public:
     explicit WintergraspCapturePoint(BattlefieldWintergrasp* wintergrasp, BattlefieldCapturePointInfo const info);
     ~WintergraspCapturePoint() { }
 
-    void OnObjectCreate(WorldObject* object) override;
-    void OnObjectRemove(WorldObject* object) override;
+    std::vector<BattlefieldObjectInfo> const* GetObjectInfos() const override;
     void SetOwner(PvPTeamId pvpTeamId) override;
     void Attack(PvPTeamId pvpTeamId) override;
     void Capture(PvPTeamId pvpTeamId) override;
@@ -490,8 +510,7 @@ public:
     explicit WintergraspGraveyard(Battlefield* battlefield, BattlefieldGraveyardInfo const info);
     ~WintergraspGraveyard() { }
 
-    void OnObjectCreate(WorldObject* object) override;
-    void OnObjectRemove(WorldObject* object) override;
+    std::vector<BattlefieldObjectInfo> const* GetObjectInfos() const override;
     void InitializeState() override;
     void SaveWorldState() override { }
 };
@@ -519,7 +538,6 @@ public:
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void SendGlobalWorldStates(Player const* player) const override;
 
-    uint8 GetWintergraspGraveyardId(Creature* creature) const;
     void SendStalkerText(uint8 textGroup, WorldObject const* whisperTarget = nullptr) const;
     void HandleSouthernTowerDestroyed();
     void HandleVaultGateDestroyed();

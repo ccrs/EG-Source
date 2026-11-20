@@ -77,14 +77,14 @@ enum ZoneWintergraspCreatureEntries
 
 enum ZoneWintergraspQuestIds
 {
-    QUEST_BONES_AND_ARROWS_HORDE_ATT              = 13193,
+    QUEST_BONES_AND_ARROWS_HORDE_ATT              = 13199,
     QUEST_JINXING_THE_WALLS_HORDE_ATT             = 13202,
     QUEST_SLAY_THEM_ALL_HORDE_ATT                 = 13180,
     QUEST_FUELING_THE_DEMOLISHERS_HORDE_ATT       = 13200,
     QUEST_HEALING_WITH_ROSES_HORDE_ATT            = 13201,
     QUEST_DEFEND_THE_SIEGE_HORDE_ATT              = 13223,
 
-    QUEST_BONES_AND_ARROWS_HORDE_DEF              = 13199,
+    QUEST_BONES_AND_ARROWS_HORDE_DEF              = 13193,
     QUEST_WARDING_THE_WALLS_HORDE_DEF             = 13192,
     QUEST_SLAY_THEM_ALL_HORDE_DEF                 = 13178,
     QUEST_FUELING_THE_DEMOLISHERS_HORDE_DEF       = 13191,
@@ -145,11 +145,10 @@ struct npc_wg_spirit_guide : public ScriptedAI
 
     void InitializeAI() override
     {
-        BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP));
-        if (wintergrasp)
-            if (uint8 graveyardId = wintergrasp->GetWintergraspGraveyardId(me))
-                if (wintergrasp->GetGraveyard(graveyardId))
-                    _graveyardId = graveyardId;
+        if (Battlefield* wintergrasp = sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP))
+            if (BattlefieldEntity const* owner = wintergrasp->FindObjectOwner(me).first)
+                if (owner->Info.EntityType == BATTLEFIELD_ENTITY_TYPE_GRAVEYARD)
+                    _graveyardId = owner->Info.Id;
 
         ScriptedAI::InitializeAI();
     }
@@ -169,7 +168,7 @@ struct npc_wg_spirit_guide : public ScriptedAI
             if (BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP)))
                 for (uint8 itr = GRAVEYARD_KEEP; itr <= GRAVEYARD_ALLIANCE; ++itr)
                 {
-                    if (BattlefieldGraveyard const* targetGraveyard = wintergrasp->GetGraveyard(itr))
+                    if (BattlefieldGraveyard const* targetGraveyard = wintergrasp->GetEntity<BattlefieldGraveyard>(itr))
                         if (TeamIdByPvPTeamId(targetGraveyard->GetPvPTeamId()) == player->GetTeamId())
                             AddGossipItemFor(player, GOSSIP_ICON_CHAT, player->GetSession()->GetTrinityString(targetGraveyard->TextId), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + itr);
                 }
@@ -185,7 +184,7 @@ struct npc_wg_spirit_guide : public ScriptedAI
 
         if (_graveyardId)
             if (BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP)))
-                if (BattlefieldGraveyard const* graveyard = wintergrasp->GetGraveyard(action - GOSSIP_ACTION_INFO_DEF))
+                if (BattlefieldGraveyard const* graveyard = wintergrasp->GetEntity<BattlefieldGraveyard>(action - GOSSIP_ACTION_INFO_DEF))
                     if (TeamIdByPvPTeamId(graveyard->GetPvPTeamId()) == player->GetTeamId())
                         DoCast(player, graveyard->GetTeleportSpellId(), TRIGGERED_IGNORE_CAST_IN_PROGRESS);
         return true;

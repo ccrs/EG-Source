@@ -24,6 +24,7 @@
 #include "EnumFlag.h"
 #include "Errors.h"
 #include "IteratorPair.h"
+#include "MapUtils.h"
 #include "ObjectGuid.h"
 #include "Optional.h"
 #include "SharedDefines.h"
@@ -35,6 +36,7 @@
 #include <memory>
 #include <set>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <variant>
@@ -42,12 +44,12 @@
 
 enum BattlefieldSpells
 {
-    SPELL_BATTLEFIELD_WAITING_FOR_RESURRECT = 2584,  // Waiting to Resurrect
-    SPELL_BATTLEFIELD_SPIRIT_HEAL_CHANNEL   = 22011, // Spirit Heal Channel
-    SPELL_BATTLEFIELD_SPIRIT_HEAL           = 22012, // Spirit Heal
-    SPELL_BATTLEFIELD_RESURRECTION_VISUAL   = 24171, // Resurrection Impact Visual
-    SPELL_BATTLEFIELD_SPIRIT_HEAL_MANA      = 44535, // Spirit Heal
-    SPELL_BATTLEFIELD_AURA_PLAYER_INACTIVE  = 43681  // Inactive
+    SPELL_BATTLEFIELD_WAITING_FOR_RESURRECT = 2584, // Waiting to Resurrect
+    SPELL_BATTLEFIELD_SPIRIT_HEAL_CHANNEL = 22011, // Spirit Heal Channel
+    SPELL_BATTLEFIELD_SPIRIT_HEAL = 22012, // Spirit Heal
+    SPELL_BATTLEFIELD_RESURRECTION_VISUAL = 24171, // Resurrection Impact Visual
+    SPELL_BATTLEFIELD_SPIRIT_HEAL_MANA = 44535, // Spirit Heal
+    SPELL_BATTLEFIELD_AURA_PLAYER_INACTIVE = 43681 // Inactive
 };
 
 enum BattlefieldPhase : uint8
@@ -157,21 +159,58 @@ namespace WorldPackets
 }
 
 class BattlefieldBuilding;
+class BattlefieldEntity;
 class BattlefieldGraveyard;
+class Creature;
 class GameObject;
 class Map;
 class ObjectGuid;
 class Player;
 class Unit;
+class WorldObject;
+struct BattlefieldObjectInfo;
 struct WorldSafeLocsEntry;
+
+enum BattlefieldEntityType : uint8;
+
+template<class T>
+using BattlefieldEntityContainer = std::unordered_map<uint8 /*id*/, std::unique_ptr<T>>;
+
+class BattlefieldEntityGroup
+{
+public:
+    virtual ~BattlefieldEntityGroup() { }
+
+    virtual BattlefieldEntity* FindEntity(std::function<bool(BattlefieldEntity*)> const& predicate) const = 0;
+    virtual void ForEachEntity(std::function<void(BattlefieldEntity*)> const& function) const = 0;
+};
+
+template<class T>
+class BattlefieldEntityGroupOf : public BattlefieldEntityGroup
+{
+public:
+    BattlefieldEntity* FindEntity(std::function<bool(BattlefieldEntity*)> const& predicate) const override
+    {
+        for (auto const& [_, entity] : Entities)
+            if (predicate(entity.get()))
+                return entity.get();
+
+        return nullptr;
+    }
+
+    void ForEachEntity(std::function<void(BattlefieldEntity*)> const& function) const override
+    {
+        for (auto const& [_, entity] : Entities)
+            function(entity.get());
+    }
+
+    BattlefieldEntityContainer<T> Entities;
+};
 
 class TC_GAME_API Battlefield : public ZoneScript
 {
 public:
-    typedef std::unique_ptr<BattlefieldGraveyard> BattlefieldGraveyardPointer;
-    typedef std::unordered_map<uint8 /*id*/, BattlefieldGraveyardPointer> BattlefieldGraveyardContainer;
-    typedef std::unique_ptr<BattlefieldBuilding> BattlefieldBuildingPointer;
-    typedef std::unordered_map<uint8 /*id*/, BattlefieldBuildingPointer> BattlefieldBuildingContainer;
+    typedef std::map<BattlefieldEntityType, std::unique_ptr<BattlefieldEntityGroup>> BattlefieldEntityGroupContainer;
     typedef std::multimap<TimePoint /*due*/, std::unique_ptr<BattlefieldEvent>> BattlefieldEventContainer;
 
     explicit Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId);
@@ -214,12 +253,25 @@ public:
     // Is the referenced SpellArea spellId allowed for the referenced player and newArea?
     virtual bool IsSpellAreaAllowed(uint32 /*spellId*/, Player const* /*player*/, uint32 /*newArea*/) const { return false; }
 
+    void OnCreatureCreate(Creature* object) override;
+    void OnCreatureRemove(Creature* object) override;
     void OnGameObjectCreate(GameObject* object) override;
     void OnGameObjectRemove(GameObject* object) override;
     void ProcessEvent(WorldObject* object, uint32 eventId) override;
 
-    void EmplaceGraveyard(BattlefieldGraveyardPointer&& pointer);
-    void EmplaceBuilding(BattlefieldBuildingPointer&& pointer);
+    template<class T>
+    void EmplaceEntity(std::type_identity_t<std::unique_ptr<T>>&& pointer)
+    {
+        static_assert(std::is_same_v<T, typename T::StorageClass>);
+
+        std::unique_ptr<BattlefieldEntityGroup>& group = _entities[T::Type];
+        if (!group)
+            group = std::make_unique<BattlefieldEntityGroupOf<T>>();
+
+        uint8 const id = pointer->Info.Id;
+        static_cast<BattlefieldEntityGroupOf<T>*>(group.get())->Entities.emplace(id, std::move(pointer));
+    }
+
     void SendInitWorldStatesTo(Player* player);
     template<class Event, class... Args>
     void QueueEvent(Args&&... args)
@@ -278,10 +330,22 @@ public:
     TeamId GetAttackingTeamId() const;
     BattlefieldValues const& GetValues() const { return Values; }
     std::vector<ObjectGuid> const& GetBattlefieldRaids(TeamId teamId) const { return _battlefieldRaids[teamId]; }
-    BattlefieldGraveyard const* GetGraveyard(uint8 graveyardId) const;
-    BattlefieldGraveyard* GetGraveyard(uint8 graveyardId);
-    BattlefieldBuilding const* GetBuilding(uint8 buildingId) const;
+    template<class T>
+    T* GetEntity(uint8 id)
+    {
+        std::unique_ptr<T> const* entity = Trinity::Containers::MapGetValuePtr(GetEntities<T>(), id);
+        return entity ? entity->get() : nullptr;
+    }
+
+    template<class T>
+    T const* GetEntity(uint8 id) const
+    {
+        std::unique_ptr<T> const* entity = Trinity::Containers::MapGetValuePtr(GetEntities<T>(), id);
+        return entity ? entity->get() : nullptr;
+    }
+
     BattlefieldBuilding* GetBuildingByEntry(uint32 entry);
+    std::pair<BattlefieldEntity*, BattlefieldObjectInfo const*> FindObjectOwner(WorldObject const* object) const;
     BattlefieldGraveyard const* GetClosestGraveyard(Player* player) const;
     // Closest available graveyard WorldSafeLocsEntry for Player's TeamId
     WorldSafeLocsEntry const* GetClosestGraveyardLocation(Player* player) const;
@@ -300,7 +364,16 @@ protected:
     Map* GetBattleMap() const;
     void SendWorldStateToAll(uint32 variable, uint32 value) const;
     uint32 GetBattlePlayerCount(TeamId teamId) const;
-    BattlefieldBuildingContainer const& GetBuildings() const { return _buildings; }
+    template<class T>
+    BattlefieldEntityContainer<T> const& GetEntities() const
+    {
+        static_assert(std::is_same_v<T, typename T::StorageClass>);
+
+        static BattlefieldEntityContainer<T> const empty{};
+        std::unique_ptr<BattlefieldEntityGroup> const* group = Trinity::Containers::MapGetValuePtr(_entities, T::Type);
+        return group ? static_cast<BattlefieldEntityGroupOf<T> const*>(group->get())->Entities : empty;
+    }
+
     GuidUnorderedSet const& GetZonePlayers() const { return _playerGUIDs; }
 
     BattlefieldValues Values;
@@ -332,6 +405,7 @@ private:
     void FillBattleSlots(bool battleStart);
     void ScheduleNextPhaseAdvance();
     void ScheduleNextGraveyardResurrect();
+    void UpdateObjectSpawns();
 
     bool IsBattlefieldRaidPhase() const { return IsInPreparation() || IsBattleTime(); }
     uint32 GetFreeBattleSlots(TeamId teamId) const;
@@ -345,8 +419,7 @@ private:
     BattlefieldPhase _phase;
     EnumFlag<BattlefieldFlags> _flags;
     GuidUnorderedSet _playerGUIDs;
-    BattlefieldGraveyardContainer _graveyards;
-    BattlefieldBuildingContainer _buildings;
+    BattlefieldEntityGroupContainer _entities;
     std::array<std::vector<ObjectGuid>, PVP_TEAMS_COUNT> _battlefieldRaids;
     PlayerContainer _battlefieldPlayers;
     BattlefieldEventContainer _events;

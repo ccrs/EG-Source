@@ -31,37 +31,37 @@
 #include <algorithm>
 #include <array>
 
-bool BattlefieldEntityInfo::ValidateObjectEntry(uint32 entry) const
-{
-    return std::any_of(ObjectEntriesByPvPTeamId.begin(), ObjectEntriesByPvPTeamId.end(), [&](std::unordered_map<PvPTeamId, std::vector<uint32 /*entry*/>>::value_type const& pair) -> bool
-    {
-        return std::ranges::find(pair.second, entry) != pair.second.end();
-    });
-}
-
 BattlefieldEntity::BattlefieldEntity(Battlefield* battlefield, BattlefieldEntityInfo const info) : Battle(battlefield), Info(info)
 {
-    ASSERT(battlefield, "BattlefieldBuilding::BattlefieldEntity: Tried to construct an entity without a battlefield! (type: %u, worldState: %u)", info.EntityType, info.WorldState);
+    ASSERT(battlefield, "BattlefieldEntity::BattlefieldEntity: Tried to construct an entity without a battlefield! (type: %u, worldState: %u)", info.EntityType, info.WorldState);
 }
 
-void BattlefieldEntity::OnObjectCreate(WorldObject* object)
+void BattlefieldEntity::OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo)
 {
-    for (PvPTeamId currentTeam : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE, PVP_TEAM_NEUTRAL })
-    {
-        if (std::vector<uint32> const* factionEntries = Trinity::Containers::MapGetValuePtr(Info.ObjectEntriesByPvPTeamId, currentTeam))
-            if (std::ranges::find(*factionEntries, object->GetEntry()) != factionEntries->end())
-                ObjectGUIDsByPvPTeamId[currentTeam].insert(object->GetGUID());
-    }
+    ObjectGUIDs[&objectInfo].insert(object->GetGUID());
 }
 
-void BattlefieldEntity::OnObjectRemove(WorldObject* object)
+void BattlefieldEntity::OnObjectRemove(WorldObject* object, BattlefieldObjectInfo const& objectInfo)
 {
-    for (PvPTeamId currentTeam : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE, PVP_TEAM_NEUTRAL })
-    {
-        if (std::vector<uint32> const* factionEntries = Trinity::Containers::MapGetValuePtr(Info.ObjectEntriesByPvPTeamId, currentTeam))
-            if (std::ranges::find(*factionEntries, object->GetEntry()) != factionEntries->end())
-                ObjectGUIDsByPvPTeamId[currentTeam].erase(object->GetGUID());
-    }
+    ObjectGUIDs[&objectInfo].erase(object->GetGUID());
+}
+
+bool BattlefieldEntity::IsObjectInfoActive(BattlefieldObjectInfo const& objectInfo) const
+{
+    if (objectInfo.Phase == BATTLEFIELD_OBJECT_INFO_PHASE_BATTLE && !Battle->IsBattleTime())
+        return false;
+
+    if (objectInfo.Phase == BATTLEFIELD_OBJECT_INFO_PHASE_IDLE && Battle->GetPhase() != BATTLEFIELD_PHASE_IDLE)
+        return false;
+
+    if (objectInfo.Team == PVP_TEAM_NEUTRAL)
+        return true;
+
+    PvPTeamId const displayedPvPTeamId = GetDisplayedPvPTeamId();
+    if (!objectInfo.Flags.HasFlag(BATTLEFIELD_OBJECT_INFO_FLAG_OPPOSITE_TEAM))
+        return objectInfo.Team == displayedPvPTeamId;
+
+    return displayedPvPTeamId != PVP_TEAM_NEUTRAL && objectInfo.Team != displayedPvPTeamId;
 }
 
 void BattlefieldEntity::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
@@ -69,15 +69,86 @@ void BattlefieldEntity::FillInitialWorldStates(WorldPackets::WorldState::InitWor
     packet.Worldstates.emplace_back(Info.WorldState, 0);
 }
 
+BattlefieldObjectInfo const* BattlefieldEntity::FindObjectInfo(WorldObject const* object) const
+{
+    std::vector<BattlefieldObjectInfo> const* objectInfos = GetObjectInfos();
+    if (!objectInfos)
+        return nullptr;
+
+    SpawnData const* spawnData = nullptr;
+    if (Creature const* creature = object->ToCreature())
+        spawnData = creature->GetCreatureData();
+    else if (GameObject const* gameObject = object->ToGameObject())
+        spawnData = gameObject->GetGameObjectData();
+
+    for (BattlefieldObjectInfo const& objectInfo : *objectInfos)
+    {
+        if (objectInfo.SpawnGroupId)
+        {
+            if (spawnData && spawnData->spawnGroupData->groupId == objectInfo.SpawnGroupId)
+                return &objectInfo;
+
+            continue;
+        }
+
+        if (objectInfo.ObjectType != object->GetTypeId())
+            continue;
+
+        bool const entryMatches = std::ranges::find(objectInfo.Entries, object->GetEntry()) != objectInfo.Entries.end();
+        if (!objectInfo.SpawnIds.empty())
+        {
+            if (spawnData && std::ranges::find(objectInfo.SpawnIds, spawnData->spawnId) != objectInfo.SpawnIds.end() && (objectInfo.Entries.empty() || entryMatches))
+                return &objectInfo;
+        }
+        else if (entryMatches)
+            return &objectInfo;
+    }
+
+    return nullptr;
+}
+
+void BattlefieldEntity::UpdateObjectSpawns()
+{
+    std::vector<BattlefieldObjectInfo> const* objectInfos = GetObjectInfos();
+    if (!objectInfos)
+        return;
+
+    for (BattlefieldObjectInfo const& objectInfo : *objectInfos)
+    {
+        if (!objectInfo.SpawnGroupId)
+            continue;
+
+        bool const active = IsObjectInfoActive(objectInfo);
+        GuidUnorderedSet const* objectGuids = Trinity::Containers::MapGetValuePtr(ObjectGUIDs, &objectInfo);
+        if (!active && objectGuids)
+        {
+            for (ObjectGuid objectGuid : *objectGuids)
+                if (GameObject* gameObject = Battle->GetGameObject(objectGuid))
+                    gameObject->SendObjectDeSpawnAnim(objectGuid);
+        }
+
+        Battle->SetSpawnGroupSpawned(objectInfo.SpawnGroupId, active);
+    }
+}
+
 bool BattlefieldEntity::ValidateObjectGUID(ObjectGuid reference) const
 {
-    return std::any_of(ObjectGUIDsByPvPTeamId.begin(), ObjectGUIDsByPvPTeamId.end(), [&](std::unordered_map<PvPTeamId, GuidUnorderedSet>::value_type const& pair) -> bool
+    return std::any_of(ObjectGUIDs.begin(), ObjectGUIDs.end(), [&](std::unordered_map<BattlefieldObjectInfo const*, GuidUnorderedSet>::value_type const& pair) -> bool
     {
         return pair.second.contains(reference);
     });
 }
 
-BattlefieldBuilding::BattlefieldBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info) : BattlefieldEntity(battlefield, info.Info), BuildingType(info.Type), State(BATTLEFIELD_BUILDING_STATE_NONE), SpawnGroupIds(info.SpawnGroupIds)
+BattlefieldZone::BattlefieldZone(Battlefield* battlefield) : BattlefieldEntity(battlefield, BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_ZONE, 0, 0))
+{
+}
+
+PvPTeamId BattlefieldZone::GetDisplayedPvPTeamId() const
+{
+    return Battle->GetControllingTeam();
+}
+
+BattlefieldBuilding::BattlefieldBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info) : BattlefieldEntity(battlefield, info.Info), BuildingType(info.Type), State(BATTLEFIELD_BUILDING_STATE_NONE)
 {
 }
 
@@ -108,9 +179,12 @@ void BattlefieldBuilding::SaveWorldState()
     sWorld->setWorldState(Info.WorldState, State);
 }
 
-void BattlefieldBuilding::Update(std::vector<Player*> const& /*players*/, Milliseconds /*diff*/)
+bool BattlefieldBuilding::IsObjectInfoActive(BattlefieldObjectInfo const& objectInfo) const
 {
-    UpdateSpawnGroups();
+    if (!BattlefieldEntity::IsObjectInfoActive(objectInfo))
+        return false;
+
+    return !objectInfo.Flags.HasFlag(BATTLEFIELD_OBJECT_INFO_FLAG_NOT_DESTROYED) || GetDestructibleState() != GO_DESTRUCTIBLE_DESTROYED;
 }
 
 bool BattlefieldBuilding::Damage()
@@ -130,6 +204,7 @@ bool BattlefieldBuilding::Destroy()
 
     SetState(GetPvPTeamId(), GO_DESTRUCTIBLE_DESTROYED);
     UpdateWorldState();
+    UpdateObjectSpawns();
     return true;
 }
 
@@ -144,10 +219,15 @@ GameObjectDestructibleState BattlefieldBuilding::GetDestructibleState() const
 std::vector<GameObject*> BattlefieldBuilding::GetGameObjects() const
 {
     std::vector<GameObject*> gameObjects;
-    for (std::unordered_map<PvPTeamId, GuidUnorderedSet>::value_type const& pair : ObjectGUIDsByPvPTeamId)
+    for (std::unordered_map<BattlefieldObjectInfo const*, GuidUnorderedSet>::value_type const& pair : ObjectGUIDs)
+    {
+        if (pair.first->SpawnGroupId)
+            continue;
+
         for (ObjectGuid objectGuid : pair.second)
             if (GameObject* gameObject = Battle->GetGameObject(objectGuid))
                 gameObjects.push_back(gameObject);
+    }
 
     return gameObjects;
 }
@@ -178,24 +258,16 @@ void BattlefieldBuilding::UpdateWorldState()
     Battle->SendWorldStateToMap(Info.WorldState, State);
 }
 
-void BattlefieldBuilding::UpdateSpawnGroups() const
-{
-    PvPTeamId const factionPvPTeamId = GetFactionPvPTeamId();
-    for (PvPTeamId spawnTeam : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE })
-        if (uint32 const spawnGroupId = SpawnGroupIds[spawnTeam])
-            Battle->SetSpawnGroupSpawned(spawnGroupId, spawnTeam == factionPvPTeamId);
-}
-
 BattlefieldDestructibleBuilding::BattlefieldDestructibleBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info) : BattlefieldBuilding(battlefield, info)
 {
 }
 
-void BattlefieldDestructibleBuilding::OnObjectCreate(WorldObject* object)
+void BattlefieldDestructibleBuilding::OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo)
 {
-    BattlefieldBuilding::OnObjectCreate(object);
+    BattlefieldBuilding::OnObjectCreate(object, objectInfo);
 
     GameObject* gameObject = object->ToGameObject();
-    if (!gameObject)
+    if (!gameObject || objectInfo.SpawnGroupId)
         return;
 
     if (uint32 const faction = GetFaction())
@@ -213,7 +285,7 @@ void BattlefieldDestructibleBuilding::InitializeState()
     SaveWorldState();
 }
 
-PvPTeamId BattlefieldDestructibleBuilding::GetFactionPvPTeamId() const
+PvPTeamId BattlefieldDestructibleBuilding::GetDisplayedPvPTeamId() const
 {
     return BuildingType == BATTLEFIELD_BUILDING_TYPE_TOWER ? Battle->GetAttackingTeam() : Battle->GetControllingTeam();
 }
@@ -245,8 +317,6 @@ void BattlefieldDestructibleBuilding::ChangeTeam()
     if (uint32 const faction = GetFaction())
         for (GameObject* gameObject : GetGameObjects())
             gameObject->SetFaction(faction);
-
-    UpdateSpawnGroups();
 }
 
 PvPTeamId BattlefieldDestructibleBuilding::GetOwnerPvPTeamId() const
@@ -262,24 +332,22 @@ uint32 BattlefieldDestructibleBuilding::GetFaction() const
     if (!Battle->IsEnabled())
         return FACTION_FRIENDLY;
 
-    return Battle->GetFaction(GetFactionPvPTeamId());
+    return Battle->GetFaction(GetDisplayedPvPTeamId());
 }
 
 BattlefieldCapturePoint::BattlefieldCapturePoint(Battlefield* battlefield, BattlefieldCapturePointInfo const info) : BattlefieldBuilding(battlefield, info.Info), GraveyardId(info.GraveyardId), Capturable(info.Capturable), StartsWithAttacker(info.StartsWithAttacker), KeepsOwner(info.KeepsOwner), _slider(0.0f), _contested(false)
 {
 }
 
-void BattlefieldCapturePoint::OnObjectCreate(WorldObject* object)
+void BattlefieldCapturePoint::OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo)
 {
-    BattlefieldBuilding::OnObjectCreate(object);
+    BattlefieldBuilding::OnObjectCreate(object, objectInfo);
 
     GameObject* banner = object->ToGameObject();
-    if (!banner)
+    if (!banner || objectInfo.SpawnGroupId)
         return;
 
-    std::vector<uint32> const* hordeEntries = Trinity::Containers::MapGetValuePtr(Info.ObjectEntriesByPvPTeamId, PVP_TEAM_HORDE);
-    bool const horde = hordeEntries && std::ranges::find(*hordeEntries, banner->GetEntry()) != hordeEntries->end();
-    banner->SetGoArtKit(horde ? BATTLEFIELD_CAPTUREPOINT_ARTKIT_HORDE : BATTLEFIELD_CAPTUREPOINT_ARTKIT_ALLIANCE);
+    banner->SetGoArtKit(objectInfo.Team == PVP_TEAM_HORDE ? BATTLEFIELD_CAPTUREPOINT_ARTKIT_HORDE : BATTLEFIELD_CAPTUREPOINT_ARTKIT_ALLIANCE);
 }
 
 void BattlefieldCapturePoint::InitializeState()
@@ -397,8 +465,8 @@ void BattlefieldCapturePoint::SetOwner(PvPTeamId pvpTeamId)
         return;
 
     UpdateWorldState();
-    UpdateSpawnGroups();
-    if (BattlefieldGraveyard* graveyard = Battle->GetGraveyard(GraveyardId))
+    UpdateObjectSpawns();
+    if (BattlefieldGraveyard* graveyard = Battle->GetEntity<BattlefieldGraveyard>(GraveyardId))
         graveyard->SetOwner(pvpTeamId);
 
     Battle->QueueEvent<BattlefieldZoneRefreshEvent>();
@@ -411,9 +479,10 @@ void BattlefieldCapturePoint::Capture(PvPTeamId pvpTeamId)
 
 GameObjectTemplate const* BattlefieldCapturePoint::GetBannerTemplate() const
 {
-    for (std::unordered_map<PvPTeamId, std::vector<uint32>>::value_type const& pair : Info.ObjectEntriesByPvPTeamId)
-        if (!pair.second.empty())
-            return sObjectMgr->GetGameObjectTemplate(pair.second.front());
+    if (std::vector<BattlefieldObjectInfo> const* objectInfos = GetObjectInfos())
+        for (BattlefieldObjectInfo const& objectInfo : *objectInfos)
+            if (!objectInfo.Entries.empty())
+                return sObjectMgr->GetGameObjectTemplate(objectInfo.Entries.front());
 
     return nullptr;
 }
@@ -471,10 +540,16 @@ void BattlefieldGraveyard::ResurrectPlayers()
     if (ResurrectionQueue.empty())
         return;
 
-    auto spiritIt = ObjectGUIDsByPvPTeamId.find(GetPvPTeamId());
-    if (spiritIt != ObjectGUIDsByPvPTeamId.end() && !spiritIt->second.empty())
-        if (Creature* spirit = Battle->GetCreature(*spiritIt->second.begin()))
+    for (std::unordered_map<BattlefieldObjectInfo const*, GuidUnorderedSet>::value_type const& pair : ObjectGUIDs)
+    {
+        if (pair.first->Team != GetPvPTeamId() || pair.second.empty())
+            continue;
+
+        if (Creature* spirit = Battle->GetCreature(*pair.second.begin()))
             spirit->CastSpell(spirit, SPELL_BATTLEFIELD_SPIRIT_HEAL, true);
+
+        break;
+    }
 
     GuidUnorderedSet const resurrectionQueue = std::move(ResurrectionQueue);
     ResurrectionQueue.clear();
@@ -509,6 +584,8 @@ void BattlefieldGraveyard::SetOwner(PvPTeamId pvpTeamId)
             State = BATTLEFIELD_GRAVEYARD_STATE_NEUTRAL;
             break;
     }
+
+    UpdateObjectSpawns();
 
     GuidUnorderedSet const resurrectionQueue = ResurrectionQueue;
     for (ObjectGuid playerGuid : resurrectionQueue)

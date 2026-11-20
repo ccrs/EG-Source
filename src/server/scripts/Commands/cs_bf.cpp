@@ -106,6 +106,13 @@ public:
         if (!battlefield)
             return false;
 
+        if (battlefield->IsBattleTime())
+        {
+            handler->PSendSysMessage("Battlefield %u: the controlling team cannot be switched during a battle.", battleId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
         if (newControllingTeam)
         {
             PvPTeamId teamId = PvPTeamId(*newControllingTeam);
