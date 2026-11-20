@@ -122,6 +122,7 @@ enum BattlefieldValue : uint8
     BATTLEFIELD_VALUE_DELAY_BATTLE_KICK,
     BATTLEFIELD_VALUE_DELAY_BATTLE_STATUS_CLEAR,
     BATTLEFIELD_VALUE_TIME_PHASE_START,
+    BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_START,
     BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START,
     BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END,
     BATTLEFIELD_VALUE_TIME_NEXT_RESURRECTION,
@@ -309,6 +310,7 @@ public:
     void ProcessPeriodicUpdate(BattlefieldEventKey key);
     void ProcessBattleStatusClear(BattlefieldEventKey key);
     void ProcessBattleCapture(BattlefieldEventKey key);
+    void ProcessBattleResult(BattlefieldEventKey key);
 
     void SetMapId(uint32 mapId) { Values.Set(BATTLEFIELD_VALUE_ID_MAP, mapId); }
     void SetEnabled(bool enabled);
@@ -356,6 +358,7 @@ protected:
     virtual void ClearBattleStatus();
     virtual void OnPlayerJoinBattle(Player* /*player*/) { }
     virtual void OnPlayerLeaveBattle(Player* /*player*/) { }
+    virtual void OnPlayerBattleResult(Player* /*player*/) { }
     virtual void OnPeriodicUpdate(std::vector<Player*> const& /*players*/, Milliseconds /*diff*/) { }
 
     void InitializePhaseTimes();
@@ -363,6 +366,7 @@ protected:
     Map* GetBattleMap() const;
     void SendWorldStateToAll(uint32 variable, uint32 value) const;
     uint32 GetBattlePlayerCount(TeamId teamId) const;
+    Optional<time_t> GetBattleJoinTime(Player const* player) const;
     template<class T>
     BattlefieldEntityContainer<T> const& GetEntities() const
     {
@@ -387,12 +391,13 @@ private:
 
         bool Contains(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state) const;
         Optional<BattlefieldPlayerState> FindState(ObjectGuid playerGuid, TeamId teamId) const;
+        Optional<time_t> FindBattleJoinTime(ObjectGuid playerGuid, TeamId teamId) const;
         uint32 Count(TeamId teamId, BattlefieldPlayerState state) const;
         std::vector<ObjectGuid> List(TeamId teamId, BattlefieldPlayerState state) const;
 
     private:
         typedef std::tuple<TeamId, BattlefieldPlayerState, ObjectGuid> Key;
-        typedef std::set<Key> Container;
+        typedef std::map<Key, time_t /*battleJoinTime*/> Container;
 
         Trinity::IteratorPair<Container::const_iterator> GetRange(TeamId teamId, BattlefieldPlayerState state) const;
 

@@ -51,6 +51,7 @@ Battlefield::Battlefield(BattlefieldBattleId battleId, BattlefieldZoneId zoneId)
     Values.Set(BATTLEFIELD_VALUE_DELAY_BATTLE_FILL, 30s);
     Values.Set(BATTLEFIELD_VALUE_DELAY_BATTLE_KICK, 10s);
     Values.Set(BATTLEFIELD_VALUE_DELAY_BATTLE_STATUS_CLEAR, 30s);
+    Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_START, time_t(0));
 }
 
 Battlefield::~Battlefield()
@@ -108,6 +109,7 @@ bool Battlefield::SetPhase(BattlefieldPhase phase)
     if (phase == BATTLEFIELD_PHASE_BATTLE)
     {
         time_t const start = std::min(GameTime::GetGameTime(), Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START));
+        Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_START, start);
         Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END, start + Values.Get<Seconds>(BATTLEFIELD_VALUE_DURATION_PHASE_BATTLE).count());
         Values.Set<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START, start + Values.Get<Seconds>(BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START).count());
         Values.Set(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT, BATTLEFIELD_BATTLE_RESULT_NONE);
@@ -127,13 +129,11 @@ bool Battlefield::SetPhase(BattlefieldPhase phase)
             {
                 _battlefieldPlayers.Insert(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_BATTLE_ENDED);
                 if (Player* player = ObjectAccessor::FindPlayer(playerGuid))
-                {
                     player->GetSession()->SendBfStateChange(GetId(), BATTLEFIELD_PLAYER_STATUS_BATTLE_ENDED);
-                    OnPlayerLeaveBattle(player);
-                }
             }
         }
 
+        QueueEvent<BattlefieldBattleResultEvent>();
         QueueEvent<BattlefieldBattleStatusClearEvent>(ObjectGuid::Empty, Values.Get<Seconds>(BATTLEFIELD_VALUE_DELAY_BATTLE_STATUS_CLEAR));
         Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END, time_t(0));
 
@@ -887,6 +887,24 @@ void Battlefield::ProcessBattleCapture(BattlefieldEventKey /*key*/)
         SetPhase(BATTLEFIELD_PHASE_IDLE);
 }
 
+void Battlefield::ProcessBattleResult(BattlefieldEventKey /*key*/)
+{
+    for (TeamId teamId : { TEAM_ALLIANCE, TEAM_HORDE })
+    {
+        for (ObjectGuid playerGuid : _battlefieldPlayers.List(teamId, BATTLEFIELD_PLAYER_STATE_BATTLE_ENDED))
+        {
+            Player* player = ObjectAccessor::FindPlayer(playerGuid);
+            if (!player)
+                continue;
+
+            if (Values.Get<BattlefieldBattleResult>(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT) != BATTLEFIELD_BATTLE_RESULT_NONE)
+                OnPlayerBattleResult(player);
+
+            OnPlayerLeaveBattle(player);
+        }
+    }
+}
+
 void Battlefield::SetEnabled(bool enabled)
 {
     if (enabled)
@@ -1075,6 +1093,11 @@ uint32 Battlefield::GetBattlePlayerCount(TeamId teamId) const
     return _battlefieldPlayers.Count(teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE);
 }
 
+Optional<time_t> Battlefield::GetBattleJoinTime(Player const* player) const
+{
+    return _battlefieldPlayers.FindBattleJoinTime(player->GetGUID(), player->GetTeamId());
+}
+
 BattlefieldPlayerStatus Battlefield::RemoveFromQueue(ObjectGuid playerGuid, TeamId teamId)
 {
     BattlefieldPlayerStatus const status = GetPlayerStatus(playerGuid, teamId);
@@ -1208,10 +1231,18 @@ BattlefieldPlayerStatus Battlefield::GetPlayerStatus(ObjectGuid playerGuid, Team
 
 void Battlefield::PlayerContainer::Insert(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state)
 {
+    time_t battleJoinTime = 0;
     if (Optional<BattlefieldPlayerState> const previousState = FindState(playerGuid, teamId))
-        Erase(playerGuid, teamId, *previousState);
+    {
+        Container::iterator const itr = _players.find(Key(teamId, *previousState, playerGuid));
+        battleJoinTime = itr->second;
+        _players.erase(itr);
+    }
 
-    _players.emplace(teamId, state, playerGuid);
+    if (state == BATTLEFIELD_PLAYER_STATE_IN_BATTLE)
+        battleJoinTime = GameTime::GetGameTime();
+
+    _players.emplace(Key(teamId, state, playerGuid), battleJoinTime);
 }
 
 bool Battlefield::PlayerContainer::Erase(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state)
@@ -1239,6 +1270,15 @@ Optional<BattlefieldPlayerState> Battlefield::PlayerContainer::FindState(ObjectG
     return {};
 }
 
+Optional<time_t> Battlefield::PlayerContainer::FindBattleJoinTime(ObjectGuid playerGuid, TeamId teamId) const
+{
+    for (BattlefieldPlayerState state : { BATTLEFIELD_PLAYER_STATE_IN_BATTLE, BATTLEFIELD_PLAYER_STATE_BATTLE_ENDED })
+        if (time_t const* battleJoinTime = Trinity::Containers::MapGetValuePtr(_players, Key(teamId, state, playerGuid)))
+            return *battleJoinTime;
+
+    return {};
+}
+
 uint32 Battlefield::PlayerContainer::Count(TeamId teamId, BattlefieldPlayerState state) const
 {
     auto const range = GetRange(teamId, state);
@@ -1248,7 +1288,7 @@ uint32 Battlefield::PlayerContainer::Count(TeamId teamId, BattlefieldPlayerState
 std::vector<ObjectGuid> Battlefield::PlayerContainer::List(TeamId teamId, BattlefieldPlayerState state) const
 {
     std::vector<ObjectGuid> playerGuids;
-    for (Key const& key : GetRange(teamId, state))
+    for (auto const& [key, _] : GetRange(teamId, state))
         playerGuids.push_back(std::get<ObjectGuid>(key));
 
     return playerGuids;

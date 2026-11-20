@@ -149,3 +149,9 @@ void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_CAPTURE>::Handle(Battlefield
 {
     battlefield.ProcessBattleCapture(GetKey());
 }
+
+template<>
+void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BATTLE_RESULT>::Handle(Battlefield& battlefield)
+{
+    battlefield.ProcessBattleResult(GetKey());
+}

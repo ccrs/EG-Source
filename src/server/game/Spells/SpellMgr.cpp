@@ -5310,6 +5310,18 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->AttributesCu |= SPELL_ATTR0_CU_ALLOW_GHOST_TARGET;
     });
 
+    // Wintergrasp battle rewards
+    ApplySpellFix({
+        56902, // Wintergrasp Victory
+        58494, // Wintergrasp Defeat
+        58931, // Wintergrasp Victory (serverside)
+        59201, // Damaged Building Reward
+        59203 // Intact Building Defended
+    }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_ALLOW_GHOST_TARGET;
+    });
+
     // Parachute (Flame Leviathan Smoke Trail)
     ApplySpellFix({ 61242 }, [](SpellInfo* spellInfo)
     {

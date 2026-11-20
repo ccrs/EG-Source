@@ -831,6 +831,40 @@ void BattlefieldWintergrasp::OnPlayerLeaveBattle(Player* player)
     }
 }
 
+void BattlefieldWintergrasp::OnPlayerBattleResult(Player* player)
+{
+    Optional<time_t> const battleJoinTime = GetBattleJoinTime(player);
+    if (!battleJoinTime || Seconds(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_START) - *battleJoinTime) < 90s)
+        return;
+
+    PvPTeamId const pvpTeamId = PvPTeamIdByTeamId(player->GetTeamId());
+    bool const defender = pvpTeamId == (Values.Get<BattlefieldBattleResult>(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT) == BATTLEFIELD_BATTLE_RESULT_CAPTURED ? GetAttackingTeam() : GetControllingTeam());
+    uint32 intactBuildings = 0;
+    uint32 damagedBuildings = 0;
+    for (uint8 workshopId : { BUILDING_WORKSHOP_NE, BUILDING_WORKSHOP_NW })
+        if (BattlefieldBuilding const* workshop = GetEntity<BattlefieldBuilding>(workshopId); workshop && workshop->GetPvPTeamId() == pvpTeamId)
+            ++intactBuildings;
+
+    for (auto const& [_, building] : GetEntities<BattlefieldBuilding>())
+    {
+        if (building->BuildingType != (defender ? BATTLEFIELD_BUILDING_TYPE_KEEP_TOWER : BATTLEFIELD_BUILDING_TYPE_TOWER))
+            continue;
+
+        if (building->GetDestructibleState() == GO_DESTRUCTIBLE_INTACT)
+            ++intactBuildings;
+        else if (defender && building->GetDestructibleState() == GO_DESTRUCTIBLE_DAMAGED)
+            ++damagedBuildings;
+    }
+
+    for (uint32 i = 0; i < intactBuildings; ++i)
+        player->CastSpell(player, SPELL_WINTERGRASP_INTACT_BUILDING, true);
+
+    for (uint32 i = 0; i < damagedBuildings; ++i)
+        player->CastSpell(player, SPELL_WINTERGRASP_DAMAGED_BUILDING, true);
+
+    player->CastSpell(player, pvpTeamId == GetControllingTeam() ? SPELL_WINTERGRASP_VICTORY_REWARD : SPELL_WINTERGRASP_DEFEAT_REWARD, true);
+}
+
 void BattlefieldWintergrasp::OnPeriodicUpdate(std::vector<Player*> const& players, Milliseconds /*diff*/)
 {
     TeamId tenacityTeamId = TEAM_NEUTRAL;

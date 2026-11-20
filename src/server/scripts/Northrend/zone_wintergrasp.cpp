@@ -36,8 +36,11 @@
 #include "SpellScript.h"
 #include "Timer.h"
 #include "Unit.h"
+#include "Util.h"
 #include "Vehicle.h"
 #include "WorldSession.h"
+#include <algorithm>
+#include <cmath>
 #include <vector>
 
 enum ZoneWintergraspNPCTexts
@@ -470,6 +473,22 @@ class achievement_wg_didnt_stand_a_chance : public AchievementCriteriaScript
         }
 };
 
+class achievement_wg_within_our_grasp : public AchievementCriteriaScript
+{
+    public:
+        achievement_wg_within_our_grasp() : AchievementCriteriaScript("achievement_wg_within_our_grasp") { }
+
+        bool OnCheck(Player* /*source*/, Unit* /*target*/) override
+        {
+            Battlefield* wintergrasp = sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP);
+            if (!wintergrasp)
+                return false;
+
+            BattlefieldValues const& values = wintergrasp->GetValues();
+            return values.Get<BattlefieldBattleResult>(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT) == BATTLEFIELD_BATTLE_RESULT_CAPTURED && Seconds(values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_START) - values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_START)) <= 10min;
+        }
+};
+
 // 54640 - Teleport (Used also in Strand of the Ancients)
 class spell_wintergrasp_defender_teleport : public SpellScript
 {
@@ -592,6 +611,84 @@ class spell_wintergrasp_waiting_to_resurrect : public AuraScript
     }
 };
 
+static float GetWintergraspRewardFactor(Unit const* unit)
+{
+    if (unit->HasAura(SPELL_WINTERGRASP_LIEUTENANT))
+        return 1.0f;
+
+    if (unit->HasAura(SPELL_WINTERGRASP_CORPORAL))
+        return 2.0f / 3.0f;
+
+    if (unit->HasAura(SPELL_WINTERGRASP_RECRUIT))
+        return 0.15f;
+
+    return 0.0f;
+}
+
+static void RewardWintergraspHonor(Player* player, int32 value)
+{
+    float const factor = GetWintergraspRewardFactor(player);
+    if (!factor)
+        return;
+
+    float honor = value / 10.0f * factor;
+    if (!player->HasAura(SPELL_WINTERGRASP_RECRUIT))
+        AddPct(honor, player->GetMaxPositiveAuraModifier(SPELL_AURA_MOD_HONOR_GAIN_PCT));
+
+    player->RewardHonor(nullptr, 1, int32(std::lround(honor)));
+}
+
+// 56902 - Wintergrasp Victory
+// 58494 - Wintergrasp Defeat
+class spell_wintergrasp_battle_reward : public SpellScript
+{
+    PrepareSpellScript(spell_wintergrasp_battle_reward);
+
+    void HandleHonor(SpellEffIndex effIndex)
+    {
+        PreventHitDefaultEffect(effIndex);
+        if (Player* player = GetHitPlayer())
+            RewardWintergraspHonor(player, GetEffectValue());
+    }
+
+    void HandleMarks(SpellEffIndex effIndex)
+    {
+        float const factor = GetWintergraspRewardFactor(GetHitUnit());
+        if (!factor)
+        {
+            PreventHitDefaultEffect(effIndex);
+            return;
+        }
+
+        SetEffectValue(std::max(1, int32(GetEffectValue() * factor)));
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_wintergrasp_battle_reward::HandleHonor, EFFECT_0, SPELL_EFFECT_ADD_HONOR);
+        OnEffectHitTarget += SpellEffectFn(spell_wintergrasp_battle_reward::HandleMarks, EFFECT_1, SPELL_EFFECT_CREATE_ITEM);
+    }
+};
+
+// 59201 - Damaged Building Reward
+// 59203 - Intact Building Defended
+class spell_wintergrasp_building_reward : public SpellScript
+{
+    PrepareSpellScript(spell_wintergrasp_building_reward);
+
+    void HandleHonor(SpellEffIndex effIndex)
+    {
+        PreventHitDefaultEffect(effIndex);
+        if (Player* player = GetHitPlayer())
+            RewardWintergraspHonor(player, GetEffectValue());
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_wintergrasp_building_reward::HandleHonor, EFFECT_0, SPELL_EFFECT_ADD_HONOR);
+    }
+};
+
 class condition_is_wintergrasp_horde : public ConditionScript
 {
     public:
@@ -653,10 +750,13 @@ void AddSC_wintergrasp()
     RegisterSpellScript(spell_wintergrasp_grab_passenger);
     RegisterSpellScript(spell_wintergrasp_activate_robotic_arms);
     new achievement_wg_didnt_stand_a_chance();
+    new achievement_wg_within_our_grasp();
     RegisterSpellScript(spell_wintergrasp_defender_teleport);
     RegisterSpellScript(spell_wintergrasp_defender_teleport_trigger);
     RegisterSpellScript(spell_wintergrasp_tenacity_refresh);
     RegisterSpellScript(spell_wintergrasp_waiting_to_resurrect);
+    RegisterSpellScript(spell_wintergrasp_battle_reward);
+    RegisterSpellScript(spell_wintergrasp_building_reward);
     new condition_is_wintergrasp_horde();
     new condition_is_wintergrasp_alliance();
     new condition_wintergrasp_vehicle_limit("condition_wintergrasp_vehicle_buildable", true);

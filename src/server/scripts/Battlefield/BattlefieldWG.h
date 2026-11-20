@@ -552,6 +552,7 @@ protected:
     void ClearBattleStatus() override;
     void OnPlayerJoinBattle(Player* player) override;
     void OnPlayerLeaveBattle(Player* player) override;
+    void OnPlayerBattleResult(Player* player) override;
     void OnPeriodicUpdate(std::vector<Player*> const& players, Milliseconds diff) override;
 
 private:

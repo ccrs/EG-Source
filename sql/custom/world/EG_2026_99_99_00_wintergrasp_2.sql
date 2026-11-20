@@ -610,3 +610,17 @@ INSERT INTO `spawn_group` (`groupId`, `spawnType`, `spawnId`) VALUES
 (1028, 0, 300349),
 (1028, 0, 300350),
 (1028, 0, 300351);
+
+-- Battle result
+DELETE FROM `spell_dbc` WHERE `Id` = 58931;
+INSERT INTO `spell_dbc` (`Id`, `Attributes`, `AttributesEx`, `AttributesEx2`, `AttributesEx3`, `AttributesEx4`, `AttributesEx5`, `AttributesEx6`, `SchoolMask`, `Effect1`, `Effect2`, `EffectImplicitTargetA1`, `EffectImplicitTargetA2`, `EffectMiscValue1`, `EffectMiscValue2`, `SpellName`) VALUES
+(58931, 2306867200, 1056, 336084997, 1245184, 8388736, 393224, 16781316, 1, 16, 16, 1, 1, 13181, 13183, 'Wintergrasp Victory');
+DELETE FROM `spell_script_names` WHERE `spell_id` IN (56902, 58494, 59201, 59203);
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(56902, 'spell_wintergrasp_battle_reward'),
+(58494, 'spell_wintergrasp_battle_reward'),
+(59201, 'spell_wintergrasp_building_reward'),
+(59203, 'spell_wintergrasp_building_reward');
+DELETE FROM `achievement_criteria_data` WHERE `criteria_id` = 7666 AND `type` = 11;
+INSERT INTO `achievement_criteria_data` (`criteria_id`, `type`, `value1`, `value2`, `ScriptName`) VALUES
+(7666, 11, 0, 0, 'achievement_wg_within_our_grasp');
