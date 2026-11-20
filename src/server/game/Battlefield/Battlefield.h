@@ -65,7 +65,8 @@ enum BattlefieldFlags : uint8
     BATTLEFIELD_FLAG_ENABLED = 0x01,
     BATTLEFIELD_FLAG_EVENTS_UPDATING = 0x02,
     BATTLEFIELD_FLAG_EVENTS_CLEANUP_PENDING = 0x04,
-    BATTLEFIELD_FLAG_RAID_RELEASE_PENDING = 0x08
+    BATTLEFIELD_FLAG_RAID_RELEASE_PENDING = 0x08,
+    BATTLEFIELD_FLAG_BATTLE_STATUS_CLEAR_PENDING = 0x10
 };
 
 DEFINE_ENUM_FLAG(BattlefieldFlags);
@@ -80,10 +81,12 @@ enum BattlefieldPlayerStatus : uint8
 
 enum BattlefieldPlayerState : uint8
 {
-    BATTLEFIELD_PLAYER_STATE_QUEUED = 0,
+    BATTLEFIELD_PLAYER_STATE_INVITE_PENDING = 0,
+    BATTLEFIELD_PLAYER_STATE_QUEUED,
     BATTLEFIELD_PLAYER_STATE_INVITED,
     BATTLEFIELD_PLAYER_STATE_IN_BATTLE,
-    BATTLEFIELD_PLAYER_STATE_BATTLE_ENDED,
+    BATTLEFIELD_PLAYER_STATE_BATTLE_RESULT_PENDING,
+    BATTLEFIELD_PLAYER_STATE_BATTLE_RESULT_DONE,
     BATTLEFIELD_PLAYER_STATE_MAX
 };
 
@@ -108,11 +111,13 @@ enum BattlefieldValue : uint8
     BATTLEFIELD_VALUE_ID_MAP = 0,
     BATTLEFIELD_VALUE_STATE_CONTROLLING_TEAM,
     BATTLEFIELD_VALUE_STATE_BATTLE_RESULT,
+    BATTLEFIELD_VALUE_STATE_BATTLE_DEFENDER,
     BATTLEFIELD_VALUE_LIMIT_TEAM_PLAYERS,
     BATTLEFIELD_VALUE_LIMIT_PLAYER_LEVEL,
     BATTLEFIELD_VALUE_DURATION_PHASE_BATTLE,
     BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION,
     BATTLEFIELD_VALUE_DURATION_BATTLE_INVITE,
+    BATTLEFIELD_VALUE_DURATION_BATTLE_REWARD_TOLERANCE,
     BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START,
     BATTLEFIELD_VALUE_INTERVAL_RESURRECTION,
     BATTLEFIELD_VALUE_INTERVAL_PERIODIC_UPDATE,
@@ -284,11 +289,11 @@ public:
     void HandleBattleInviteResponse(Player* player, bool accepted);
 
     template<class Event, class... Args>
-    void QueueEvent(Args&&... args)
+    bool QueueEvent(Args&&... args)
     {
-        EmplaceEvent(std::make_unique<Event>(std::forward<Args>(args)...));
+        return EmplaceEvent(std::make_unique<Event>(std::forward<Args>(args)...));
     }
-    void EmplaceEvent(std::unique_ptr<BattlefieldEvent>&& event);
+    bool EmplaceEvent(std::unique_ptr<BattlefieldEvent>&& event);
     void RemoveEvents(std::function<bool(BattlefieldEvent const&)> const& predicate);
     void RemoveEvents(BattlefieldEventType type, ObjectGuid objectGuid);
     void ProcessRaidRelease(BattlefieldEventKey key);
@@ -333,6 +338,7 @@ public:
     // enum TeamId
     TeamId GetAttackingTeamId() const;
     BattlefieldValues const& GetValues() const { return Values; }
+    int32 GetBattleHonorGainPct(Player const* player) const;
     std::vector<ObjectGuid> const& GetBattlefieldRaids(TeamId teamId) const { return _battlefieldRaids[teamId]; }
     template<class T>
     T* GetEntity(uint8 id)
@@ -367,6 +373,7 @@ protected:
     void SendWorldStateToAll(uint32 variable, uint32 value) const;
     uint32 GetBattlePlayerCount(TeamId teamId) const;
     Optional<time_t> GetBattleJoinTime(Player const* player) const;
+    bool HasPendingBattleResult(Player const* player) const;
     template<class T>
     BattlefieldEntityContainer<T> const& GetEntities() const
     {
@@ -385,19 +392,26 @@ private:
     class PlayerContainer
     {
     public:
+        struct BattleInfo
+        {
+            time_t JoinTime = 0;
+            int32 HonorGainPct = 0;
+        };
+
         void Insert(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state);
         bool Erase(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state);
         void EraseAll(TeamId teamId, BattlefieldPlayerState state);
+        void SetHonorGainPct(ObjectGuid playerGuid, TeamId teamId, int32 honorGainPct);
 
         bool Contains(ObjectGuid playerGuid, TeamId teamId, BattlefieldPlayerState state) const;
         Optional<BattlefieldPlayerState> FindState(ObjectGuid playerGuid, TeamId teamId) const;
-        Optional<time_t> FindBattleJoinTime(ObjectGuid playerGuid, TeamId teamId) const;
+        BattleInfo const* FindBattleInfo(ObjectGuid playerGuid, TeamId teamId) const;
         uint32 Count(TeamId teamId, BattlefieldPlayerState state) const;
         std::vector<ObjectGuid> List(TeamId teamId, BattlefieldPlayerState state) const;
 
     private:
         typedef std::tuple<TeamId, BattlefieldPlayerState, ObjectGuid> Key;
-        typedef std::map<Key, time_t /*battleJoinTime*/> Container;
+        typedef std::map<Key, BattleInfo> Container;
 
         Trinity::IteratorPair<Container::const_iterator> GetRange(TeamId teamId, BattlefieldPlayerState state) const;
 
@@ -407,11 +421,14 @@ private:
     BattlefieldPlayerStatus RemoveFromQueue(ObjectGuid playerGuid, TeamId teamId);
     void InviteToBattle(Player* player, bool battleStart);
     void FillBattleSlots(bool battleStart);
+    void ResolveBattleResult(Player* player);
     void ScheduleNextPhaseAdvance();
     void ScheduleNextGraveyardResurrect();
     void UpdateObjectSpawns();
 
     bool IsBattlefieldRaidPhase() const { return IsInPreparation() || IsBattleTime(); }
+    bool IsEventScopeActive(BattlefieldEventScope scope) const { return (scope & (1 << _phase)) != 0; }
+    bool CanQueueEvent(BattlefieldEvent const& event) const;
     uint32 GetFreeBattleSlots(TeamId teamId) const;
     bool HasBattleSlot(TeamId teamId) const { return GetFreeBattleSlots(teamId) > 0; }
     BattlefieldPlayerStatus GetPlayerStatus(ObjectGuid playerGuid, TeamId teamId) const;

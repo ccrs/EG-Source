@@ -518,7 +518,7 @@ void BattlefieldWintergrasp::HandlePlayerEnterZone(Player* player)
 {
     Battlefield::HandlePlayerEnterZone(player);
 
-    if (IsPlayerInBattle(player))
+    if (IsPlayerInBattle(player) || HasPendingBattleResult(player))
         return;
 
     RemoveRankAuras(player);
@@ -838,7 +838,7 @@ void BattlefieldWintergrasp::OnPlayerBattleResult(Player* player)
         return;
 
     PvPTeamId const pvpTeamId = PvPTeamIdByTeamId(player->GetTeamId());
-    bool const defender = pvpTeamId == (Values.Get<BattlefieldBattleResult>(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT) == BATTLEFIELD_BATTLE_RESULT_CAPTURED ? GetAttackingTeam() : GetControllingTeam());
+    bool const defender = pvpTeamId == Values.Get<PvPTeamId>(BATTLEFIELD_VALUE_STATE_BATTLE_DEFENDER);
     uint32 intactBuildings = 0;
     uint32 damagedBuildings = 0;
     for (uint8 workshopId : { BUILDING_WORKSHOP_NE, BUILDING_WORKSHOP_NW })
@@ -862,7 +862,7 @@ void BattlefieldWintergrasp::OnPlayerBattleResult(Player* player)
     for (uint32 i = 0; i < damagedBuildings; ++i)
         player->CastSpell(player, SPELL_WINTERGRASP_DAMAGED_BUILDING, true);
 
-    player->CastSpell(player, pvpTeamId == GetControllingTeam() ? SPELL_WINTERGRASP_VICTORY_REWARD : SPELL_WINTERGRASP_DEFEAT_REWARD, true);
+    player->CastSpell(player, defender != (Values.Get<BattlefieldBattleResult>(BATTLEFIELD_VALUE_STATE_BATTLE_RESULT) == BATTLEFIELD_BATTLE_RESULT_CAPTURED) ? SPELL_WINTERGRASP_VICTORY_REWARD : SPELL_WINTERGRASP_DEFEAT_REWARD, true);
 }
 
 void BattlefieldWintergrasp::OnPeriodicUpdate(std::vector<Player*> const& players, Milliseconds /*diff*/)

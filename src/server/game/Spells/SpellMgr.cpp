@@ -5319,6 +5319,7 @@ void SpellMgr::LoadSpellInfoCorrections()
         59203 // Intact Building Defended
     }, [](SpellInfo* spellInfo)
     {
+        spellInfo->Attributes |= SPELL_ATTR0_UNAFFECTED_BY_INVULNERABILITY;
         spellInfo->AttributesCu |= SPELL_ATTR0_CU_ALLOW_GHOST_TARGET;
     });
 

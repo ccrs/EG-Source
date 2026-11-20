@@ -329,7 +329,7 @@ PvPTeamId BattlefieldDestructibleBuilding::GetOwnerPvPTeamId() const
 
 uint32 BattlefieldDestructibleBuilding::GetFaction() const
 {
-    if (!Battle->IsEnabled())
+    if (!Battle->IsEnabled() || !Battle->IsBattleTime())
         return FACTION_FRIENDLY;
 
     return Battle->GetFaction(GetDisplayedPvPTeamId());

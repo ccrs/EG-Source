@@ -633,7 +633,8 @@ static void RewardWintergraspHonor(Player* player, int32 value)
 
     float honor = value / 10.0f * factor;
     if (!player->HasAura(SPELL_WINTERGRASP_RECRUIT))
-        AddPct(honor, player->GetMaxPositiveAuraModifier(SPELL_AURA_MOD_HONOR_GAIN_PCT));
+        if (Battlefield* wintergrasp = sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP))
+            AddPct(honor, wintergrasp->GetBattleHonorGainPct(player));
 
     player->RewardHonor(nullptr, 1, int32(std::lround(honor)));
 }

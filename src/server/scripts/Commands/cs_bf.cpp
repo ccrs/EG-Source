@@ -133,9 +133,9 @@ public:
         if (!battlefield)
             return false;
 
-        if (!battlefield->IsEnabled())
+        if (!battlefield->IsEnabled() || battlefield->IsBattleTime())
         {
-            handler->PSendSysMessage("Battlefield %u: the phase times cannot be changed while disabled.", battleId);
+            handler->PSendSysMessage("Battlefield %u: the phase times can only be changed during idle or preparation.", battleId);
             handler->SetSentErrorMessage(true);
             return false;
         }
@@ -152,7 +152,7 @@ public:
         }
 
         battlefield->SetPhaseTime(now + seconds);
-        handler->PSendSysMessage(battlefield->IsBattleTime() ? "Battlefield %u: battle ends in %u seconds." : "Battlefield %u: next battle starts in %u seconds.", battleId, seconds);
+        handler->PSendSysMessage("Battlefield %u: next battle starts in %u seconds.", battleId, seconds);
         return true;
     }
 
@@ -192,7 +192,13 @@ public:
             return false;
         }
 
-        battlefield->QueueEvent<BattlefieldRaidAddEvent>(player->GetGUID());
+        if (!battlefield->QueueEvent<BattlefieldRaidAddEvent>(player->GetGUID()))
+        {
+            handler->PSendSysMessage("Battlefield %u: %s battlefield raid add cannot be queued in this phase.", battleId, player->GetName().c_str());
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
         handler->PSendSysMessage("Battlefield %u: %s battlefield raid add queued.", battleId, player->GetName().c_str());
         return true;
     }
@@ -208,6 +214,7 @@ public:
         if (!player)
             return false;
 
+        battlefield->QueueEvent<BattlefieldBattleRaidLeaveEvent>(player->GetGUID());
         battlefield->QueueEvent<BattlefieldRaidRemoveEvent>(player->GetGUID());
         handler->PSendSysMessage("Battlefield %u: %s battlefield raid remove queued.", battleId, player->GetName().c_str());
         return true;

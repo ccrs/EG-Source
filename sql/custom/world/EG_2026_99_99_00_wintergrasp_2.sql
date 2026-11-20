@@ -13,7 +13,7 @@ DELETE FROM `command` WHERE `name` IN ('bf start', 'bf stop', 'bf timer');
 INSERT INTO `command` (`name`, `help`) VALUES
 ('bf start', 'Syntax: .bf start #battleid\nStarts the battle now.'),
 ('bf stop', 'Syntax: .bf stop #battleid\nEnds the battle with the result set so far; none by default (no control change, no counters, no rewards).'),
-('bf timer', 'Syntax: .bf timer #battleid #seconds\nMoves the end of the running battle, or the start of the next battle, to #seconds from now. The current phase cannot last longer than one battle cycle (start to start), or the preparation duration during preparation.');
+('bf timer', 'Syntax: .bf timer #battleid #seconds\nMoves the start of the next battle to #seconds from now. Only during idle or preparation. The idle phase cannot last longer than one battle cycle (start to start), and the preparation no longer than its duration.');
 
 -- Graveyard teleports
 DELETE FROM `spell_target_position` WHERE `ID` IN (59760, 59762, 59763, 59765, 59766, 59767, 59769);
