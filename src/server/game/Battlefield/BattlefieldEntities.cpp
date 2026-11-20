@@ -69,6 +69,30 @@ void BattlefieldEntity::FillInitialWorldStates(WorldPackets::WorldState::InitWor
     packet.Worldstates.emplace_back(Info.WorldState, 0);
 }
 
+void BattlefieldEntity::UpdateObjectSpawns()
+{
+    std::vector<BattlefieldObjectInfo> const* objectInfos = GetObjectInfos();
+    if (!objectInfos)
+        return;
+
+    for (BattlefieldObjectInfo const& objectInfo : *objectInfos)
+    {
+        if (!objectInfo.SpawnGroupId)
+            continue;
+
+        bool const active = IsObjectInfoActive(objectInfo);
+        GuidUnorderedSet const* objectGuids = Trinity::Containers::MapGetValuePtr(ObjectGUIDs, &objectInfo);
+        if (!active && objectGuids)
+        {
+            for (ObjectGuid objectGuid : *objectGuids)
+                if (GameObject* gameObject = Battle->GetGameObject(objectGuid))
+                    gameObject->SendObjectDeSpawnAnim(objectGuid);
+        }
+
+        Battle->SetSpawnGroupSpawned(objectInfo.SpawnGroupId, active);
+    }
+}
+
 BattlefieldObjectInfo const* BattlefieldEntity::FindObjectInfo(WorldObject const* object) const
 {
     std::vector<BattlefieldObjectInfo> const* objectInfos = GetObjectInfos();
@@ -105,30 +129,6 @@ BattlefieldObjectInfo const* BattlefieldEntity::FindObjectInfo(WorldObject const
     }
 
     return nullptr;
-}
-
-void BattlefieldEntity::UpdateObjectSpawns()
-{
-    std::vector<BattlefieldObjectInfo> const* objectInfos = GetObjectInfos();
-    if (!objectInfos)
-        return;
-
-    for (BattlefieldObjectInfo const& objectInfo : *objectInfos)
-    {
-        if (!objectInfo.SpawnGroupId)
-            continue;
-
-        bool const active = IsObjectInfoActive(objectInfo);
-        GuidUnorderedSet const* objectGuids = Trinity::Containers::MapGetValuePtr(ObjectGUIDs, &objectInfo);
-        if (!active && objectGuids)
-        {
-            for (ObjectGuid objectGuid : *objectGuids)
-                if (GameObject* gameObject = Battle->GetGameObject(objectGuid))
-                    gameObject->SendObjectDeSpawnAnim(objectGuid);
-        }
-
-        Battle->SetSpawnGroupSpawned(objectInfo.SpawnGroupId, active);
-    }
 }
 
 bool BattlefieldEntity::ValidateObjectGUID(ObjectGuid reference) const
@@ -169,6 +169,14 @@ PvPTeamId BattlefieldBuilding::GetPvPTeamId() const
     }
 }
 
+bool BattlefieldBuilding::IsObjectInfoActive(BattlefieldObjectInfo const& objectInfo) const
+{
+    if (!BattlefieldEntity::IsObjectInfoActive(objectInfo))
+        return false;
+
+    return !objectInfo.Flags.HasFlag(BATTLEFIELD_OBJECT_INFO_FLAG_NOT_DESTROYED) || GetDestructibleState() != GO_DESTRUCTIBLE_DESTROYED;
+}
+
 void BattlefieldBuilding::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
 {
     packet.Worldstates.emplace_back(Info.WorldState, State);
@@ -177,14 +185,6 @@ void BattlefieldBuilding::FillInitialWorldStates(WorldPackets::WorldState::InitW
 void BattlefieldBuilding::SaveWorldState()
 {
     sWorld->setWorldState(Info.WorldState, State);
-}
-
-bool BattlefieldBuilding::IsObjectInfoActive(BattlefieldObjectInfo const& objectInfo) const
-{
-    if (!BattlefieldEntity::IsObjectInfoActive(objectInfo))
-        return false;
-
-    return !objectInfo.Flags.HasFlag(BATTLEFIELD_OBJECT_INFO_FLAG_NOT_DESTROYED) || GetDestructibleState() != GO_DESTRUCTIBLE_DESTROYED;
 }
 
 bool BattlefieldBuilding::Damage()
@@ -277,17 +277,17 @@ void BattlefieldDestructibleBuilding::OnObjectCreate(WorldObject* object, Battle
         gameObject->SetDestructibleState(GetDestructibleState(), nullptr, true);
 }
 
+PvPTeamId BattlefieldDestructibleBuilding::GetDisplayedPvPTeamId() const
+{
+    return BuildingType == BATTLEFIELD_BUILDING_TYPE_TOWER ? Battle->GetAttackingTeam() : Battle->GetControllingTeam();
+}
+
 void BattlefieldDestructibleBuilding::InitializeState()
 {
     uint64 const savedState = sWorld->getWorldState(Info.WorldState);
     State = savedState <= BATTLEFIELD_BUILDING_STATE_ALLIANCE_DESTROYED ? BattlefieldBuildingState(savedState) : BATTLEFIELD_BUILDING_STATE_NONE;
     SetState(GetOwnerPvPTeamId(), GetDestructibleState());
     SaveWorldState();
-}
-
-PvPTeamId BattlefieldDestructibleBuilding::GetDisplayedPvPTeamId() const
-{
-    return BuildingType == BATTLEFIELD_BUILDING_TYPE_TOWER ? Battle->GetAttackingTeam() : Battle->GetControllingTeam();
 }
 
 void BattlefieldDestructibleBuilding::Reset()
@@ -516,6 +516,29 @@ BattlefieldGraveyard::BattlefieldGraveyard(Battlefield* battlefield, Battlefield
 {
 }
 
+PvPTeamId BattlefieldGraveyard::GetPvPTeamId() const
+{
+    switch (State)
+    {
+        case BATTLEFIELD_GRAVEYARD_STATE_HORDE:
+            return PVP_TEAM_HORDE;
+        case BATTLEFIELD_GRAVEYARD_STATE_ALLIANCE:
+            return PVP_TEAM_ALLIANCE;
+        default:
+            return PVP_TEAM_NEUTRAL;
+    }
+}
+
+void BattlefieldGraveyard::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
+{
+    packet.Worldstates.emplace_back(Info.WorldState, State);
+}
+
+void BattlefieldGraveyard::SaveWorldState()
+{
+    sWorld->setWorldState(Info.WorldState, State);
+}
+
 void BattlefieldGraveyard::AddPlayerToResurrectionQueue(Player* player)
 {
     if (player->IsAlive())
@@ -597,27 +620,4 @@ void BattlefieldGraveyard::SetOwner(PvPTeamId pvpTeamId)
         if (BattlefieldGraveyard const* graveyard = Battle->GetClosestGraveyard(player))
             player->CastSpell(player, graveyard->GetTeleportSpellId(), true);
     }
-}
-
-PvPTeamId BattlefieldGraveyard::GetPvPTeamId() const
-{
-    switch (State)
-    {
-        case BATTLEFIELD_GRAVEYARD_STATE_HORDE:
-            return PVP_TEAM_HORDE;
-        case BATTLEFIELD_GRAVEYARD_STATE_ALLIANCE:
-            return PVP_TEAM_ALLIANCE;
-        default:
-            return PVP_TEAM_NEUTRAL;
-    }
-}
-
-void BattlefieldGraveyard::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
-{
-    packet.Worldstates.emplace_back(Info.WorldState, State);
-}
-
-void BattlefieldGraveyard::SaveWorldState()
-{
-    sWorld->setWorldState(Info.WorldState, State);
 }

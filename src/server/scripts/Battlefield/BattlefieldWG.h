@@ -530,21 +530,21 @@ public:
     uint32 GetFaction(PvPTeamId pvpTeamId) const override;
     void HandlePlayerEnterZone(Player* player) override;
     void HandleKill(Player* killer, Unit* victim) override;
+    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
+    void SendGlobalWorldStates(Player const* player) override;
     void OnCreatureCreate(Creature* object) override;
     void OnCreatureRemove(Creature* object) override;
-    void OnUnitDeath(Unit* unit) override;
     void OnGameObjectCreate(GameObject* object) override;
+    void OnUnitDeath(Unit* unit) override;
     void ProcessEvent(WorldObject* object, uint32 eventId) override;
-    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
-    void SendGlobalWorldStates(Player const* player) const override;
 
-    void SendStalkerText(uint8 textGroup, WorldObject const* whisperTarget = nullptr) const;
     void HandleSouthernTowerDestroyed();
     void HandleVaultGateDestroyed();
-    void SendVehicleLimits() const;
+    void SendStalkerText(uint8 textGroup, WorldObject const* whisperTarget = nullptr);
+    void SendVehicleLimits();
+
     bool CanUseTitanRelic(Player const* player) const;
     bool CanBuildVehicle(PvPTeamId pvpTeamId) const;
-
     bool IsFlyingMountAllowed() const override { return !IsEnabled() || (IsEnabled() && !IsBattleTime()); }
     bool IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 newArea) const override;
 
@@ -555,26 +555,27 @@ protected:
     void OnPeriodicUpdate(std::vector<Player*> const& players, Milliseconds diff) override;
 
 private:
-    uint32 GetControlState() const;
-    uint32 GetVehicleCount(PvPTeamId pvpTeamId) const;
-    uint32 GetVehicleLimit(PvPTeamId pvpTeamId) const;
-    bool IsVaultGateDestroyed() const;
-    void SetKeepCollisionsOpen(bool open) const;
-    void RemoveRankAuras(Player* player) const;
-    void PromotePlayer(Player* player) const;
-    void SendVehicleCount(PvPTeamId pvpTeamId) const;
-    void AddVehicle(ObjectGuid vehicleGuid, PvPTeamId pvpTeamId);
-    void RemoveVehicle(ObjectGuid vehicleGuid);
-    void DespawnVehicles();
-    void SetTenacity(Player* player, uint32 stack) const;
-    static void SetTenacityAura(Unit* caster, Unit* target, uint32 spellId, uint32 stack);
-
     typedef std::unique_ptr<WintergraspBuilding> WintergraspBuildingPointer;
     typedef std::unique_ptr<WintergraspCapturePoint> WintergraspCapturePointPointer;
     typedef std::unique_ptr<WintergraspGraveyard> WintergraspGraveyardPointer;
 
     BattlefieldWintergrasp(BattlefieldWintergrasp const&) = delete;
     BattlefieldWintergrasp& operator=(BattlefieldWintergrasp const&) = delete;
+
+    void SetKeepCollisionsOpen(bool open);
+    void RemoveRankAuras(Player* player);
+    void PromotePlayer(Player* player);
+    void SendVehicleCount(PvPTeamId pvpTeamId);
+    void AddVehicle(ObjectGuid vehicleGuid, PvPTeamId pvpTeamId);
+    void RemoveVehicle(ObjectGuid vehicleGuid);
+    void DespawnVehicles();
+    void SetTenacity(Player* player, uint32 stack);
+    static void SetTenacityAura(Unit* caster, Unit* target, uint32 spellId, uint32 stack);
+
+    uint32 GetControlState() const;
+    uint32 GetVehicleCount(PvPTeamId pvpTeamId) const;
+    uint32 GetVehicleLimit(PvPTeamId pvpTeamId) const;
+    bool IsVaultGateDestroyed() const;
 
     ObjectGuid _stalkerGUID;
     std::array<ObjectGuid, PVP_TEAMS_COUNT> _commanderGUIDs;

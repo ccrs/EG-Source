@@ -245,7 +245,7 @@ public:
     // Called when a player moves out of a resurrection queue
     virtual void RemovePlayerFromResurrectionQueue(Player* player);
     virtual void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet);
-    virtual void SendGlobalWorldStates(Player const* /*player*/) const { }
+    virtual void SendGlobalWorldStates(Player const* /*player*/) { }
     // Can players inside the battlefield zone use ground mounts?
     virtual bool IsMountAllowed() const { return true; }
     // Can players inside the battlefield zone use flying mounts?
@@ -271,8 +271,17 @@ public:
         uint8 const id = pointer->Info.Id;
         static_cast<BattlefieldEntityGroupOf<T>*>(group.get())->Entities.emplace(id, std::move(pointer));
     }
-
     void SendInitWorldStatesTo(Player* player);
+    void SendWorldStateToMap(uint32 variable, uint32 value);
+    void SetSpawnGroupSpawned(uint32 spawnGroupId, bool spawned);
+    void HandleBattlefieldRaidMemberRemoved(ObjectGuid playerGuid, RemoveMethod method);
+    void HandlePlayerLogout(Player* player);
+    void HandlePlayerAddToMap(Player* player);
+    void HandleQueueRequest(Player* player);
+    void HandleQueueInviteResponse(Player* player, bool accepted);
+    void HandleQueueExitRequest(Player* player);
+    void HandleBattleInviteResponse(Player* player, bool accepted);
+
     template<class Event, class... Args>
     void QueueEvent(Args&&... args)
     {
@@ -300,13 +309,6 @@ public:
     void ProcessPeriodicUpdate(BattlefieldEventKey key);
     void ProcessBattleStatusClear(BattlefieldEventKey key);
     void ProcessBattleCapture(BattlefieldEventKey key);
-    void HandleBattlefieldRaidMemberRemoved(ObjectGuid playerGuid, RemoveMethod method);
-    void HandlePlayerLogout(Player* player);
-    void HandlePlayerAddToMap(Player* player);
-    void HandleQueueRequest(Player* player);
-    void HandleQueueInviteResponse(Player* player, bool accepted);
-    void HandleQueueExitRequest(Player* player);
-    void HandleBattleInviteResponse(Player* player, bool accepted);
 
     void SetMapId(uint32 mapId) { Values.Set(BATTLEFIELD_VALUE_ID_MAP, mapId); }
     void SetEnabled(bool enabled);
@@ -336,14 +338,12 @@ public:
         std::unique_ptr<T> const* entity = Trinity::Containers::MapGetValuePtr(GetEntities<T>(), id);
         return entity ? entity->get() : nullptr;
     }
-
     template<class T>
     T const* GetEntity(uint8 id) const
     {
         std::unique_ptr<T> const* entity = Trinity::Containers::MapGetValuePtr(GetEntities<T>(), id);
         return entity ? entity->get() : nullptr;
     }
-
     BattlefieldBuilding* GetBuildingByEntry(uint32 entry);
     std::pair<BattlefieldEntity*, BattlefieldObjectInfo const*> FindObjectOwner(WorldObject const* object) const;
     BattlefieldGraveyard const* GetClosestGraveyard(Player* player) const;
@@ -351,15 +351,14 @@ public:
     WorldSafeLocsEntry const* GetClosestGraveyardLocation(Player* player) const;
     Creature* GetCreature(ObjectGuid guid) const;
     GameObject* GetGameObject(ObjectGuid guid) const;
-    void SendWorldStateToMap(uint32 variable, uint32 value) const;
-    void SetSpawnGroupSpawned(uint32 spawnGroupId, bool spawned);
 
 protected:
-    void InitializePhaseTimes();
     virtual void ClearBattleStatus();
     virtual void OnPlayerJoinBattle(Player* /*player*/) { }
     virtual void OnPlayerLeaveBattle(Player* /*player*/) { }
     virtual void OnPeriodicUpdate(std::vector<Player*> const& /*players*/, Milliseconds /*diff*/) { }
+
+    void InitializePhaseTimes();
 
     Map* GetBattleMap() const;
     void SendWorldStateToAll(uint32 variable, uint32 value) const;

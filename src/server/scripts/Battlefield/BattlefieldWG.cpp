@@ -20,7 +20,6 @@
 #include "Creature.h"
 #include "CreatureTextMgr.h"
 #include "GameObject.h"
-#include "Group.h"
 #include "Map.h"
 #include "MapUtils.h"
 #include "ObjectAccessor.h"
@@ -212,6 +211,140 @@ static std::array<std::array<uint32, 4>, PVP_TEAMS_COUNT> const WintergraspTenac
         { SPELL_WINTERGRASP_LOK_REGAR, SPELL_WINTERGRASP_LOK_NARASH, SPELL_WINTERGRASP_LOKTAR, SPELL_WINTERGRASP_LOKTAR_OGAR }
     }
 };
+
+WintergraspZone::WintergraspZone(BattlefieldWintergrasp* wintergrasp) : BattlefieldZone(wintergrasp), _wintergrasp(wintergrasp)
+{
+}
+
+void WintergraspZone::OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo)
+{
+    BattlefieldZone::OnObjectCreate(object, objectInfo);
+
+    if (Creature* cannon = object->ToCreature())
+        if (cannon->GetEntry() == NPC_WINTERGRASP_TOWER_CANNON)
+            cannon->SetFaction(_wintergrasp->GetFaction(GetDisplayedPvPTeamId()));
+}
+
+std::vector<BattlefieldObjectInfo> const* WintergraspZone::GetObjectInfos() const
+{
+    return &WintergraspZoneObjectInfos;
+}
+
+WintergraspBuilding::WintergraspBuilding(BattlefieldWintergrasp* wintergrasp, BattlefieldBuildingInfo const info) : BattlefieldDestructibleBuilding(wintergrasp, info), _wintergrasp(wintergrasp)
+{
+}
+
+void WintergraspBuilding::OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo)
+{
+    BattlefieldDestructibleBuilding::OnObjectCreate(object, objectInfo);
+
+    if (Creature* cannon = object->ToCreature())
+        if (cannon->GetEntry() == NPC_WINTERGRASP_TOWER_CANNON)
+            cannon->SetFaction(_wintergrasp->GetFaction(GetDisplayedPvPTeamId()));
+}
+
+std::vector<BattlefieldObjectInfo> const* WintergraspBuilding::GetObjectInfos() const
+{
+    return Trinity::Containers::MapGetValuePtr(WintergraspBuildingObjectInfos, Info.Id);
+}
+
+bool WintergraspBuilding::Damage()
+{
+    if (!BattlefieldDestructibleBuilding::Damage())
+        return false;
+
+    if (_wintergrasp->IsBattleTime())
+        SendText(false);
+
+    return true;
+}
+
+bool WintergraspBuilding::Destroy()
+{
+    if (!BattlefieldDestructibleBuilding::Destroy())
+        return false;
+
+    if (BuildingType == BATTLEFIELD_BUILDING_TYPE_DOOR_LAST)
+        _wintergrasp->HandleVaultGateDestroyed();
+
+    if (!_wintergrasp->IsBattleTime())
+        return true;
+
+    SendText(true);
+    if (BuildingType == BATTLEFIELD_BUILDING_TYPE_TOWER)
+        _wintergrasp->HandleSouthernTowerDestroyed();
+
+    return true;
+}
+
+void WintergraspBuilding::SendText(bool destroyed) const
+{
+    if (uint8 const* textGroup = Trinity::Containers::MapGetValuePtr(WintergraspTowerTexts, Info.Id))
+        _wintergrasp->SendStalkerText(uint8(*textGroup + (destroyed ? 1 : 0)));
+}
+
+WintergraspCapturePoint::WintergraspCapturePoint(BattlefieldWintergrasp* wintergrasp, BattlefieldCapturePointInfo const info) : BattlefieldCapturePoint(wintergrasp, info), _wintergrasp(wintergrasp)
+{
+}
+
+std::vector<BattlefieldObjectInfo> const* WintergraspCapturePoint::GetObjectInfos() const
+{
+    return Trinity::Containers::MapGetValuePtr(WintergraspBuildingObjectInfos, Info.Id);
+}
+
+void WintergraspCapturePoint::SetOwner(PvPTeamId pvpTeamId)
+{
+    BattlefieldCapturePoint::SetOwner(pvpTeamId);
+
+    _wintergrasp->SendVehicleLimits();
+}
+
+void WintergraspCapturePoint::Attack(PvPTeamId pvpTeamId)
+{
+    BattlefieldCapturePoint::Attack(pvpTeamId);
+
+    SendText(pvpTeamId, false);
+}
+
+void WintergraspCapturePoint::Capture(PvPTeamId pvpTeamId)
+{
+    BattlefieldCapturePoint::Capture(pvpTeamId);
+
+    SendText(pvpTeamId, true);
+}
+
+void WintergraspCapturePoint::SendText(PvPTeamId pvpTeamId, bool captured) const
+{
+    if (uint8 const* textGroup = Trinity::Containers::MapGetValuePtr(WintergraspWorkshopTexts, Info.Id))
+        _wintergrasp->SendStalkerText(uint8(*textGroup + (pvpTeamId == PVP_TEAM_HORDE ? 2 : 0) + (captured ? 1 : 0)));
+}
+
+WintergraspGraveyard::WintergraspGraveyard(Battlefield* battlefield, BattlefieldGraveyardInfo const info) : BattlefieldGraveyard(battlefield, info)
+{
+}
+
+std::vector<BattlefieldObjectInfo> const* WintergraspGraveyard::GetObjectInfos() const
+{
+    return Trinity::Containers::MapGetValuePtr(WintergraspGraveyardObjectInfos, Info.Id);
+}
+
+void WintergraspGraveyard::InitializeState()
+{
+    switch (Info.Id)
+    {
+        case GRAVEYARD_KEEP:
+            SetOwner(Battle->GetControllingTeam());
+            break;
+        case GRAVEYARD_HORDE:
+            SetOwner(PVP_TEAM_HORDE);
+            break;
+        case GRAVEYARD_ALLIANCE:
+            SetOwner(PVP_TEAM_ALLIANCE);
+            break;
+        default:
+            break;
+    }
+}
 
 BattlefieldWintergrasp::BattlefieldWintergrasp() : Battlefield(BATTLEFIELD_BATTLEID_WINTERGRASP, BATTLEFIELD_ZONEID_WINTERGRASP)
 {
@@ -421,17 +554,57 @@ void BattlefieldWintergrasp::HandleKill(Player* killer, Unit* victim)
         }
     }
 
-    Group* group = killer->GetGroup();
-    if (!group)
+    PromotePlayer(killer);
+    for (ObjectGuid playerGuid : GetZonePlayers())
     {
-        PromotePlayer(killer);
-        return;
+        Player* player = ObjectAccessor::GetPlayer(*killer, playerGuid);
+        if (player && player != killer && player->GetTeamId() == killer->GetTeamId() && player->GetExactDist2d(victim) <= WINTERGRASP_RANK_CREDIT_DISTANCE)
+            PromotePlayer(player);
+    }
+}
+
+void BattlefieldWintergrasp::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
+{
+    Battlefield::FillInitialWorldStates(packet);
+
+    bool const warTime = IsBattleTime();
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, !warTime && GetControllingTeam() == PVP_TEAM_HORDE ? 1 : 0); // 3802
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, !warTime && GetControllingTeam() == PVP_TEAM_ALLIANCE ? 1 : 0); // 3803
+
+    if (IsEnabled())
+    {
+        packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_CONTROL, GetControlState()); // 3804
+        packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_SHOW_BATTLE_TIMER, warTime ? 1 : 0); // 3710
+        packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END))); // 3781
     }
 
-    for (GroupReference const* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
-        if (Player* member = itr->GetSource())
-            if (member->IsInMap(victim) && member->GetExactDist2d(victim) <= WINTERGRASP_RANK_CREDIT_DISTANCE)
-                PromotePlayer(member);
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_VEHICLE_HORDE, GetVehicleCount(PVP_TEAM_HORDE));
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_MAX_VEHICLE_HORDE, GetVehicleLimit(PVP_TEAM_HORDE));
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_VEHICLE_ALLIANCE, GetVehicleCount(PVP_TEAM_ALLIANCE));
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_MAX_VEHICLE_ALLIANCE, GetVehicleLimit(PVP_TEAM_ALLIANCE));
+    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_CAPTURE_NEUTRAL_PERCENT, WINTERGRASP_CAPTURE_NEUTRAL_PERCENT);
+}
+
+void BattlefieldWintergrasp::SendGlobalWorldStates(Player const* player)
+{
+    if (!IsEnabled())
+        return;
+
+    bool const warTime = IsBattleTime();
+    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_SHOW_BATTLE_TIMER, warTime ? 1 : 0); // 3710
+    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_SHOW_COOLDOWN, warTime ? 0 : 1); // 3801
+    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START))); // 4354
+    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_ICON_ACTIVE, IsInPreparation() || warTime ? 1 : 0); // 4375
+    for (uint32 worldState : { WORLDSTATE_WINTERGRASP_TIMES_ATTACKED_HORDE, WORLDSTATE_WINTERGRASP_TIMES_ATTACKED_ALLIANCE, WORLDSTATE_WINTERGRASP_TIMES_DEFENDED_HORDE, WORLDSTATE_WINTERGRASP_TIMES_DEFENDED_ALLIANCE })
+        player->SendUpdateWorldState(worldState, uint32(sWorld->getWorldState(worldState)));
+
+    if (player->GetMapId() != MAPID_WINTERGRASP)
+        return;
+
+    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END))); // 3781
+    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, !warTime && GetControllingTeam() == PVP_TEAM_HORDE ? 1 : 0); // 3802
+    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, !warTime && GetControllingTeam() == PVP_TEAM_ALLIANCE ? 1 : 0); // 3803
+    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_CONTROL, GetControlState()); // 3804
 }
 
 void BattlefieldWintergrasp::OnCreatureCreate(Creature* object)
@@ -482,13 +655,6 @@ void BattlefieldWintergrasp::OnCreatureRemove(Creature* object)
     }
 }
 
-void BattlefieldWintergrasp::OnUnitDeath(Unit* unit)
-{
-    Battlefield::OnUnitDeath(unit);
-
-    RemoveVehicle(unit->GetGUID());
-}
-
 void BattlefieldWintergrasp::OnGameObjectCreate(GameObject* object)
 {
     Battlefield::OnGameObjectCreate(object);
@@ -520,68 +686,19 @@ void BattlefieldWintergrasp::OnGameObjectCreate(GameObject* object)
     }
 }
 
+void BattlefieldWintergrasp::OnUnitDeath(Unit* unit)
+{
+    Battlefield::OnUnitDeath(unit);
+
+    RemoveVehicle(unit->GetGUID());
+}
+
 void BattlefieldWintergrasp::ProcessEvent(WorldObject* object, uint32 eventId)
 {
     Battlefield::ProcessEvent(object, eventId);
 
     if (eventId == EVENT_WINTERGRASP_TITAN_RELIC)
         QueueEvent<BattlefieldBattleCaptureEvent>();
-}
-
-void BattlefieldWintergrasp::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
-{
-    Battlefield::FillInitialWorldStates(packet);
-
-    bool const warTime = IsBattleTime();
-    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, !warTime && GetControllingTeam() == PVP_TEAM_HORDE ? 1 : 0); // 3802
-    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, !warTime && GetControllingTeam() == PVP_TEAM_ALLIANCE ? 1 : 0); // 3803
-
-    if (IsEnabled())
-    {
-        packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_CONTROL, GetControlState()); // 3804
-        packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_SHOW_BATTLE_TIMER, warTime ? 1 : 0); // 3710
-        packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END))); // 3781
-    }
-
-    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_VEHICLE_HORDE, GetVehicleCount(PVP_TEAM_HORDE));
-    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_MAX_VEHICLE_HORDE, GetVehicleLimit(PVP_TEAM_HORDE));
-    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_VEHICLE_ALLIANCE, GetVehicleCount(PVP_TEAM_ALLIANCE));
-    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_MAX_VEHICLE_ALLIANCE, GetVehicleLimit(PVP_TEAM_ALLIANCE));
-    packet.Worldstates.emplace_back(WORLDSTATE_WINTERGRASP_CAPTURE_NEUTRAL_PERCENT, WINTERGRASP_CAPTURE_NEUTRAL_PERCENT);
-}
-
-void BattlefieldWintergrasp::SendGlobalWorldStates(Player const* player) const
-{
-    if (!IsEnabled())
-        return;
-
-    bool const warTime = IsBattleTime();
-    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_SHOW_BATTLE_TIMER, warTime ? 1 : 0); // 3710
-    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_SHOW_COOLDOWN, warTime ? 0 : 1); // 3801
-    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START))); // 4354
-    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_ICON_ACTIVE, IsInPreparation() || warTime ? 1 : 0); // 4375
-    for (uint32 worldState : { WORLDSTATE_WINTERGRASP_TIMES_ATTACKED_HORDE, WORLDSTATE_WINTERGRASP_TIMES_ATTACKED_ALLIANCE, WORLDSTATE_WINTERGRASP_TIMES_DEFENDED_HORDE, WORLDSTATE_WINTERGRASP_TIMES_DEFENDED_ALLIANCE })
-        player->SendUpdateWorldState(worldState, uint32(sWorld->getWorldState(worldState)));
-
-    if (player->GetMapId() != MAPID_WINTERGRASP)
-        return;
-
-    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_END, uint32(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END))); // 3781
-    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_HORDE_DEFENDER, !warTime && GetControllingTeam() == PVP_TEAM_HORDE ? 1 : 0); // 3802
-    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_ALLIANCE_DEFENDER, !warTime && GetControllingTeam() == PVP_TEAM_ALLIANCE ? 1 : 0); // 3803
-    player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_CONTROL, GetControlState()); // 3804
-}
-
-void BattlefieldWintergrasp::SendStalkerText(uint8 textGroup, WorldObject const* whisperTarget /*= nullptr*/) const
-{
-    Map* battleMap = GetBattleMap();
-    CreatureData const* stalkerData = sObjectMgr->GetCreatureData(SPAWNID_WINTERGRASP_INVISIBLE_STALKER);
-    if (!battleMap || !stalkerData)
-        return;
-
-    battleMap->LoadGrid(stalkerData->spawnPoint.GetPositionX(), stalkerData->spawnPoint.GetPositionY());
-    if (Creature* stalker = GetCreature(_stalkerGUID))
-        sCreatureTextMgr->SendChat(stalker, textGroup, whisperTarget);
 }
 
 void BattlefieldWintergrasp::HandleSouthernTowerDestroyed()
@@ -619,7 +736,19 @@ void BattlefieldWintergrasp::HandleVaultGateDestroyed()
             relic->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
 }
 
-void BattlefieldWintergrasp::SendVehicleLimits() const
+void BattlefieldWintergrasp::SendStalkerText(uint8 textGroup, WorldObject const* whisperTarget /*= nullptr*/)
+{
+    Map* battleMap = GetBattleMap();
+    CreatureData const* stalkerData = sObjectMgr->GetCreatureData(SPAWNID_WINTERGRASP_INVISIBLE_STALKER);
+    if (!battleMap || !stalkerData)
+        return;
+
+    battleMap->LoadGrid(stalkerData->spawnPoint.GetPositionX(), stalkerData->spawnPoint.GetPositionY());
+    if (Creature* stalker = GetCreature(_stalkerGUID))
+        sCreatureTextMgr->SendChat(stalker, textGroup, whisperTarget);
+}
+
+void BattlefieldWintergrasp::SendVehicleLimits()
 {
     SendWorldStateToMap(WORLDSTATE_WINTERGRASP_MAX_VEHICLE_HORDE, GetVehicleLimit(PVP_TEAM_HORDE));
     SendWorldStateToMap(WORLDSTATE_WINTERGRASP_MAX_VEHICLE_ALLIANCE, GetVehicleLimit(PVP_TEAM_ALLIANCE));
@@ -765,49 +894,20 @@ void BattlefieldWintergrasp::OnPeriodicUpdate(std::vector<Player*> const& player
     }
 }
 
-uint32 BattlefieldWintergrasp::GetControlState() const
-{
-    if (IsBattleTime())
-        return WINTERGRASP_CONTROL_BATTLE;
-
-    return GetControllingTeam() == PVP_TEAM_HORDE ? WINTERGRASP_CONTROL_HORDE : WINTERGRASP_CONTROL_ALLIANCE;
-}
-
-uint32 BattlefieldWintergrasp::GetVehicleCount(PvPTeamId pvpTeamId) const
-{
-    return uint32(_vehicleGUIDs[pvpTeamId].size());
-}
-
-uint32 BattlefieldWintergrasp::GetVehicleLimit(PvPTeamId pvpTeamId) const
-{
-    uint32 limit = 0;
-    for (auto const& [_, building] : GetEntities<BattlefieldBuilding>())
-        if (building->BuildingType == BATTLEFIELD_BUILDING_TYPE_WORKSHOP && building->GetPvPTeamId() == pvpTeamId)
-            limit += WINTERGRASP_VEHICLES_PER_WORKSHOP;
-
-    return limit;
-}
-
-bool BattlefieldWintergrasp::IsVaultGateDestroyed() const
-{
-    BattlefieldBuilding const* vaultGate = GetEntity<BattlefieldBuilding>(BUILDING_FORTRESS_VAULT_GATE);
-    return vaultGate && vaultGate->GetDestructibleState() == GO_DESTRUCTIBLE_DESTROYED;
-}
-
-void BattlefieldWintergrasp::SetKeepCollisionsOpen(bool open) const
+void BattlefieldWintergrasp::SetKeepCollisionsOpen(bool open)
 {
     for (ObjectGuid collisionGuid : { _keepCollisionWallGUID, _keepDoorCollisionGUID })
         if (GameObject* collision = GetGameObject(collisionGuid))
             collision->SetGoState(open ? GO_STATE_ACTIVE : GO_STATE_READY);
 }
 
-void BattlefieldWintergrasp::RemoveRankAuras(Player* player) const
+void BattlefieldWintergrasp::RemoveRankAuras(Player* player)
 {
     for (uint32 spellId : { SPELL_WINTERGRASP_RECRUIT, SPELL_WINTERGRASP_CORPORAL, SPELL_WINTERGRASP_LIEUTENANT })
         player->RemoveAurasDueToSpell(spellId);
 }
 
-void BattlefieldWintergrasp::PromotePlayer(Player* player) const
+void BattlefieldWintergrasp::PromotePlayer(Player* player)
 {
     if (!IsPlayerInBattle(player))
         return;
@@ -829,7 +929,7 @@ void BattlefieldWintergrasp::PromotePlayer(Player* player) const
     }
 }
 
-void BattlefieldWintergrasp::SendVehicleCount(PvPTeamId pvpTeamId) const
+void BattlefieldWintergrasp::SendVehicleCount(PvPTeamId pvpTeamId)
 {
     SendWorldStateToMap(pvpTeamId == PVP_TEAM_HORDE ? WORLDSTATE_WINTERGRASP_VEHICLE_HORDE : WORLDSTATE_WINTERGRASP_VEHICLE_ALLIANCE, GetVehicleCount(pvpTeamId));
 }
@@ -866,7 +966,7 @@ void BattlefieldWintergrasp::DespawnVehicles()
     }
 }
 
-void BattlefieldWintergrasp::SetTenacity(Player* player, uint32 stack) const
+void BattlefieldWintergrasp::SetTenacity(Player* player, uint32 stack)
 {
     SetTenacityAura(player, player, SPELL_WINTERGRASP_TENACITY, stack);
     SetTenacityAura(player, player, SPELL_WINTERGRASP_TENACITY_HEALING, stack);
@@ -904,138 +1004,33 @@ void BattlefieldWintergrasp::SetTenacityAura(Unit* caster, Unit* target, uint32 
         caster->SetAuraStack(spellId, target, stack);
 }
 
-WintergraspZone::WintergraspZone(BattlefieldWintergrasp* wintergrasp) : BattlefieldZone(wintergrasp), _wintergrasp(wintergrasp)
+uint32 BattlefieldWintergrasp::GetControlState() const
 {
+    if (IsBattleTime())
+        return WINTERGRASP_CONTROL_BATTLE;
+
+    return GetControllingTeam() == PVP_TEAM_HORDE ? WINTERGRASP_CONTROL_HORDE : WINTERGRASP_CONTROL_ALLIANCE;
 }
 
-void WintergraspZone::OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo)
+uint32 BattlefieldWintergrasp::GetVehicleCount(PvPTeamId pvpTeamId) const
 {
-    BattlefieldZone::OnObjectCreate(object, objectInfo);
-
-    if (Creature* cannon = object->ToCreature())
-        if (cannon->GetEntry() == NPC_WINTERGRASP_TOWER_CANNON)
-            cannon->SetFaction(_wintergrasp->GetFaction(GetDisplayedPvPTeamId()));
+    return uint32(_vehicleGUIDs[pvpTeamId].size());
 }
 
-std::vector<BattlefieldObjectInfo> const* WintergraspZone::GetObjectInfos() const
+uint32 BattlefieldWintergrasp::GetVehicleLimit(PvPTeamId pvpTeamId) const
 {
-    return &WintergraspZoneObjectInfos;
+    uint32 limit = 0;
+    for (auto const& [_, building] : GetEntities<BattlefieldBuilding>())
+        if (building->BuildingType == BATTLEFIELD_BUILDING_TYPE_WORKSHOP && building->GetPvPTeamId() == pvpTeamId)
+            limit += WINTERGRASP_VEHICLES_PER_WORKSHOP;
+
+    return limit;
 }
 
-WintergraspBuilding::WintergraspBuilding(BattlefieldWintergrasp* wintergrasp, BattlefieldBuildingInfo const info) : BattlefieldDestructibleBuilding(wintergrasp, info), _wintergrasp(wintergrasp)
+bool BattlefieldWintergrasp::IsVaultGateDestroyed() const
 {
-}
-
-void WintergraspBuilding::OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo)
-{
-    BattlefieldDestructibleBuilding::OnObjectCreate(object, objectInfo);
-
-    if (Creature* cannon = object->ToCreature())
-        if (cannon->GetEntry() == NPC_WINTERGRASP_TOWER_CANNON)
-            cannon->SetFaction(_wintergrasp->GetFaction(GetDisplayedPvPTeamId()));
-}
-
-std::vector<BattlefieldObjectInfo> const* WintergraspBuilding::GetObjectInfos() const
-{
-    return Trinity::Containers::MapGetValuePtr(WintergraspBuildingObjectInfos, Info.Id);
-}
-
-bool WintergraspBuilding::Damage()
-{
-    if (!BattlefieldDestructibleBuilding::Damage())
-        return false;
-
-    if (_wintergrasp->IsBattleTime())
-        SendText(false);
-
-    return true;
-}
-
-bool WintergraspBuilding::Destroy()
-{
-    if (!BattlefieldDestructibleBuilding::Destroy())
-        return false;
-
-    if (BuildingType == BATTLEFIELD_BUILDING_TYPE_DOOR_LAST)
-        _wintergrasp->HandleVaultGateDestroyed();
-
-    if (!_wintergrasp->IsBattleTime())
-        return true;
-
-    SendText(true);
-    if (BuildingType == BATTLEFIELD_BUILDING_TYPE_TOWER)
-        _wintergrasp->HandleSouthernTowerDestroyed();
-
-    return true;
-}
-
-void WintergraspBuilding::SendText(bool destroyed) const
-{
-    if (uint8 const* textGroup = Trinity::Containers::MapGetValuePtr(WintergraspTowerTexts, Info.Id))
-        _wintergrasp->SendStalkerText(uint8(*textGroup + (destroyed ? 1 : 0)));
-}
-
-WintergraspCapturePoint::WintergraspCapturePoint(BattlefieldWintergrasp* wintergrasp, BattlefieldCapturePointInfo const info) : BattlefieldCapturePoint(wintergrasp, info), _wintergrasp(wintergrasp)
-{
-}
-
-std::vector<BattlefieldObjectInfo> const* WintergraspCapturePoint::GetObjectInfos() const
-{
-    return Trinity::Containers::MapGetValuePtr(WintergraspBuildingObjectInfos, Info.Id);
-}
-
-void WintergraspCapturePoint::SetOwner(PvPTeamId pvpTeamId)
-{
-    BattlefieldCapturePoint::SetOwner(pvpTeamId);
-
-    _wintergrasp->SendVehicleLimits();
-}
-
-void WintergraspCapturePoint::Attack(PvPTeamId pvpTeamId)
-{
-    BattlefieldCapturePoint::Attack(pvpTeamId);
-
-    SendText(pvpTeamId, false);
-}
-
-void WintergraspCapturePoint::Capture(PvPTeamId pvpTeamId)
-{
-    BattlefieldCapturePoint::Capture(pvpTeamId);
-
-    SendText(pvpTeamId, true);
-}
-
-void WintergraspCapturePoint::SendText(PvPTeamId pvpTeamId, bool captured) const
-{
-    if (uint8 const* textGroup = Trinity::Containers::MapGetValuePtr(WintergraspWorkshopTexts, Info.Id))
-        _wintergrasp->SendStalkerText(uint8(*textGroup + (pvpTeamId == PVP_TEAM_HORDE ? 2 : 0) + (captured ? 1 : 0)));
-}
-
-WintergraspGraveyard::WintergraspGraveyard(Battlefield* battlefield, BattlefieldGraveyardInfo const info) : BattlefieldGraveyard(battlefield, info)
-{
-}
-
-std::vector<BattlefieldObjectInfo> const* WintergraspGraveyard::GetObjectInfos() const
-{
-    return Trinity::Containers::MapGetValuePtr(WintergraspGraveyardObjectInfos, Info.Id);
-}
-
-void WintergraspGraveyard::InitializeState()
-{
-    switch (Info.Id)
-    {
-        case GRAVEYARD_KEEP:
-            SetOwner(Battle->GetControllingTeam());
-            break;
-        case GRAVEYARD_HORDE:
-            SetOwner(PVP_TEAM_HORDE);
-            break;
-        case GRAVEYARD_ALLIANCE:
-            SetOwner(PVP_TEAM_ALLIANCE);
-            break;
-        default:
-            break;
-    }
+    BattlefieldBuilding const* vaultGate = GetEntity<BattlefieldBuilding>(BUILDING_FORTRESS_VAULT_GATE);
+    return vaultGate && vaultGate->GetDestructibleState() == GO_DESTRUCTIBLE_DESTROYED;
 }
 
 class BattlefieldWintergraspScript : public BattlefieldScript

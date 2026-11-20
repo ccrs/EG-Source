@@ -143,8 +143,9 @@ public:
     virtual void InitializeState() { }
     virtual void SaveWorldState() { }
 
-    BattlefieldObjectInfo const* FindObjectInfo(WorldObject const* object) const;
     void UpdateObjectSpawns();
+
+    BattlefieldObjectInfo const* FindObjectInfo(WorldObject const* object) const;
     bool ValidateObjectGUID(ObjectGuid reference) const;
 
     Battlefield* Battle;
@@ -210,8 +211,8 @@ public:
     virtual ~BattlefieldDestructibleBuilding() { }
 
     void OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo) override;
-    void InitializeState() override;
     PvPTeamId GetDisplayedPvPTeamId() const override;
+    void InitializeState() override;
     void Reset() override;
     void ChangeTeam() override;
 
@@ -281,14 +282,15 @@ public:
     explicit BattlefieldGraveyard(Battlefield* battlefield, BattlefieldGraveyardInfo const info);
     virtual ~BattlefieldGraveyard() { }
 
+    PvPTeamId GetPvPTeamId() const override;
+    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
+    void SaveWorldState() override;
+
     void AddPlayerToResurrectionQueue(Player* player);
     void RemovePlayerFromResurrectionQueue(Player* player);
     void ResurrectPlayers();
     void SetOwner(PvPTeamId pvpTeamId);
 
-    PvPTeamId GetPvPTeamId() const override;
-    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
-    void SaveWorldState() override;
     uint16 GetWorldSafeLocsEntryId() const { return WorldSafeLocsEntryId; }
     uint32 GetTeleportSpellId() const { return TeleportSpellId; }
 
