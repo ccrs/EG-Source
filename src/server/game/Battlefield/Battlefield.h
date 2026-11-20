@@ -34,7 +34,6 @@
 #include <functional>
 #include <map>
 #include <memory>
-#include <set>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
@@ -428,7 +427,6 @@ private:
 
     bool IsBattlefieldRaidPhase() const { return IsInPreparation() || IsBattleTime(); }
     bool IsEventScopeActive(BattlefieldEventScope scope) const { return (scope & (1 << _phase)) != 0; }
-    bool CanQueueEvent(BattlefieldEvent const& event) const;
     uint32 GetFreeBattleSlots(TeamId teamId) const;
     bool HasBattleSlot(TeamId teamId) const { return GetFreeBattleSlots(teamId) > 0; }
     BattlefieldPlayerStatus GetPlayerStatus(ObjectGuid playerGuid, TeamId teamId) const;

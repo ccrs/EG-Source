@@ -192,9 +192,10 @@ public:
             return false;
         }
 
-        if (!battlefield->QueueEvent<BattlefieldRaidAddEvent>(player->GetGUID()))
+        Player* target = player->GetConnectedPlayer();
+        if (!target->IsInWorld() || (battlefield->IsBattleTime() && !battlefield->IsPlayerInBattle(target)) || !battlefield->QueueEvent<BattlefieldRaidAddEvent>(target->GetGUID()))
         {
-            handler->PSendSysMessage("Battlefield %u: %s battlefield raid add cannot be queued in this phase.", battleId, player->GetName().c_str());
+            handler->PSendSysMessage("Battlefield %u: %s cannot be added to the battlefield raid now.", battleId, player->GetName().c_str());
             handler->SetSentErrorMessage(true);
             return false;
         }
