@@ -22,6 +22,7 @@
 #include "GameTime.h"
 #include "Group.h"
 #include "GroupMgr.h"
+#include "Player.h"
 #include "RBAC.h"
 
 using namespace Trinity::ChatCommands;
