@@ -624,3 +624,12 @@ INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 DELETE FROM `achievement_criteria_data` WHERE `criteria_id` = 7666 AND `type` = 11;
 INSERT INTO `achievement_criteria_data` (`criteria_id`, `type`, `value1`, `value2`, `ScriptName`) VALUES
 (7666, 11, 0, 0, 'achievement_wg_within_our_grasp');
+
+-- Fortress teleporters
+DELETE FROM `gameobject_addon` WHERE `guid` = 200052;
+DELETE FROM `gameobject` WHERE `guid` = 200052;
+INSERT INTO `gameobject` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `position_x`, `position_y`, `position_z`, `orientation`, `rotation0`, `rotation1`, `rotation2`, `rotation3`, `spawntimesecs`, `animprogress`, `state`, `VerifiedBuild`) VALUES
+(200052, 192819, 571, 4197, 4575, 1, 1, 5401.634, 2853.6665, 418.6748, 2.635444, 0, 0, 0.9681473, 0.2503814, 0, 255, 1, 12340);
+DELETE FROM `spawn_group` WHERE `groupId` = 1000 AND `spawnType` = 1 AND `spawnId` = 200052;
+INSERT INTO `spawn_group` (`groupId`, `spawnType`, `spawnId`) VALUES
+(1000, 1, 200052);

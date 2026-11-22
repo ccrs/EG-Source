@@ -25,6 +25,8 @@
 #include "DBCStructure.h"
 #include "GameObject.h"
 #include "GameObjectAI.h"
+#include "Map.h"
+#include "MapUtils.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
@@ -41,6 +43,7 @@
 #include "WorldSession.h"
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 #include <vector>
 
 enum ZoneWintergraspNPCTexts
@@ -73,9 +76,12 @@ enum ZoneWintergraspSpells
     SPELL_WINTERGRASP_TELEPORT_TRIGGER       = 54643,
 };
 
-enum ZoneWintergraspCreatureEntries
+enum ZoneWintergraspSpawnIds
 {
-    NPC_WORLD_TRIGGER_LARGE_AOI_NOT_IMMUNE_PC_NPC = 23472,
+    SPAWNID_VEHICLE_TELEPORTER_1 = 200043,
+    SPAWNID_VEHICLE_TELEPORTER_2 = 200044,
+    SPAWNID_VEHICLE_TELEPORT_DESTINATION_1 = 131724,
+    SPAWNID_VEHICLE_TELEPORT_DESTINATION_2 = 131721
 };
 
 enum ZoneWintergraspQuestIds
@@ -115,6 +121,12 @@ static std::vector<uint32> const wintergraspVehicleIds =
     NPC_WINTERGRASP_DEMOLISHER,
     NPC_WINTERGRASP_SIEGE_ENGINE_ALLIANCE,
     NPC_WINTERGRASP_SIEGE_ENGINE_HORDE
+};
+
+static std::unordered_map<ObjectGuid::LowType, ObjectGuid::LowType> const wintergraspVehicleTeleportDestinations =
+{
+    { SPAWNID_VEHICLE_TELEPORTER_1, SPAWNID_VEHICLE_TELEPORT_DESTINATION_1 },
+    { SPAWNID_VEHICLE_TELEPORTER_2, SPAWNID_VEHICLE_TELEPORT_DESTINATION_2 }
 };
 
 struct npc_wg_demolisher_engineer : public ScriptedAI
@@ -310,39 +322,24 @@ struct go_wg_vehicle_teleporter : public GameObjectAI
                 return;
             }
 
-            Creature* teleportTrigger = me->FindNearestCreature(NPC_WORLD_TRIGGER_LARGE_AOI_NOT_IMMUNE_PC_NPC, 5.0f, true);
-            if (!teleportTrigger)
+            ObjectGuid::LowType const* destinationSpawnId = Trinity::Containers::MapGetValuePtr(wintergraspVehicleTeleportDestinations, me->GetSpawnId());
+            Creature* destination = destinationSpawnId ? me->GetMap()->GetCreatureBySpawnId(*destinationSpawnId) : nullptr;
+            if (!destination)
             {
                 _checkTimer.Reset(60000);
                 return;
             }
 
             for (uint32 entry : wintergraspVehicleIds)
-            {
                 if (Creature* vehicle = me->FindNearestCreature(entry, 5.0f, true))
-                    HandleTeleport(vehicle, teleportTrigger, wintergrasp);
-            }
+                    if (!vehicle->HasAura(SPELL_VEHICLE_TELEPORT))
+                        destination->CastSpell(vehicle, SPELL_VEHICLE_TELEPORT, true);
 
-            _checkTimer.Reset(2000);
+            _checkTimer.Reset(1000);
         }
     }
 
 private:
-    void HandleTeleport(Creature* vehicle, Creature* teleportTrigger, Battlefield* wintergrasp)
-    {
-        if (vehicle->HasAura(SPELL_VEHICLE_TELEPORT))
-            return;
-
-        Player* owner = vehicle->GetCharmerOrOwnerPlayerOrPlayerItself();
-        if (!owner)
-            return;
-
-        if (wintergrasp->GetAttackingTeamId() != owner->GetTeamId())
-            return;
-
-        teleportTrigger->CastSpell(vehicle, SPELL_VEHICLE_TELEPORT, true);
-    }
-
     TimeTracker _checkTimer;
 };
 
