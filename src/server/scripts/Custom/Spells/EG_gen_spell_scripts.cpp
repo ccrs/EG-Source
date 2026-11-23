@@ -26,6 +26,7 @@
 #include "MotionMaster.h"
 #include "MovementTypedefs.h"
 #include "ObjectAccessor.h"
+#include "Optional.h"
 #include "PathGenerator.h"
 #include "Player.h"
 #include "Spell.h"
@@ -35,6 +36,8 @@
 #include "SpellScript.h"
 #include "TemporarySummon.h"
 #include "Unit.h"
+#include <algorithm>
+#include <list>
 
 // 45775 - Cosmetic - Divine Shield Blue
 class EG_spell_cosmetic___divine_shield_blue : public AuraScript
@@ -817,6 +820,79 @@ class EG_spell_netherstorm_ring_of_flame : public AuraScript
     }
 };
 
+enum RocketPropelledGoblinGrenade
+{
+    SPELL_RP_GG_TRIGGER_MISSILE = 49769
+};
+
+static bool IsVehicleBase(WorldObject const* object)
+{
+    Unit const* unit = object->ToUnit();
+    return unit && unit->IsVehicle() && !unit->GetVehicle();
+}
+
+// 49761 - Rocket-Propelled Goblin Grenade
+class EG_spell_wintergrasp_rp_gg : public SpellScript
+{
+    PrepareSpellScript(EG_spell_wintergrasp_rp_gg);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_RP_GG_TRIGGER_MISSILE });
+    }
+
+    void FilterVehicleTargets(std::list<WorldObject*>& targets)
+    {
+        targets.remove_if([](WorldObject const* target) { return !IsVehicleBase(target); });
+    }
+
+    void SelectTrackedVehicle(std::list<WorldObject*>& targets)
+    {
+        if (targets.empty())
+            return;
+
+        WorldLocation const* dest = GetExplTargetDest();
+        auto nearest = std::ranges::min_element(targets, { }, [dest](WorldObject const* target) { return target->GetExactDistSq(dest); });
+        _vehiclePosition = (*nearest)->GetPosition();
+    }
+
+    void LaunchMissile(SpellEffIndex /*effIndex*/)
+    {
+        GetCaster()->CastSpell(_vehiclePosition.value_or(*GetExplTargetDest()), SPELL_RP_GG_TRIGGER_MISSILE, true);
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(EG_spell_wintergrasp_rp_gg::FilterVehicleTargets, EFFECT_1, TARGET_UNIT_CONE_ENEMY_24);
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(EG_spell_wintergrasp_rp_gg::SelectTrackedVehicle, EFFECT_1, TARGET_UNIT_CONE_ENEMY_24);
+        OnEffectLaunch += SpellEffectFn(EG_spell_wintergrasp_rp_gg::LaunchMissile, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+
+    Optional<Position> _vehiclePosition;
+};
+
+// 49760 - Rocket-Propelled Goblin Grenade
+class EG_spell_wintergrasp_rp_gg_impact : public SpellScript
+{
+    PrepareSpellScript(EG_spell_wintergrasp_rp_gg_impact);
+
+    void FilterKnockBackTargets(std::list<WorldObject*>& targets)
+    {
+        targets.remove_if(IsVehicleBase);
+    }
+
+    void FilterDamageTargets(std::list<WorldObject*>& targets)
+    {
+        targets.remove_if([](WorldObject const* target) { return !IsVehicleBase(target); });
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(EG_spell_wintergrasp_rp_gg_impact::FilterKnockBackTargets, EFFECT_0, TARGET_UNIT_DEST_AREA_ENEMY);
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(EG_spell_wintergrasp_rp_gg_impact::FilterDamageTargets, EFFECT_1, TARGET_UNIT_DEST_AREA_ENEMY);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
@@ -846,4 +922,6 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_varos_arcane_beam_visual);
     RegisterSpellScript(EG_spell_ruins_of_ahnqiraj_attack_order);
     RegisterSpellScript(EG_spell_netherstorm_ring_of_flame);
+    RegisterSpellScript(EG_spell_wintergrasp_rp_gg);
+    RegisterSpellScript(EG_spell_wintergrasp_rp_gg_impact);
 }

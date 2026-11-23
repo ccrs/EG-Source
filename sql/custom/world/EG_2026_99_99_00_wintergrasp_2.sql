@@ -650,3 +650,9 @@ INSERT INTO `areatrigger_scripts` (`entry`, `ScriptName`) VALUES
 DELETE FROM `trinity_string` WHERE `entry` = 20026;
 INSERT INTO `trinity_string` (`entry`, `content_default`) VALUES
 (20026, 'The battle for Wintergrasp is about to begin. The Vault of Archavon closes when it starts and everyone inside will be removed.');
+
+-- RP-GG
+DELETE FROM `spell_script_names` WHERE `spell_id` IN (49760, 49761);
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(49760, 'EG_spell_wintergrasp_rp_gg_impact'),
+(49761, 'EG_spell_wintergrasp_rp_gg');
