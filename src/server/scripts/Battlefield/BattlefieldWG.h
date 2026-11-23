@@ -540,7 +540,7 @@ public:
     void OnCreatureRemove(Creature* object) override;
     void OnGameObjectCreate(GameObject* object) override;
     void OnUnitDeath(Unit* unit) override;
-    void ProcessEvent(WorldObject* object, uint32 eventId) override;
+    void ProcessEvent(WorldObject* object, uint32 eventId, WorldObject* invoker) override;
 
     void HandleBuildingDestroyed(WintergraspBuilding const& building);
     void SendStalkerText(uint8 textGroup, WorldObject const* whisperTarget = nullptr);

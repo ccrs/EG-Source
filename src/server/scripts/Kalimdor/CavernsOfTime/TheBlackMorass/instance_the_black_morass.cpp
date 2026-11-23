@@ -256,7 +256,7 @@ public:
             }
         }
 
-        void ProcessEvent(WorldObject* /*gameObject*/, uint32 eventId) override
+        void ProcessEvent(WorldObject* /*gameObject*/, uint32 eventId, WorldObject* /*invoker*/) override
         {
             // Positions are sniffed but the way they are linked to events is guessed
             switch (eventId)

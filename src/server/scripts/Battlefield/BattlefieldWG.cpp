@@ -714,9 +714,9 @@ void BattlefieldWintergrasp::OnUnitDeath(Unit* unit)
     RemoveVehicle(unit->GetGUID());
 }
 
-void BattlefieldWintergrasp::ProcessEvent(WorldObject* object, uint32 eventId)
+void BattlefieldWintergrasp::ProcessEvent(WorldObject* object, uint32 eventId, WorldObject* invoker)
 {
-    Battlefield::ProcessEvent(object, eventId);
+    Battlefield::ProcessEvent(object, eventId, invoker);
 
     if (eventId == EVENT_WINTERGRASP_TITAN_RELIC)
         QueueEvent<BattlefieldBattleCaptureEvent>();

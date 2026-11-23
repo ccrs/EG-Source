@@ -358,7 +358,7 @@ void Battlefield::OnGameObjectRemove(GameObject* object)
         entity->OnObjectRemove(object, *objectInfo);
 }
 
-void Battlefield::ProcessEvent(WorldObject* object, uint32 eventId)
+void Battlefield::ProcessEvent(WorldObject* object, uint32 eventId, WorldObject* /*invoker*/)
 {
     GameObject* gameObject = object ? object->ToGameObject() : nullptr;
     if (!gameObject || !gameObject->IsDestructibleBuilding() || !GetBuildingByEntry(gameObject->GetEntry()))
