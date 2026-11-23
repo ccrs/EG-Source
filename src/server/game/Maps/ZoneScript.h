@@ -56,6 +56,7 @@ class TC_GAME_API ZoneScript
         virtual void SetData(uint32 /*DataId*/, uint32 /*Value*/) { }
 
         virtual void ProcessEvent(WorldObject* /*obj*/, uint32 /*eventId*/) { }
+        virtual void ProcessEvent(WorldObject* obj, uint32 eventId, WorldObject* invoker); // EG
 };
 
 #endif

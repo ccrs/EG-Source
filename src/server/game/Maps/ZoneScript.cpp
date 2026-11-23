@@ -22,3 +22,8 @@ uint32 ZoneScript::GetCreatureEntry(ObjectGuid::LowType /*guidLow*/, CreatureDat
 {
     return data->id;
 }
+
+void ZoneScript::ProcessEvent(WorldObject* obj, uint32 eventId, WorldObject* /*invoker*/)
+{
+    ProcessEvent(obj, eventId);
+}

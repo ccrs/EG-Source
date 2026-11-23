@@ -1183,7 +1183,7 @@ void Spell::EffectSendEvent()
     TC_LOG_DEBUG("spells", "Spell ScriptStart {} for spellid {} in EffectSendEvent ", effectInfo->MiscValue, m_spellInfo->Id);
 
     if (ZoneScript* zoneScript = m_caster->GetZoneScript())
-        zoneScript->ProcessEvent(target, effectInfo->MiscValue);
+        zoneScript->ProcessEvent(target, effectInfo->MiscValue, m_caster); // EG
     else if (InstanceScript* instanceScript = m_caster->GetInstanceScript())    // needed in case Player is the caster
         instanceScript->ProcessEvent(target, effectInfo->MiscValue);
 
