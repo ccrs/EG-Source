@@ -625,6 +625,15 @@ DELETE FROM `achievement_criteria_data` WHERE `criteria_id` = 7666 AND `type` = 
 INSERT INTO `achievement_criteria_data` (`criteria_id`, `type`, `value1`, `value2`, `ScriptName`) VALUES
 (7666, 11, 0, 0, 'achievement_wg_within_our_grasp');
 
+-- Vehicular Gnomeslaughter
+DELETE FROM `disables` WHERE `sourceType` = 4 AND `entry` IN (7704, 7705);
+DELETE FROM `achievement_criteria_data` WHERE `criteria_id` IN (7704, 7705);
+INSERT INTO `achievement_criteria_data` (`criteria_id`, `type`, `value1`, `value2`, `ScriptName`) VALUES
+(7704, 6, 4197, 0, ''),
+(7704, 11, 0, 0, 'EG_achievement_wg_vehicular_gnomeslaughter_vehicle'),
+(7705, 6, 4197, 0, ''),
+(7705, 11, 0, 0, 'EG_achievement_wg_vehicular_gnomeslaughter_cannon');
+
 -- Fortress teleporters
 DELETE FROM `gameobject_addon` WHERE `guid` = 200052;
 DELETE FROM `gameobject` WHERE `guid` = 200052;

@@ -5023,7 +5023,7 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
-    // EG - Alchemy transmutes
+    // Alchemy transmutes
     ApplySpellFix({
         // Vanilla metal
         11479, 11480,
@@ -5340,6 +5340,14 @@ void SpellMgr::LoadSpellInfoCorrections()
     {
         spellInfo->_GetEffect(EFFECT_0).RadiusEntry = sSpellRadiusStore.LookupEntry(EFFECT_RADIUS_100_YARDS);
         spellInfo->MaxAffectedTargets = 1;
+    });
+
+    // Tower Kill Credit (Wintergrasp)
+    ApplySpellFix({ 20723 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Attributes |= SPELL_ATTR0_UNAFFECTED_BY_INVULNERABILITY;
+        spellInfo->AttributesEx2 |= SPELL_ATTR2_CAN_TARGET_DEAD;
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_ALLOW_GHOST_TARGET;
     });
 
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)

@@ -722,7 +722,7 @@ void BattlefieldWintergrasp::ProcessEvent(WorldObject* object, uint32 eventId, W
         QueueEvent<BattlefieldBattleCaptureEvent>();
 }
 
-void BattlefieldWintergrasp::HandleBuildingDestroyed(WintergraspBuilding const& building, Player* /*destroyer*/)
+void BattlefieldWintergrasp::HandleBuildingDestroyed(WintergraspBuilding const& building, Player* destroyer)
 {
     if (building.BuildingType == BATTLEFIELD_BUILDING_TYPE_DOOR_LAST)
     {
@@ -742,6 +742,29 @@ void BattlefieldWintergrasp::HandleBuildingDestroyed(WintergraspBuilding const& 
         Player* player = ObjectAccessor::GetPlayer(battleMap, playerGuid);
         if (player && PvPTeamIdByTeamId(player->GetTeamId()) != ownerPvPTeamId && IsPlayerInBattle(player))
             player->KilledMonsterCredit(ownerPvPTeamId == GetAttackingTeam() ? NPC_WINTERGRASP_SOUTHERN_TOWER_KILL : NPC_WINTERGRASP_VEHICLE_PROTECTED);
+    }
+
+    if (destroyer && (building.BuildingType == BATTLEFIELD_BUILDING_TYPE_TOWER || building.BuildingType == BATTLEFIELD_BUILDING_TYPE_KEEP_TOWER))
+    {
+        std::vector<GameObject*> const towerGameObjects = building.GetGameObjects();
+        auto const isInTowerRange = [&towerGameObjects](Player const* player, float distance) -> bool
+        {
+            return std::ranges::any_of(towerGameObjects, [player, distance](GameObject const* tower) -> bool
+            {
+                return player->IsInMap(tower) && tower->IsInRange(player->GetPositionX(), player->GetPositionY(), player->GetPositionZ(), distance);
+            });
+        };
+
+        if (isInTowerRange(destroyer, WINTERGRASP_TOWER_DESTROYER_CREDIT_DISTANCE))
+        {
+            destroyer->CastSpell(destroyer, SPELL_WINTERGRASP_TOWER_KILL_CREDIT, true);
+            for (ObjectGuid playerGuid : GetBattlePlayers(destroyer->GetTeamId()))
+            {
+                Player* player = ObjectAccessor::GetPlayer(battleMap, playerGuid);
+                if (player && player != destroyer && isInTowerRange(player, sWorld->getFloatConfig(CONFIG_GROUP_XP_DISTANCE)))
+                    player->CastSpell(player, SPELL_WINTERGRASP_TOWER_KILL_CREDIT, true);
+            }
+        }
     }
 
     if (building.BuildingType != BATTLEFIELD_BUILDING_TYPE_TOWER)

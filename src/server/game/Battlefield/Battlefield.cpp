@@ -1185,6 +1185,11 @@ uint32 Battlefield::GetBattlePlayerCount(TeamId teamId) const
     return _battlefieldPlayers.Count(teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE);
 }
 
+std::vector<ObjectGuid> Battlefield::GetBattlePlayers(TeamId teamId) const
+{
+    return _battlefieldPlayers.List(teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE);
+}
+
 Optional<time_t> Battlefield::GetBattleJoinTime(Player const* player) const
 {
     PlayerContainer::BattleInfo const* battleInfo = _battlefieldPlayers.FindBattleInfo(player->GetGUID(), player->GetTeamId());

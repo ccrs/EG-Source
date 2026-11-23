@@ -194,12 +194,12 @@ public:
     virtual bool Damage();
     virtual bool Destroy(Player* destroyer);
     GameObjectDestructibleState GetDestructibleState() const;
+    std::vector<GameObject*> GetGameObjects() const;
 
     BattlefieldBuildingType BuildingType;
     BattlefieldBuildingState State;
 
 protected:
-    std::vector<GameObject*> GetGameObjects() const;
     bool SetState(PvPTeamId pvpTeamId, GameObjectDestructibleState destructibleState);
     void UpdateWorldState();
 };

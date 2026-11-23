@@ -372,6 +372,7 @@ protected:
     Map* GetBattleMap() const;
     void SendWorldStateToAll(uint32 variable, uint32 value) const;
     uint32 GetBattlePlayerCount(TeamId teamId) const;
+    std::vector<ObjectGuid> GetBattlePlayers(TeamId teamId) const;
     Optional<time_t> GetBattleJoinTime(Player const* player) const;
     bool HasPendingBattleResult(Player const* player) const;
     template<class T>

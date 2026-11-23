@@ -486,6 +486,44 @@ class achievement_wg_within_our_grasp : public AchievementCriteriaScript
         }
 };
 
+class EG_achievement_wg_vehicular_gnomeslaughter_vehicle : public AchievementCriteriaScript
+{
+    public:
+        EG_achievement_wg_vehicular_gnomeslaughter_vehicle() : AchievementCriteriaScript("EG_achievement_wg_vehicular_gnomeslaughter_vehicle") { }
+
+        bool OnCheck(Player* source, Unit* /*target*/) override
+        {
+            Unit* vehicle = source->GetVehicleBase();
+            if (!vehicle)
+                return false;
+
+            switch (vehicle->GetEntry())
+            {
+                case NPC_WINTERGRASP_CATAPULT:
+                case NPC_WINTERGRASP_DEMOLISHER:
+                case NPC_WINTERGRASP_SIEGE_ENGINE_ALLIANCE:
+                case NPC_WINTERGRASP_SIEGE_ENGINE_HORDE:
+                case NPC_WINTERGRASP_SIEGE_TURRET_ALLIANCE:
+                case NPC_WINTERGRASP_SIEGE_TURRET_HORDE:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+};
+
+class EG_achievement_wg_vehicular_gnomeslaughter_cannon : public AchievementCriteriaScript
+{
+    public:
+        EG_achievement_wg_vehicular_gnomeslaughter_cannon() : AchievementCriteriaScript("EG_achievement_wg_vehicular_gnomeslaughter_cannon") { }
+
+        bool OnCheck(Player* source, Unit* /*target*/) override
+        {
+            Unit* vehicle = source->GetVehicleBase();
+            return vehicle && vehicle->GetEntry() == NPC_WINTERGRASP_TOWER_CANNON;
+        }
+};
+
 // 54640 - Teleport (Used also in Strand of the Ancients)
 class spell_wintergrasp_defender_teleport : public SpellScript
 {
@@ -749,6 +787,8 @@ void AddSC_wintergrasp()
     RegisterSpellScript(spell_wintergrasp_activate_robotic_arms);
     new achievement_wg_didnt_stand_a_chance();
     new achievement_wg_within_our_grasp();
+    new EG_achievement_wg_vehicular_gnomeslaughter_vehicle();
+    new EG_achievement_wg_vehicular_gnomeslaughter_cannon();
     RegisterSpellScript(spell_wintergrasp_defender_teleport);
     RegisterSpellScript(spell_wintergrasp_defender_teleport_trigger);
     RegisterSpellScript(spell_wintergrasp_tenacity_refresh);
