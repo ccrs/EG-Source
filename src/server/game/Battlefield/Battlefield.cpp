@@ -497,6 +497,12 @@ void Battlefield::HandleQueueInviteResponse(Player* player, bool accepted)
 void Battlefield::HandleQueueExitRequest(Player* player)
 {
     ObjectGuid const playerGuid = player->GetGUID();
+    if (IsPlayerInBattle(player))
+    {
+        QueueEvent<BattlefieldBattleRaidLeaveEvent>(playerGuid);
+        return;
+    }
+
     BattlefieldPlayerStatus const status = RemoveFromQueue(playerGuid, player->GetTeamId());
     if (status != BATTLEFIELD_PLAYER_STATUS_QUEUED && status != BATTLEFIELD_PLAYER_STATUS_INVITED)
         return;

@@ -259,7 +259,10 @@ bool WintergraspBuilding::Damage()
         return false;
 
     if (_wintergrasp->IsBattleTime())
+    {
         SendText(false);
+        _wintergrasp->HandleBuildingDamaged(*this);
+    }
 
     return true;
 }
@@ -535,11 +538,18 @@ void BattlefieldWintergrasp::HandlePlayerEnterZone(Player* player)
 {
     Battlefield::HandlePlayerEnterZone(player);
 
-    if (IsPlayerInBattle(player) || HasPendingBattleResult(player))
+    if (IsPlayerInBattle(player))
+    {
+        SetStackedAura(player, player, SPELL_WINTERGRASP_TOWER_CONTROL, GetTowerControlStack(player->GetTeamId()));
+        return;
+    }
+
+    if (HasPendingBattleResult(player))
         return;
 
     RemoveRankAuras(player);
     SetTenacity(player, 0);
+    SetStackedAura(player, player, SPELL_WINTERGRASP_TOWER_CONTROL, 0);
 }
 
 void BattlefieldWintergrasp::HandleKill(Player* killer, Unit* victim)
@@ -738,6 +748,11 @@ void BattlefieldWintergrasp::ProcessEvent(WorldObject* object, uint32 eventId, W
         QueueEvent<BattlefieldBattleCaptureEvent>();
 }
 
+void BattlefieldWintergrasp::HandleBuildingDamaged(WintergraspBuilding const& building)
+{
+    CastTowerReward(building, SPELL_WINTERGRASP_DAMAGED_TOWER);
+}
+
 void BattlefieldWintergrasp::HandleBuildingDestroyed(WintergraspBuilding const& building, Player* destroyer)
 {
     if (building.BuildingType == BATTLEFIELD_BUILDING_TYPE_DOOR_LAST)
@@ -773,7 +788,9 @@ void BattlefieldWintergrasp::HandleBuildingDestroyed(WintergraspBuilding const& 
 
         if (isInTowerRange(destroyer, WINTERGRASP_TOWER_DESTROYER_CREDIT_DISTANCE))
         {
-            destroyer->CastSpell(destroyer, SPELL_WINTERGRASP_TOWER_KILL_CREDIT, true);
+            if (IsPlayerInBattle(destroyer))
+                destroyer->CastSpell(destroyer, SPELL_WINTERGRASP_TOWER_KILL_CREDIT, true);
+
             for (ObjectGuid playerGuid : GetBattlePlayers(destroyer->GetTeamId()))
             {
                 Player* player = ObjectAccessor::GetPlayer(battleMap, playerGuid);
@@ -783,8 +800,18 @@ void BattlefieldWintergrasp::HandleBuildingDestroyed(WintergraspBuilding const& 
         }
     }
 
+    CastTowerReward(building, SPELL_WINTERGRASP_DESTROYED_TOWER);
+
     if (building.BuildingType != BATTLEFIELD_BUILDING_TYPE_TOWER)
         return;
+
+    for (TeamId teamId : { TEAM_ALLIANCE, TEAM_HORDE })
+    {
+        uint32 const towerControlStack = GetTowerControlStack(teamId);
+        for (ObjectGuid playerGuid : GetBattlePlayers(teamId))
+            if (Player* player = ObjectAccessor::GetPlayer(battleMap, playerGuid))
+                SetStackedAura(player, player, SPELL_WINTERGRASP_TOWER_CONTROL, towerControlStack);
+    }
 
     uint32 towers = 0;
     uint32 destroyedTowers = 0;
@@ -885,12 +912,14 @@ void BattlefieldWintergrasp::OnPlayerJoinBattle(Player* player)
 {
     RemoveRankAuras(player);
     player->CastSpell(player, SPELL_WINTERGRASP_RECRUIT, true);
+    SetStackedAura(player, player, SPELL_WINTERGRASP_TOWER_CONTROL, GetTowerControlStack(player->GetTeamId()));
 }
 
 void BattlefieldWintergrasp::OnPlayerLeaveBattle(Player* player)
 {
     RemoveRankAuras(player);
     SetTenacity(player, 0);
+    SetStackedAura(player, player, SPELL_WINTERGRASP_TOWER_CONTROL, 0);
     for (Unit const* vehicleBase = player->GetVehicleBase(); vehicleBase; vehicleBase = vehicleBase->GetVehicleBase())
     {
         bool const builtVehicle = std::any_of(_vehicleGUIDs.begin(), _vehicleGUIDs.end(), [vehicleBase](GuidUnorderedSet const& vehicleGuids) -> bool
@@ -957,6 +986,8 @@ void BattlefieldWintergrasp::OnPeriodicUpdate(std::vector<Player*> const& player
     GuidUnorderedSet tenacityUnitGUIDs;
     for (Player* player : players)
     {
+        SetStackedAura(player, player, SPELL_WINTERGRASP_TOWER_CONTROL, GetTowerControlStack(player->GetTeamId()));
+
         uint32 const stack = player->GetTeamId() == tenacityTeamId ? tenacityStack : 0;
         SetTenacity(player, stack);
         if (!stack)
@@ -970,7 +1001,7 @@ void BattlefieldWintergrasp::OnPeriodicUpdate(std::vector<Player*> const& player
             if (!controlled->HasAura(SPELL_WINTERGRASP_TENACITY_VEHICLE, player->GetGUID()))
                 controlled->RemoveAurasDueToSpell(SPELL_WINTERGRASP_TENACITY_VEHICLE);
 
-            SetTenacityAura(player, controlled, SPELL_WINTERGRASP_TENACITY_VEHICLE, stack);
+            SetStackedAura(player, controlled, SPELL_WINTERGRASP_TENACITY_VEHICLE, stack);
             tenacityUnitGUIDs.insert(controlled->GetGUID());
         }
     }
@@ -1077,8 +1108,8 @@ void BattlefieldWintergrasp::DespawnVehicles()
 
 void BattlefieldWintergrasp::SetTenacity(Player* player, uint32 stack)
 {
-    SetTenacityAura(player, player, SPELL_WINTERGRASP_TENACITY, stack);
-    SetTenacityAura(player, player, SPELL_WINTERGRASP_TENACITY_HEALING, stack);
+    SetStackedAura(player, player, SPELL_WINTERGRASP_TENACITY, stack);
+    SetStackedAura(player, player, SPELL_WINTERGRASP_TENACITY_HEALING, stack);
 
     std::array<uint32, 4> const& honorSpells = WintergraspTenacityHonorSpells[player->GetTeamId()];
     uint32 const honorSpellId = stack ? honorSpells[std::min<size_t>(stack, honorSpells.size()) - 1] : 0;
@@ -1098,7 +1129,7 @@ void BattlefieldWintergrasp::SetTenacity(Player* player, uint32 stack)
         player->CastSpell(player, honorSpellId, true);
 }
 
-void BattlefieldWintergrasp::SetTenacityAura(Unit* caster, Unit* target, uint32 spellId, uint32 stack)
+void BattlefieldWintergrasp::SetStackedAura(Unit* caster, Unit* target, uint32 spellId, uint32 stack)
 {
     Aura* aura = target->GetAura(spellId, caster->GetGUID());
     if (!stack)
@@ -1113,12 +1144,42 @@ void BattlefieldWintergrasp::SetTenacityAura(Unit* caster, Unit* target, uint32 
         caster->SetAuraStack(spellId, target, stack);
 }
 
+void BattlefieldWintergrasp::CastTowerReward(WintergraspBuilding const& building, uint32 spellId)
+{
+    if (building.BuildingType != BATTLEFIELD_BUILDING_TYPE_TOWER && building.BuildingType != BATTLEFIELD_BUILDING_TYPE_KEEP_TOWER)
+        return;
+
+    PvPTeamId const rewardedPvPTeamId = building.GetPvPTeamId() == GetAttackingTeam() ? GetControllingTeam() : GetAttackingTeam();
+    Map* battleMap = GetBattleMap();
+    for (ObjectGuid playerGuid : GetBattlePlayers(TeamIdByPvPTeamId(rewardedPvPTeamId)))
+        if (Player* player = ObjectAccessor::GetPlayer(battleMap, playerGuid))
+            player->CastSpell(player, spellId, true);
+}
+
 uint32 BattlefieldWintergrasp::GetControlState() const
 {
     if (IsBattleTime())
         return WINTERGRASP_CONTROL_BATTLE;
 
     return GetControllingTeam() == PVP_TEAM_HORDE ? WINTERGRASP_CONTROL_HORDE : WINTERGRASP_CONTROL_ALLIANCE;
+}
+
+uint32 BattlefieldWintergrasp::GetTowerControlStack(TeamId teamId) const
+{
+    uint32 standingTowers = 0;
+    uint32 destroyedTowers = 0;
+    for (auto const& [_, building] : GetEntities<BattlefieldBuilding>())
+    {
+        if (building->BuildingType != BATTLEFIELD_BUILDING_TYPE_TOWER)
+            continue;
+
+        if (building->GetDestructibleState() == GO_DESTRUCTIBLE_DESTROYED)
+            ++destroyedTowers;
+        else
+            ++standingTowers;
+    }
+
+    return teamId == GetAttackingTeamId() ? standingTowers : destroyedTowers;
 }
 
 uint32 BattlefieldWintergrasp::GetVehicleCount(PvPTeamId pvpTeamId) const

@@ -392,9 +392,9 @@ class spell_wintergrasp_force_building : public SpellScript
 // 56661 - Build Siege Engine
 // 56663 - Build Catapult
 // 61408 - Build Siege Engine
-class spell_wintergrasp_build_vehicle : public SpellScript
+class EG_spell_wintergrasp_build_vehicle : public SpellScript
 {
-    PrepareSpellScript(spell_wintergrasp_build_vehicle);
+    PrepareSpellScript(EG_spell_wintergrasp_build_vehicle);
 
     SpellCastResult CheckCast()
     {
@@ -409,7 +409,7 @@ class spell_wintergrasp_build_vehicle : public SpellScript
 
     void Register() override
     {
-        OnCheckCast += SpellCheckCastFn(spell_wintergrasp_build_vehicle::CheckCast);
+        OnCheckCast += SpellCheckCastFn(EG_spell_wintergrasp_build_vehicle::CheckCast);
     }
 };
 
@@ -639,9 +639,9 @@ class spell_wintergrasp_tenacity_refresh : public AuraScript
 };
 
 // 2584 - Waiting to Resurrect
-class spell_wintergrasp_waiting_to_resurrect : public AuraScript
+class EG_spell_wintergrasp_waiting_to_resurrect : public AuraScript
 {
-    PrepareAuraScript(spell_wintergrasp_waiting_to_resurrect);
+    PrepareAuraScript(EG_spell_wintergrasp_waiting_to_resurrect);
 
     bool Load() override
     {
@@ -661,7 +661,7 @@ class spell_wintergrasp_waiting_to_resurrect : public AuraScript
 
     void Register() override
     {
-        OnEffectRemove += AuraEffectRemoveFn(spell_wintergrasp_waiting_to_resurrect::HandleEffectRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+        OnEffectRemove += AuraEffectRemoveFn(EG_spell_wintergrasp_waiting_to_resurrect::HandleEffectRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
     }
 };
 
@@ -679,31 +679,37 @@ static float GetWintergraspRewardFactor(Unit const* unit)
     return 0.0f;
 }
 
-static void RewardWintergraspHonor(Player* player, int32 value)
+static int32 GetWintergraspFinalRewardHonorGainPct(Player const* player)
+{
+    if (player->HasAura(SPELL_WINTERGRASP_RECRUIT))
+        return 0;
+
+    Battlefield* wintergrasp = sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP);
+    return wintergrasp ? wintergrasp->GetBattleHonorGainPct(player) : 0;
+}
+
+static void RewardWintergraspHonor(Player* player, int32 value, int32 honorGainPct)
 {
     float const factor = GetWintergraspRewardFactor(player);
     if (!factor)
         return;
 
     float honor = value / 10.0f * factor;
-    if (!player->HasAura(SPELL_WINTERGRASP_RECRUIT))
-        if (Battlefield* wintergrasp = sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP))
-            AddPct(honor, wintergrasp->GetBattleHonorGainPct(player));
-
+    AddPct(honor, honorGainPct);
     player->RewardHonor(nullptr, 1, int32(std::lround(honor)));
 }
 
 // 56902 - Wintergrasp Victory
 // 58494 - Wintergrasp Defeat
-class spell_wintergrasp_battle_reward : public SpellScript
+class EG_spell_wintergrasp_battle_reward : public SpellScript
 {
-    PrepareSpellScript(spell_wintergrasp_battle_reward);
+    PrepareSpellScript(EG_spell_wintergrasp_battle_reward);
 
     void HandleHonor(SpellEffIndex effIndex)
     {
         PreventHitDefaultEffect(effIndex);
         if (Player* player = GetHitPlayer())
-            RewardWintergraspHonor(player, GetEffectValue());
+            RewardWintergraspHonor(player, GetEffectValue(), GetWintergraspFinalRewardHonorGainPct(player));
     }
 
     void HandleMarks(SpellEffIndex effIndex)
@@ -720,27 +726,46 @@ class spell_wintergrasp_battle_reward : public SpellScript
 
     void Register() override
     {
-        OnEffectHitTarget += SpellEffectFn(spell_wintergrasp_battle_reward::HandleHonor, EFFECT_0, SPELL_EFFECT_ADD_HONOR);
-        OnEffectHitTarget += SpellEffectFn(spell_wintergrasp_battle_reward::HandleMarks, EFFECT_1, SPELL_EFFECT_CREATE_ITEM);
+        OnEffectHitTarget += SpellEffectFn(EG_spell_wintergrasp_battle_reward::HandleHonor, EFFECT_0, SPELL_EFFECT_ADD_HONOR);
+        OnEffectHitTarget += SpellEffectFn(EG_spell_wintergrasp_battle_reward::HandleMarks, EFFECT_1, SPELL_EFFECT_CREATE_ITEM);
     }
 };
 
 // 59201 - Damaged Building Reward
 // 59203 - Intact Building Defended
-class spell_wintergrasp_building_reward : public SpellScript
+class EG_spell_wintergrasp_building_reward : public SpellScript
 {
-    PrepareSpellScript(spell_wintergrasp_building_reward);
+    PrepareSpellScript(EG_spell_wintergrasp_building_reward);
 
     void HandleHonor(SpellEffIndex effIndex)
     {
         PreventHitDefaultEffect(effIndex);
         if (Player* player = GetHitPlayer())
-            RewardWintergraspHonor(player, GetEffectValue());
+            RewardWintergraspHonor(player, GetEffectValue(), GetWintergraspFinalRewardHonorGainPct(player));
     }
 
     void Register() override
     {
-        OnEffectHitTarget += SpellEffectFn(spell_wintergrasp_building_reward::HandleHonor, EFFECT_0, SPELL_EFFECT_ADD_HONOR);
+        OnEffectHitTarget += SpellEffectFn(EG_spell_wintergrasp_building_reward::HandleHonor, EFFECT_0, SPELL_EFFECT_ADD_HONOR);
+    }
+};
+
+// 59135 - Tower Damaged
+// 59136 - Tower Destroyed
+class EG_spell_wintergrasp_tower_reward : public SpellScript
+{
+    PrepareSpellScript(EG_spell_wintergrasp_tower_reward);
+
+    void HandleHonor(SpellEffIndex effIndex)
+    {
+        PreventHitDefaultEffect(effIndex);
+        if (Player* player = GetHitPlayer())
+            RewardWintergraspHonor(player, GetEffectValue(), player->GetMaxPositiveAuraModifier(SPELL_AURA_MOD_HONOR_GAIN_PCT));
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_wintergrasp_tower_reward::HandleHonor, EFFECT_0, SPELL_EFFECT_ADD_HONOR);
     }
 };
 
@@ -801,7 +826,7 @@ void AddSC_wintergrasp()
     RegisterGameObjectAI(go_wg_vehicle_teleporter);
     RegisterGameObjectAI(go_wg_titan_relic);
     RegisterSpellScript(spell_wintergrasp_force_building);
-    RegisterSpellScript(spell_wintergrasp_build_vehicle);
+    RegisterSpellScript(EG_spell_wintergrasp_build_vehicle);
     RegisterSpellScript(spell_wintergrasp_grab_passenger);
     RegisterSpellScript(spell_wintergrasp_activate_robotic_arms);
     new achievement_wg_didnt_stand_a_chance();
@@ -812,9 +837,10 @@ void AddSC_wintergrasp()
     RegisterSpellScript(spell_wintergrasp_defender_teleport);
     RegisterSpellScript(spell_wintergrasp_defender_teleport_trigger);
     RegisterSpellScript(spell_wintergrasp_tenacity_refresh);
-    RegisterSpellScript(spell_wintergrasp_waiting_to_resurrect);
-    RegisterSpellScript(spell_wintergrasp_battle_reward);
-    RegisterSpellScript(spell_wintergrasp_building_reward);
+    RegisterSpellScript(EG_spell_wintergrasp_waiting_to_resurrect);
+    RegisterSpellScript(EG_spell_wintergrasp_battle_reward);
+    RegisterSpellScript(EG_spell_wintergrasp_building_reward);
+    RegisterSpellScript(EG_spell_wintergrasp_tower_reward);
     new condition_is_wintergrasp_horde();
     new condition_is_wintergrasp_alliance();
     new condition_wintergrasp_vehicle_limit("condition_wintergrasp_vehicle_buildable", true);

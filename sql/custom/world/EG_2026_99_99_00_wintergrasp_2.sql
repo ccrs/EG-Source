@@ -26,6 +26,11 @@ INSERT INTO `spell_target_position` (`ID`, `EffectIndex`, `MapID`, `PositionX`, 
 (59767, 0, 571, 4317.06, 2404.3, 392.504, 6.26813, 0), -- orientation not sniffed
 (59769, 0, 571, 5140.79, 2179.12, 390.95, 1.97222, 0);
 
+-- Waiting to Resurrect
+DELETE FROM `spell_script_names` WHERE `spell_id` = 2584 AND `ScriptName` IN ('spell_wintergrasp_waiting_to_resurrect', 'EG_spell_wintergrasp_waiting_to_resurrect');
+INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
+(2584, 'EG_spell_wintergrasp_waiting_to_resurrect');
+
 -- Building flags
 UPDATE `gameobject_template_addon` SET `flags` = 32 WHERE `entry` IN (190220, 190221, 190358, 190369, 190370, 190373, 190375, 190376, 191804, 191805, 191809);
 
@@ -477,10 +482,10 @@ INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry
 (13, 1, 49899, 0, 0, 31, 0, 3, 27852, 0, '', 0, 0, 0, '', 'Activate Robotic Arms - target Wintergrasp Control Arms');
 DELETE FROM `spell_script_names` WHERE `spell_id` IN (56575, 56661, 56663, 61408);
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
-(56575, 'spell_wintergrasp_build_vehicle'),
-(56661, 'spell_wintergrasp_build_vehicle'),
-(56663, 'spell_wintergrasp_build_vehicle'),
-(61408, 'spell_wintergrasp_build_vehicle');
+(56575, 'EG_spell_wintergrasp_build_vehicle'),
+(56661, 'EG_spell_wintergrasp_build_vehicle'),
+(56663, 'EG_spell_wintergrasp_build_vehicle'),
+(61408, 'EG_spell_wintergrasp_build_vehicle');
 
 -- Tenacity
 UPDATE `spell_dbc` SET `StackAmount` = 20, `EffectBasePoints1` = 18, `EffectBasePoints2` = 18 WHERE `Id` = 47802;
@@ -615,12 +620,14 @@ INSERT INTO `spawn_group` (`groupId`, `spawnType`, `spawnId`) VALUES
 DELETE FROM `spell_dbc` WHERE `Id` = 58931;
 INSERT INTO `spell_dbc` (`Id`, `Attributes`, `AttributesEx`, `AttributesEx2`, `AttributesEx3`, `AttributesEx4`, `AttributesEx5`, `AttributesEx6`, `SchoolMask`, `Effect1`, `Effect2`, `EffectImplicitTargetA1`, `EffectImplicitTargetA2`, `EffectMiscValue1`, `EffectMiscValue2`, `SpellName`) VALUES
 (58931, 2306867200, 1056, 336084997, 1245184, 8388736, 393224, 16781316, 1, 16, 16, 1, 1, 13181, 13183, 'Wintergrasp Victory');
-DELETE FROM `spell_script_names` WHERE `spell_id` IN (56902, 58494, 59201, 59203);
+DELETE FROM `spell_script_names` WHERE `spell_id` IN (56902, 58494, 59135, 59136, 59201, 59203);
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
-(56902, 'spell_wintergrasp_battle_reward'),
-(58494, 'spell_wintergrasp_battle_reward'),
-(59201, 'spell_wintergrasp_building_reward'),
-(59203, 'spell_wintergrasp_building_reward');
+(56902, 'EG_spell_wintergrasp_battle_reward'),
+(58494, 'EG_spell_wintergrasp_battle_reward'),
+(59135, 'EG_spell_wintergrasp_tower_reward'),
+(59136, 'EG_spell_wintergrasp_tower_reward'),
+(59201, 'EG_spell_wintergrasp_building_reward'),
+(59203, 'EG_spell_wintergrasp_building_reward');
 DELETE FROM `achievement_criteria_data` WHERE `criteria_id` = 7666 AND `type` = 11;
 INSERT INTO `achievement_criteria_data` (`criteria_id`, `type`, `value1`, `value2`, `ScriptName`) VALUES
 (7666, 11, 0, 0, 'achievement_wg_within_our_grasp');

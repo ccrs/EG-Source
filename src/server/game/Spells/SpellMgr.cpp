@@ -5315,6 +5315,8 @@ void SpellMgr::LoadSpellInfoCorrections()
         56902, // Wintergrasp Victory
         58494, // Wintergrasp Defeat
         58931, // Wintergrasp Victory (serverside)
+        59135, // Tower Damaged
+        59136, // Tower Destroyed
         59201, // Damaged Building Reward
         59203 // Intact Building Defended
     }, [](SpellInfo* spellInfo)
@@ -5348,6 +5350,12 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->Attributes |= SPELL_ATTR0_UNAFFECTED_BY_INVULNERABILITY;
         spellInfo->AttributesEx2 |= SPELL_ATTR2_CAN_TARGET_DEAD;
         spellInfo->AttributesCu |= SPELL_ATTR0_CU_ALLOW_GHOST_TARGET;
+    });
+
+    // Tower Control (Wintergrasp)
+    ApplySpellFix({ 62064 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Attributes |= SPELL_ATTR0_UNAFFECTED_BY_INVULNERABILITY;
     });
 
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)

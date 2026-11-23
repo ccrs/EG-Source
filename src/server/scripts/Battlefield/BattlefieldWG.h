@@ -545,6 +545,7 @@ public:
     void OnUnitDeath(Unit* unit) override;
     void ProcessEvent(WorldObject* object, uint32 eventId, WorldObject* invoker) override;
 
+    void HandleBuildingDamaged(WintergraspBuilding const& building);
     void HandleBuildingDestroyed(WintergraspBuilding const& building, Player* destroyer);
     void SendStalkerText(uint8 textGroup, WorldObject const* whisperTarget = nullptr);
     void SendVehicleLimits();
@@ -577,9 +578,11 @@ private:
     void RemoveVehicle(ObjectGuid vehicleGuid);
     void DespawnVehicles();
     void SetTenacity(Player* player, uint32 stack);
-    static void SetTenacityAura(Unit* caster, Unit* target, uint32 spellId, uint32 stack);
+    static void SetStackedAura(Unit* caster, Unit* target, uint32 spellId, uint32 stack);
+    void CastTowerReward(WintergraspBuilding const& building, uint32 spellId);
 
     uint32 GetControlState() const;
+    uint32 GetTowerControlStack(TeamId teamId) const;
     uint32 GetVehicleCount(PvPTeamId pvpTeamId) const;
     uint32 GetVehicleLimit(PvPTeamId pvpTeamId) const;
     bool IsVaultGateDestroyed() const;
