@@ -482,7 +482,7 @@ public:
     void OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo) override;
     std::vector<BattlefieldObjectInfo> const* GetObjectInfos() const override;
     bool Damage() override;
-    bool Destroy() override;
+    bool Destroy(Player* destroyer) override;
 
 private:
     void SendText(bool destroyed) const;
@@ -542,7 +542,7 @@ public:
     void OnUnitDeath(Unit* unit) override;
     void ProcessEvent(WorldObject* object, uint32 eventId, WorldObject* invoker) override;
 
-    void HandleBuildingDestroyed(WintergraspBuilding const& building);
+    void HandleBuildingDestroyed(WintergraspBuilding const& building, Player* destroyer);
     void SendStalkerText(uint8 textGroup, WorldObject const* whisperTarget = nullptr);
     void SendVehicleLimits();
 

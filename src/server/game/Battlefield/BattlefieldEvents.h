@@ -75,7 +75,7 @@ class BattlefieldEventKey
 class TC_GAME_API BattlefieldEvent
 {
 public:
-    explicit BattlefieldEvent(BattlefieldEventType type, BattlefieldEventQueuePolicy queuePolicy, BattlefieldEventScope scope, Milliseconds delay = 0ms, ObjectGuid objectGuid = ObjectGuid::Empty) : _type(type), _queuePolicy(queuePolicy), _scope(scope), _objectGUID(objectGuid), _delay(delay), _cancelled(false) { }
+    explicit BattlefieldEvent(BattlefieldEventType type, BattlefieldEventQueuePolicy queuePolicy, BattlefieldEventScope scope, Milliseconds delay = 0ms, ObjectGuid objectGuid = ObjectGuid::Empty, ObjectGuid invokerGuid = ObjectGuid::Empty) : _type(type), _queuePolicy(queuePolicy), _scope(scope), _objectGUID(objectGuid), _invokerGUID(invokerGuid), _delay(delay), _cancelled(false) { }
     virtual ~BattlefieldEvent() = default;
 
     void Execute(Battlefield& battlefield);
@@ -85,6 +85,7 @@ public:
     BattlefieldEventQueuePolicy GetQueuePolicy() const { return _queuePolicy; }
     BattlefieldEventScope GetScope() const { return _scope; }
     ObjectGuid GetObjectGUID() const { return _objectGUID; }
+    ObjectGuid GetInvokerGUID() const { return _invokerGUID; }
     Milliseconds GetDelay() const { return _delay; }
     bool IsCancelled() const { return _cancelled; }
 
@@ -97,6 +98,7 @@ private:
     BattlefieldEventQueuePolicy _queuePolicy;
     BattlefieldEventScope _scope;
     ObjectGuid _objectGUID;
+    ObjectGuid _invokerGUID;
     Milliseconds _delay;
     bool _cancelled;
 };
@@ -108,7 +110,7 @@ template<BattlefieldEventType Type>
 class BattlefieldTypedEvent final : public BattlefieldEvent
 {
 public:
-    explicit BattlefieldTypedEvent(ObjectGuid objectGuid = ObjectGuid::Empty, Milliseconds delay = 0ms) : BattlefieldEvent(Type, BattlefieldEventTraits<Type>::QueuePolicy, BattlefieldEventTraits<Type>::Scope, delay, objectGuid) { }
+    explicit BattlefieldTypedEvent(ObjectGuid objectGuid = ObjectGuid::Empty, Milliseconds delay = 0ms, ObjectGuid invokerGuid = ObjectGuid::Empty) : BattlefieldEvent(Type, BattlefieldEventTraits<Type>::QueuePolicy, BattlefieldEventTraits<Type>::Scope, delay, objectGuid, invokerGuid) { }
 
 protected:
     void Handle(Battlefield& battlefield) override;

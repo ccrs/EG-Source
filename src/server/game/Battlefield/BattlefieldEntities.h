@@ -192,7 +192,7 @@ public:
     virtual void ChangeTeam() { }
     virtual void Update(std::vector<Player*> const& /*players*/, Milliseconds /*diff*/) { }
     virtual bool Damage();
-    virtual bool Destroy();
+    virtual bool Destroy(Player* destroyer);
     GameObjectDestructibleState GetDestructibleState() const;
 
     BattlefieldBuildingType BuildingType;

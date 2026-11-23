@@ -358,7 +358,7 @@ void Battlefield::OnGameObjectRemove(GameObject* object)
         entity->OnObjectRemove(object, *objectInfo);
 }
 
-void Battlefield::ProcessEvent(WorldObject* object, uint32 eventId, WorldObject* /*invoker*/)
+void Battlefield::ProcessEvent(WorldObject* object, uint32 eventId, WorldObject* invoker)
 {
     GameObject* gameObject = object ? object->ToGameObject() : nullptr;
     if (!gameObject || !gameObject->IsDestructibleBuilding() || !GetBuildingByEntry(gameObject->GetEntry()))
@@ -367,7 +367,10 @@ void Battlefield::ProcessEvent(WorldObject* object, uint32 eventId, WorldObject*
     if (eventId == gameObject->GetGOInfo()->building.damagedEvent)
         QueueEvent<BattlefieldBuildingDamageEvent>(gameObject->GetGUID());
     else if (eventId == gameObject->GetGOInfo()->building.destroyedEvent)
-        QueueEvent<BattlefieldBuildingDestroyEvent>(gameObject->GetGUID());
+    {
+        Player* player = invoker ? invoker->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
+        QueueEvent<BattlefieldBuildingDestroyEvent>(gameObject->GetGUID(), 0ms, player ? player->GetGUID() : ObjectGuid::Empty);
+    }
 }
 
 void Battlefield::SendInitWorldStatesTo(Player* player)
@@ -928,10 +931,10 @@ void Battlefield::ProcessBuildingDamage(BattlefieldEventKey /*key*/, ObjectGuid 
         building->Damage();
 }
 
-void Battlefield::ProcessBuildingDestroy(BattlefieldEventKey /*key*/, ObjectGuid objectGuid)
+void Battlefield::ProcessBuildingDestroy(BattlefieldEventKey /*key*/, ObjectGuid objectGuid, ObjectGuid invokerGuid)
 {
     if (BattlefieldBuilding* building = GetBuildingByEntry(objectGuid.GetEntry()))
-        building->Destroy();
+        building->Destroy(ObjectAccessor::FindPlayer(invokerGuid));
 }
 
 void Battlefield::ProcessPeriodicUpdate(BattlefieldEventKey key)

@@ -135,7 +135,7 @@ void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BUILDING_DAMAGE>::Handle(Battlefiel
 template<>
 void BattlefieldTypedEvent<BATTLEFIELD_EVENT_BUILDING_DESTROY>::Handle(Battlefield& battlefield)
 {
-    battlefield.ProcessBuildingDestroy(GetKey(), GetObjectGUID());
+    battlefield.ProcessBuildingDestroy(GetKey(), GetObjectGUID(), GetInvokerGUID());
 }
 
 template<>

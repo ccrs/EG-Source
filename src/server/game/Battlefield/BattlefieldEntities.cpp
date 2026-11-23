@@ -197,7 +197,7 @@ bool BattlefieldBuilding::Damage()
     return true;
 }
 
-bool BattlefieldBuilding::Destroy()
+bool BattlefieldBuilding::Destroy(Player* /*destroyer*/)
 {
     if (GetDestructibleState() >= GO_DESTRUCTIBLE_DESTROYED)
         return false;

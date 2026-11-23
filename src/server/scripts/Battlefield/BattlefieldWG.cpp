@@ -260,16 +260,16 @@ bool WintergraspBuilding::Damage()
     return true;
 }
 
-bool WintergraspBuilding::Destroy()
+bool WintergraspBuilding::Destroy(Player* destroyer)
 {
-    if (!BattlefieldDestructibleBuilding::Destroy())
+    if (!BattlefieldDestructibleBuilding::Destroy(destroyer))
         return false;
 
     if (!_wintergrasp->IsBattleTime())
         return true;
 
     SendText(true);
-    _wintergrasp->HandleBuildingDestroyed(*this);
+    _wintergrasp->HandleBuildingDestroyed(*this, destroyer);
     return true;
 }
 
@@ -722,7 +722,7 @@ void BattlefieldWintergrasp::ProcessEvent(WorldObject* object, uint32 eventId, W
         QueueEvent<BattlefieldBattleCaptureEvent>();
 }
 
-void BattlefieldWintergrasp::HandleBuildingDestroyed(WintergraspBuilding const& building)
+void BattlefieldWintergrasp::HandleBuildingDestroyed(WintergraspBuilding const& building, Player* /*destroyer*/)
 {
     if (building.BuildingType == BATTLEFIELD_BUILDING_TYPE_DOOR_LAST)
     {

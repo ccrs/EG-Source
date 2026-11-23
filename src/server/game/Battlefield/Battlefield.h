@@ -311,7 +311,7 @@ public:
     void ProcessBattleFill(BattlefieldEventKey key);
     void ProcessBattleKick(BattlefieldEventKey key, Player* player);
     void ProcessBuildingDamage(BattlefieldEventKey key, ObjectGuid objectGuid);
-    void ProcessBuildingDestroy(BattlefieldEventKey key, ObjectGuid objectGuid);
+    void ProcessBuildingDestroy(BattlefieldEventKey key, ObjectGuid objectGuid, ObjectGuid invokerGuid);
     void ProcessPeriodicUpdate(BattlefieldEventKey key);
     void ProcessBattleStatusClear(BattlefieldEventKey key);
     void ProcessBattleCapture(BattlefieldEventKey key);
