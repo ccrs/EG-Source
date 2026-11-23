@@ -67,7 +67,10 @@ enum WintergraspNPCEntries
     NPC_WINTERGRASP_DEMOLISHER = 28094,
 
     NPC_WINTERGRASP_PVP_KILL_HORDE = 39019,
-    NPC_WINTERGRASP_PVP_KILL_ALLIANCE = 31086
+    NPC_WINTERGRASP_PVP_KILL_ALLIANCE = 31086,
+    NPC_WINTERGRASP_PVP_KILL_VEHICLE = 31093,
+    NPC_WINTERGRASP_VEHICLE_PROTECTED = 31284,
+    NPC_WINTERGRASP_SOUTHERN_TOWER_KILL = 35074
 };
 
 enum WintergraspSpawnIds
@@ -443,7 +446,7 @@ static uint32 constexpr WINTERGRASP_VEHICLES_PER_WORKSHOP = 4;
 static uint32 constexpr WINTERGRASP_CAPTURE_NEUTRAL_PERCENT = 80;
 static uint8 constexpr WINTERGRASP_RECRUIT_PROMOTION_STACKS = 6;
 static uint8 constexpr WINTERGRASP_CORPORAL_PROMOTION_STACKS = 10;
-static float constexpr WINTERGRASP_RANK_CREDIT_DISTANCE = 40.0f;
+static float constexpr WINTERGRASP_KILL_CREDIT_DISTANCE = 40.0f;
 
 namespace WorldPackets
 {
@@ -530,6 +533,7 @@ public:
     uint32 GetFaction(PvPTeamId pvpTeamId) const override;
     void HandlePlayerEnterZone(Player* player) override;
     void HandleKill(Player* killer, Unit* victim) override;
+    void HandleHonorableKill(Player* player, Player* victim) override;
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void SendGlobalWorldStates(Player const* player) override;
     void OnCreatureCreate(Creature* object) override;
@@ -538,8 +542,7 @@ public:
     void OnUnitDeath(Unit* unit) override;
     void ProcessEvent(WorldObject* object, uint32 eventId) override;
 
-    void HandleSouthernTowerDestroyed();
-    void HandleVaultGateDestroyed();
+    void HandleBuildingDestroyed(WintergraspBuilding const& building);
     void SendStalkerText(uint8 textGroup, WorldObject const* whisperTarget = nullptr);
     void SendVehicleLimits();
 

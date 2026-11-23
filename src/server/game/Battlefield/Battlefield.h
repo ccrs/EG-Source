@@ -243,6 +243,7 @@ public:
     virtual void HandlePlayerLeaveZone(Player* player);
     // Called when a player inside the battlefield zone kills a unit
     virtual void HandleKill(Player* /*killer*/, Unit* /*victim*/) { }
+    virtual void HandleHonorableKill(Player* /*player*/, Player* /*victim*/) { }
     // Called when a player queries a gossip from a spirit healer
     virtual void SendAreaSpiritHealerQueryOpcode(Player* player, ObjectGuid source);
     // Called when a player moves into a resurrection queue

@@ -265,16 +265,11 @@ bool WintergraspBuilding::Destroy()
     if (!BattlefieldDestructibleBuilding::Destroy())
         return false;
 
-    if (BuildingType == BATTLEFIELD_BUILDING_TYPE_DOOR_LAST)
-        _wintergrasp->HandleVaultGateDestroyed();
-
     if (!_wintergrasp->IsBattleTime())
         return true;
 
     SendText(true);
-    if (BuildingType == BATTLEFIELD_BUILDING_TYPE_TOWER)
-        _wintergrasp->HandleSouthernTowerDestroyed();
-
+    _wintergrasp->HandleBuildingDestroyed(*this);
     return true;
 }
 
@@ -564,9 +559,14 @@ void BattlefieldWintergrasp::HandleKill(Player* killer, Unit* victim)
     for (ObjectGuid playerGuid : GetZonePlayers())
     {
         Player* player = ObjectAccessor::GetPlayer(*killer, playerGuid);
-        if (player && player != killer && player->GetTeamId() == killer->GetTeamId() && player->GetExactDist2d(victim) <= WINTERGRASP_RANK_CREDIT_DISTANCE)
+        if (player && player != killer && player->GetTeamId() == killer->GetTeamId() && player->GetExactDist2d(victim) <= WINTERGRASP_KILL_CREDIT_DISTANCE)
             PromotePlayer(player);
     }
+}
+
+void BattlefieldWintergrasp::HandleHonorableKill(Player* player, Player* victim)
+{
+    player->KilledMonsterCredit(victim->GetTeamId() == TEAM_HORDE ? NPC_WINTERGRASP_PVP_KILL_HORDE : NPC_WINTERGRASP_PVP_KILL_ALLIANCE);
 }
 
 void BattlefieldWintergrasp::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
@@ -696,6 +696,21 @@ void BattlefieldWintergrasp::OnUnitDeath(Unit* unit)
 {
     Battlefield::OnUnitDeath(unit);
 
+    for (PvPTeamId pvpTeamId : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE })
+    {
+        if (!_vehicleGUIDs[pvpTeamId].contains(unit->GetGUID()))
+            continue;
+
+        for (ObjectGuid playerGuid : GetZonePlayers())
+        {
+            Player* player = ObjectAccessor::GetPlayer(*unit, playerGuid);
+            if (player && player->GetTeamId() != TeamIdByPvPTeamId(pvpTeamId) && player->GetExactDist2d(unit) <= WINTERGRASP_KILL_CREDIT_DISTANCE)
+                player->KilledMonsterCredit(NPC_WINTERGRASP_PVP_KILL_VEHICLE);
+        }
+
+        break;
+    }
+
     RemoveVehicle(unit->GetGUID());
 }
 
@@ -707,17 +722,40 @@ void BattlefieldWintergrasp::ProcessEvent(WorldObject* object, uint32 eventId)
         QueueEvent<BattlefieldBattleCaptureEvent>();
 }
 
-void BattlefieldWintergrasp::HandleSouthernTowerDestroyed()
+void BattlefieldWintergrasp::HandleBuildingDestroyed(WintergraspBuilding const& building)
 {
+    if (building.BuildingType == BATTLEFIELD_BUILDING_TYPE_DOOR_LAST)
+    {
+        SetKeepCollisionsOpen(true);
+        for (ObjectGuid relicGuid : _titanRelicGUIDs)
+            if (GameObject* relic = GetGameObject(relicGuid))
+                relic->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
+    }
+
+    PvPTeamId const ownerPvPTeamId = building.GetPvPTeamId();
+    if (ownerPvPTeamId != GetAttackingTeam() && ownerPvPTeamId != GetControllingTeam())
+        return;
+
+    Map* battleMap = GetBattleMap();
+    for (ObjectGuid playerGuid : GetZonePlayers())
+    {
+        Player* player = ObjectAccessor::GetPlayer(battleMap, playerGuid);
+        if (player && PvPTeamIdByTeamId(player->GetTeamId()) != ownerPvPTeamId && IsPlayerInBattle(player))
+            player->KilledMonsterCredit(ownerPvPTeamId == GetAttackingTeam() ? NPC_WINTERGRASP_SOUTHERN_TOWER_KILL : NPC_WINTERGRASP_VEHICLE_PROTECTED);
+    }
+
+    if (building.BuildingType != BATTLEFIELD_BUILDING_TYPE_TOWER)
+        return;
+
     uint32 towers = 0;
     uint32 destroyedTowers = 0;
-    for (auto const& [_, building] : GetEntities<BattlefieldBuilding>())
+    for (auto const& [_, tower] : GetEntities<BattlefieldBuilding>())
     {
-        if (building->BuildingType != BATTLEFIELD_BUILDING_TYPE_TOWER)
+        if (tower->BuildingType != BATTLEFIELD_BUILDING_TYPE_TOWER)
             continue;
 
         ++towers;
-        if (building->GetDestructibleState() == GO_DESTRUCTIBLE_DESTROYED)
+        if (tower->GetDestructibleState() == GO_DESTRUCTIBLE_DESTROYED)
             ++destroyedTowers;
     }
 
@@ -732,14 +770,6 @@ void BattlefieldWintergrasp::HandleSouthernTowerDestroyed()
 
     if (destroyedTowers == towers)
         SetPhaseTime(Values.Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END) - WINTERGRASP_SOUTHERN_TOWERS_TIME_REDUCTION.count());
-}
-
-void BattlefieldWintergrasp::HandleVaultGateDestroyed()
-{
-    SetKeepCollisionsOpen(true);
-    for (ObjectGuid relicGuid : _titanRelicGUIDs)
-        if (GameObject* relic = GetGameObject(relicGuid))
-            relic->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
 }
 
 void BattlefieldWintergrasp::SendStalkerText(uint8 textGroup, WorldObject const* whisperTarget /*= nullptr*/)

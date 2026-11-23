@@ -17,6 +17,8 @@
 
 #include "KillRewarder.h"
 #include "SpellAuraEffects.h"
+#include "Battlefield.h"
+#include "BattlefieldMgr.h"
 #include "Creature.h"
 #include "Formulas.h"
 #include "Group.h"
@@ -128,8 +130,12 @@ inline void KillRewarder::_InitXP(Player* player)
 inline void KillRewarder::_RewardHonor(Player* player)
 {
     // Rewarded player must be alive.
-    if (player->IsAlive())
-        player->RewardHonor(_victim, _count, -1, true);
+    if (!player->IsAlive() || !player->RewardHonor(_victim, _count, -1, true))
+        return;
+
+    if (Player* victim = _victim->ToPlayer()) // EG
+        if (Battlefield* battlefield = sBattlefieldMgr->GetBattlefield(player->GetZoneId()))
+            battlefield->HandleHonorableKill(player, victim);
 }
 
 inline void KillRewarder::_RewardXP(Player* player, float rate)
