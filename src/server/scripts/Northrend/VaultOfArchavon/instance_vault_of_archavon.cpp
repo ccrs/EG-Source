@@ -16,8 +16,11 @@
  */
 
 #include "vault_of_archavon.h"
+#include "Battlefield/BattlefieldWG.h"
+#include "BattlefieldMgr.h"
 #include "GameTime.h"
 #include "InstanceScript.h"
+#include "Player.h"
 #include "ScriptMgr.h"
 #include <algorithm>
 #include <array>
@@ -43,6 +46,16 @@ public:
             SetHeaders(DataHeader);
             SetBossNumber(EncounterCount);
             LoadObjectData(creatureData, nullptr);
+        }
+
+        void OnPlayerEnter(Player* player) override
+        {
+            if (player->IsGameMaster())
+                return;
+
+            BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP));
+            if (wintergrasp && wintergrasp->IsEnabled() && (wintergrasp->GetPhase() != BATTLEFIELD_PHASE_IDLE || player->GetTeamId() != wintergrasp->GetControllingTeamId()))
+                wintergrasp->TeleportPlayerToBattle(player);
         }
 
         bool SetBossState(uint32 type, EncounterState state) override

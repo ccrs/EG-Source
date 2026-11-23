@@ -17,10 +17,14 @@
 
 #include "BattlefieldWG.h"
 #include "AreaBoundary.h"
+#include "Chat.h"
 #include "Creature.h"
 #include "CreatureTextMgr.h"
 #include "GameObject.h"
+#include "Language.h"
 #include "Map.h"
+#include "MapManager.h"
+#include "MapReference.h"
 #include "MapUtils.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
@@ -422,8 +426,20 @@ bool BattlefieldWintergrasp::SetPhase(BattlefieldPhase phase)
         case BATTLEFIELD_PHASE_PREPARATION:
             SendStalkerText(SAY_WINTERGRASP_BATTLE_ABOUT_TO_BEGIN);
             SendWorldStateToAll(WORLDSTATE_WINTERGRASP_ICON_ACTIVE, 1);
+            sMapMgr->DoForAllMapsWithMapId(MAPID_VAULT_OF_ARCHAVON, [](Map* map)
+            {
+                for (MapReference const& reference : map->GetPlayers())
+                    if (Player* player = reference.GetSource())
+                        ChatHandler(player->GetSession()).SendSysMessage(LANG_WINTERGRASP_VAULT_OF_ARCHAVON_CLOSING);
+            });
             break;
         case BATTLEFIELD_PHASE_BATTLE:
+            sMapMgr->DoForAllMapsWithMapId(MAPID_VAULT_OF_ARCHAVON, [this](Map* map)
+            {
+                for (MapReference const& reference : map->GetPlayers())
+                    if (Player* player = reference.GetSource(); player && !player->IsGameMaster())
+                        TeleportPlayerToBattle(player);
+            });
             SendStalkerText(SAY_WINTERGRASP_BATTLE_BEGIN);
             SetKeepCollisionsOpen(false);
             SendWorldStateToMap(WORLDSTATE_WINTERGRASP_CONTROL, WINTERGRASP_CONTROL_BATTLE);

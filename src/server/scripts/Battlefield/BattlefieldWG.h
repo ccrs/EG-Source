@@ -441,6 +441,7 @@ enum WintergraspWorldSafeLocs
 };
 
 static uint32 constexpr MAPID_WINTERGRASP = 571; // Northrend
+static uint32 constexpr MAPID_VAULT_OF_ARCHAVON = 624;
 static Seconds constexpr WINTERGRASP_PREPARATION_DURATION = 15min;
 static Seconds constexpr WINTERGRASP_SOUTHERN_TOWERS_TIME_REDUCTION = 10min;
 static uint32 constexpr WINTERGRASP_VEHICLES_PER_WORKSHOP = 4;

@@ -642,3 +642,11 @@ INSERT INTO `gameobject` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, 
 DELETE FROM `spawn_group` WHERE `groupId` = 1000 AND `spawnType` = 1 AND `spawnId` = 200052;
 INSERT INTO `spawn_group` (`groupId`, `spawnType`, `spawnId`) VALUES
 (1000, 1, 200052);
+
+-- Vault of Archavon access
+DELETE FROM `areatrigger_scripts` WHERE `entry` = 5258;
+INSERT INTO `areatrigger_scripts` (`entry`, `ScriptName`) VALUES
+(5258, 'EG_at_wintergrasp_vault_of_archavon');
+DELETE FROM `trinity_string` WHERE `entry` = 20026;
+INSERT INTO `trinity_string` (`entry`, `content_default`) VALUES
+(20026, 'The battle for Wintergrasp is about to begin. The Vault of Archavon closes when it starts and everyone inside will be removed.');

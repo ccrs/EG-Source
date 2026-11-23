@@ -524,6 +524,25 @@ class EG_achievement_wg_vehicular_gnomeslaughter_cannon : public AchievementCrit
         }
 };
 
+class EG_at_wintergrasp_vault_of_archavon : public AreaTriggerScript
+{
+    public:
+        EG_at_wintergrasp_vault_of_archavon() : AreaTriggerScript("EG_at_wintergrasp_vault_of_archavon") { }
+
+        bool OnTrigger(Player* player, AreaTriggerEntry const* /*trigger*/) override
+        {
+            if (player->IsGameMaster())
+                return false;
+
+            BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP));
+            if (!wintergrasp || !wintergrasp->IsEnabled() || (wintergrasp->GetPhase() == BATTLEFIELD_PHASE_IDLE && player->GetTeamId() == wintergrasp->GetControllingTeamId()))
+                return false;
+
+            player->SendTransferAborted(MAPID_VAULT_OF_ARCHAVON, TRANSFER_ABORT_MAP_NOT_ALLOWED);
+            return true;
+        }
+};
+
 // 54640 - Teleport (Used also in Strand of the Ancients)
 class spell_wintergrasp_defender_teleport : public SpellScript
 {
@@ -789,6 +808,7 @@ void AddSC_wintergrasp()
     new achievement_wg_within_our_grasp();
     new EG_achievement_wg_vehicular_gnomeslaughter_vehicle();
     new EG_achievement_wg_vehicular_gnomeslaughter_cannon();
+    new EG_at_wintergrasp_vault_of_archavon();
     RegisterSpellScript(spell_wintergrasp_defender_teleport);
     RegisterSpellScript(spell_wintergrasp_defender_teleport_trigger);
     RegisterSpellScript(spell_wintergrasp_tenacity_refresh);
