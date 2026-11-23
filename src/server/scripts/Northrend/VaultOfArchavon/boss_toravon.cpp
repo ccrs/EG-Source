@@ -15,11 +15,13 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "vault_of_archavon.h"
 #include "InstanceScript.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
+#include "SpellMgr.h"
 #include "SpellScript.h"
-#include "vault_of_archavon.h"
+#include <cmath>
 
 enum ToravonSpells
 {
@@ -27,11 +29,13 @@ enum ToravonSpells
     SPELL_FREEZING_GROUND   = 72090,
     SPELL_FROZEN_ORB        = 72091,
     SPELL_WHITEOUT          = 72034,
+    SPELL_WHITEOUT_VISUAL   = 72036,
     SPELL_FROZEN_MALLET     = 71993,
 
     // Frozen Orb
     SPELL_FROZEN_ORB_DMG    = 72081,
     SPELL_FROZEN_ORB_AURA   = 72067,
+    SPELL_FROZEN_ORB_HEALTH = 72079,
     SPELL_RANDOM_AGGRO      = 72084,
 
     // Frozen Orb Stalker
@@ -55,7 +59,7 @@ struct boss_toravon : public BossAI
 
         events.ScheduleEvent(EVENT_FROZEN_ORB, 12s);
         events.ScheduleEvent(EVENT_WHITEOUT, 25s);
-        events.ScheduleEvent(EVENT_FREEZING_GROUND, 7s);
+        events.ScheduleEvent(EVENT_FREEZING_GROUND, 8s);
 
         BossAI::JustEngagedWith(who);
     }
@@ -85,10 +89,14 @@ struct boss_toravon : public BossAI
                     events.Repeat(38s);
                     break;
                 case EVENT_FREEZING_GROUND:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 0.0f, true))
-                        DoCast(target, SPELL_FREEZING_GROUND);
-                    events.Repeat(38s);
+                {
+                    Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true);
+                    if (target && DoCast(target, SPELL_FREEZING_GROUND) != SPELL_CAST_OK)
+                        events.Repeat(1s);
+                    else
+                        events.Repeat(30s);
                     break;
+                }
                 default:
                     break;
             }
@@ -98,6 +106,12 @@ struct boss_toravon : public BossAI
         }
 
         DoMeleeAttackIfReady();
+    }
+
+    void JustDied(Unit* killer) override
+    {
+        BossAI::JustDied(killer);
+        instance->DoRemoveAurasDueToSpellOnPlayers(sSpellMgr->GetSpellIdForDifficulty(SPELL_WHITEOUT, me));
     }
 };
 
@@ -118,6 +132,7 @@ struct npc_frozen_orb : public ScriptedAI
     void IsSummonedBy(WorldObject* /*summoner*/) override
     {
         DoCastSelf(SPELL_FROZEN_ORB_AURA, true);
+        DoCastSelf(SPELL_FROZEN_ORB_HEALTH, true);
         DoCastSelf(SPELL_FROZEN_ORB_DMG, true);
         DoCastSelf(SPELL_RANDOM_AGGRO, true);
 
@@ -131,6 +146,44 @@ struct npc_frozen_orb : public ScriptedAI
             else
                 me->DespawnOrUnsummon();
         }
+    }
+};
+
+// 72034, 72096 - Whiteout
+class EG_spell_toravon_whiteout : public SpellScript
+{
+    PrepareSpellScript(EG_spell_toravon_whiteout);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_WHITEOUT_VISUAL });
+    }
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        GetHitUnit()->CastSpell(GetHitUnit(), SPELL_WHITEOUT_VISUAL, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_toravon_whiteout::HandleScript, EFFECT_2, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 72079 - Frozen Orb Health Periodic
+class EG_spell_toravon_frozen_orb_health_periodic : public AuraScript
+{
+    PrepareAuraScript(EG_spell_toravon_frozen_orb_health_periodic);
+
+    void HandlePeriodic(AuraEffect const* /*aurEff*/)
+    {
+        Unit* target = GetTarget();
+        Unit::DealDamage(target, target, uint32(std::lround(CalculatePct(float(target->GetMaxHealth()), 2))));
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_toravon_frozen_orb_health_periodic::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
     }
 };
 
@@ -166,5 +219,7 @@ void AddSC_boss_toravon()
     RegisterVaultOfArchavonCreatureAI(boss_toravon);
     RegisterVaultOfArchavonCreatureAI(npc_frozen_orb_stalker);
     RegisterVaultOfArchavonCreatureAI(npc_frozen_orb);
+    RegisterSpellScript(EG_spell_toravon_whiteout);
+    RegisterSpellScript(EG_spell_toravon_frozen_orb_health_periodic);
     RegisterSpellScript(spell_toravon_random_aggro);
 }
