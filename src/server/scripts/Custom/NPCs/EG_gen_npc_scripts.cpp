@@ -31,15 +31,18 @@
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
 #include "ScriptMgr.h"
+#include "ScriptSystem.h"
 #include "SmartAI.h"
 #include "SpellAuras.h"
 #include "SpellAuraEffects.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
+#include "SplineChain.h"
 #include "StringFormat.h"
 #include "TemporarySummon.h"
 #include "ThreatManager.h"
 #include "Vehicle.h"
+#include <limits>
 
 enum TestDummyModes
 {
@@ -1722,6 +1725,261 @@ private:
     ObjectGuid _fixateGuid;
 };
 
+enum InfraGreenBomberMisc
+{
+    SPELL_DAMAGE_CONTROL = 59411,
+    SPELL_ALLIANCE_PAINT_JOB = 60491,
+    SPELL_HORDE_PAINT_JOB = 60489,
+    SPELL_BOMBER_ON_SPAWN = 59051,
+    SPELL_AIRSHIP_SHIELD_ON_SELF = 60674,
+    SPELL_INFRA_GREEN_SHIELD = 59288,
+    SPELL_IN_A_BOMBER = 61253,
+    SPELL_INFRA_GREEN_VISION = 61352,
+    SPELL_SEND_HATE_TO_UNIT = 60753,
+    SPELL_SMOLDER_BANNER = 60938,
+    SPELL_FINISHED_SORTIE = 60918,
+    SPELL_EJECT_PLAYER_FROM_CRAFT = 60816,
+    SPELL_PLAYER_FINISHED_SORTIE = 60920,
+    SPELL_BOMBER_KILLED = 61176,
+    SPELL_AIRSHIP_EXPLODES_SEQUENCE = 60852,
+    SPELL_SUMMON_RESCUE_CRAFT_ALLIANCE = 60801,
+    SPELL_SUMMON_RESCUE_CRAFT_HORDE = 60843,
+    SPELL_CLOAKED_PEEPS_VISUAL_AURA = 60796,
+    SPELL_PICK_UP_FALLEN_PILOT_AURA = 60817,
+    SPELL_PICK_UP_FALLEN_PILOT = 60784,
+    SPELL_BOARDED_RESCUE_CRAFT = 60809,
+    SPELL_RESCUE_PARACHUTE = 61360,
+    SPELL_PHASE_QUEST_ZONE_SPECIFIC_2 = 59074,
+
+    NPC_ALLIANCE_INFRA_GREEN_BOMBER = 31406,
+    NPC_ALLIANCE_INFRA_GREEN_BOMBER_LONG = 32512,
+
+    SPLINE_CHAIN_ROUTE = 1,
+
+    POINT_ROUTE_END = 1,
+    POINT_RESCUE_CLIMB,
+
+    SEAT_BOMBER_BAY = 0,
+    SEAT_TURRET = 1,
+    SEAT_ENGINEERING = 2,
+    SEAT_BOMBER_PILOT = 7,
+    SEAT_RESCUE_CRAFT_PILOT = 0
+};
+
+// 31406, 31838 - Infra-green Bomber / 32512, 32513 - Infra-green Bomber (Valley of Lost Hope)
+struct EG_npc_infra_green_bomber : public ScriptedAI
+{
+    EG_npc_infra_green_bomber(Creature* creature) : ScriptedAI(creature), _alliance(creature->GetEntry() == NPC_ALLIANCE_INFRA_GREEN_BOMBER || creature->GetEntry() == NPC_ALLIANCE_INFRA_GREEN_BOMBER_LONG) { }
+
+    void IsSummonedBy(WorldObject* summoner) override
+    {
+        _pilotGuid = summoner->GetGUID();
+        me->SetReactState(REACT_PASSIVE);
+        DoCastSelf(SPELL_DAMAGE_CONTROL, true);
+        DoCastSelf(_alliance ? SPELL_ALLIANCE_PAINT_JOB : SPELL_HORDE_PAINT_JOB, true);
+
+        _scheduler.Schedule(1s, [this](TaskContext /*context*/)
+        {
+            if (Unit* npcPilot = me->GetVehicleKit()->GetPassenger(SEAT_BOMBER_PILOT))
+                npcPilot->CastSpell(npcPilot, SPELL_PHASE_QUEST_ZONE_SPECIFIC_2, true);
+
+            if (Player* pilot = ObjectAccessor::GetPlayer(*me, _pilotGuid))
+            {
+                pilot->CastSpell(pilot, SPELL_IN_A_BOMBER, true);
+                DoCast(pilot, SPELL_BOMBER_ON_SPAWN, true);
+            }
+
+            for (uint8 i = 0; i < 4; ++i)
+                DoCastSelf(SPELL_AIRSHIP_SHIELD_ON_SELF, true);
+        })
+        .Schedule(2s, [this](TaskContext /*context*/)
+        {
+            for (int8 seatId : { SEAT_BOMBER_BAY, SEAT_TURRET, SEAT_ENGINEERING })
+                if (Unit* seat = me->GetVehicleKit()->GetPassenger(seatId))
+                    for (uint8 i = 0; i < 4; ++i)
+                        seat->CastSpell(seat, SPELL_AIRSHIP_SHIELD_ON_SELF, true);
+
+            me->GetMotionMaster()->MoveAlongSplineChain(POINT_ROUTE_END, SPLINE_CHAIN_ROUTE, false);
+        })
+        .Schedule(2s, [this](TaskContext context)
+        {
+            Player* pilot = ObjectAccessor::GetPlayer(*me, _pilotGuid);
+            Unit* seat = pilot ? pilot->GetVehicleBase() : nullptr;
+            if (!seat || seat->GetVehicleBase() != me)
+            {
+                me->DespawnOrUnsummon();
+                return;
+            }
+
+            for (uint32 spellId : { SPELL_INFRA_GREEN_VISION, SPELL_IN_A_BOMBER })
+            {
+                pilot->CastSpell(pilot, spellId, true);
+                seat->CastSpell(seat, spellId, true);
+            }
+
+            context.Repeat(5s);
+        });
+    }
+
+    void DamageTaken(Unit* attacker, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo*/) override
+    {
+        if (attacker && attacker != me)
+        {
+            DoCast(attacker, SPELL_SEND_HATE_TO_UNIT, true);
+            Aura const* shield = me->GetAura(SPELL_INFRA_GREEN_SHIELD);
+            if ((!shield || shield->GetStackAmount() < 52) && roll_chance_i(50))
+                DoCastSelf(SPELL_SMOLDER_BANNER, true);
+        }
+
+        if (damage < me->GetHealth())
+            return;
+
+        _scheduler.CancelAll();
+        EjectSeats();
+        if (attacker && attacker != me)
+            DoCast(attacker, SPELL_BOMBER_KILLED, true);
+
+        DoCastSelf(SPELL_AIRSHIP_EXPLODES_SEQUENCE, true);
+        if (Player* pilot = ObjectAccessor::GetPlayer(*me, _pilotGuid))
+            pilot->CastSpell(pilot, _alliance ? SPELL_SUMMON_RESCUE_CRAFT_ALLIANCE : SPELL_SUMMON_RESCUE_CRAFT_HORDE, true);
+    }
+
+    void MovementInform(uint32 type, uint32 id) override
+    {
+        if (type != SPLINE_CHAIN_MOTION_TYPE || id != POINT_ROUTE_END)
+            return;
+
+        _scheduler.CancelAll();
+        if (Player* pilot = ObjectAccessor::GetPlayer(*me, _pilotGuid))
+            DoCast(pilot, SPELL_FINISHED_SORTIE, true);
+
+        EjectSeats();
+        DoCastSelf(SPELL_PLAYER_FINISHED_SORTIE, true);
+        me->DespawnOrUnsummon();
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        _scheduler.Update(diff);
+    }
+
+private:
+    void EjectSeats()
+    {
+        Vehicle* vehicle = me->GetVehicleKit();
+        if (!vehicle)
+            return;
+
+        for (int8 seatId : { SEAT_BOMBER_BAY, SEAT_TURRET, SEAT_ENGINEERING })
+            if (Unit* seat = vehicle->GetPassenger(seatId))
+                seat->CastSpell(seat, SPELL_EJECT_PLAYER_FROM_CRAFT, true);
+    }
+
+    TaskScheduler _scheduler;
+    ObjectGuid _pilotGuid;
+    bool const _alliance;
+};
+
+// 32344, 32348 - Rescue Craft
+struct EG_npc_infra_green_rescue_craft : public ScriptedAI
+{
+    EG_npc_infra_green_rescue_craft(Creature* creature) : ScriptedAI(creature) { }
+
+    void IsSummonedBy(WorldObject* summoner) override
+    {
+        _pilotGuid = summoner->GetGUID();
+        me->SetReactState(REACT_PASSIVE);
+        DoCastSelf(SPELL_CLOAKED_PEEPS_VISUAL_AURA, true);
+        if (Unit* pilot = summoner->ToUnit())
+            DoCast(pilot, SPELL_PICK_UP_FALLEN_PILOT_AURA, true);
+
+        _scheduler.Schedule(1s, [this](TaskContext context)
+        {
+            if (Player* pilot = ObjectAccessor::GetPlayer(*me, _pilotGuid))
+                pilot->CastSpell(pilot, SPELL_IN_A_BOMBER, true);
+
+            context.Repeat(5s);
+        })
+        .Schedule(3s, [this](TaskContext /*context*/)
+        {
+            if (Unit* npcPilot = me->GetVehicleKit()->GetPassenger(SEAT_RESCUE_CRAFT_PILOT))
+                npcPilot->CastSpell(npcPilot, SPELL_PHASE_QUEST_ZONE_SPECIFIC_2, true);
+
+            if (Player* pilot = ObjectAccessor::GetPlayer(*me, _pilotGuid))
+                DoCast(pilot, SPELL_PICK_UP_FALLEN_PILOT, true);
+        })
+        .Schedule(4s, [this](TaskContext /*context*/)
+        {
+            Player* pilot = ObjectAccessor::GetPlayer(*me, _pilotGuid);
+            if (!pilot || pilot->GetVehicleBase() != me)
+            {
+                me->DespawnOrUnsummon();
+                return;
+            }
+
+            DoCast(pilot, SPELL_BOARDED_RESCUE_CRAFT, true);
+            if (me->GetPositionZ() < 520.0f)
+                me->GetMotionMaster()->MovePoint(POINT_RESCUE_CLIMB, me->GetPositionX(), me->GetPositionY(), 520.0f, false);
+            else
+                MoveFromNearestRoutePoint();
+        });
+    }
+
+    void MovementInform(uint32 type, uint32 id) override
+    {
+        if (type == POINT_MOTION_TYPE && id == POINT_RESCUE_CLIMB)
+        {
+            MoveFromNearestRoutePoint();
+            return;
+        }
+
+        if (type != SPLINE_CHAIN_MOTION_TYPE || id != POINT_ROUTE_END)
+            return;
+
+        if (Player* pilot = ObjectAccessor::GetPlayer(*me, _pilotGuid))
+            DoCast(pilot, SPELL_RESCUE_PARACHUTE, true);
+
+        me->DespawnOrUnsummon();
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        _scheduler.Update(diff);
+    }
+
+private:
+    void MoveFromNearestRoutePoint()
+    {
+        std::vector<SplineChainLink> const* route = sScriptSystemMgr->GetSplineChain(me, SPLINE_CHAIN_ROUTE);
+        if (!route)
+            return;
+
+        G3D::Vector3 const position(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ());
+        uint8 splineIndex = 0;
+        uint8 pointIndex = 1;
+        float nearestDist = std::numeric_limits<float>::max();
+        for (size_t i = 0; i < route->size(); ++i)
+        {
+            Movement::PointsArray const& points = (*route)[i].Points;
+            for (size_t j = 1; j < points.size(); ++j)
+            {
+                float const dist = (points[j] - position).squaredLength();
+                if (dist < nearestDist)
+                {
+                    nearestDist = dist;
+                    splineIndex = uint8(i);
+                    pointIndex = uint8(j);
+                }
+            }
+        }
+
+        me->GetMotionMaster()->ResumeSplineChain(SplineChainResumeInfo(POINT_ROUTE_END, route, false, splineIndex, pointIndex, 0));
+    }
+
+    TaskScheduler _scheduler;
+    ObjectGuid _pilotGuid;
+};
+
 void AddSC_EG_gen_npc_scripts()
 {
     RegisterCreatureAI(EG_npc_damage_test_controller);
@@ -1738,4 +1996,6 @@ void AddSC_EG_gen_npc_scripts()
     RegisterCreatureAI(EG_npc_kologarn_focused_eyebeam);
     RegisterCreatureAI(EG_npc_kologarn_arm);
     RegisterCreatureAI(EG_npc_ulduar_focused_laser);
+    RegisterCreatureAI(EG_npc_infra_green_bomber);
+    RegisterCreatureAI(EG_npc_infra_green_rescue_craft);
 }

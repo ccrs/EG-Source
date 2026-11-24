@@ -18,6 +18,7 @@
 #include "ScriptMgr.h"
 #include "Cell.h"
 #include "CellImpl.h"
+#include "Containers.h"
 #include "Creature.h"
 #include "CreatureAI.h"
 #include "GridNotifiers.h"
@@ -36,8 +37,11 @@
 #include "SpellScript.h"
 #include "TemporarySummon.h"
 #include "Unit.h"
+#include "Vehicle.h"
 #include <algorithm>
+#include <array>
 #include <list>
+#include <vector>
 
 // 45775 - Cosmetic - Divine Shield Blue
 class EG_spell_cosmetic___divine_shield_blue : public AuraScript
@@ -893,6 +897,867 @@ class EG_spell_wintergrasp_rp_gg_impact : public SpellScript
     }
 };
 
+enum InfraGreenBomberSpellMisc
+{
+    SPELL_WAITING_FOR_BOMBER_ALLIANCE = 59563,
+    SPELL_WAITING_FOR_BOMBER_HORDE = 59779,
+    SPELL_SUMMON_AIRSHIP_COOLDOWN = 59558,
+    SPELL_REQUEST_AIRSHIP_ALLIANCE = 59554,
+    SPELL_REQUEST_AIRSHIP_HORDE = 59781,
+    SPELL_BOMBER_GRANTED = 61373,
+    SPELL_SUMMON_AIRSHIP_ALLIANCE = 59552,
+    SPELL_SUMMON_AIRSHIP_HORDE = 59780,
+    SPELL_SUMMON_AIRSHIP_LONG_ALLIANCE = 61151,
+    SPELL_SUMMON_AIRSHIP_LONG_HORDE = 61152,
+    SPELL_FLIGHT_ORDERS = 61281,
+    SPELL_DRIVE_BOMBER = 59050,
+    SPELL_SYNCH_HEALTH = 59413,
+    SPELL_SEND_HATE = 60124,
+    SPELL_INFRA_GREEN_SHIELD = 59288,
+    SPELL_AIRSHIP_SHIELD_RECENTLY_HIT_SMALL = 60339,
+    SPELL_AIRSHIP_SHIELD_RECENTLY_HIT = 59290,
+    SPELL_AA_SHOT_TRIGGER_MISSILE = 59623,
+    SPELL_ENGINEERING = 59193,
+    SPELL_BOMBER_BAY = 59194,
+    SPELL_SWITCH_SEATS = 59186,
+    SPELL_QUEST_CREDIT_INFANTRY = 60961,
+    SPELL_QUEST_CREDIT_TO_PLAYER_INFANTRY = 60965,
+    SPELL_QUEST_CREDIT_CAPTAIN = 60972,
+    SPELL_QUEST_CREDIT_TO_PLAYER_CAPTAIN = 60973,
+    SPELL_SMOLDER = 60935,
+    SPELL_BURNING = 61171,
+    SPELL_EXTINGUISH_FIRE = 61172,
+    SPELL_AIRSHIP_EXPLODES = 60853,
+    SPELL_AIRSHIP_EXPLODES_BIG = 60855,
+    SPELL_AIRSHIP_EXPLODES_HUGE = 60860,
+    SPELL_AIRSHIP_EXPLODES_WITH_FIREBALL = 60861,
+    SPELL_BOARD_RESCUE_CRAFT = 60785,
+    SPELL_PARACHUTE_BUFF = 44795,
+    SPELL_PARACHUTE = 45472,
+    SPELL_REPORTED_KILLS = 61127,
+
+    NPC_INFRA_GREEN_FLIGHT_MASTER = 31690,
+    NPC_STITCHED_BRUTE = 32179,
+    NPC_ENRAGED_FLESHRENDER = 32182,
+    NPC_SKELETAL_FOOTSOLDIER = 32183,
+
+    QUEST_AMPED_FOR_REVOLT = 13374,
+    QUEST_TOTAL_OHMAGE = 13376,
+    QUEST_WATTS_MY_TARGET = 13381,
+    QUEST_PUTTING_THE_HERTZ = 13382,
+
+    SAY_BOMBER_READY = 0,
+
+    SEAT_BOMBER_BAY = 0,
+    SEAT_TURRET = 1,
+    SEAT_ENGINEERING = 2,
+    SEAT_BANNER_HANGING = 3,
+    SEAT_BANNER_SIDE_LEFT = 4,
+    SEAT_BANNER_SIDE_RIGHT = 5,
+    SEAT_SHIELD_VISUAL = 6
+};
+
+// 59563, 59779 - Waiting for Bomber
+class EG_spell_infra_green_bomber_waiting : public AuraScript
+{
+    PrepareAuraScript(EG_spell_infra_green_bomber_waiting);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_SUMMON_AIRSHIP_COOLDOWN, SPELL_REQUEST_AIRSHIP_ALLIANCE, SPELL_REQUEST_AIRSHIP_HORDE });
+    }
+
+    void HandlePeriodic(AuraEffect const* /*aurEff*/)
+    {
+        Unit* pilot = GetTarget();
+        Creature* flightMaster = pilot->FindNearestCreature(NPC_INFRA_GREEN_FLIGHT_MASTER, 30.0f);
+        if (!flightMaster)
+        {
+            Remove();
+            return;
+        }
+
+        if (flightMaster->HasAura(SPELL_SUMMON_AIRSHIP_COOLDOWN))
+            return;
+
+        pilot->CastSpell(flightMaster, SPELL_SUMMON_AIRSHIP_COOLDOWN, true);
+        pilot->CastSpell(flightMaster, GetId() == SPELL_WAITING_FOR_BOMBER_ALLIANCE ? SPELL_REQUEST_AIRSHIP_ALLIANCE : SPELL_REQUEST_AIRSHIP_HORDE, true);
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_infra_green_bomber_waiting::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
+// 59558 - Summon Airship, Cooldown
+class EG_spell_infra_green_bomber_pad_cooldown : public AuraScript
+{
+    PrepareAuraScript(EG_spell_infra_green_bomber_pad_cooldown);
+
+    void HandlePeriodic(AuraEffect const* /*aurEff*/)
+    {
+        Remove();
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_infra_green_bomber_pad_cooldown::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
+// 59554, 59781 - Request Airship
+class EG_spell_infra_green_bomber_request : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_request);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_BOMBER_GRANTED });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Creature* flightMaster = GetHitCreature();
+        if (!flightMaster || !flightMaster->IsAIEnabled())
+            return;
+
+        flightMaster->AI()->Talk(SAY_BOMBER_READY, GetCaster());
+        flightMaster->CastSpell(GetCaster(), SPELL_BOMBER_GRANTED, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_request::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+// 61373 - Bomber Granted (DND)
+class EG_spell_infra_green_bomber_granted : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_granted);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_SUMMON_AIRSHIP_ALLIANCE, SPELL_SUMMON_AIRSHIP_HORDE, SPELL_SUMMON_AIRSHIP_LONG_ALLIANCE, SPELL_SUMMON_AIRSHIP_LONG_HORDE });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Player* player = GetHitPlayer();
+        if (!player)
+            return;
+
+        bool const alliance = player->HasAura(SPELL_WAITING_FOR_BOMBER_ALLIANCE);
+        if (!alliance && !player->HasAura(SPELL_WAITING_FOR_BOMBER_HORDE))
+            return;
+
+        player->RemoveAurasDueToSpell(alliance ? SPELL_WAITING_FOR_BOMBER_ALLIANCE : SPELL_WAITING_FOR_BOMBER_HORDE);
+
+        auto inLog = [player](uint32 questId)
+        {
+            QuestStatus const status = player->GetQuestStatus(questId);
+            return status == QUEST_STATUS_INCOMPLETE || status == QUEST_STATUS_COMPLETE;
+        };
+
+        bool const longRoute = alliance ? inLog(QUEST_WATTS_MY_TARGET) || inLog(QUEST_PUTTING_THE_HERTZ) : inLog(QUEST_AMPED_FOR_REVOLT) || inLog(QUEST_TOTAL_OHMAGE);
+        uint32 const summonSpell = alliance ? (longRoute ? SPELL_SUMMON_AIRSHIP_LONG_ALLIANCE : SPELL_SUMMON_AIRSHIP_ALLIANCE) : (longRoute ? SPELL_SUMMON_AIRSHIP_LONG_HORDE : SPELL_SUMMON_AIRSHIP_HORDE);
+        player->CastSpell(player, summonSpell, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_granted::HandleDummy, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 59552, 59780 - Summon Airship / 61151, 61152 - Summon Airship, Long
+class EG_spell_infra_green_bomber_summon : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_summon);
+
+    void SelectLaunchPad(WorldObject*& target)
+    {
+        std::list<Creature*> flightMasters;
+        GetCaster()->GetCreatureListWithEntryInGrid(flightMasters, NPC_INFRA_GREEN_FLIGHT_MASTER, 40.0f);
+        auto launchPad = std::ranges::max_element(flightMasters, { }, [](Creature const* flightMaster) { return flightMaster->GetPositionZ(); });
+        target = launchPad != flightMasters.end() ? *launchPad : nullptr;
+    }
+
+    void Register() override
+    {
+        OnObjectTargetSelect += SpellObjectTargetSelectFn(EG_spell_infra_green_bomber_summon::SelectLaunchPad, EFFECT_0, TARGET_DEST_NEARBY_ENTRY);
+    }
+};
+
+// 59051 - Bomber onSpawn
+class EG_spell_infra_green_bomber_on_spawn : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_on_spawn);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_FLIGHT_ORDERS, SPELL_DRIVE_BOMBER });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Player* player = GetHitPlayer();
+        Vehicle* bomber = GetCaster()->GetVehicleKit();
+        if (!player || !bomber)
+            return;
+
+        player->CastSpell(player, SPELL_FLIGHT_ORDERS, true);
+        if (Unit* engineeringSeat = bomber->GetPassenger(SEAT_ENGINEERING))
+            player->CastSpell(engineeringSeat, SPELL_DRIVE_BOMBER, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_on_spawn::HandleDummy, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 59341 - Synch Ship with Seats
+class EG_spell_infra_green_bomber_synch_ship : public AuraScript
+{
+    PrepareAuraScript(EG_spell_infra_green_bomber_synch_ship);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_SYNCH_HEALTH, SPELL_INFRA_GREEN_SHIELD });
+    }
+
+    void HandlePeriodic(AuraEffect const* /*aurEff*/)
+    {
+        Unit* bomber = GetTarget();
+        Vehicle* vehicle = bomber->GetVehicleKit();
+        if (!vehicle)
+            return;
+
+        Aura const* shield = bomber->GetAura(SPELL_INFRA_GREEN_SHIELD);
+        for (int8 seatId : { SEAT_BOMBER_BAY, SEAT_TURRET, SEAT_ENGINEERING })
+        {
+            Unit* seat = vehicle->GetPassenger(seatId);
+            if (!seat)
+                continue;
+
+            bomber->CastSpell(seat, SPELL_SYNCH_HEALTH, true);
+            Aura const* seatShield = seat->GetAura(SPELL_INFRA_GREEN_SHIELD);
+            if (!shield)
+                seat->RemoveAurasDueToSpell(SPELL_INFRA_GREEN_SHIELD);
+            else if (!seatShield || seatShield->GetStackAmount() != shield->GetStackAmount())
+                seat->SetAuraStack(SPELL_INFRA_GREEN_SHIELD, seat, shield->GetStackAmount());
+        }
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_infra_green_bomber_synch_ship::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
+// 59413 - Synch Health
+class EG_spell_infra_green_bomber_synch_health : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_synch_health);
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Unit* seat = GetHitUnit();
+        seat->SetHealth(seat->CountPctFromMaxHealth(GetCaster()->GetHealthPct()));
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_synch_health::HandleDummy, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 60125 - Send Hate Aura
+class EG_spell_infra_green_bomber_send_hate_aura : public AuraScript
+{
+    PrepareAuraScript(EG_spell_infra_green_bomber_send_hate_aura);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_SEND_HATE });
+    }
+
+    void HandlePeriodic(AuraEffect const* /*aurEff*/)
+    {
+        GetTarget()->CastSpell(GetTarget(), SPELL_SEND_HATE, true);
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_infra_green_bomber_send_hate_aura::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
+// 59288 - Infra-Green Shield
+class EG_spell_infra_green_shield : public AuraScript
+{
+    PrepareAuraScript(EG_spell_infra_green_shield);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_AIRSHIP_SHIELD_RECENTLY_HIT_SMALL });
+    }
+
+    void CalculateAmount(AuraEffect const* /*aurEff*/, int32& amount, bool& /*canBeRecalculated*/)
+    {
+        amount = 100000;
+    }
+
+    void HandleAbsorb(AuraEffect* /*aurEff*/, DamageInfo& dmgInfo, uint32& absorbAmount)
+    {
+        static constexpr std::array<std::pair<uint8, uint32>, 7> AbsorbPctByStacks =
+        { {
+            { 96, 100 },
+            { 92, 95 },
+            { 86, 90 },
+            { 81, 85 },
+            { 76, 80 },
+            { 52, 70 },
+            { 22, 60 }
+        } };
+
+        uint32 absorbPct = 50;
+        for (auto const& [stacks, pct] : AbsorbPctByStacks)
+        {
+            if (GetStackAmount() >= stacks)
+            {
+                absorbPct = pct;
+                break;
+            }
+        }
+
+        absorbAmount = CalculatePct(dmgInfo.GetDamage(), absorbPct);
+    }
+
+    void HandleProc(AuraEffect const* /*aurEff*/, ProcEventInfo& /*eventInfo*/)
+    {
+        PreventDefaultAction();
+        GetTarget()->CastSpell(GetTarget(), SPELL_AIRSHIP_SHIELD_RECENTLY_HIT_SMALL, true);
+        ModStackAmount(-2);
+    }
+
+    void HandlePeriodic(AuraEffect const* /*aurEff*/)
+    {
+        ModStackAmount(-1);
+    }
+
+    void Register() override
+    {
+        DoEffectCalcAmount += AuraEffectCalcAmountFn(EG_spell_infra_green_shield::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
+        OnEffectAbsorb += AuraEffectAbsorbFn(EG_spell_infra_green_shield::HandleAbsorb, EFFECT_0);
+        OnEffectProc += AuraEffectProcFn(EG_spell_infra_green_shield::HandleProc, EFFECT_1, SPELL_AURA_PROC_TRIGGER_SPELL);
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_infra_green_shield::HandlePeriodic, EFFECT_2, SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
+// 59061 - Charge Shield
+class EG_spell_infra_green_bomber_charge_shield : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_charge_shield);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_INFRA_GREEN_SHIELD });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Unit* bomber = GetCaster()->GetVehicleBase();
+        if (!bomber)
+            return;
+
+        int32 const stacks = bomber->HasAura(SPELL_INFRA_GREEN_SHIELD) ? GetEffectValue() - 1 : GetEffectValue();
+        GetCaster()->CastSpell(bomber, SPELL_INFRA_GREEN_SHIELD, CastSpellExtraArgs(true).AddSpellMod(SPELLVALUE_AURA_STACK, stacks));
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_charge_shield::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+// 60674 - Icecrown Bomber. Airship Shield, on self
+class EG_spell_infra_green_bomber_airship_shield : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_airship_shield);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_INFRA_GREEN_SHIELD });
+    }
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        Unit* target = GetHitUnit();
+        target->CastSpell(target, SPELL_INFRA_GREEN_SHIELD, CastSpellExtraArgs(true).AddSpellMod(SPELLVALUE_AURA_STACK, target->HasAura(SPELL_INFRA_GREEN_SHIELD) ? 29 : 30));
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_airship_shield::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 60339 - Airship Shield Recently Hit, small
+class EG_spell_infra_green_bomber_shield_hit : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_shield_hit);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_AIRSHIP_SHIELD_RECENTLY_HIT });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        if (Vehicle* bomber = GetCaster()->GetVehicleKit())
+            if (Unit* shieldVisual = bomber->GetPassenger(SEAT_SHIELD_VISUAL))
+                GetCaster()->CastSpell(shieldVisual, SPELL_AIRSHIP_SHIELD_RECENTLY_HIT, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_shield_hit::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+// 59193 - Engineering / 59194 - Bomber Bay / 59196 - Anti-Air Turret
+class EG_spell_infra_green_bomber_switch_seat : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_switch_seat);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_SWITCH_SEATS });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Unit* seat = GetCaster();
+        Unit* bomber = seat->GetVehicleBase();
+        Vehicle* seatVehicle = seat->GetVehicleKit();
+        Unit* pilot = seatVehicle ? seatVehicle->GetPassenger(0) : nullptr;
+        if (!bomber || !bomber->GetVehicleKit() || !pilot)
+            return;
+
+        int8 const targetSeatId = GetSpellInfo()->Id == SPELL_ENGINEERING ? SEAT_ENGINEERING : (GetSpellInfo()->Id == SPELL_BOMBER_BAY ? SEAT_BOMBER_BAY : SEAT_TURRET);
+        Unit* targetSeat = bomber->GetVehicleKit()->GetPassenger(targetSeatId);
+        if (targetSeat && targetSeat != seat)
+            pilot->CastSpell(targetSeat, SPELL_SWITCH_SEATS, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_switch_seat::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+// 59622 - Anti-Air Rocket
+class EG_spell_infra_green_bomber_anti_air_rocket : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_anti_air_rocket);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_AA_SHOT_TRIGGER_MISSILE });
+    }
+
+    void HandleLaunch(SpellEffIndex effIndex)
+    {
+        PreventHitDefaultEffect(effIndex);
+        if (WorldLocation const* dest = GetExplTargetDest())
+            GetCaster()->CastSpell(*dest, SPELL_AA_SHOT_TRIGGER_MISSILE, true);
+    }
+
+    void Register() override
+    {
+        OnEffectLaunch += SpellEffectFn(EG_spell_infra_green_bomber_anti_air_rocket::HandleLaunch, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+// 60523 - Bomb Blast
+class EG_spell_infra_green_bomber_bomb_blast : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_bomb_blast);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_QUEST_CREDIT_TO_PLAYER_INFANTRY, SPELL_QUEST_CREDIT_TO_PLAYER_CAPTAIN });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Creature* target = GetHitCreature();
+        if (!target)
+            return;
+
+        switch (target->GetEntry())
+        {
+            case NPC_ENRAGED_FLESHRENDER:
+            case NPC_SKELETAL_FOOTSOLDIER:
+                target->CastSpell(GetCaster(), SPELL_QUEST_CREDIT_TO_PLAYER_INFANTRY, true);
+                break;
+            case NPC_STITCHED_BRUTE:
+                target->CastSpell(GetCaster(), SPELL_QUEST_CREDIT_TO_PLAYER_CAPTAIN, true);
+                break;
+            default:
+                break;
+        }
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_bomb_blast::HandleDummy, EFFECT_2, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 60965 - Quest Credit to Player - Bombardment Infantry / 60973 - Quest Credit to Player - Bombardment Captain
+class EG_spell_infra_green_bomber_credit_to_player : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_credit_to_player);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_QUEST_CREDIT_INFANTRY, SPELL_QUEST_CREDIT_CAPTAIN });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Unit* seat = GetHitUnit();
+        Vehicle* seatVehicle = seat->GetVehicleKit();
+        Unit* pilot = seatVehicle ? seatVehicle->GetPassenger(0) : nullptr;
+        if (pilot && pilot->IsPlayer())
+            seat->CastSpell(pilot, GetSpellInfo()->Id == SPELL_QUEST_CREDIT_TO_PLAYER_INFANTRY ? SPELL_QUEST_CREDIT_INFANTRY : SPELL_QUEST_CREDIT_CAPTAIN, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_credit_to_player::HandleDummy, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 60938 - Smolder Banner
+class EG_spell_infra_green_bomber_smolder_banner : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_smolder_banner);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_SMOLDER });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Vehicle* bomber = GetCaster()->GetVehicleKit();
+        if (!bomber)
+            return;
+
+        std::vector<Unit*> banners;
+        for (int8 seatId : { SEAT_BANNER_HANGING, SEAT_BANNER_SIDE_LEFT, SEAT_BANNER_SIDE_RIGHT })
+            if (Unit* banner = bomber->GetPassenger(seatId))
+                if (!banner->HasAura(SPELL_SMOLDER))
+                    banners.push_back(banner);
+
+        if (!banners.empty())
+            GetCaster()->CastSpell(Trinity::Containers::SelectRandomContainerElement(banners), SPELL_SMOLDER, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_smolder_banner::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+// 60935 - Smolder
+class EG_spell_infra_green_bomber_smolder : public AuraScript
+{
+    PrepareAuraScript(EG_spell_infra_green_bomber_smolder);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_BURNING });
+    }
+
+    void HandleApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        Unit* banner = GetTarget();
+        Unit* bomber = banner->GetVehicleBase();
+        if (!bomber)
+            return;
+
+        banner->CastSpell(bomber, SPELL_BURNING, true);
+        for (int8 seatId : { SEAT_BOMBER_BAY, SEAT_TURRET, SEAT_ENGINEERING })
+            if (Unit* seat = bomber->GetVehicleKit()->GetPassenger(seatId))
+                banner->CastSpell(seat, SPELL_BURNING, true);
+    }
+
+    void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        Unit* bomber = GetTarget()->GetVehicleBase();
+        if (!bomber)
+            return;
+
+        Vehicle* vehicle = bomber->GetVehicleKit();
+        for (int8 seatId : { SEAT_BANNER_HANGING, SEAT_BANNER_SIDE_LEFT, SEAT_BANNER_SIDE_RIGHT })
+            if (Unit* banner = vehicle->GetPassenger(seatId))
+                if (banner != GetTarget() && banner->HasAura(SPELL_SMOLDER))
+                    return;
+
+        bomber->RemoveAurasDueToSpell(SPELL_BURNING);
+        for (int8 seatId : { SEAT_BOMBER_BAY, SEAT_TURRET, SEAT_ENGINEERING })
+            if (Unit* seat = vehicle->GetPassenger(seatId))
+                seat->RemoveAurasDueToSpell(SPELL_BURNING);
+    }
+
+    void HandlePeriodic(AuraEffect const* /*aurEff*/)
+    {
+        if (Unit* bomber = GetTarget()->GetVehicleBase())
+            Unit::DealDamage(bomber, bomber, 1000);
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(EG_spell_infra_green_bomber_smolder::HandleApply, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
+        AfterEffectRemove += AuraEffectRemoveFn(EG_spell_infra_green_bomber_smolder::HandleRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_infra_green_bomber_smolder::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
+// 59411 - Damage Control
+class EG_spell_infra_green_bomber_damage_control : public AuraScript
+{
+    PrepareAuraScript(EG_spell_infra_green_bomber_damage_control);
+
+    void HandlePeriodic(AuraEffect const* /*aurEff*/)
+    {
+        Unit* bomber = GetTarget();
+        Vehicle* vehicle = bomber->GetVehicleKit();
+        if (!vehicle)
+            return;
+
+        for (int8 seatId : { SEAT_BANNER_HANGING, SEAT_BANNER_SIDE_LEFT, SEAT_BANNER_SIDE_RIGHT })
+            if (Unit* banner = vehicle->GetPassenger(seatId))
+                if (banner->HasAura(SPELL_SMOLDER))
+                    return;
+
+        bomber->ModifyHealth(4000);
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_infra_green_bomber_damage_control::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
+// 61093 - Fight Fire
+class EG_spell_infra_green_bomber_fight_fire : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_fight_fire);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_EXTINGUISH_FIRE });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        Unit* bomber = GetCaster()->GetVehicleBase();
+        if (!bomber || !bomber->GetVehicleKit())
+            return;
+
+        for (int8 seatId : { SEAT_BANNER_HANGING, SEAT_BANNER_SIDE_LEFT, SEAT_BANNER_SIDE_RIGHT })
+        {
+            Unit* banner = bomber->GetVehicleKit()->GetPassenger(seatId);
+            if (banner && banner->HasAura(SPELL_SMOLDER))
+            {
+                GetCaster()->CastSpell(banner, SPELL_EXTINGUISH_FIRE, true);
+                return;
+            }
+        }
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_fight_fire::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+    }
+};
+
+// 61172 - Extinguish Fire
+class EG_spell_infra_green_bomber_extinguish_fire : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_extinguish_fire);
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        GetHitUnit()->RemoveAurasDueToSpell(SPELL_SMOLDER);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_extinguish_fire::HandleDummy, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 60852 - Airship Explodes Sequence
+class EG_spell_infra_green_bomber_explodes_sequence : public AuraScript
+{
+    PrepareAuraScript(EG_spell_infra_green_bomber_explodes_sequence);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_AIRSHIP_EXPLODES, SPELL_AIRSHIP_EXPLODES_BIG, SPELL_AIRSHIP_EXPLODES_HUGE, SPELL_AIRSHIP_EXPLODES_WITH_FIREBALL });
+    }
+
+    void HandlePeriodic(AuraEffect const* /*aurEff*/)
+    {
+        GetTarget()->CastSpell(GetTarget(), Trinity::Containers::SelectRandomContainerElement(std::array<uint32, 4>{ SPELL_AIRSHIP_EXPLODES, SPELL_AIRSHIP_EXPLODES_BIG, SPELL_AIRSHIP_EXPLODES_HUGE, SPELL_AIRSHIP_EXPLODES_WITH_FIREBALL }), true);
+    }
+
+    void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        if (GetTargetApplication()->GetRemoveMode() != AURA_REMOVE_BY_EXPIRE)
+            return;
+
+        if (Creature* bomber = GetTarget()->ToCreature())
+            bomber->DespawnOrUnsummon();
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_infra_green_bomber_explodes_sequence::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+        AfterEffectRemove += AuraEffectRemoveFn(EG_spell_infra_green_bomber_explodes_sequence::HandleRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+// 61176 - Bomber Killed
+class EG_spell_infra_green_bomber_killed : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_killed);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_REPORTED_KILLS });
+    }
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        GetHitUnit()->CastSpell(GetHitUnit(), SPELL_REPORTED_KILLS, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_killed::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 61282 - Mission Complete
+class EG_spell_infra_green_bomber_mission_complete : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_mission_complete);
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        GetHitUnit()->RemoveAurasDueToSpell(SPELL_FLIGHT_ORDERS);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_mission_complete::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 60918 - Finished Sortie
+class EG_spell_infra_green_bomber_finished_sortie : public AuraScript
+{
+    PrepareAuraScript(EG_spell_infra_green_bomber_finished_sortie);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_PARACHUTE });
+    }
+
+    void HandleApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        GetTarget()->CastSpell(GetTarget(), SPELL_PARACHUTE, true);
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(EG_spell_infra_green_bomber_finished_sortie::HandleApply, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+// 60816 - Eject Player From Craft
+class EG_spell_infra_green_bomber_eject_player : public AuraScript
+{
+    PrepareAuraScript(EG_spell_infra_green_bomber_eject_player);
+
+    void HandleApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        if (Vehicle* seat = GetTarget()->GetVehicleKit())
+            seat->RemoveAllPassengers();
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(EG_spell_infra_green_bomber_eject_player::HandleApply, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
+// 60784 - Rescue Craft - Pick up Fallen Pilot
+class EG_spell_infra_green_rescue_craft_pick_up : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_rescue_craft_pick_up);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_BOARD_RESCUE_CRAFT });
+    }
+
+    void HandleDummy(SpellEffIndex /*effIndex*/)
+    {
+        GetHitUnit()->CastSpell(GetCaster(), SPELL_BOARD_RESCUE_CRAFT, CastSpellExtraArgs(true).AddSpellBP0(2));
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_rescue_craft_pick_up::HandleDummy, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 61360 - Parachute
+class EG_spell_infra_green_rescue_parachute : public AuraScript
+{
+    PrepareAuraScript(EG_spell_infra_green_rescue_parachute);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_PARACHUTE_BUFF });
+    }
+
+    void HandlePeriodic(AuraEffect const* /*aurEff*/)
+    {
+        Unit* target = GetTarget();
+        if (!target->IsFalling())
+            return;
+
+        Remove();
+        target->CastSpell(target, SPELL_PARACHUTE_BUFF, true);
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_infra_green_rescue_parachute::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+    }
+};
+
 void AddSC_EG_gen_spell_scripts()
 {
     RegisterSpellScript(EG_spell_cosmetic___divine_shield_blue);
@@ -924,4 +1789,33 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_netherstorm_ring_of_flame);
     RegisterSpellScript(EG_spell_wintergrasp_rp_gg);
     RegisterSpellScript(EG_spell_wintergrasp_rp_gg_impact);
+    RegisterSpellScript(EG_spell_infra_green_bomber_waiting);
+    RegisterSpellScript(EG_spell_infra_green_bomber_pad_cooldown);
+    RegisterSpellScript(EG_spell_infra_green_bomber_request);
+    RegisterSpellScript(EG_spell_infra_green_bomber_granted);
+    RegisterSpellScript(EG_spell_infra_green_bomber_summon);
+    RegisterSpellScript(EG_spell_infra_green_bomber_on_spawn);
+    RegisterSpellScript(EG_spell_infra_green_bomber_synch_ship);
+    RegisterSpellScript(EG_spell_infra_green_bomber_synch_health);
+    RegisterSpellScript(EG_spell_infra_green_bomber_send_hate_aura);
+    RegisterSpellScript(EG_spell_infra_green_shield);
+    RegisterSpellScript(EG_spell_infra_green_bomber_charge_shield);
+    RegisterSpellScript(EG_spell_infra_green_bomber_airship_shield);
+    RegisterSpellScript(EG_spell_infra_green_bomber_shield_hit);
+    RegisterSpellScript(EG_spell_infra_green_bomber_switch_seat);
+    RegisterSpellScript(EG_spell_infra_green_bomber_anti_air_rocket);
+    RegisterSpellScript(EG_spell_infra_green_bomber_bomb_blast);
+    RegisterSpellScript(EG_spell_infra_green_bomber_credit_to_player);
+    RegisterSpellScript(EG_spell_infra_green_bomber_smolder_banner);
+    RegisterSpellScript(EG_spell_infra_green_bomber_smolder);
+    RegisterSpellScript(EG_spell_infra_green_bomber_damage_control);
+    RegisterSpellScript(EG_spell_infra_green_bomber_fight_fire);
+    RegisterSpellScript(EG_spell_infra_green_bomber_extinguish_fire);
+    RegisterSpellScript(EG_spell_infra_green_bomber_explodes_sequence);
+    RegisterSpellScript(EG_spell_infra_green_bomber_killed);
+    RegisterSpellScript(EG_spell_infra_green_bomber_mission_complete);
+    RegisterSpellScript(EG_spell_infra_green_bomber_finished_sortie);
+    RegisterSpellScript(EG_spell_infra_green_bomber_eject_player);
+    RegisterSpellScript(EG_spell_infra_green_rescue_craft_pick_up);
+    RegisterSpellScript(EG_spell_infra_green_rescue_parachute);
 }
