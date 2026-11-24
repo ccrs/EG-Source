@@ -3,7 +3,6 @@ DELETE FROM `disables` WHERE (`sourceType` = 2) AND (`entry` IN (249,603,624,631
 DELETE FROM `disables` WHERE (`sourceType` = 8) AND (`entry` IN (249,603,624,631,632,649,650,658,668,724));
 INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, `comment`) VALUES
 (2, 249, 3, '', '', "Onyxia\'s Lair"),
-(2, 624, 3, '', '', 'Vault of Archavon'),
 (2, 631, 15, '', '', 'Icecrown Citadel'),
 (2, 632, 3, '', '', 'The Forge of Souls'),
 (2, 649, 15, '', '', 'Trial of the Crusader'),
@@ -11,13 +10,15 @@ INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, 
 (2, 668, 3, '', '', 'Halls of Reflection'),
 (2, 724, 15, '', '', 'Ruby Sanctum'),
 (8, 249, 3, '', '', "Onyxia\'s Lair"),
-(8, 624, 3, '', '', 'Vault of Archavon'),
 (8, 631, 15, '', '', 'Icecrown Citadel'),
 (8, 632, 3, '', '', 'The Forge of Souls'),
 (8, 649, 15, '', '', 'Trial of the Crusader'),
 (8, 658, 3, '', '', 'Pit of Saron'),
 (8, 668, 3, '', '', 'Halls of Reflection'),
 (8, 724, 15, '', '', 'Ruby Sanctum');
+
+-- Koralon (Trial of the Crusader phase) and Toravon (Icecrown Citadel phase)
+DELETE FROM `instance_spawn_groups` WHERE `instanceMapId` = 624 AND `spawnGroupId` IN (30,31);
 
 DELETE FROM `disables` WHERE (`sourceType` = 1) AND (`entry` IN (24585,24586,24587,24588,24589,24590));
 INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, `comment`) VALUES
@@ -143,7 +144,6 @@ UPDATE `creature_loot_template` SET `item` = 40753 WHERE `item` = 47241 AND `ent
 15956, -- Anub'Rekhan
 31125, -- Archavon the Stone Watcher
 29932, -- Eck the Ferocious
-33993, -- Emalon the Storm Watcher
 15932, -- Gluth
 16060, -- Gothik the Harvester
 15953, -- Grand Widow Faerlina
@@ -176,7 +176,6 @@ UPDATE `creature_loot_template` SET `item` = 40753 WHERE `item` = 47241 AND `ent
 31367, -- Drakkari Elemental (1)
 31558, -- Drakos the Interrogator (1)
 31456, -- Elder Nadox (1)
-33994, -- Emalon the Storm Watcher (1)
 31507, -- Erekem (1)
 31368, -- Gal'darah (1)
 31533, -- General Bjarngrim (1)
@@ -273,6 +272,10 @@ UPDATE `creature_loot_template` SET `item` = 45624 WHERE `item` = 47241 AND `ent
 33885, -- XT-002 Deconstructor (1)
 33288, -- Yogg-Saron
 33955); -- Yogg-Saron (1)
+
+-- Vault of Archavon: Emalon
+UPDATE `creature_loot_template` SET `item` = 45624 WHERE `item` IN (40753, 47241) AND `entry` IN (33993, 33994);
+
 UPDATE `item_loot_template` SET `item` = 45624 WHERE `item` = 47241 AND `entry` IN (
 45875, -- Algalon
 45878); -- Algalon HC
