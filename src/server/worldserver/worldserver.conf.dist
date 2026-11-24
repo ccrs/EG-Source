@@ -2801,9 +2801,10 @@ Battleground.ReportAFK = 3
 # BATTLEFIELD CONFIG
 #
 #     Wintergrasp.Enable
-#         Description: Enable the Wintergrasp battlefield.
+#         Description: Enable the Wintergrasp battlefield at server start. .bf enable toggles it
+#                      until the next start.
 #         Default:     0 - (Disabled)
-#                      1 - (Enabled) NYI
+#                      1 - (Enabled)
 
 Wintergrasp.Enable = 0
 

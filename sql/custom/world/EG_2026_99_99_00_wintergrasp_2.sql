@@ -9,8 +9,9 @@ INSERT INTO `command` (`name`, `help`) VALUES
 ('bf raid list', 'Syntax: .bf raid list #battleid\nLists the tracked battlefield raids of both factions.');
 
 -- Battlefield battle commands
-DELETE FROM `command` WHERE `name` IN ('bf start', 'bf stop', 'bf timer');
+DELETE FROM `command` WHERE `name` IN ('bf enable', 'bf start', 'bf stop', 'bf timer');
 INSERT INTO `command` (`name`, `help`) VALUES
+('bf enable', 'Syntax: .bf enable #battleid\nEnables the battlefield, or disables it when enabled. Disabling ends a running preparation or battle with no result. Not saved: Wintergrasp.Enable decides at the next server start.'),
 ('bf start', 'Syntax: .bf start #battleid\nStarts the battle now.'),
 ('bf stop', 'Syntax: .bf stop #battleid\nEnds the battle with the result set so far; none by default (no control change, no counters, no rewards).'),
 ('bf timer', 'Syntax: .bf timer #battleid #seconds\nMoves the start of the next battle to #seconds from now. Only during idle or preparation. During idle the next battle cannot start later than one battle cycle (start to start) after the idle phase began; during preparation, no later than the preparation duration after it began.');

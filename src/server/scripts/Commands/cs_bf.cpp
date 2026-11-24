@@ -94,8 +94,14 @@ public:
         return true;
     }
 
-    static bool HandleBattlefieldEnable(ChatHandler* /*handler*/)
+    static bool HandleBattlefieldEnable(ChatHandler* handler, uint8 battleId)
     {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        battlefield->SetEnabled(!battlefield->IsEnabled());
+        handler->PSendSysMessage("Battlefield %u: %s.", battleId, battlefield->IsEnabled() ? "enabled" : "disabled");
         return true;
     }
 

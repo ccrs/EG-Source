@@ -397,7 +397,9 @@ bool BattlefieldWintergrasp::SetupBattlefield()
     Values.Set<Seconds>(BATTLEFIELD_VALUE_DELAY_PHASE_BATTLE_RESTART, Minutes(sWorld->getIntConfig(CONFIG_WINTERGRASP_RESTART_AFTER_CRASH)));
     Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_NEXT_START, time_t(sWorld->getWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE)));
     Values.Set(BATTLEFIELD_VALUE_TIME_PHASE_BATTLE_END, time_t(sWorld->getWorldState(WORLDSTATE_WINTERGRASP_TIME_TO_END)));
-    InitializePhaseTimes();
+    if (sWorld->getBoolConfig(CONFIG_WINTERGRASP_ENABLE))
+        SetEnabled(true);
+
     return true;
 }
 
@@ -623,7 +625,12 @@ void BattlefieldWintergrasp::FillInitialWorldStates(WorldPackets::WorldState::In
 void BattlefieldWintergrasp::SendGlobalWorldStates(Player const* player)
 {
     if (!IsEnabled())
+    {
+        player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_SHOW_BATTLE_TIMER, 0);
+        player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_SHOW_COOLDOWN, 0);
+        player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_ICON_ACTIVE, 0);
         return;
+    }
 
     bool const warTime = IsBattleTime();
     player->SendUpdateWorldState(WORLDSTATE_WINTERGRASP_SHOW_BATTLE_TIMER, warTime ? 1 : 0); // 3710

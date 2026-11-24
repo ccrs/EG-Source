@@ -998,18 +998,30 @@ void Battlefield::ProcessBattleResult(BattlefieldEventKey /*key*/)
 
 void Battlefield::SetEnabled(bool enabled)
 {
+    if (enabled == IsEnabled())
+        return;
+
     if (enabled)
+    {
         _flags |= BATTLEFIELD_FLAG_ENABLED;
+        InitializePhaseTimes();
+    }
     else
     {
         SetPhase(BATTLEFIELD_PHASE_IDLE);
         _flags.RemoveFlag(BATTLEFIELD_FLAG_ENABLED);
+        RemoveEvents(BATTLEFIELD_EVENT_PHASE_ADVANCE, ObjectGuid::Empty);
     }
 
     for (auto const& [_, building] : GetEntities<BattlefieldBuilding>())
         building->ChangeTeam();
 
     UpdateObjectSpawns();
+    for (auto const& [_, session] : sWorld->GetAllSessions())
+        if (Player* player = session->GetPlayer(); player && player->IsInWorld())
+            SendGlobalWorldStates(player);
+
+    QueueEvent<BattlefieldZoneRefreshEvent>();
 }
 
 bool Battlefield::SetBattleResult(BattlefieldBattleResult result)
