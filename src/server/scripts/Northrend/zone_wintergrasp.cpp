@@ -257,9 +257,9 @@ struct npc_wg_queue : public ScriptedAI
     }
 };
 
-struct npc_wg_siege_machine : public VehicleAI
+struct EG_npc_wg_siege_machine : public VehicleAI
 {
-    npc_wg_siege_machine(Creature* creature) : VehicleAI(creature), _checkTimer(1000) { }
+    EG_npc_wg_siege_machine(Creature* creature) : VehicleAI(creature), _checkTimer(1000) { }
 
     void IsSummonedBy(WorldObject* summoner) override
     {
@@ -343,9 +343,9 @@ private:
     TimeTracker _checkTimer;
 };
 
-struct go_wg_titan_relic : public GameObjectAI
+struct EG_go_wg_titan_relic : public GameObjectAI
 {
-    go_wg_titan_relic(GameObject* gameObject) : GameObjectAI(gameObject) { }
+    EG_go_wg_titan_relic(GameObject* gameObject) : GameObjectAI(gameObject) { }
 
     bool OnGossipHello(Player* player) override
     {
@@ -470,10 +470,10 @@ class achievement_wg_didnt_stand_a_chance : public AchievementCriteriaScript
         }
 };
 
-class achievement_wg_within_our_grasp : public AchievementCriteriaScript
+class EG_achievement_wg_within_our_grasp : public AchievementCriteriaScript
 {
     public:
-        achievement_wg_within_our_grasp() : AchievementCriteriaScript("achievement_wg_within_our_grasp") { }
+        EG_achievement_wg_within_our_grasp() : AchievementCriteriaScript("EG_achievement_wg_within_our_grasp") { }
 
         bool OnCheck(Player* /*source*/, Unit* /*target*/) override
         {
@@ -575,26 +575,6 @@ class spell_wintergrasp_defender_teleport : public SpellScript
     void Register() override
     {
         OnCheckCast += SpellCheckCastFn(spell_wintergrasp_defender_teleport::CheckCast);
-    }
-};
-
-// 54643 - Teleport
-class spell_wintergrasp_defender_teleport_trigger : public SpellScript
-{
-    PrepareSpellScript(spell_wintergrasp_defender_teleport_trigger);
-
-    void HandleDummy(SpellEffIndex /*effindex*/)
-    {
-        if (Unit* target = GetHitUnit())
-        {
-            WorldLocation destination = target->GetWorldLocation();
-            SetExplTargetDest(destination);
-        }
-    }
-
-    void Register() override
-    {
-        OnEffectHitTarget += SpellEffectFn(spell_wintergrasp_defender_teleport_trigger::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
     }
 };
 
@@ -797,10 +777,10 @@ class condition_is_wintergrasp_alliance : public ConditionScript
         }
 };
 
-class condition_wintergrasp_vehicle_limit : public ConditionScript
+class EG_condition_wintergrasp_vehicle_limit : public ConditionScript
 {
     public:
-        condition_wintergrasp_vehicle_limit(char const* scriptName, bool buildable) : ConditionScript(scriptName), _buildable(buildable) { }
+        EG_condition_wintergrasp_vehicle_limit(char const* scriptName, bool buildable) : ConditionScript(scriptName), _buildable(buildable) { }
 
         bool OnConditionCheck(Condition const* condition, ConditionSourceInfo& sourceInfo) override
         {
@@ -822,20 +802,19 @@ void AddSC_wintergrasp()
     RegisterCreatureAI(npc_wg_queue);
     RegisterCreatureAI(npc_wg_spirit_guide);
     RegisterCreatureAI(npc_wg_demolisher_engineer);
-    RegisterCreatureAI(npc_wg_siege_machine);
+    RegisterCreatureAI(EG_npc_wg_siege_machine);
     RegisterGameObjectAI(go_wg_vehicle_teleporter);
-    RegisterGameObjectAI(go_wg_titan_relic);
+    RegisterGameObjectAI(EG_go_wg_titan_relic);
     RegisterSpellScript(spell_wintergrasp_force_building);
     RegisterSpellScript(EG_spell_wintergrasp_build_vehicle);
     RegisterSpellScript(spell_wintergrasp_grab_passenger);
     RegisterSpellScript(spell_wintergrasp_activate_robotic_arms);
     new achievement_wg_didnt_stand_a_chance();
-    new achievement_wg_within_our_grasp();
+    new EG_achievement_wg_within_our_grasp();
     new EG_achievement_wg_vehicular_gnomeslaughter_vehicle();
     new EG_achievement_wg_vehicular_gnomeslaughter_cannon();
     new EG_at_wintergrasp_vault_of_archavon();
     RegisterSpellScript(spell_wintergrasp_defender_teleport);
-    RegisterSpellScript(spell_wintergrasp_defender_teleport_trigger);
     RegisterSpellScript(spell_wintergrasp_tenacity_refresh);
     RegisterSpellScript(EG_spell_wintergrasp_waiting_to_resurrect);
     RegisterSpellScript(EG_spell_wintergrasp_battle_reward);
@@ -843,6 +822,6 @@ void AddSC_wintergrasp()
     RegisterSpellScript(EG_spell_wintergrasp_tower_reward);
     new condition_is_wintergrasp_horde();
     new condition_is_wintergrasp_alliance();
-    new condition_wintergrasp_vehicle_limit("condition_wintergrasp_vehicle_buildable", true);
-    new condition_wintergrasp_vehicle_limit("condition_wintergrasp_vehicle_limit_reached", false);
+    new EG_condition_wintergrasp_vehicle_limit("EG_condition_wintergrasp_vehicle_buildable", true);
+    new EG_condition_wintergrasp_vehicle_limit("EG_condition_wintergrasp_vehicle_limit_reached", false);
 }

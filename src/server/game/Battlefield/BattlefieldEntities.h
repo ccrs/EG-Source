@@ -227,7 +227,7 @@ public:
     void ChangeTeam() override;
 
 private:
-    PvPTeamId GetOwnerPvPTeamId() const;
+    PvPTeamId GetPhaseOwnerPvPTeamId() const;
     uint32 GetFaction() const;
 };
 

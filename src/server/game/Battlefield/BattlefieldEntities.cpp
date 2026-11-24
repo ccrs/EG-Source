@@ -286,7 +286,7 @@ void BattlefieldDestructibleBuilding::InitializeState()
 {
     uint64 const savedState = sWorld->getWorldState(Info.WorldState);
     State = savedState <= BATTLEFIELD_BUILDING_STATE_ALLIANCE_DESTROYED ? BattlefieldBuildingState(savedState) : BATTLEFIELD_BUILDING_STATE_NONE;
-    SetState(GetOwnerPvPTeamId(), GetDestructibleState());
+    SetState(GetPhaseOwnerPvPTeamId(), GetDestructibleState());
     SaveWorldState();
 }
 
@@ -294,7 +294,7 @@ void BattlefieldDestructibleBuilding::Reset()
 {
     BattlefieldBuilding::Reset();
 
-    if (SetState(GetOwnerPvPTeamId(), GO_DESTRUCTIBLE_INTACT))
+    if (SetState(GetPhaseOwnerPvPTeamId(), GO_DESTRUCTIBLE_INTACT))
         UpdateWorldState();
 
     uint32 const faction = GetFaction();
@@ -311,7 +311,7 @@ void BattlefieldDestructibleBuilding::ChangeTeam()
 {
     BattlefieldBuilding::ChangeTeam();
 
-    if (SetState(GetOwnerPvPTeamId(), GetDestructibleState()))
+    if (SetState(GetPhaseOwnerPvPTeamId(), GetDestructibleState()))
         UpdateWorldState();
 
     if (uint32 const faction = GetFaction())
@@ -319,7 +319,7 @@ void BattlefieldDestructibleBuilding::ChangeTeam()
             gameObject->SetFaction(faction);
 }
 
-PvPTeamId BattlefieldDestructibleBuilding::GetOwnerPvPTeamId() const
+PvPTeamId BattlefieldDestructibleBuilding::GetPhaseOwnerPvPTeamId() const
 {
     if (BuildingType != BATTLEFIELD_BUILDING_TYPE_TOWER)
         return Battle->GetControllingTeam();

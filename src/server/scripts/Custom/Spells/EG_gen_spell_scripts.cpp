@@ -827,8 +827,8 @@ enum RocketPropelledGoblinGrenade
 
 static bool IsVehicleBase(WorldObject const* object)
 {
-    Unit const* unit = object->ToUnit();
-    return unit && unit->IsVehicle() && !unit->GetVehicle();
+    Creature const* creature = object->ToCreature();
+    return creature && creature->IsVehicle() && !creature->GetVehicle();
 }
 
 // 49761 - Rocket-Propelled Goblin Grenade

@@ -727,7 +727,7 @@ void BattlefieldWintergrasp::OnUnitDeath(Unit* unit)
 
     for (PvPTeamId pvpTeamId : { PVP_TEAM_HORDE, PVP_TEAM_ALLIANCE })
     {
-        if (!_vehicleGUIDs[pvpTeamId].contains(unit->GetGUID()))
+        if (!IsBattleTime() || !_vehicleGUIDs[pvpTeamId].contains(unit->GetGUID()))
             continue;
 
         for (ObjectGuid playerGuid : GetZonePlayers())

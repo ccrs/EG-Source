@@ -423,8 +423,8 @@ INSERT INTO `spawn_group_template` (`groupId`, `groupName`, `groupFlags`) VALUES
 DELETE FROM `gameobject_addon` WHERE `guid` IN (200049, 200050, 200051);
 DELETE FROM `gameobject` WHERE `guid` IN (200049, 200050, 200051);
 INSERT INTO `gameobject` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `position_x`, `position_y`, `position_z`, `orientation`, `rotation0`, `rotation1`, `rotation2`, `rotation3`, `spawntimesecs`, `animprogress`, `state`, `VerifiedBuild`, `ScriptName`) VALUES
-(200049, 192829, 571, 4197, 4575, 1, 1, 5440.379, 2840.4934, 430.28162, 4.4505903, 0, 0, -0.7933531, 0.6087617, 180, 255, 1, 12340, 'go_wg_titan_relic'),
-(200050, 192834, 571, 4197, 4575, 1, 1, 5440.379, 2840.4934, 430.28162, 4.4505903, 0, 0, -0.7933531, 0.6087617, 180, 255, 1, 12340, 'go_wg_titan_relic'),
+(200049, 192829, 571, 4197, 4575, 1, 1, 5440.379, 2840.4934, 430.28162, 4.4505903, 0, 0, -0.7933531, 0.6087617, 180, 255, 1, 12340, 'EG_go_wg_titan_relic'),
+(200050, 192834, 571, 4197, 4575, 1, 1, 5440.379, 2840.4934, 430.28162, 4.4505903, 0, 0, -0.7933531, 0.6087617, 180, 255, 1, 12340, 'EG_go_wg_titan_relic'),
 (200051, 194162, 571, 4197, 4575, 1, 1, 5397.1084, 2841.54, 425.90143, 3.1415927, 0, 0, -1, 0, 180, 255, 1, 12340, '');
 DELETE FROM `spawn_group` WHERE `groupId` IN (1015, 1016);
 INSERT INTO `spawn_group` (`groupId`, `spawnType`, `spawnId`) VALUES
@@ -434,7 +434,7 @@ INSERT INTO `spawn_group` (`groupId`, `spawnType`, `spawnId`) VALUES
 -- Siege vehicles
 UPDATE `creature_template` SET `gossip_menu_id` = 9904 WHERE `entry` = 30400;
 UPDATE `creature_template` SET `gossip_menu_id` = 9923 WHERE `entry` = 30499;
-UPDATE `creature_template` SET `ScriptName` = 'npc_wg_siege_machine' WHERE `entry` IN (27881, 28094, 28312, 32627);
+UPDATE `creature_template` SET `ScriptName` = 'EG_npc_wg_siege_machine' WHERE `entry` IN (27881, 28094, 28312, 32627);
 DELETE FROM `gossip_menu` WHERE `MenuID` IN (9904, 9923);
 INSERT INTO `gossip_menu` (`MenuID`, `TextID`, `VerifiedBuild`) VALUES
 (9904, 13759, 0),
@@ -446,13 +446,13 @@ INSERT INTO `gossip_menu` (`MenuID`, `TextID`, `VerifiedBuild`) VALUES
 DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` IN (14, 15) AND `SourceGroup` IN (9904, 9923);
 INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `ConditionStringValue1`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES
 (14, 9904, 13759, 0, 0, 1, 0, 33280, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - officer text - Corporal'),
-(14, 9904, 13759, 0, 0, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_buildable', 'Goblin Mechanic - officer text - vehicle can be built'),
+(14, 9904, 13759, 0, 0, 32, 0, 144, 0, 0, '', 0, 0, 0, 'EG_condition_wintergrasp_vehicle_buildable', 'Goblin Mechanic - officer text - vehicle can be built'),
 (14, 9904, 13786, 0, 0, 1, 0, 33280, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - no parts text - Corporal'),
-(14, 9904, 13786, 0, 0, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_limit_reached', 'Goblin Mechanic - no parts text - vehicle limit reached'),
+(14, 9904, 13786, 0, 0, 32, 0, 144, 0, 0, '', 0, 0, 0, 'EG_condition_wintergrasp_vehicle_limit_reached', 'Goblin Mechanic - no parts text - vehicle limit reached'),
 (14, 9904, 13759, 0, 1, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - officer text - First Lieutenant'),
-(14, 9904, 13759, 0, 1, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_buildable', 'Goblin Mechanic - officer text - vehicle can be built'),
+(14, 9904, 13759, 0, 1, 32, 0, 144, 0, 0, '', 0, 0, 0, 'EG_condition_wintergrasp_vehicle_buildable', 'Goblin Mechanic - officer text - vehicle can be built'),
 (14, 9904, 13786, 0, 1, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - no parts text - First Lieutenant'),
-(14, 9904, 13786, 0, 1, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_limit_reached', 'Goblin Mechanic - no parts text - vehicle limit reached'),
+(14, 9904, 13786, 0, 1, 32, 0, 144, 0, 0, '', 0, 0, 0, 'EG_condition_wintergrasp_vehicle_limit_reached', 'Goblin Mechanic - no parts text - vehicle limit reached'),
 (14, 9904, 13761, 0, 0, 1, 0, 33280, 0, 0, '', 1, 0, 0, '', 'Goblin Mechanic - only officers text - not Corporal'),
 (14, 9904, 13761, 0, 0, 1, 0, 55629, 0, 0, '', 1, 0, 0, '', 'Goblin Mechanic - only officers text - not First Lieutenant'),
 (15, 9904, 0, 0, 0, 1, 0, 33280, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - build catapult - Corporal'),
@@ -460,13 +460,13 @@ INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry
 (15, 9904, 1, 0, 0, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - build demolisher - First Lieutenant'),
 (15, 9904, 2, 0, 0, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Goblin Mechanic - build siege engine - First Lieutenant'),
 (14, 9923, 13798, 0, 0, 1, 0, 33280, 0, 0, '', 0, 0, 0, '', 'Gnomish Engineer - officer text - Corporal'),
-(14, 9923, 13798, 0, 0, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_buildable', 'Gnomish Engineer - officer text - vehicle can be built'),
+(14, 9923, 13798, 0, 0, 32, 0, 144, 0, 0, '', 0, 0, 0, 'EG_condition_wintergrasp_vehicle_buildable', 'Gnomish Engineer - officer text - vehicle can be built'),
 (14, 9923, 13786, 0, 0, 1, 0, 33280, 0, 0, '', 0, 0, 0, '', 'Gnomish Engineer - no parts text - Corporal'),
-(14, 9923, 13786, 0, 0, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_limit_reached', 'Gnomish Engineer - no parts text - vehicle limit reached'),
+(14, 9923, 13786, 0, 0, 32, 0, 144, 0, 0, '', 0, 0, 0, 'EG_condition_wintergrasp_vehicle_limit_reached', 'Gnomish Engineer - no parts text - vehicle limit reached'),
 (14, 9923, 13798, 0, 1, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Gnomish Engineer - officer text - First Lieutenant'),
-(14, 9923, 13798, 0, 1, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_buildable', 'Gnomish Engineer - officer text - vehicle can be built'),
+(14, 9923, 13798, 0, 1, 32, 0, 144, 0, 0, '', 0, 0, 0, 'EG_condition_wintergrasp_vehicle_buildable', 'Gnomish Engineer - officer text - vehicle can be built'),
 (14, 9923, 13786, 0, 1, 1, 0, 55629, 0, 0, '', 0, 0, 0, '', 'Gnomish Engineer - no parts text - First Lieutenant'),
-(14, 9923, 13786, 0, 1, 32, 0, 144, 0, 0, '', 0, 0, 0, 'condition_wintergrasp_vehicle_limit_reached', 'Gnomish Engineer - no parts text - vehicle limit reached'),
+(14, 9923, 13786, 0, 1, 32, 0, 144, 0, 0, '', 0, 0, 0, 'EG_condition_wintergrasp_vehicle_limit_reached', 'Gnomish Engineer - no parts text - vehicle limit reached'),
 (14, 9923, 14172, 0, 0, 1, 0, 33280, 0, 0, '', 1, 0, 0, '', 'Gnomish Engineer - only officers text - not Corporal'),
 (14, 9923, 14172, 0, 0, 1, 0, 55629, 0, 0, '', 1, 0, 0, '', 'Gnomish Engineer - only officers text - not First Lieutenant'),
 (15, 9923, 0, 0, 0, 1, 0, 33280, 0, 0, '', 0, 0, 0, '', 'Gnomish Engineer - build catapult - Corporal'),
@@ -630,7 +630,7 @@ INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (59203, 'EG_spell_wintergrasp_building_reward');
 DELETE FROM `achievement_criteria_data` WHERE `criteria_id` = 7666 AND `type` = 11;
 INSERT INTO `achievement_criteria_data` (`criteria_id`, `type`, `value1`, `value2`, `ScriptName`) VALUES
-(7666, 11, 0, 0, 'achievement_wg_within_our_grasp');
+(7666, 11, 0, 0, 'EG_achievement_wg_within_our_grasp');
 
 -- Vehicular Gnomeslaughter
 DELETE FROM `disables` WHERE `sourceType` = 4 AND `entry` IN (7704, 7705);
@@ -649,6 +649,7 @@ INSERT INTO `gameobject` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, 
 DELETE FROM `spawn_group` WHERE `groupId` = 1000 AND `spawnType` = 1 AND `spawnId` = 200052;
 INSERT INTO `spawn_group` (`groupId`, `spawnType`, `spawnId`) VALUES
 (1000, 1, 200052);
+DELETE FROM `spell_script_names` WHERE `spell_id` = 54643 AND `ScriptName` = 'spell_wintergrasp_defender_teleport_trigger';
 
 -- Vault of Archavon access
 DELETE FROM `areatrigger_scripts` WHERE `entry` = 5258;

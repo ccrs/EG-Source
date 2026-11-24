@@ -194,7 +194,7 @@ public:
         }
 
         Player* target = player->GetConnectedPlayer();
-        if (!target->IsInWorld() || (battlefield->IsBattleTime() && !battlefield->IsPlayerInBattle(target)) || !battlefield->QueueEvent<BattlefieldRaidAddEvent>(target->GetGUID()))
+        if (!target->IsInWorld() || !battlefield->IsPlayerInBattle(target) || !battlefield->QueueEvent<BattlefieldRaidAddEvent>(target->GetGUID()))
         {
             handler->PSendSysMessage("Battlefield %u: %s cannot be added to the battlefield raid now.", battleId, player->GetName().c_str());
             handler->SetSentErrorMessage(true);
