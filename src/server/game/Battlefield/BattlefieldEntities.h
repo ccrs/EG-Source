@@ -88,6 +88,16 @@ enum BattlefieldCapturePointArtKit : uint8
     BATTLEFIELD_CAPTUREPOINT_ARTKIT_ALLIANCE
 };
 
+enum BattlefieldCapturePointFlags : uint8
+{
+    BATTLEFIELD_CAPTUREPOINT_FLAG_NONE = 0x00,
+    BATTLEFIELD_CAPTUREPOINT_FLAG_CAPTURABLE = 0x01,
+    BATTLEFIELD_CAPTUREPOINT_FLAG_STARTS_WITH_ATTACKER = 0x02,
+    BATTLEFIELD_CAPTUREPOINT_FLAG_KEEPS_OWNER = 0x04
+};
+
+DEFINE_ENUM_FLAG(BattlefieldCapturePointFlags);
+
 enum BattlefieldGraveyardState : uint8
 {
     BATTLEFIELD_GRAVEYARD_STATE_NEUTRAL = 0,
@@ -223,13 +233,11 @@ private:
 
 struct BattlefieldCapturePointInfo
 {
-    BattlefieldCapturePointInfo(uint8 id, uint32 worldState, uint8 graveyardId, bool capturable, bool startsWithAttacker, bool keepsOwner) : Info(BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_CAPTUREPOINT, id, worldState), BATTLEFIELD_BUILDING_TYPE_WORKSHOP), GraveyardId(graveyardId), Capturable(capturable), StartsWithAttacker(startsWithAttacker), KeepsOwner(keepsOwner) { }
+    BattlefieldCapturePointInfo(uint8 id, uint32 worldState, uint8 graveyardId, EnumFlag<BattlefieldCapturePointFlags> flags) : Info(BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_CAPTUREPOINT, id, worldState), BATTLEFIELD_BUILDING_TYPE_WORKSHOP), GraveyardId(graveyardId), Flags(flags) { }
 
     BattlefieldBuildingInfo Info;
     uint8 GraveyardId;
-    bool Capturable;
-    bool StartsWithAttacker;
-    bool KeepsOwner;
+    EnumFlag<BattlefieldCapturePointFlags> Flags;
 };
 
 class BattlefieldCapturePoint : public BattlefieldBuilding
@@ -240,6 +248,7 @@ public:
 
     void OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo) override;
     void InitializeState() override;
+    void SaveWorldState() override;
     void Reset() override;
     void ChangeTeam() override;
     void Update(std::vector<Player*> const& players, Milliseconds diff) override;
@@ -249,12 +258,10 @@ public:
     virtual void Capture(PvPTeamId pvpTeamId);
 
     uint8 GraveyardId;
-    bool Capturable;
-    bool StartsWithAttacker;
-    bool KeepsOwner;
+    EnumFlag<BattlefieldCapturePointFlags> Flags;
 
 private:
-    GameObjectTemplate const* GetBannerTemplate() const;
+    GameObjectTemplate const* GetReferenceTemplate() const;
     void SendCaptureBar(Player* player, bool show) const;
     void SendCaptureBarValue() const;
 

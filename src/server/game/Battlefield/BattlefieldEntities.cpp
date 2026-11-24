@@ -335,7 +335,7 @@ uint32 BattlefieldDestructibleBuilding::GetFaction() const
     return Battle->GetFaction(GetDisplayedPvPTeamId());
 }
 
-BattlefieldCapturePoint::BattlefieldCapturePoint(Battlefield* battlefield, BattlefieldCapturePointInfo const info) : BattlefieldBuilding(battlefield, info.Info), GraveyardId(info.GraveyardId), Capturable(info.Capturable), StartsWithAttacker(info.StartsWithAttacker), KeepsOwner(info.KeepsOwner), _slider(0.0f), _contested(false)
+BattlefieldCapturePoint::BattlefieldCapturePoint(Battlefield* battlefield, BattlefieldCapturePointInfo const info) : BattlefieldBuilding(battlefield, info.Info), GraveyardId(info.GraveyardId), Flags(info.Flags), _slider(0.0f), _contested(false)
 {
 }
 
@@ -353,7 +353,7 @@ void BattlefieldCapturePoint::OnObjectCreate(WorldObject* object, BattlefieldObj
 void BattlefieldCapturePoint::InitializeState()
 {
     PvPTeamId owner = Battle->GetControllingTeam();
-    if (Capturable && KeepsOwner && Battle->IsEnabled())
+    if (Flags.HasAllFlags(BATTLEFIELD_CAPTUREPOINT_FLAG_CAPTURABLE | BATTLEFIELD_CAPTUREPOINT_FLAG_KEEPS_OWNER) && Battle->IsEnabled())
     {
         uint64 const savedState = sWorld->getWorldState(Info.WorldState);
         if (savedState == BATTLEFIELD_BUILDING_STATE_HORDE_INTACT)
@@ -365,27 +365,34 @@ void BattlefieldCapturePoint::InitializeState()
     SetOwner(owner);
 }
 
+void BattlefieldCapturePoint::SaveWorldState()
+{
+    if (Flags.HasAllFlags(BATTLEFIELD_CAPTUREPOINT_FLAG_CAPTURABLE | BATTLEFIELD_CAPTUREPOINT_FLAG_KEEPS_OWNER) && !Battle->IsEnabled())
+        return;
+
+    BattlefieldBuilding::SaveWorldState();
+}
+
 void BattlefieldCapturePoint::Reset()
 {
     BattlefieldBuilding::Reset();
 
-    SetOwner(Capturable && StartsWithAttacker ? Battle->GetAttackingTeam() : Battle->GetControllingTeam());
+    SetOwner(Flags.HasAllFlags(BATTLEFIELD_CAPTUREPOINT_FLAG_CAPTURABLE | BATTLEFIELD_CAPTUREPOINT_FLAG_STARTS_WITH_ATTACKER) ? Battle->GetAttackingTeam() : Battle->GetControllingTeam());
 }
 
 void BattlefieldCapturePoint::ChangeTeam()
 {
     BattlefieldBuilding::ChangeTeam();
 
-    if (!Capturable || !KeepsOwner || !Battle->IsEnabled())
-        SetOwner(Battle->GetControllingTeam());
+    InitializeState();
 }
 
 void BattlefieldCapturePoint::Update(std::vector<Player*> const& players, Milliseconds diff)
 {
     BattlefieldBuilding::Update(players, diff);
 
-    GameObjectTemplate const* bannerTemplate = GetBannerTemplate();
-    if (!Capturable || !bannerTemplate)
+    GameObjectTemplate const* referenceTemplate = GetReferenceTemplate();
+    if (!Flags.HasFlag(BATTLEFIELD_CAPTUREPOINT_FLAG_CAPTURABLE) || !referenceTemplate)
         return;
 
     std::vector<GameObject*> const banners = GetGameObjects();
@@ -395,7 +402,7 @@ void BattlefieldCapturePoint::Update(std::vector<Player*> const& players, Millis
     GuidUnorderedSet playersInRange;
     for (Player* player : players)
     {
-        if (!banner || !player->IsOutdoorPvPActive() || !banner->IsInMap(player) || banner->GetExactDist(player) > float(bannerTemplate->capturePoint.radius))
+        if (!banner || !player->IsOutdoorPvPActive() || !banner->IsInMap(player) || banner->GetExactDist(player) > float(referenceTemplate->capturePoint.radius))
             continue;
 
         ++counts[player->GetTeamId()];
@@ -419,13 +426,13 @@ void BattlefieldCapturePoint::Update(std::vector<Player*> const& players, Millis
     }
 
     int32 const superiority = int32(counts[TEAM_ALLIANCE]) - int32(counts[TEAM_HORDE]);
-    uint32 const minSuperiority = bannerTemplate->capturePoint.minSuperiority;
-    uint32 const maxSuperiority = bannerTemplate->capturePoint.maxSuperiority;
+    uint32 const minSuperiority = referenceTemplate->capturePoint.minSuperiority;
+    uint32 const maxSuperiority = referenceTemplate->capturePoint.maxSuperiority;
     if (!superiority || uint32(std::abs(superiority)) < minSuperiority)
         return;
 
-    float const minTime = float(bannerTemplate->capturePoint.minTime);
-    float const maxTime = float(bannerTemplate->capturePoint.maxTime);
+    float const minTime = float(referenceTemplate->capturePoint.minTime);
+    float const maxTime = float(referenceTemplate->capturePoint.maxTime);
     float fullTime = minTime;
     if (maxSuperiority > minSuperiority)
         fullTime = maxTime - (maxTime - minTime) * float(std::clamp<uint32>(std::abs(superiority), minSuperiority, maxSuperiority) - minSuperiority) / float(maxSuperiority - minSuperiority);
@@ -450,7 +457,7 @@ void BattlefieldCapturePoint::Update(std::vector<Player*> const& players, Millis
         Attack(challenger);
     }
 
-    float const threshold = (100.0f - float(bannerTemplate->capturePoint.neutralPercent)) / 2.0f;
+    float const threshold = (100.0f - float(referenceTemplate->capturePoint.neutralPercent)) / 2.0f;
     if (challenger == PVP_TEAM_ALLIANCE ? _slider >= 100.0f - threshold : _slider <= threshold)
         Capture(challenger);
 }
@@ -477,7 +484,7 @@ void BattlefieldCapturePoint::Capture(PvPTeamId pvpTeamId)
     SetOwner(pvpTeamId);
 }
 
-GameObjectTemplate const* BattlefieldCapturePoint::GetBannerTemplate() const
+GameObjectTemplate const* BattlefieldCapturePoint::GetReferenceTemplate() const
 {
     if (std::vector<BattlefieldObjectInfo> const* objectInfos = GetObjectInfos())
         for (BattlefieldObjectInfo const& objectInfo : *objectInfos)
@@ -489,27 +496,27 @@ GameObjectTemplate const* BattlefieldCapturePoint::GetBannerTemplate() const
 
 void BattlefieldCapturePoint::SendCaptureBar(Player* player, bool show) const
 {
-    GameObjectTemplate const* bannerTemplate = GetBannerTemplate();
-    if (!bannerTemplate)
+    GameObjectTemplate const* referenceTemplate = GetReferenceTemplate();
+    if (!referenceTemplate)
         return;
 
-    player->SendUpdateWorldState(bannerTemplate->capturePoint.worldState1, show ? 1 : 0);
+    player->SendUpdateWorldState(referenceTemplate->capturePoint.worldState1, show ? 1 : 0);
     if (!show)
         return;
 
-    player->SendUpdateWorldState(bannerTemplate->capturePoint.worldstate2, uint32(_slider));
-    player->SendUpdateWorldState(bannerTemplate->capturePoint.worldstate3, bannerTemplate->capturePoint.neutralPercent);
+    player->SendUpdateWorldState(referenceTemplate->capturePoint.worldstate2, uint32(_slider));
+    player->SendUpdateWorldState(referenceTemplate->capturePoint.worldstate3, referenceTemplate->capturePoint.neutralPercent);
 }
 
 void BattlefieldCapturePoint::SendCaptureBarValue() const
 {
-    GameObjectTemplate const* bannerTemplate = GetBannerTemplate();
-    if (!bannerTemplate)
+    GameObjectTemplate const* referenceTemplate = GetReferenceTemplate();
+    if (!referenceTemplate)
         return;
 
     for (ObjectGuid playerGuid : _capturePlayers)
         if (Player* player = ObjectAccessor::FindPlayer(playerGuid))
-            player->SendUpdateWorldState(bannerTemplate->capturePoint.worldstate2, uint32(_slider));
+            player->SendUpdateWorldState(referenceTemplate->capturePoint.worldstate2, uint32(_slider));
 }
 
 BattlefieldGraveyard::BattlefieldGraveyard(Battlefield* battlefield, BattlefieldGraveyardInfo const info) : BattlefieldEntity(battlefield, info.Info), WorldSafeLocsEntryId(info.WorldSafeLocsEntryId), TextId(info.TextId), State(BATTLEFIELD_GRAVEYARD_STATE_NEUTRAL), TeleportSpellId(info.TeleportSpellId)
