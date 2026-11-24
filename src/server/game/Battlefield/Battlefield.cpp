@@ -1013,10 +1013,6 @@ void Battlefield::SetEnabled(bool enabled)
         building->ChangeTeam();
 
     UpdateObjectSpawns();
-    for (auto const& [_, session] : sWorld->GetAllSessions())
-        if (Player* player = session->GetPlayer(); player && player->IsInWorld())
-            SendGlobalWorldStates(player);
-
     QueueEvent<BattlefieldZoneRefreshEvent>();
 }
 
