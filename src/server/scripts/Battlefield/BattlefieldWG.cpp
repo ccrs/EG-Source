@@ -42,9 +42,9 @@
 #include <unordered_map>
 #include <vector>
 
-static WorldLocation const WintergraspDefenderBattleLocation(MAPID_WINTERGRASP, 5333.0f, 2842.0f, 410.0f, 0.0f);
-static WorldLocation const WintergraspAllianceAttackerBattleLocation(MAPID_WINTERGRASP, 5095.0f, 2180.0f, 366.0f, 0.0f);
-static WorldLocation const WintergraspHordeAttackerBattleLocation(MAPID_WINTERGRASP, 5025.857f, 3674.629f, 362.737f, 0.0f);
+static WorldLocation const WintergraspDefenderBattleLocation(MAPID_WINTERGRASP, 5333.0f, 2842.0f, 410.0f, 0.00626393f);
+static WorldLocation const WintergraspAllianceAttackerBattleLocation(MAPID_WINTERGRASP, 5095.0f, 2180.0f, 366.0f, 1.89266f);
+static WorldLocation const WintergraspHordeAttackerBattleLocation(MAPID_WINTERGRASP, 5025.857f, 3674.629f, 362.737f, 3.84281f);
 static WorldLocation const WintergraspKickLocation(MAPID_WINTERGRASP, 5748.0f, 2698.0f, 697.4f, 0.0f);
 static RectangleBoundary const WintergraspTitanRelicChamberBoundary(5400.0f, 5490.0f, 2803.0f, 2878.0f);
 static ZRangeBoundary const WintergraspTitanRelicChamberHeightBoundary(415.0f, 435.0f);
@@ -510,13 +510,17 @@ bool BattlefieldWintergrasp::TeleportPlayerToBattle(Player* player)
 {
     Battlefield::TeleportPlayerToBattle(player);
 
+    WorldLocation const* battleLocation = &WintergraspHordeAttackerBattleLocation;
     if (player->GetTeamId() == GetControllingTeamId())
-        return player->TeleportTo(WintergraspDefenderBattleLocation);
+        battleLocation = &WintergraspDefenderBattleLocation;
+    else if (player->GetTeamId() == TEAM_ALLIANCE)
+        battleLocation = &WintergraspAllianceAttackerBattleLocation;
 
-    if (player->GetTeamId() == TEAM_ALLIANCE)
-        return player->TeleportTo(WintergraspAllianceAttackerBattleLocation);
+    if (player->GetMapId() != battleLocation->GetMapId())
+        return player->TeleportTo(*battleLocation);
 
-    return player->TeleportTo(WintergraspHordeAttackerBattleLocation);
+    Position const destination = player->GetRandomPoint(*battleLocation, WINTERGRASP_BATTLE_LOCATION_SPREAD);
+    return player->TeleportTo(battleLocation->GetMapId(), destination.GetPositionX(), destination.GetPositionY(), destination.GetPositionZ(), battleLocation->GetOrientation());
 }
 
 void BattlefieldWintergrasp::TeleportPlayerOutOfBattle(Player* player)

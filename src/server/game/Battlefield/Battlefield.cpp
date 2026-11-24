@@ -811,10 +811,9 @@ void Battlefield::ProcessBattleAccept(BattlefieldEventKey key, Player* player)
         return;
     }
 
-    bool const relocated = !_playerGUIDs.contains(playerGuid) || player->IsInFlight();
     RemoveEvents(BATTLEFIELD_EVENT_BATTLE_EXPIRE, playerGuid);
     _battlefieldPlayers.Insert(playerGuid, teamId, BATTLEFIELD_PLAYER_STATE_IN_BATTLE);
-    player->GetSession()->SendBfEntered(GetId(), relocated, teamId == GetAttackingTeamId());
+    player->GetSession()->SendBfEntered(GetId(), true, teamId == GetAttackingTeamId());
     if (player->isAFK())
         player->ToggleAFK();
 
@@ -824,9 +823,6 @@ void Battlefield::ProcessBattleAccept(BattlefieldEventKey key, Player* player)
     OnPlayerJoinBattle(player);
     RemoveEvents(BATTLEFIELD_EVENT_RAID_REMOVE, playerGuid);
     ProcessRaidAdd(key, player);
-    if (!relocated)
-        return;
-
     if (!player->IsAlive())
     {
         player->ResurrectPlayer(1.0f);

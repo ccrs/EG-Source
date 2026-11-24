@@ -450,6 +450,7 @@ static uint8 constexpr WINTERGRASP_RECRUIT_PROMOTION_STACKS = 6;
 static uint8 constexpr WINTERGRASP_CORPORAL_PROMOTION_STACKS = 10;
 static float constexpr WINTERGRASP_KILL_CREDIT_DISTANCE = 40.0f;
 static float constexpr WINTERGRASP_TOWER_DESTROYER_CREDIT_DISTANCE = 250.0f;
+static float constexpr WINTERGRASP_BATTLE_LOCATION_SPREAD = 5.0f;
 
 namespace WorldPackets
 {
