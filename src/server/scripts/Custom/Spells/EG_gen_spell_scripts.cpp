@@ -910,6 +910,9 @@ enum InfraGreenBomberSpellMisc
     SPELL_SUMMON_AIRSHIP_LONG_ALLIANCE = 61151,
     SPELL_SUMMON_AIRSHIP_LONG_HORDE = 61152,
     SPELL_FLIGHT_ORDERS = 61281,
+    SPELL_MEDIUM_FLIGHTS = 61283,
+    SPELL_MANY_FLIGHTS = 61284,
+    SPELL_TOO_MANY_FLIGHTS = 61285,
     SPELL_DRIVE_BOMBER = 59050,
     SPELL_SYNCH_HEALTH = 59413,
     SPELL_SEND_HATE = 60124,
@@ -1657,14 +1660,54 @@ class EG_spell_infra_green_bomber_killed : public SpellScript
     }
 };
 
+// 61281 - Flight Orders
+class EG_spell_infra_green_bomber_flight_orders : public SpellScript
+{
+    PrepareSpellScript(EG_spell_infra_green_bomber_flight_orders);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_MEDIUM_FLIGHTS, SPELL_MANY_FLIGHTS, SPELL_TOO_MANY_FLIGHTS });
+    }
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        Unit* target = GetHitUnit();
+        Aura const* orders = target->GetAura(SPELL_FLIGHT_ORDERS);
+        if (!orders)
+            return;
+
+        uint8 const stacks = orders->GetStackAmount();
+        uint32 const tier = stacks >= 6 ? SPELL_TOO_MANY_FLIGHTS : stacks >= 4 ? SPELL_MANY_FLIGHTS : stacks >= 2 ? SPELL_MEDIUM_FLIGHTS : 0;
+        for (uint32 spellId : { SPELL_MEDIUM_FLIGHTS, SPELL_MANY_FLIGHTS, SPELL_TOO_MANY_FLIGHTS })
+            if (spellId != tier)
+                target->RemoveAurasDueToSpell(spellId);
+
+        if (tier)
+            target->CastSpell(target, tier, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(EG_spell_infra_green_bomber_flight_orders::HandleScript, EFFECT_1, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
 // 61282 - Mission Complete
 class EG_spell_infra_green_bomber_mission_complete : public SpellScript
 {
     PrepareSpellScript(EG_spell_infra_green_bomber_mission_complete);
 
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_FLIGHT_ORDERS, SPELL_MEDIUM_FLIGHTS, SPELL_MANY_FLIGHTS, SPELL_TOO_MANY_FLIGHTS });
+    }
+
     void HandleScript(SpellEffIndex /*effIndex*/)
     {
-        GetHitUnit()->RemoveAurasDueToSpell(SPELL_FLIGHT_ORDERS);
+        Unit* target = GetHitUnit();
+        for (uint32 spellId : { SPELL_FLIGHT_ORDERS, SPELL_MEDIUM_FLIGHTS, SPELL_MANY_FLIGHTS, SPELL_TOO_MANY_FLIGHTS })
+            target->RemoveAurasDueToSpell(spellId);
     }
 
     void Register() override
@@ -1813,6 +1856,7 @@ void AddSC_EG_gen_spell_scripts()
     RegisterSpellScript(EG_spell_infra_green_bomber_extinguish_fire);
     RegisterSpellScript(EG_spell_infra_green_bomber_explodes_sequence);
     RegisterSpellScript(EG_spell_infra_green_bomber_killed);
+    RegisterSpellScript(EG_spell_infra_green_bomber_flight_orders);
     RegisterSpellScript(EG_spell_infra_green_bomber_mission_complete);
     RegisterSpellScript(EG_spell_infra_green_bomber_finished_sortie);
     RegisterSpellScript(EG_spell_infra_green_bomber_eject_player);

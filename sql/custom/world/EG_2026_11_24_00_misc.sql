@@ -134,6 +134,49 @@ DELETE FROM `smart_scripts` WHERE `entryorguid`=32188 AND `source_type`=0 AND `i
 INSERT INTO `smart_scripts` (`entryorguid`, `source_type`, `id`, `link`, `event_type`, `event_phase_mask`, `event_chance`, `event_flags`, `event_param1`, `event_param2`, `event_param3`, `event_param4`, `event_param5`, `action_type`, `action_param1`, `action_param2`, `action_param3`, `action_param4`, `action_param5`, `action_param6`, `target_type`, `target_param1`, `target_param2`, `target_param3`, `target_param4`, `target_x`, `target_y`, `target_z`, `target_o`, `comment`) VALUES
 (32188, 0, 0, 0, 0, 0, 100, 0, 2000, 4000, 3000, 6000, 0, 11, 60239, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 'Gargoyle Ambusher - In Combat - Cast Gargoyle Ambusher Strike');
 
+DELETE FROM `npc_text` WHERE `ID` IN (14152, 14153, 14156, 14157);
+INSERT INTO `npc_text` (`ID`, `text0_1`, `BroadcastTextID0`, `Probability0`) VALUES
+(14152, 'Your orders have been revoked until further notice.  Cool your jets and try to be more careful out there!', 32916, 1),
+(14153, 'You''ve taken a lot of bombers out and don''t have much to show for it.  Use more caution or your flight priveledges will be revoked...', 32917, 1),
+(14156, 'I just got order to pull your flight privilege, $n.  Came back later and we''ll let you back into a bomber.', 32922, 1),
+(14157, 'You''ve been just as busy blowing yourself up as you have blowing up the opposition.  That sounds fun, but be careful or I''ll stop giving you bombers...', 32925, 1);
+
+DELETE FROM `gossip_menu` WHERE `MenuID`=10119 AND `TextID` IN (14152, 14153, 14155);
+DELETE FROM `gossip_menu` WHERE `MenuID`=10120 AND `TextID` IN (14156, 14157, 14158);
+INSERT INTO `gossip_menu` (`MenuID`, `TextID`, `VerifiedBuild`) VALUES
+(10119, 14152, 0),
+(10119, 14153, 0),
+(10119, 14155, 0),
+(10120, 14156, 0),
+(10120, 14157, 0),
+(10120, 14158, 0);
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId`=14 AND `SourceGroup` IN (10119, 10120) AND `SourceEntry` IN (14046, 14047, 14152, 14153, 14155, 14156, 14157, 14158) AND `ConditionTypeOrReference`=1 AND `ConditionValue1` IN (61283, 61284, 61285);
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES
+(14, 10119, 14046, 0, 0, 1, 0, 61283, 0, 0, 1, 0, 0, '', 'Karen No - show default text if player does not have aura Medium Flights'),
+(14, 10119, 14046, 0, 0, 1, 0, 61284, 0, 0, 1, 0, 0, '', 'Karen No - show default text if player does not have aura Many Flights'),
+(14, 10119, 14046, 0, 0, 1, 0, 61285, 0, 0, 1, 0, 0, '', 'Karen No - show default text if player does not have aura Too Many Flights'),
+(14, 10119, 14155, 0, 0, 1, 0, 61283, 0, 0, 0, 0, 0, '', 'Karen No - show text if player has aura Medium Flights'),
+(14, 10119, 14153, 0, 0, 1, 0, 61284, 0, 0, 0, 0, 0, '', 'Karen No - show text if player has aura Many Flights'),
+(14, 10119, 14152, 0, 0, 1, 0, 61285, 0, 0, 0, 0, 0, '', 'Karen No - show text if player has aura Too Many Flights'),
+(14, 10120, 14047, 0, 0, 1, 0, 61283, 0, 0, 1, 0, 0, '', 'Rizzy Ratchwiggle - show default text if player does not have aura Medium Flights'),
+(14, 10120, 14047, 0, 0, 1, 0, 61284, 0, 0, 1, 0, 0, '', 'Rizzy Ratchwiggle - show default text if player does not have aura Many Flights'),
+(14, 10120, 14047, 0, 0, 1, 0, 61285, 0, 0, 1, 0, 0, '', 'Rizzy Ratchwiggle - show default text if player does not have aura Too Many Flights'),
+(14, 10120, 14158, 0, 0, 1, 0, 61283, 0, 0, 0, 0, 0, '', 'Rizzy Ratchwiggle - show text if player has aura Medium Flights'),
+(14, 10120, 14157, 0, 0, 1, 0, 61284, 0, 0, 0, 0, 0, '', 'Rizzy Ratchwiggle - show text if player has aura Many Flights'),
+(14, 10120, 14156, 0, 0, 1, 0, 61285, 0, 0, 0, 0, 0, '', 'Rizzy Ratchwiggle - show text if player has aura Too Many Flights');
+
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId`=15 AND `SourceGroup` IN (10119, 10120) AND `SourceEntry`=0 AND `ElseGroup` IN (0, 1, 2, 3) AND `ConditionTypeOrReference`=1 AND `ConditionValue1`=61285;
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`, `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`, `ConditionValue3`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES
+(15, 10119, 0, 0, 0, 1, 0, 61285, 0, 0, 1, 0, 0, '', 'Karen No - show gossip option if player does not have aura Too Many Flights'),
+(15, 10119, 0, 0, 1, 1, 0, 61285, 0, 0, 1, 0, 0, '', 'Karen No - show gossip option if player does not have aura Too Many Flights'),
+(15, 10119, 0, 0, 2, 1, 0, 61285, 0, 0, 1, 0, 0, '', 'Karen No - show gossip option if player does not have aura Too Many Flights'),
+(15, 10119, 0, 0, 3, 1, 0, 61285, 0, 0, 1, 0, 0, '', 'Karen No - show gossip option if player does not have aura Too Many Flights'),
+(15, 10120, 0, 0, 0, 1, 0, 61285, 0, 0, 1, 0, 0, '', 'Rizzy Ratchwiggle - show gossip option if player does not have aura Too Many Flights'),
+(15, 10120, 0, 0, 1, 1, 0, 61285, 0, 0, 1, 0, 0, '', 'Rizzy Ratchwiggle - show gossip option if player does not have aura Too Many Flights'),
+(15, 10120, 0, 0, 2, 1, 0, 61285, 0, 0, 1, 0, 0, '', 'Rizzy Ratchwiggle - show gossip option if player does not have aura Too Many Flights'),
+(15, 10120, 0, 0, 3, 1, 0, 61285, 0, 0, 1, 0, 0, '', 'Rizzy Ratchwiggle - show gossip option if player does not have aura Too Many Flights');
+
 DELETE FROM `script_spline_chain_meta` WHERE `entry` IN (31406, 31838, 32344, 32348, 32512, 32513) AND `chainId`=1;
 INSERT INTO `script_spline_chain_meta` (`entry`, `chainId`, `splineId`, `expectedDuration`, `msUntilNext`, `velocity`) VALUES
 (31406, 1, 0, 209350, 0, 9),
@@ -362,11 +405,17 @@ INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `p
 (300440, 31721, 571, 0, 0, 1, 4, 0, 0, 7174.383, 1324.782, 450.618, 0.0714, 300, 10, 0, 0, 0, 1, 0, 0, 0, '', NULL, 0),
 (300441, 31721, 571, 0, 0, 1, 4, 0, 0, 7204.406, 1178.903, 435.802, 1.8164, 300, 10, 0, 0, 0, 1, 0, 0, 0, '', NULL, 0);
 
+DELETE FROM `spell_dbc` WHERE `Id` IN (61283, 61284, 61285);
+INSERT INTO `spell_dbc` (`Id`, `AttributesEx2`, `AttributesEx4`, `CastingTimeIndex`, `DurationIndex`, `RangeIndex`, `EquippedItemClass`, `Effect1`, `EffectImplicitTargetA1`, `EffectApplyAuraName1`, `SchoolMask`, `SpellName`) VALUES
+(61283, 4, 4, 1, 42, 13, -1, 6, 1, 4, 1, 'Medium Flights'),
+(61284, 4, 4, 1, 42, 13, -1, 6, 1, 4, 1, 'Many Flights'),
+(61285, 4, 4, 1, 42, 13, -1, 6, 1, 4, 1, 'Too Many Flights');
+
 DELETE FROM `spell_proc` WHERE `SpellId`=59288;
 INSERT INTO `spell_proc` (`SpellId`, `SchoolMask`, `SpellFamilyName`, `SpellFamilyMask0`, `SpellFamilyMask1`, `SpellFamilyMask2`, `ProcFlags`, `SpellTypeMask`, `SpellPhaseMask`, `HitMask`, `AttributesMask`, `DisableEffectsMask`, `ProcsPerMinute`, `Chance`, `Cooldown`, `Charges`) VALUES
 (59288, 0, 0, 0, 0, 0, 1048576, 0, 0, 1027, 0, 0, 0, 100, 0, 0);
 
-DELETE FROM `spell_script_names` WHERE `spell_id` IN (59051, 59061, 59193, 59194, 59196, 59288, 59341, 59411, 59413, 59552, 59554, 59558, 59563, 59622, 59779, 59780, 59781, 60125, 60339, 60523, 60674, 60784, 60816, 60852, 60918, 60935, 60938, 60965, 60973, 61093, 61151, 61152, 61172, 61176, 61282, 61360, 61373);
+DELETE FROM `spell_script_names` WHERE `spell_id` IN (59051, 59061, 59193, 59194, 59196, 59288, 59341, 59411, 59413, 59552, 59554, 59558, 59563, 59622, 59779, 59780, 59781, 60125, 60339, 60523, 60674, 60784, 60816, 60852, 60918, 60935, 60938, 60965, 60973, 61093, 61151, 61152, 61172, 61176, 61281, 61282, 61360, 61373);
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (59051, 'EG_spell_infra_green_bomber_on_spawn'),
 (59061, 'EG_spell_infra_green_bomber_charge_shield'),
@@ -402,6 +451,7 @@ INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (61152, 'EG_spell_infra_green_bomber_summon'),
 (61172, 'EG_spell_infra_green_bomber_extinguish_fire'),
 (61176, 'EG_spell_infra_green_bomber_killed'),
+(61281, 'EG_spell_infra_green_bomber_flight_orders'),
 (61282, 'EG_spell_infra_green_bomber_mission_complete'),
 (61360, 'EG_spell_infra_green_rescue_parachute'),
 (61373, 'EG_spell_infra_green_bomber_granted');
