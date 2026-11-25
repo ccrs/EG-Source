@@ -791,7 +791,8 @@ struct npc_anachronos_quest_trigger : public ScriptedAI
         _scheduler.Schedule(2s, [this](TaskContext /*context*/)
         {
             SummonWave();
-        }).Schedule(245s, [this](TaskContext /*context*/)
+        })
+        .Schedule(245s, [this](TaskContext /*context*/)
         {
             EnterEvadeMode();
         });

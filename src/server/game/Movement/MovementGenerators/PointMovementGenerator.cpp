@@ -117,9 +117,13 @@ bool PointMovementGenerator<T>::DoUpdate(T* owner, uint32 /*diff*/)
         owner->AddUnitState(UNIT_STATE_ROAMING_MOVE);
 
         Movement::MoveSplineInit init(owner);
-        init.MoveTo(_x, _y, _z, _generatePath);
+        init.MoveTo(_x, _y, _z, _generatePath, _forzeDestination);
         if (_speed > 0.0f) // Default value for point motion type is 0.0, if 0.0 spline will use GetSpeed on unit
             init.SetVelocity(_speed);
+
+        if (_finalOrient)
+            init.SetFacing(*_finalOrient);
+
         init.Launch();
 
         // Call for creature group update

@@ -303,7 +303,7 @@ struct boss_lady_deathwhisper : public BossAI
             })
             .Schedule(17s, [this](TaskContext death_and_decay)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_DEATH_AND_DECAY);
                 death_and_decay.Repeat(22s, 30s);
             });
@@ -326,7 +326,7 @@ struct boss_lady_deathwhisper : public BossAI
             })
             .Schedule(2s, GROUP_ONE, [this](TaskContext shadow_bolt)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_SHADOW_BOLT);
                 shadow_bolt.Repeat(2450ms, 3600ms);
             })
@@ -713,7 +713,7 @@ struct npc_cult_adherent : public ScriptedAI
            })
            .Schedule(15s, [this](TaskContext curse_of_torpor)
            {
-               if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1))
+               if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 0.0f, true))
                    DoCast(target, SPELL_CURSE_OF_TORPOR);
                curse_of_torpor.Repeat(18s);
            });

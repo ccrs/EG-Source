@@ -15,20 +15,23 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
-#include "ScriptedCreature.h"
-#include "SpellScript.h"
 #include "vault_of_archavon.h"
+#include "ScriptedCreature.h"
+#include "ScriptMgr.h"
+#include "SpellAuraEffects.h"
+#include "SpellMgr.h"
+#include "SpellScript.h"
 
 enum ArchavonTexts
 {
     EMOTE_BERSERK           = 0,
-    EMOTE_LEAP              = 1
+    EMOTE_LUNGE             = 1
 };
 
 enum ArchavonSpells
 {
     SPELL_ROCK_SHARDS           = 58678,
+    SPELL_ROCK_SHARDS_TRIGGER   = 58941,
     SPELL_ROCK_SHARDS_VISUAL_L  = 58689,
     SPELL_ROCK_SHARDS_VISUAL_R  = 58692,
     SPELL_ROCK_SHARDS_DAMAGE_L  = 58695,
@@ -78,22 +81,24 @@ struct boss_archavon : public BossAI
             switch (eventId)
             {
                 case EVENT_ROCK_SHARDS:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
-                        DoCast(target, SPELL_ROCK_SHARDS);
-                    events.ScheduleEvent(EVENT_ROCK_SHARDS, 15s);
+                {
+                    Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true);
+                    if (target && DoCast(target, SPELL_ROCK_SHARDS) != SPELL_CAST_OK)
+                        events.ScheduleEvent(EVENT_ROCK_SHARDS, 1s);
+                    else
+                        events.ScheduleEvent(EVENT_ROCK_SHARDS, 15s);
                     break;
+                }
                 case EVENT_CHOKING_CLOUD:
                     if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, -10.0f, true))
-                    {
                         DoCast(target, SPELL_CRUSHING_LEAP, true); // 10y~80y, ignore range
-                        Talk(EMOTE_LEAP, target);
-                    }
                     events.ScheduleEvent(EVENT_CHOKING_CLOUD, 30s);
                     break;
                 case EVENT_STOMP:
-                    DoCastVictim(SPELL_STOMP);
-                    events.ScheduleEvent(EVENT_IMPALE, 3s);
-                    events.ScheduleEvent(EVENT_STOMP, 45s);
+                    if (DoCastVictim(SPELL_STOMP) != SPELL_CAST_OK)
+                        events.ScheduleEvent(EVENT_STOMP, 1s);
+                    else
+                        events.ScheduleEvent(EVENT_STOMP, 45s);
                     break;
                 case EVENT_IMPALE:
                     DoCastVictim(SPELL_IMPALE);
@@ -112,6 +117,38 @@ struct boss_archavon : public BossAI
 
         DoMeleeAttackIfReady();
     }
+
+    void OnSpellCast(SpellInfo const* spell) override
+    {
+        if (spell->Id != sSpellMgr->GetSpellIdForDifficulty(SPELL_STOMP, me))
+            return;
+
+        Talk(EMOTE_LUNGE, me->GetVictim());
+        events.ScheduleEvent(EVENT_IMPALE, 1600ms);
+    }
+};
+
+// 58678 - Rock Shards
+class EG_spell_archavon_rock_shards_periodic : public AuraScript
+{
+    PrepareAuraScript(EG_spell_archavon_rock_shards_periodic);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_ROCK_SHARDS_TRIGGER, SPELL_ROCK_SHARDS_DAMAGE_L, SPELL_ROCK_SHARDS_DAMAGE_R });
+    }
+
+    void HandlePeriodic(AuraEffect const* aurEff)
+    {
+        PreventDefaultAction();
+        if (Unit* caster = GetCaster())
+            caster->CastSpell(caster, SPELL_ROCK_SHARDS_TRIGGER, CastSpellExtraArgs(aurEff).AddSpellBP0(aurEff->GetTickNumber() % 2 ? SPELL_ROCK_SHARDS_DAMAGE_L : SPELL_ROCK_SHARDS_DAMAGE_R));
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(EG_spell_archavon_rock_shards_periodic::HandlePeriodic, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+    }
 };
 
 // 58941 - Rock Shards
@@ -121,27 +158,18 @@ class spell_archavon_rock_shards : public SpellScript
 
     bool Validate(SpellInfo const* /*spellInfo*/) override
     {
-        return ValidateSpellInfo(
-        {
-            SPELL_ROCK_SHARDS_VISUAL_L,
-            SPELL_ROCK_SHARDS_VISUAL_R,
-            SPELL_ROCK_SHARDS_DAMAGE_L,
-            SPELL_ROCK_SHARDS_DAMAGE_R
-        });
+        return ValidateSpellInfo({ SPELL_ROCK_SHARDS_VISUAL_L, SPELL_ROCK_SHARDS_VISUAL_R });
     }
 
     void HandleScript(SpellEffIndex /*effIndex*/)
     {
         Unit* caster = GetCaster();
-
-        for (uint8 i = 0; i < 3; ++i)
+        caster->CastSpell(nullptr, uint32(GetEffectValue()), true);
+        for (uint8 i = 0; i < 2; ++i)
         {
             caster->CastSpell(nullptr, SPELL_ROCK_SHARDS_VISUAL_L, true);
             caster->CastSpell(nullptr, SPELL_ROCK_SHARDS_VISUAL_R, true);
         }
-
-        caster->CastSpell(nullptr, SPELL_ROCK_SHARDS_DAMAGE_L, true);
-        caster->CastSpell(nullptr, SPELL_ROCK_SHARDS_DAMAGE_R, true);
     }
 
     void Register() override
@@ -153,5 +181,6 @@ class spell_archavon_rock_shards : public SpellScript
 void AddSC_boss_archavon()
 {
     RegisterVaultOfArchavonCreatureAI(boss_archavon);
+    RegisterSpellScript(EG_spell_archavon_rock_shards_periodic);
     RegisterSpellScript(spell_archavon_rock_shards);
 }

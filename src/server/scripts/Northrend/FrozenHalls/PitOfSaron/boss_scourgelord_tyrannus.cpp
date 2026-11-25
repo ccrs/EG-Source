@@ -350,7 +350,7 @@ struct boss_rimefang : public ScriptedAI
                     _events.ScheduleEvent(EVENT_MOVE_NEXT, 2s, 0, PHASE_COMBAT);
                     break;
                 case EVENT_ICY_BLAST:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_ICY_BLAST);
                     _events.ScheduleEvent(EVENT_ICY_BLAST, 15s, 0, PHASE_COMBAT);
                     break;

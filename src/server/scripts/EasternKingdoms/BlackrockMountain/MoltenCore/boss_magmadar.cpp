@@ -122,12 +122,12 @@ struct boss_magmadar : public BossAI
                     events.Repeat(30s, 35s);
                     break;
                 case EVENT_LAVA_BOMB_1:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_LAVA_BOMB_1);
                     events.Repeat(12s, 15s);
                     break;
                 case EVENT_LAVA_BOMB_2:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_LAVA_BOMB_2);
                     events.Repeat(12s, 15s);
                     break;

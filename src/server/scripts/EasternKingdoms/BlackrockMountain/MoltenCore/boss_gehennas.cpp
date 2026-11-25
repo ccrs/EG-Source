@@ -69,7 +69,7 @@ struct boss_gehennas : public BossAI
                     events.Repeat(25s, 30s);
                     break;
                 case EVENT_RAIN_OF_FIRE:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_RAIN_OF_FIRE);
                     events.Repeat(6s, 12s);
                     break;
@@ -78,7 +78,7 @@ struct boss_gehennas : public BossAI
                     events.Repeat(3s, 6s);
                     break;
                 case EVENT_SHADOW_BOLT_RANDOM:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_SHADOW_BOLT_RANDOM);
                     events.Repeat(3s, 6s);
                     break;

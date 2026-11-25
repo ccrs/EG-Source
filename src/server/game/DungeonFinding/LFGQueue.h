@@ -52,8 +52,8 @@ struct LfgCompatibilityData
 struct LfgQueueData
 {
     LfgQueueData();
-    LfgQueueData(time_t _joinTime, LfgDungeonSet const& _dungeons, LfgRolesMap const& _roles)
-        : joinTime(_joinTime), tanks(LFG_TANKS_NEEDED), healers(LFG_HEALERS_NEEDED), dps(LFG_DPS_NEEDED), dungeons(_dungeons), roles(_roles) { }
+    LfgQueueData(time_t _joinTime, LfgDungeonSet const& _dungeons, LfgRolesMap const& _roles, uint32 _statusDungeon) // EG
+        : joinTime(_joinTime), tanks(LFG_TANKS_NEEDED), healers(LFG_HEALERS_NEEDED), dps(LFG_DPS_NEEDED), dungeons(_dungeons), roles(_roles), statusDungeon(_statusDungeon) { }
 
     time_t joinTime;                 ///< Player queue join time (to calculate wait times)
     uint8 tanks;                     ///< Tanks needed
@@ -62,6 +62,7 @@ struct LfgQueueData
     LfgDungeonSet dungeons;          ///< Selected Player/Group Dungeon/s
     LfgRolesMap roles;               ///< Selected Player Role/s
     std::string bestCompatible;      ///< Best compatible combination of people queued
+    uint32 statusDungeon;            ///< EG - dungeon shown in the queue status
 };
 
 struct LfgWaitTime
@@ -70,6 +71,28 @@ struct LfgWaitTime
 
     int32 time;                      ///< Wait time
     uint32 number;                   ///< Number of people used to get that wait time
+};
+
+// EG
+enum LfgQueueLimits
+{
+    LFG_MATCH_CHECK_BUDGET = 20000
+};
+
+// EG
+struct LfgRoleCoverage
+{
+    void Add(LfgRolesMap const& roles);
+    void Add(LfgRoleCoverage const& other);
+    bool CanCompleteGroupWith(LfgRoleCoverage const& other) const;
+
+    uint32 Tank = 0;
+    uint32 Healer = 0;
+    uint32 Damage = 0;
+    uint32 TankOrHealer = 0;
+    uint32 TankOrDamage = 0;
+    uint32 HealerOrDamage = 0;
+    uint32 Players = 0;
 };
 
 typedef std::map<uint32, LfgWaitTime> LfgWaitTimesContainer;
@@ -86,8 +109,11 @@ public:
     std::string GetDetailedMatchRoles(GuidList const& check) const;
     void AddToQueue(ObjectGuid guid, bool reAdd = false);
     void RemoveFromQueue(ObjectGuid guid);
-    void AddQueueData(ObjectGuid guid, time_t joinTime, LfgDungeonSet const& dungeons, LfgRolesMap const& rolesMap);
+    void AddQueueData(ObjectGuid guid, time_t joinTime, LfgDungeonSet const& dungeons, LfgRolesMap const& rolesMap, uint32 statusDungeon); // EG
     void RemoveQueueData(ObjectGuid guid);
+    bool IsQueued(ObjectGuid guid) const; // EG
+    std::map<ObjectGuid, LfgLockPartyMap> TakeLockedOutEntries(); // EG
+    GuidList GetQueuedGuids() const; // EG
 
     // Update Timers (when proposal success)
     void UpdateWaitTimeAvg(int32 waitTime, uint32 dungeonId);
@@ -98,6 +124,7 @@ public:
     // Update Queue timers
     void UpdateQueueTimers(time_t currTime);
     time_t GetJoinTime(ObjectGuid guid) const;
+    uint32 GetStatusDungeon(ObjectGuid guid) const; // EG
 
     // Find new group
     uint8 FindGroups();
@@ -114,8 +141,8 @@ private:
     void RemoveFromCurrentQueue(ObjectGuid guid);
     void WarnIfListed(ObjectGuid guid, char const* context) const;
 
-    static bool CompatibleKeyContainsGuid(std::string const& key, ObjectGuid guid);
-    static uint8 CountGuidsInCompatibleKey(std::string const& key);
+    static bool CompatibleKeyContainsGuid(std::string const& key, ObjectGuid guid); // EG
+    static uint8 CountGuidsInCompatibleKey(std::string const& key); // EG
 
     void SetCompatibles(std::string const& key, LfgCompatibility compatibles);
     LfgCompatibility GetCompatibles(std::string const& key);
@@ -126,8 +153,11 @@ private:
 
     void FindBestCompatibleInQueue(LfgQueueDataContainer::iterator itrQueue);
     void UpdateBestCompatibleInQueue(LfgQueueDataContainer::iterator itrQueue, std::string const& key, LfgRolesMap const& roles);
+    void ResetBestCompatibleToSelf(LfgQueueDataContainer::iterator itrQueue); // EG
+    void UpdateStatusNeeds(LfgQueueDataContainer::iterator itQueue); // EG
 
     LfgCompatibility FindNewGroups(GuidList& check, GuidList& all);
+    LfgCompatibility FindNewGroups(GuidList& check, GuidList const& all, LfgDungeonSet const& dungeons, LfgRoleCoverage const& coverage, bool hasLfgGroup); // EG
     LfgCompatibility CheckCompatibility(GuidList check);
 
     // Queue
@@ -140,6 +170,9 @@ private:
 
     GuidList currentQueueStore;                    ///< Ordered list. Used to find groups
     GuidList newToQueueStore;                      ///< New groups to add to queue
+    GuidList _rematchStore;                        ///< EG - entries readded after a failed proposal, matched again in place
+    uint32 _remainingChecks = 0;                   ///< EG - CheckCompatibility calls left for the current match search
+    std::map<ObjectGuid, LfgLockPartyMap> _lockedOut; ///< EG - entries whose dungeons were all locked by saves acquired after joining
 };
 
 } // namespace lfg

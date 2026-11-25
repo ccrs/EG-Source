@@ -962,7 +962,7 @@ struct npc_darkfallen_archmage : public DarkFallenAI
         AttackSpellId = SPELL_FIREBALL;
         Scheduler.Schedule(1s, [this](TaskContext amplifyMagic)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                 DoCast(target, SPELL_AMPLIFY_MAGIC);
             amplifyMagic.Repeat(15s, 24s);
         })
@@ -1106,7 +1106,7 @@ struct npc_icc_nerubar_broodkeeper : public ScriptedAI
                     break;
                 }
                 case EVENT_WEB_WRAP:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 40.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 40.0f, true))
                         DoCast(target, SPELL_WEB_WRAP);
                     _events.Repeat(16s, 20s);
                     break;

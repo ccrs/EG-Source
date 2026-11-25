@@ -37,7 +37,7 @@ class TC_GAME_API LfgGroupData
         LfgGroupData();
         ~LfgGroupData();
 
-        bool IsLfgGroup();
+        bool IsLfgGroup() const;
 
         // General
         void SetState(LfgState state);

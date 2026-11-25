@@ -27,7 +27,6 @@
 #include "SpellHistory.h"
 #include "SpellScript.h"
 #include "TemporarySummon.h"
-#include "Optional.h"
 
 enum HadronoxEvents
 {
@@ -111,7 +110,8 @@ enum HadronoxActions
 {
     ACTION_HADRONOX_MOVE = 1,
     ACTION_CRUSHER_ENGAGED,
-    ACTION_PACK_WALK
+    ACTION_PACK_WALK,
+    ACTION_CRUSHER_PACK_EVADE
 };
 
 enum HadronoxData
@@ -158,20 +158,25 @@ static const float zCutoff = 637.f;
 
 struct boss_hadronox : public BossAI
 {
-    boss_hadronox(Creature* creature) : BossAI(creature, DATA_HADRONOX), _enteredCombat(false), _doorsWebbed(false), _lastPlayerCombatState(false), _step(0) { }
+    boss_hadronox(Creature* creature) : BossAI(creature, DATA_HADRONOX), _enteredCombat(false), _doorsWebbed(false), _lastPlayerCombatState(false), _step(0), _targetStep(0) { }
 
-    void SetStep(uint8 step)
+    void ScheduleAbilities()
     {
-        if (_lastPlayerCombatState)
-            return;
+        events.RescheduleEvent(EVENT_LEECH_POISON, 5s, 7s, 1);
+        events.RescheduleEvent(EVENT_ACID_CLOUD, 7s, 13s, 1);
+        events.RescheduleEvent(EVENT_WEB_GRAB, 13s, 19s, 1);
+        events.RescheduleEvent(EVENT_PIERCE_ARMOR, 4s, 7s, 1);
+    }
 
+    void MoveToStep(uint8 step)
+    {
         _step = step;
         me->AttackStop();
         me->SetReactState(REACT_PASSIVE);
         events.CancelEventGroup(1);
         me->SetHomePosition(hadronoxStep[step]);
         me->GetMotionMaster()->Remove(CHASE_MOTION_TYPE);
-        me->GetMotionMaster()->MovePoint(1, hadronoxStep[step], true, Optional<float>{ }, true);
+        me->GetMotionMaster()->MovePoint(1, { .Destination = hadronoxStep[step], .ForceDestination = true });
     }
 
     void SummonCrusherPack(HadronoxSummonGroups group)
@@ -190,17 +195,21 @@ struct boss_hadronox : public BossAI
         if (type != POINT_MOTION_TYPE || id != 1)
             return;
 
-        if (_step >= NUM_STEPS-1)
+        if (_step < _targetStep)
+        {
+            MoveToStep(_step + 1);
+            return;
+        }
+
+        me->SetHomePosition(hadronoxStep[_step]);
+        if (_step >= NUM_STEPS-1 && !_doorsWebbed)
         {
             DoCastAOE(SPELL_WEB_FRONT_DOORS, true);
             DoCastAOE(SPELL_WEB_SIDE_DOORS, true);
             _doorsWebbed = true;
         }
 
-        events.ScheduleEvent(EVENT_LEECH_POISON, 5s, 1);
-        events.ScheduleEvent(EVENT_ACID_CLOUD, 7s, 1);
-        events.ScheduleEvent(EVENT_WEB_GRAB, 13s, 1);
-        events.ScheduleEvent(EVENT_PIERCE_ARMOR, 4s, 1);
+        ScheduleAbilities();
         me->SetReactState(REACT_AGGRESSIVE);
         if (Unit* currentVictim = me->GetVictim())
             AttackStart(currentVictim);
@@ -225,10 +234,8 @@ struct boss_hadronox : public BossAI
 
     void JustEngagedWith(Unit* /*who*/) override
     {
-        events.RescheduleEvent(EVENT_LEECH_POISON, 5s, 7s, 1);
-        events.RescheduleEvent(EVENT_ACID_CLOUD, 7s, 13s, 1);
-        events.RescheduleEvent(EVENT_WEB_GRAB, 13s, 19s, 1);
-        events.RescheduleEvent(EVENT_PIERCE_ARMOR, 4s, 7s, 1);
+        if (!me->HasReactState(REACT_PASSIVE))
+            ScheduleAbilities();
         events.RescheduleEvent(EVENT_PLAYER_CHECK, 1s);
         me->setActive(true);
     }
@@ -240,18 +247,31 @@ struct boss_hadronox : public BossAI
             case ACTION_CRUSHER_ENGAGED:
                 if (_enteredCombat)
                     break;
-                instance->SetBossState(DATA_HADRONOX, IN_PROGRESS);
+                if (instance->GetBossState(DATA_HADRONOX) != IN_PROGRESS)
+                    instance->SetBossState(DATA_HADRONOX, SPECIAL);
                 _enteredCombat = true;
                 SummonCrusherPack(SUMMON_GROUP_CRUSHER_2);
                 SummonCrusherPack(SUMMON_GROUP_CRUSHER_3);
                 break;
             case ACTION_HADRONOX_MOVE:
-                if (_step < NUM_STEPS-1)
-                {
-                    SetStep(_step + 1);
-                    Talk(HADRONOX_EMOTE_MOVE);
-                }
+                if (_lastPlayerCombatState || me->GetCombatManager().HasPvECombatWithPlayers() || _targetStep >= NUM_STEPS-1)
+                    break;
+                ++_targetStep;
+                Talk(HADRONOX_EMOTE_MOVE);
+                if (!me->HasReactState(REACT_PASSIVE))
+                    MoveToStep(_step + 1);
                 break;
+            case ACTION_CRUSHER_PACK_EVADE:
+            {
+                if (me->GetCombatManager().HasPvECombatWithPlayers())
+                    break;
+                for (ObjectGuid const& summonGuid : summons)
+                    if (Creature* summon = ObjectAccessor::GetCreature(*me, summonGuid))
+                        if (summon->GetCombatManager().HasPvECombatWithPlayers())
+                            return;
+                EnterEvadeMode(EVADE_REASON_OTHER);
+                break;
+            }
         }
     }
 
@@ -259,7 +279,6 @@ struct boss_hadronox : public BossAI
     {
         if (!_lastPlayerCombatState && why == EVADE_REASON_NO_HOSTILES)
         {
-            me->SetReactState(REACT_AGGRESSIVE);
             events.Reset();
             me->RemoveAurasOnEvade();
             me->ClearComboPointHolders(); // Remove all combo points targeting this unit
@@ -272,9 +291,9 @@ struct boss_hadronox : public BossAI
             me->SetTarget(ObjectGuid::Empty);
             me->GetSpellHistory()->ResetAllCooldowns();
             EngagementOver();
+            me->SetSpawnHealth();
             me->setActive(false);
-            me->AddUnitState(UNIT_STATE_EVADE);
-            me->GetMotionMaster()->MoveTargetedHome();
+            MoveToStep(_step);
             return;
         }
         std::list<Creature*> triggers;
@@ -304,6 +323,7 @@ struct boss_hadronox : public BossAI
         _doorsWebbed = false;
         _lastPlayerCombatState = false;
         _step = 0;
+        _targetStep = 0;
     }
 
     void JustAppeared() override
@@ -348,27 +368,26 @@ struct boss_hadronox : public BossAI
                     bool incCombatWithPlayers = me->GetCombatManager().HasPvECombatWithPlayers();
                     if (incCombatWithPlayers != _lastPlayerCombatState)
                     {
-                        _lastPlayerCombatState = incCombatWithPlayers;
-                        if (_lastPlayerCombatState) // we are now in combat with players
+                        if (!incCombatWithPlayers) // we are no longer in combat with players - reset the encounter
                         {
-                            if (!instance->CheckRequiredBosses(DATA_HADRONOX))
-                            {
-                                EnterEvadeMode(EVADE_REASON_SEQUENCE_BREAK);
-                                return;
-                            }
-                            if (me->HasReactState(REACT_PASSIVE))
-                            {
-                                events.ScheduleEvent(EVENT_LEECH_POISON, 5s, 1);
-                                events.ScheduleEvent(EVENT_ACID_CLOUD, 7s, 1);
-                                events.ScheduleEvent(EVENT_WEB_GRAB, 13s, 1);
-                                events.ScheduleEvent(EVENT_PIERCE_ARMOR, 4s, 1);
-                                me->SetReactState(REACT_AGGRESSIVE);
-                                if (Unit* currentVictim = me->SelectVictim())
-                                    AttackStart(currentVictim);
-                            }
-                        }
-                        else // we are no longer in combat with players - reset the encounter
                             EnterEvadeMode(EVADE_REASON_NO_HOSTILES);
+                            return;
+                        }
+
+                        _lastPlayerCombatState = true;
+                        if (!instance->CheckRequiredBosses(DATA_HADRONOX))
+                        {
+                            EnterEvadeMode(EVADE_REASON_SEQUENCE_BREAK);
+                            return;
+                        }
+                        instance->SetBossState(DATA_HADRONOX, IN_PROGRESS);
+                        if (me->HasReactState(REACT_PASSIVE))
+                        {
+                            ScheduleAbilities();
+                            me->SetReactState(REACT_AGGRESSIVE);
+                            if (Unit* currentVictim = me->SelectVictim())
+                                AttackStart(currentVictim);
+                        }
                     }
                     events.Repeat(1s);
                     break;
@@ -407,6 +426,7 @@ struct boss_hadronox : public BossAI
         bool _doorsWebbed;   // obvious - have we reached the top and webbed the doors shut? (trigger for hadronox denied achievement)
         bool _lastPlayerCombatState; // was there a player in our threat list the last time we checked (we check every second)
         uint8 _step;
+        uint8 _targetStep;
         std::list<ObjectGuid> _anubar;
 };
 
@@ -431,16 +451,27 @@ struct npc_hadronox_crusherPackAI : public ScriptedAI
         }
     }
 
-    void MovementInform(uint32 type, uint32 id) override
+    void Reset() override
     {
-        if (type == POINT_MOTION_TYPE && id == ACTION_PACK_WALK)
-            me->SetFacingTo(_positions[_myPack - SUMMON_GROUP_CRUSHER_1].GetOrientation());
+        _events.Reset();
     }
 
-    void EnterEvadeMode(EvadeReason /*why*/) override
+    void MovementInform(uint32 type, uint32 id) override
     {
-        if (Creature* hadronox = _instance->GetCreature(DATA_HADRONOX))
-            hadronox->AI()->EnterEvadeMode(EVADE_REASON_OTHER);
+        if (type != POINT_MOTION_TYPE || id != ACTION_PACK_WALK)
+            return;
+
+        me->SetHomePosition(_positions[_myPack - SUMMON_GROUP_CRUSHER_1]);
+        me->SetFacingTo(_positions[_myPack - SUMMON_GROUP_CRUSHER_1].GetOrientation());
+    }
+
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        ScriptedAI::EnterEvadeMode(why);
+
+        Creature* hadronox = _instance->GetCreature(DATA_HADRONOX);
+        if (hadronox && hadronox->IsAlive())
+            hadronox->AI()->DoAction(ACTION_CRUSHER_PACK_EVADE);
     }
 
     uint32 GetData(uint32 data) const override
@@ -459,19 +490,24 @@ struct npc_hadronox_crusherPackAI : public ScriptedAI
         }
     }
 
+    void PullPack(Unit* who)
+    {
+        std::list<Creature*> others;
+        me->GetCreatureListWithEntryInGrid(others, 0, 40.0f);
+        for (Creature* other : others)
+        {
+            if (!other->IsAlive() || other->AI()->GetData(DATA_CRUSHER_PACK_ID) != _myPack || !other->IsValidAttackTarget(who))
+                continue;
+
+            other->SetReactState(REACT_AGGRESSIVE);
+            other->EngageWithTarget(who);
+        }
+    }
+
     void JustEngagedWith(Unit* who) override
     {
         if (me->HasReactState(REACT_PASSIVE))
-        {
-            std::list<Creature*> others;
-            me->GetCreatureListWithEntryInGrid(others, 0, 40.0f);
-            for (Creature* other : others)
-                if (other->AI()->GetData(DATA_CRUSHER_PACK_ID) == _myPack)
-                {
-                    other->SetReactState(REACT_AGGRESSIVE);
-                    other->AI()->AttackStart(who);
-                }
-        }
+            PullPack(who);
 
         _JustEngagedWith();
         ScriptedAI::JustEngagedWith(who);
@@ -489,14 +525,21 @@ struct npc_hadronox_crusherPackAI : public ScriptedAI
         }
 
         if (me->CanStartAttack(who, false) && me->IsWithinDistInMap(who, me->GetAttackDistance(who) + me->m_CombatDistance))
-            JustEngagedWith(who);
+            PullPack(who);
     }
 
     void UpdateAI(uint32 diff) override
     {
         if (me->GetPositionZ() < zCutoff)
         {
+            bool const crusherFell = me->IsAlive() && me->GetEntry() == NPC_CRUSHER;
             me->DespawnOrUnsummon();
+            if (crusherFell)
+            {
+                Creature* hadronox = _instance->GetCreature(DATA_HADRONOX);
+                if (hadronox && hadronox->IsAlive())
+                    hadronox->AI()->EnterEvadeMode(EVADE_REASON_OTHER);
+            }
             return;
         }
         if (!UpdateVictim())
@@ -526,6 +569,12 @@ static const Position crusherWaypoints[] =
 struct npc_anub_ar_crusher : public npc_hadronox_crusherPackAI
 {
     npc_anub_ar_crusher(Creature* creature) : npc_hadronox_crusherPackAI(creature, crusherWaypoints), _hadFrenzy(false) { }
+
+    void Reset() override
+    {
+        npc_hadronox_crusherPackAI::Reset();
+        _hadFrenzy = false;
+    }
 
     void _JustEngagedWith() override
     {
@@ -566,7 +615,8 @@ struct npc_anub_ar_crusher : public npc_hadronox_crusherPackAI
 
     void JustDied(Unit* killer) override
     {
-        if (Creature* hadronox = _instance->GetCreature(DATA_HADRONOX))
+        Creature* hadronox = _instance->GetCreature(DATA_HADRONOX);
+        if (hadronox && hadronox->IsAlive())
             hadronox->AI()->DoAction(ACTION_HADRONOX_MOVE);
         ScriptedAI::JustDied(killer);
     }

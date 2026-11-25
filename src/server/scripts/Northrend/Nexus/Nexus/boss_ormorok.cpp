@@ -59,7 +59,7 @@ class OrmorokTanglerPredicate
 
     bool operator() (WorldObject* object) const
     {
-        return object->GetDistance2d(me) >= 5.0f;
+        return object->GetTypeId() == TYPEID_PLAYER && object->GetDistance2d(me) >= 5.0f;
     }
 
     private:

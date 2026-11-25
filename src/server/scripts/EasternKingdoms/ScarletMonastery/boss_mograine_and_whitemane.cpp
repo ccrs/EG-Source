@@ -207,7 +207,8 @@ public:
                 me->SetReactState(REACT_AGGRESSIVE);
                 _canDie = true;
                 DoCastSelf(SPELL_RETRIBUTION_AURA, true);
-            }).Schedule(4s, [this](TaskContext /*context*/)
+            })
+            .Schedule(4s, [this](TaskContext /*context*/)
             {
                 if (Creature* whitemane = instance->GetCreature(DATA_WHITEMANE))
                     DoCast(whitemane, SPELL_LAY_ONHANDS);

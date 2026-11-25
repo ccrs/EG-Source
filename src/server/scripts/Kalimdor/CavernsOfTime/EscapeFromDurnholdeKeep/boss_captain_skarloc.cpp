@@ -63,11 +63,6 @@ struct boss_captain_skarloc : public BossAI
             thrall->AI()->DoAction(ACTION_SKARLOC_TAUNT);
     }
 
-    void Reset() override
-    {
-        BossAI::Reset();
-    }
-
     void JustEngagedWith(Unit* who) override
     {
         BossAI::JustEngagedWith(who);

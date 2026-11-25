@@ -55,13 +55,14 @@ namespace Trinity
             class TC_GAME_API GenericEvent : public BasicEvent
             {
                 public:
-                    GenericEvent(WorldObject* owner, std::function<bool(WorldObject*)>&& func);
+                    GenericEvent(WorldObject* owner, std::function<bool(WorldObject*)>&& func, Milliseconds retryDelay = 100ms);
 
                     bool Execute(uint64 /*time*/, uint32 /*diff*/) override;
 
                 private:
                     WorldObject* _owner;
                     std::function<bool(WorldObject*)> _func;
+                    Milliseconds _retryDelay;
             };
 
             class TC_GAME_API SetAggresiveStateEvent : public BasicEvent

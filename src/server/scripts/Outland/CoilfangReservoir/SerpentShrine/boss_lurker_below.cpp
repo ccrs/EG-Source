@@ -211,7 +211,7 @@ struct boss_the_lurker_below : public BossAI
                     break;
                 case EVENT_GEYSER:
                     if (me->GetReactState() != REACT_PASSIVE)
-                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f))
+                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
                             DoCast(target, SPELL_GEYSER);
                     events.Repeat(10s, 15s);
                     break;
@@ -326,7 +326,7 @@ struct npc_coilfang_ambusher : public ScriptedAI
         _scheduler
             .Schedule(0s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
                     DoCast(target, SPELL_SHOOT);
                 task.Repeat(3600ms, 7200ms);
             })

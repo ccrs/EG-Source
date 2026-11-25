@@ -308,7 +308,7 @@ struct boss_halazzi : public BossAI
                     events.Repeat(10s, 25s);
                     break;
                 case EVENT_FLAME_SHOCK:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_FLAME_SHOCK);
                     events.Repeat(20s, 30s);
                     break;

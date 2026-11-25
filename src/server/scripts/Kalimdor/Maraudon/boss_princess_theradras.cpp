@@ -56,7 +56,7 @@ struct boss_princess_theradras : public ScriptedAI
             })
             .Schedule(20s, 30s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_BOULDER);
                 task.Repeat(15s, 25s);
             })

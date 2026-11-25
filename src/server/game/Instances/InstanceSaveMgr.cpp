@@ -311,13 +311,12 @@ void InstanceSaveManager::LoadResetTimes()
     // get the current reset times for normal instances (these may need to be updated)
     // these are only kept in memory for InstanceSaves that are loaded later
     // resettime = 0 in the DB for raid/heroic instances so those are skipped
-    typedef std::pair<uint32 /*PAIR32(map, difficulty)*/, time_t> ResetTimeMapDiffType;
+    struct ResetTimeMapDiffType { uint32 mapId; Difficulty difficulty; time_t resetTime; };
     typedef std::map<uint32, ResetTimeMapDiffType> InstResetTimeMapDiffType;
     InstResetTimeMapDiffType instResetTime;
 
     // index instance ids by map/difficulty pairs for fast reset warning send
-    typedef std::multimap<uint32 /*PAIR32(map, difficulty)*/, uint32 /*instanceid*/ > ResetTimeMapDiffInstances;
-    typedef std::pair<ResetTimeMapDiffInstances::const_iterator, ResetTimeMapDiffInstances::const_iterator> ResetTimeMapDiffInstancesBounds;
+    typedef std::multimap<std::pair<uint32, Difficulty>, uint32 /*instanceid*/ > ResetTimeMapDiffInstances;
     ResetTimeMapDiffInstances mapDiffResetInstances;
 
     if (QueryResult result = CharacterDatabase.Query("SELECT id, map, difficulty, resettime FROM instance ORDER BY id ASC"))
@@ -334,18 +333,18 @@ void InstanceSaveManager::LoadResetTimes()
             if (time_t resettime = time_t(fields[3].GetUInt64()))
             {
                 uint32 mapid = fields[1].GetUInt16();
-                uint32 difficulty = fields[2].GetUInt8();
+                Difficulty difficulty = Difficulty(fields[2].GetUInt8());
 
-                instResetTime[instanceId] = ResetTimeMapDiffType(MAKE_PAIR32(mapid, difficulty), resettime);
-                mapDiffResetInstances.insert(ResetTimeMapDiffInstances::value_type(MAKE_PAIR32(mapid, difficulty), instanceId));
+                instResetTime[instanceId] = { .mapId = mapid, .difficulty = difficulty, .resetTime = resettime };
+                mapDiffResetInstances.emplace(std::piecewise_construct, std::forward_as_tuple(mapid, difficulty), std::forward_as_tuple(instanceId));
             }
         }
         while (result->NextRow());
 
         // schedule the reset times
-        for (InstResetTimeMapDiffType::iterator itr = instResetTime.begin(); itr != instResetTime.end(); ++itr)
-            if (itr->second.second > now)
-                ScheduleReset(true, itr->second.second, InstResetEvent(0, PAIR32_LOPART(itr->second.first), Difficulty(PAIR32_HIPART(itr->second.first)), itr->first));
+        for (auto const& [instanceId, resetTimeData] : instResetTime)
+            if (resetTimeData.resetTime > now)
+                ScheduleReset(true, resetTimeData.resetTime, InstResetEvent(0, resetTimeData.mapId, resetTimeData.difficulty, instanceId));
     }
 
     // load the global respawn times for raid/heroic instances
@@ -437,9 +436,8 @@ void InstanceSaveManager::LoadResetTimes()
 
         ScheduleReset(true, t - ResetTimeDelay[type-1], InstResetEvent(type, mapid, difficulty, 0));
 
-        ResetTimeMapDiffInstancesBounds range = mapDiffResetInstances.equal_range(MAKE_PAIR32(mapid, difficulty));
-        for (; range.first != range.second; ++range.first)
-            ScheduleReset(true, t - ResetTimeDelay[type-1], InstResetEvent(type, mapid, difficulty, range.first->second));
+        for (auto const& [_, instanceId] : Trinity::Containers::MapEqualRange(mapDiffResetInstances, { mapid, difficulty }))
+            ScheduleReset(true, t - ResetTimeDelay[type-1], InstResetEvent(type, mapid, difficulty, instanceId));
     }
 }
 
@@ -462,7 +460,7 @@ time_t InstanceSaveManager::GetSubsequentResetTime(uint32 mapid, Difficulty diff
 
 void InstanceSaveManager::SetResetTimeFor(uint32 mapid, Difficulty d, time_t t)
 {
-    ResetTimeByMapDifficultyMap::iterator itr = m_resetTimeByMapDifficulty.find(MAKE_PAIR32(mapid, d));
+    ResetTimeByMapDifficultyMap::iterator itr = m_resetTimeByMapDifficulty.find({ mapid, d });
     ASSERT(itr != m_resetTimeByMapDifficulty.end());
     itr->second = t;
 }
@@ -509,8 +507,7 @@ void InstanceSaveManager::ForceGlobalReset(uint32 mapId, Difficulty difficulty)
     if (!GetDownscaledMapDifficultyData(mapId, difficulty))
         return;
     // remove currently scheduled reset times
-    ScheduleReset(false, 0, InstResetEvent(1, mapId, difficulty, 0));
-    ScheduleReset(false, 0, InstResetEvent(4, mapId, difficulty, 0));
+    ScheduleReset(false, 0, InstResetEvent(1, mapId, difficulty, 0)); // EG
     // force global reset on the instance
     _ResetOrWarnAll(mapId, difficulty, false, GameTime::GetGameTime());
 }
@@ -649,15 +646,7 @@ void InstanceSaveManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficulty, b
         if (!next_reset)
             return;
 
-        // delete/promote instance binds from the DB, even if not loaded.
-        // Order matters:
-        //  1. Delete already-expired / non-permanent character binds first, so the decrement (step 3) never underflows an extendState that is already 0
-        //  2. Delete group binds
-        //  3. Decrement extendState for the surviving permanent binds
-        //  4. Delete character binds again — this catches the ones the decrement just pushed to extendState 0
-        //  5. Delete instance rows that no longer have any extendState != 0 bind
-        //     This must run after the decrement so post-decrement values decide what to keep;
-        //     running it earlier would also break the decrement's LEFT JOIN on instance
+        // delete/promote instance binds from the DB, even if not loaded
         CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
 
         CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_EXPIRED_CHAR_INSTANCE_BY_MAP_DIFF);
@@ -670,17 +659,12 @@ void InstanceSaveManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficulty, b
         stmt->setUInt8(1, uint8(difficulty));
         trans->Append(stmt);
 
-        stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_EXPIRE_CHAR_INSTANCE_BY_MAP_DIFF);
-        stmt->setUInt16(0, uint16(mapid));
-        stmt->setUInt8(1, uint8(difficulty));
-        trans->Append(stmt);
-
-        stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_EXPIRED_CHAR_INSTANCE_BY_MAP_DIFF);
-        stmt->setUInt16(0, uint16(mapid));
-        stmt->setUInt8(1, uint8(difficulty));
-        trans->Append(stmt);
-
         stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_EXPIRED_INSTANCE_BY_MAP_DIFF);
+        stmt->setUInt16(0, uint16(mapid));
+        stmt->setUInt8(1, uint8(difficulty));
+        trans->Append(stmt);
+
+        stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_EXPIRE_CHAR_INSTANCE_BY_MAP_DIFF);
         stmt->setUInt16(0, uint16(mapid));
         stmt->setUInt8(1, uint8(difficulty));
         trans->Append(stmt);
@@ -691,7 +675,10 @@ void InstanceSaveManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficulty, b
         for (InstanceSaveHashMap::iterator itr = m_instanceSaveById.begin(); itr != m_instanceSaveById.end();)
         {
             if (itr->second->GetMapId() == mapid && itr->second->GetDifficultyID() == difficulty)
+            {
+                itr->second->SetResetTime(next_reset); // EG
                 _ResetSave(itr);
+            }
             else
                 ++itr;
         }
@@ -716,6 +703,9 @@ void InstanceSaveManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficulty, b
     for (auto& [_, map] : baseMap->ToMapInstanced()->GetInstancedMaps())
     {
         InstanceMap* instanceMap = map->ToInstanceMap();
+        if (instanceMap->GetDifficultyID() != difficulty) // EG
+            continue; // EG
+
         if (warn)
         {
             if (now >= resetTime)

@@ -77,12 +77,12 @@ namespace WorldPackets
 
         class QueryQuestInfo final : public ClientPacket
         {
-            public:
-                QueryQuestInfo(WorldPacket&& packet) : ClientPacket(CMSG_QUEST_QUERY, std::move(packet)) { }
+        public:
+            explicit QueryQuestInfo(WorldPacket&& packet) : ClientPacket(CMSG_QUEST_QUERY, std::move(packet)) { }
 
-                void Read() override;
+            void Read() override;
 
-                uint32 QuestID = 0;
+            uint32 QuestID = 0;
         };
 
         struct QuestInfoChoiceItem
@@ -152,12 +152,12 @@ namespace WorldPackets
 
         class QueryQuestInfoResponse final : public ServerPacket
         {
-            public:
-                QueryQuestInfoResponse() : ServerPacket(SMSG_QUEST_QUERY_RESPONSE, 2000) { }
+        public:
+            explicit QueryQuestInfoResponse() : ServerPacket(SMSG_QUEST_QUERY_RESPONSE, 2000) { }
 
-                WorldPacket const* Write() override;
+            WorldPacket const* Write() override;
 
-                QuestInfo Info;
+            QuestInfo Info;
         };
 
         struct QuestChoiceItem
@@ -198,7 +198,7 @@ namespace WorldPackets
         class QuestGiverQuestDetails final : public ServerPacket
         {
         public:
-            QuestGiverQuestDetails() : ServerPacket(SMSG_QUEST_GIVER_QUEST_DETAILS, 1000) { }
+            explicit QuestGiverQuestDetails() : ServerPacket(SMSG_QUEST_GIVER_QUEST_DETAILS, 1000) { }
 
             WorldPacket const* Write() override;
 
@@ -270,10 +270,32 @@ namespace WorldPackets
             bool RespondToGiver = false;
         };
 
+        class QuestGiverAcceptQuest final : public ClientPacket
+        {
+        public:
+            explicit QuestGiverAcceptQuest(WorldPacket&& packet) : ClientPacket(CMSG_QUESTGIVER_ACCEPT_QUEST, std::move(packet)) { }
+
+            void Read() override;
+
+            ObjectGuid QuestGiverGUID;
+            int32 QuestID = 0;
+            int32 StartCheat = 0;
+        };
+
+        class QuestLogRemoveQuest final : public ClientPacket
+        {
+        public:
+            explicit QuestLogRemoveQuest(WorldPacket&& packet) : ClientPacket(CMSG_QUESTLOG_REMOVE_QUEST, std::move(packet)) { }
+
+            void Read() override;
+
+            uint8 Entry = 0;
+        };
+
         class QuestGiverOfferRewardMessage final : public ServerPacket
         {
         public:
-            QuestGiverOfferRewardMessage() : ServerPacket(SMSG_QUEST_GIVER_OFFER_REWARD_MESSAGE, 600) { }
+            explicit QuestGiverOfferRewardMessage() : ServerPacket(SMSG_QUEST_GIVER_OFFER_REWARD_MESSAGE, 600) { }
 
             WorldPacket const* Write() override;
 

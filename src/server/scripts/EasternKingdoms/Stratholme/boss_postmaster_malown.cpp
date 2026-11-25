@@ -95,12 +95,12 @@ struct boss_postmaster_malown : public BossAI
                     events.Repeat(30s, 40s);
                     break;
                 case EVENT_CURSE_OF_TONGUES:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_CURSE_OF_TONGUES);
                     events.Repeat(20s, 30s);
                     break;
                 case EVENT_FEAR:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_FEAR);
                     events.Repeat(25s, 35s);
                     break;

@@ -58,7 +58,6 @@ struct boss_epoch_hunter : public BossAI
         me->SetImmuneToPC(true);
         me->SetImmuneToNPC(true);
         Talk(SAY_ENTER);
-        // Remains immune until ACTION_EPOCH_ENGAGE is called after waves are cleared
     }
 
     void Reset() override

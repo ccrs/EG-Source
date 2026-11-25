@@ -57,7 +57,7 @@ void WorldSession::HandleLfgJoinOpcode(WorldPackets::LFG::LFGJoin& packet)
 
     if (packet.Slots.empty())
     {
-        TC_LOG_DEBUG("lfg", "CMSG_LFG_JOIN {} no dungeons selected", GetPlayerInfo());
+        TC_LOG_DEBUG("lfg", "CMSG_DF_JOIN {} no dungeons selected", GetPlayerInfo());
         return;
     }
 
@@ -69,7 +69,7 @@ void WorldSession::HandleLfgJoinOpcode(WorldPackets::LFG::LFGJoin& packet)
             newDungeons.insert(dungeon);
     }
 
-    TC_LOG_DEBUG("lfg", "CMSG_LFG_JOIN {} roles: {}, Dungeons: {}, Comment: {}",
+    TC_LOG_DEBUG("lfg", "CMSG_DF_JOIN {} roles: {}, Dungeons: {}, Comment: {}",
                  GetPlayerInfo(), packet.Roles, newDungeons.size(), packet.Comment);
 
     sLFGMgr->JoinLfg(GetPlayer(), uint8(packet.Roles), newDungeons, packet.Comment);
@@ -114,12 +114,12 @@ void WorldSession::HandleLfgSetRolesOpcode(WorldPacket& recvData)
     Group* group = GetPlayer()->GetGroup();
     if (!group)
     {
-        TC_LOG_DEBUG("lfg", "CMSG_LFG_SET_ROLES {} Not in group",
+        TC_LOG_DEBUG("lfg", "CMSG_DF_SET_ROLES {} Not in group",
             GetPlayerInfo());
         return;
     }
     ObjectGuid gguid = group->GetGUID();
-    TC_LOG_DEBUG("lfg", "CMSG_LFG_SET_ROLES: Group {}, Player {}, Roles: {}",
+    TC_LOG_DEBUG("lfg", "CMSG_DF_SET_ROLES: Group {}, Player {}, Roles: {}",
         gguid.ToString(), GetPlayerInfo(), roles);
     sLFGMgr->UpdateRoleCheck(gguid, guid, roles);
 }
@@ -151,7 +151,7 @@ void WorldSession::HandleLfgTeleportOpcode(WorldPacket& recvData)
     bool out;
     recvData >> out;
 
-    TC_LOG_DEBUG("lfg", "CMSG_LFG_TELEPORT {} out: {}",
+    TC_LOG_DEBUG("lfg", "CMSG_DF_TELEPORT {} out: {}",
         GetPlayerInfo(), out ? 1 : 0);
     sLFGMgr->TeleportPlayer(GetPlayer(), out, true);
 }
@@ -343,7 +343,7 @@ void WorldSession::SendLfgUpdatePlayer(lfg::LfgUpdateData const& updateData)
 
         data << uint8(size);
         for (lfg::LfgDungeonSet::const_iterator it = updateData.dungeons.begin(); it != updateData.dungeons.end(); ++it)
-            data << uint32(*it);
+            data << uint32(sLFGMgr->GetLFGDungeonEntry(*it)); // EG
         data << updateData.comment;
     }
     SendPacket(&data);
@@ -387,7 +387,7 @@ void WorldSession::SendLfgUpdateParty(const lfg::LfgUpdateData& updateData)
 
         data << uint8(size);
         for (lfg::LfgDungeonSet::const_iterator it = updateData.dungeons.begin(); it != updateData.dungeons.end(); ++it)
-            data << uint32(*it);
+            data << uint32(sLFGMgr->GetLFGDungeonEntry(*it)); // EG
         data << updateData.comment;
     }
     SendPacket(&data);
@@ -505,8 +505,8 @@ void WorldSession::SendLfgPlayerReward(lfg::LfgPlayerRewardData const& rewardDat
     WorldPacket data(SMSG_LFG_PLAYER_REWARD, 4 + 4 + 1 + 4 + 4 + 4 + 4 + 4 + 1 + itemNum * (4 + 4 + 4));
     data << uint32(rewardData.rdungeonEntry);              // Random Dungeon Finished
     data << uint32(rewardData.sdungeonEntry);              // Dungeon Finished
-    data << uint8(rewardData.done);
-    data << uint32(1);
+    data << uint8(!rewardData.done); // EG
+    data << uint32(rewardData.strangers); // EG
     data << uint32(rewardData.quest->GetRewOrReqMoney(GetPlayer()));
     data << uint32(GetPlayer()->GetQuestXPReward(rewardData.quest));
     data << uint32(0);
@@ -532,7 +532,8 @@ void WorldSession::SendLfgBootProposalUpdate(lfg::LfgPlayerBoot const& boot)
     lfg::LfgAnswer playerVote = boot.votes.find(guid)->second;
     uint8 votesNum = 0;
     uint8 agreeNum = 0;
-    uint32 secsleft = uint8((boot.cancelTime - GameTime::GetGameTime()) / 1000);
+    time_t now = GameTime::GetGameTime(); // EG
+    uint32 secsleft = boot.cancelTime > now ? uint32(boot.cancelTime - now) : 0; // EG
     for (lfg::LfgAnswerContainer::const_iterator it = boot.votes.begin(); it != boot.votes.end(); ++it)
     {
         if (it->second != lfg::LFG_ANSWER_PENDING)

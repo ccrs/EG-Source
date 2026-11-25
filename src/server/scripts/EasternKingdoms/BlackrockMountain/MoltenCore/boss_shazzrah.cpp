@@ -17,6 +17,7 @@
 
 #include "ScriptMgr.h"
 #include "Containers.h"
+#include "GridNotifiers.h"
 #include "molten_core.h"
 #include "ScriptedCreature.h"
 #include "SpellInfo.h"
@@ -125,6 +126,7 @@ class spell_shazzrah_gate_dummy : public SpellScript
 
     void FilterTargets(std::list<WorldObject*>& targets)
     {
+        targets.remove_if(Trinity::ObjectTypeIdCheck(TYPEID_PLAYER, false));
         if (targets.empty())
             return;
 

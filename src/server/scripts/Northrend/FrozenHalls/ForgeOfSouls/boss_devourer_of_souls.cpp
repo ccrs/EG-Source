@@ -267,12 +267,12 @@ struct boss_devourer_of_souls : public BossAI
                     events.ScheduleEvent(EVENT_MIRRORED_SOUL, 15s, 30s);
                     break;
                 case EVENT_WELL_OF_SOULS:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_WELL_OF_SOULS);
                     events.ScheduleEvent(EVENT_WELL_OF_SOULS, 20s);
                     break;
                 case EVENT_UNLEASHED_SOULS:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_UNLEASHED_SOULS);
                     me->SetDisplayId(DISPLAY_SORROW);
                     Talk(SAY_FACE_UNLEASH_SOUL);

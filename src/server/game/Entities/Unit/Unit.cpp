@@ -45,6 +45,7 @@
 #include "Item.h"
 #include "Log.h"
 #include "LootMgr.h"
+#include "MiscPackets.h"
 #include "MotionMaster.h"
 #include "MovementGenerator.h"
 #include "MovementPackets.h"
@@ -2906,6 +2907,8 @@ void Unit::_UpdateSpells(uint32 time)
             RemoveOwnedAura(i, AURA_REMOVE_BY_EXPIRE);
         else if (i->second->GetSpellInfo()->IsChanneled() && i->second->GetCasterGUID() != GetGUID() && !ObjectAccessor::GetWorldObject(*this, i->second->GetCasterGUID()))
             RemoveOwnedAura(i, AURA_REMOVE_BY_CANCEL); // remove channeled auras when caster is not on the same map
+        else if (i->second->HasGenerators() && !i->second->UpdateGenerators()) // EG
+            RemoveOwnedAura(i, AURA_REMOVE_BY_DEFAULT);
         else
             ++i;
     }
@@ -3222,6 +3225,10 @@ void Unit::ProcessPositionDataChanged(PositionFullTerrainStatus const& data)
 {
     ZLiquidStatus oldLiquidStatus = GetLiquidStatus();
     WorldObject::ProcessPositionDataChanged(data);
+    if (data.liquidInfo) // EG
+        _liquidLevel = data.liquidInfo->level;
+    else
+        _liquidLevel.reset();
     ProcessTerrainStatusUpdate(oldLiquidStatus, data.liquidInfo);
 }
 
@@ -9491,11 +9498,11 @@ void Unit::SetPower(Powers power, uint32 val, bool withPowerUpdate /*= true*/, b
 
     if (withPowerUpdate)
     {
-        WorldPacket data(SMSG_POWER_UPDATE, 8 + 1 + 4);
-        data << GetPackGUID();
-        data << uint8(power);
-        data << uint32(val);
-        SendMessageToSet(&data, GetTypeId() == TYPEID_PLAYER);
+        WorldPackets::Combat::PowerUpdate packet;
+        packet.Guid = GetGUID();
+        packet.Power.PowerType = power;
+        packet.Power.Power = val;
+        SendMessageToSet(packet.Write(), GetTypeId() == TYPEID_PLAYER);
     }
 
     // group update
@@ -10395,7 +10402,7 @@ void Unit::StopMoving(bool force /*= false*/)
         return;
 
     // Update position now since Stop does not start a new movement that can be updated later
-    if (movespline->HasStarted())
+    if (!movespline->Finalized() && movespline->HasStarted()) // EG
         UpdateSplinePosition();
     Movement::MoveSplineInit init(this);
     init.Stop(force);
@@ -10424,7 +10431,7 @@ void Unit::ResumeMovement(uint32 timer/* = 0*/, uint8 slot/* = 0*/)
 
 bool Unit::IsSitState() const
 {
-    uint8 s = GetStandState();
+    UnitStandStateType s = GetStandState();
     return
         s == UNIT_STAND_STATE_SIT_CHAIR        || s == UNIT_STAND_STATE_SIT_LOW_CHAIR  ||
         s == UNIT_STAND_STATE_SIT_MEDIUM_CHAIR || s == UNIT_STAND_STATE_SIT_HIGH_CHAIR ||
@@ -10433,7 +10440,7 @@ bool Unit::IsSitState() const
 
 bool Unit::IsStandState() const
 {
-    uint8 s = GetStandState();
+    UnitStandStateType s = GetStandState();
     return !IsSitState() && s != UNIT_STAND_STATE_SLEEP && s != UNIT_STAND_STATE_KNEEL;
 }
 
@@ -10446,9 +10453,8 @@ void Unit::SetStandState(UnitStandStateType state)
 
     if (GetTypeId() == TYPEID_PLAYER)
     {
-        WorldPacket data(SMSG_STANDSTATE_UPDATE, 1);
-        data << (uint8)state;
-        ToPlayer()->SendDirectMessage(&data);
+        WorldPackets::Misc::StandStateUpdate packet(state);
+        ToPlayer()->SendDirectMessage(packet.Write());
     }
 }
 
@@ -10989,6 +10995,8 @@ bool Unit::InitTamedPet(Pet* pet, uint8 level, uint32 spell_id)
         return false;
     }
 
+    pet->CopyPhaseFrom(this);
+
     pet->GetCharmInfo()->SetPetNumber(sObjectMgr->GeneratePetNumber(), true);
     // this enables pet details window (Shift+P)
     pet->InitPetCreateSpells();
@@ -11267,9 +11275,7 @@ bool Unit::InitTamedPet(Pet* pet, uint8 level, uint32 spell_id)
                     // the reset time is set but not added to the scheduler
                     // until the players leave the instance
                     time_t resettime = GameTime::GetGameTime() + 2 * HOUR;
-                    if (InstanceSave* save = sInstanceSaveMgr->GetInstanceSave(creature->GetInstanceId()))
-                        if (save->GetResetTime() < resettime)
-                            save->SetResetTime(resettime);
+                    sInstanceSaveMgr->HandleInstanceMapEvent({ .Type = INSTANCE_MAP_EVENT_NORMAL_RESET_TIME, .InstanceId = creature->GetInstanceId(), .ResetTime = resettime }); // EG
                 }
             }
         }
@@ -11698,6 +11704,7 @@ bool Unit::SetCharmedBy(Unit* charmer, CharmType type, AuraApplication const* au
                 SetUnitFlag(UNIT_FLAG_POSSESSED);
                 playerCharmer->SetClientControl(this, true);
                 playerCharmer->VehicleSpellInitialize();
+                HandleCharmLinkedAuras(charmer, true); // EG
                 break;
             case CHARM_TYPE_POSSESS:
                 SetUnitFlag(UNIT_FLAG_POSSESSED);
@@ -11805,6 +11812,7 @@ void Unit::RemoveCharmedBy(Unit* charmer)
                 playerCharmer->SetClientControl(this, false);
                 playerCharmer->SetClientControl(charmer, true);
                 RemoveUnitFlag(UNIT_FLAG_POSSESSED);
+                HandleCharmLinkedAuras(charmer, false); // EG
                 break;
             case CHARM_TYPE_POSSESS:
                 ClearUnitState(UNIT_STATE_POSSESSED);
@@ -12841,6 +12849,8 @@ void Unit::_ExitVehicle(Position const* exitPosition)
     // If we ask for a specific exit position, use that one. Otherwise allow scripts to modify it
     if (exitPosition)
         pos = *exitPosition;
+    else if (parameters.ExitPosition)
+        pos = *parameters.ExitPosition;
     else
     {
         // Start from vehicle world position. Keep vehicle orientation so that

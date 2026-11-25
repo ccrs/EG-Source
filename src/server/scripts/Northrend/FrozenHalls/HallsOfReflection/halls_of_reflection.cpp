@@ -1623,7 +1623,7 @@ class npc_phantom_mage : public CreatureScript
                         _events.ScheduleEvent(EVENT_FROSTBOLT, 15s);
                         break;
                     case EVENT_CHAINS_OF_ICE:
-                        if (Unit* target = SelectTarget(SelectTargetMethod::Random))
+                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                             DoCast(target, SPELL_CHAINS_OF_ICE);
                         _events.ScheduleEvent(EVENT_CHAINS_OF_ICE, 15s);
                         break;

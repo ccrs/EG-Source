@@ -765,7 +765,7 @@ void Aura::_ApplyEffectForTargets(uint8 effIndex)
     UnitList targetList;
     for (ApplicationMap::iterator appIter = m_applications.begin(); appIter != m_applications.end(); ++appIter)
     {
-        if ((appIter->second->GetEffectsToApply() & (1<<effIndex)) && !appIter->second->HasEffect(effIndex))
+        if ((appIter->second->GetEffectsToApply() & (1 << effIndex)) && !appIter->second->HasEffect(effIndex))
             targetList.push_back(appIter->second->GetTarget());
     }
 
@@ -832,7 +832,7 @@ void Aura::Update(uint32 diff, Unit* caster)
         {
             if (m_timeCla > int32(diff))
                 m_timeCla -= diff;
-            else if (caster)
+            else if (caster && (caster == GetOwner() || !GetSpellInfo()->HasAttribute(SPELL_ATTR2_HEALTH_FUNNEL)))
             {
                 if (int32 manaPerSecond = m_spellInfo->ManaPerSecond + m_spellInfo->ManaPerSecondPerLevel * caster->GetLevel())
                 {
@@ -1097,6 +1097,9 @@ bool Aura::IsRemovedOnShapeLost(Unit* target) const
 bool Aura::CanBeSaved() const
 {
     if (IsPassive())
+        return false;
+
+    if (HasGenerators()) // EG
         return false;
 
     if (GetSpellInfo()->IsChanneled())
@@ -1668,9 +1671,11 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
                             player->GetSpellHistory()->ResetCooldown(GetSpellInfo()->Id, true);
                             player->GetSpellHistory()->AddCooldown(GetSpellInfo()->Id, 0, std::chrono::seconds(aurEff->GetAmount()));
 
-                            WorldPacket data;
-                            player->GetSpellHistory()->BuildCooldownPacket(data, SPELL_COOLDOWN_FLAG_NONE, GetSpellInfo()->Id, aurEff->GetAmount() * IN_MILLISECONDS);
-                            player->SendDirectMessage(&data);
+                            WorldPackets::Spells::SpellCooldown spellCooldown;
+                            spellCooldown.Caster = player->GetGUID();
+                            spellCooldown.Flags = SPELL_COOLDOWN_FLAG_NONE;
+                            spellCooldown.SpellCooldowns.emplace_back(GetSpellInfo()->Id, aurEff->GetAmount()* IN_MILLISECONDS);
+                            player->SendDirectMessage(spellCooldown.Write());
                         }
                         break;
                 }
@@ -2640,6 +2645,9 @@ void UnitAura::FillTargetMap(std::unordered_map<Unit*, uint8>& targets, Unit* ca
             continue;
 
         std::vector<Unit*> units;
+        if (!caster && HasGenerators()) // EG
+            units.push_back(GetUnitOwner());
+
         ConditionContainer* condList = spellEffectInfo.ImplicitTargetConditions;
 
         float radius = spellEffectInfo.CalcRadius(ref);

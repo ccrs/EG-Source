@@ -141,7 +141,6 @@ enum MalygosSpells
     // Transition /II-III/
     SPELL_RIDE_RED_DRAGON_BUDDY              = 56071,
     SPELL_SUMMON_RED_DRAGON_BUDDY_F_CAST     = 58846, // After implicitly hit player targets they will force cast 56070 on self
-    SPELL_VEHICLE_GEAR_SCALING = 66668, // Driver-stat scaling aura, handled by spell_gen_vehicle_scaling
     SPELL_DESTROY_PLATFORM_CHANNEL           = 58842,
     SPELL_DESTROY_PLATFORM_BOOM_VISUAL       = 59084,
     SPELL_DESTROY_PLATFORM_EVENT             = 59099,
@@ -1530,14 +1529,10 @@ struct npc_wyrmrest_skytalon : public VehicleAI
         }
     }
 
-    void PassengerBoarded(Unit* unit, int8 /*seat*/, bool apply) override
+    void PassengerBoarded(Unit* /*unit*/, int8 /*seat*/, bool apply) override
     {
         if (apply)
-        {
-            if (unit->GetTypeId() == TYPEID_PLAYER)
-                unit->CastSpell(me, SPELL_VEHICLE_GEAR_SCALING, true);
             _events.ScheduleEvent(EVENT_MOVE_TO_MALYGOS, 1s);
-        }
         else
         {
             me->DespawnOrUnsummon(2050ms);

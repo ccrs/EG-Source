@@ -781,11 +781,6 @@ void WorldSession::HandleHearthAndResurrect(WorldPackets::Battleground::HearthAn
         return;
     }
 
-    if (/*Battlefield* bf = */sBattlefieldMgr->GetEnabledBattlefield(_player->GetZoneId()))
-    {
-        return;
-    }
-
     AreaTableEntry const* atEntry = sAreaTableStore.LookupEntry(_player->GetAreaId());
     if (!atEntry || !(atEntry->Flags & AREA_FLAG_WINTERGRASP_2))
         return;

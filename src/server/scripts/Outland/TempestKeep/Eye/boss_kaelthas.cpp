@@ -41,6 +41,7 @@
 #include "Containers.h"
 #include "DBCStores.h"
 #include "GameObject.h"
+#include "GridNotifiers.h"
 #include "InstanceScript.h"
 #include "Map.h"
 #include "MotionMaster.h"
@@ -1218,7 +1219,7 @@ struct boss_grand_astromancer_capernian : public AdvisorBaseAI
             })
             .Schedule(0s, 20s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                     DoCast(target, SPELL_CONFLAGRATION);
                 task.Repeat(15s);
             })
@@ -1268,7 +1269,7 @@ struct boss_master_engineer_telonicus : public AdvisorBaseAI
             })
             .Schedule(0s, 10s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, false, true, -SPELL_REMOTE_TOY))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true, true, -SPELL_REMOTE_TOY))
                     DoCast(target, SPELL_REMOTE_TOY);
                 task.Repeat(15s, 18s);
             });
@@ -1546,6 +1547,7 @@ class spell_kaelthas_mind_control : public SpellScript
 
     void FilterTargets(std::list<WorldObject*>& targets)
     {
+        targets.remove_if(Trinity::ObjectTypeIdCheck(TYPEID_PLAYER, false));
         targets.remove(GetCaster()->GetVictim());
         Trinity::Containers::RandomResize(targets, 3);
     }
@@ -2000,7 +2002,8 @@ class spell_kaelthas_nether_beam : public SpellScript
         {
             std::vector<Unit*> targets;
             for (ThreatReference const* ref : caster->GetThreatManager().GetUnsortedThreatList())
-                targets.push_back(ref->GetVictim());
+                if (ref->GetVictim()->IsPlayer())
+                    targets.push_back(ref->GetVictim());
 
             Trinity::Containers::RandomResize(targets, 5);
 

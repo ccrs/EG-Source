@@ -339,7 +339,7 @@ bool SpellMgr::IsSpellLearnToSpell(uint32 spell_id1, uint32 spell_id2) const
 {
     SpellLearnSpellMapBounds bounds = GetSpellLearnSpellMapBounds(spell_id1);
     for (SpellLearnSpellMap::const_iterator i = bounds.first; i != bounds.second; ++i)
-        if (i->second.spell == spell_id2)
+        if (i->second.Spell == spell_id2)
             return true;
     return false;
 }
@@ -726,7 +726,7 @@ bool SpellArea::IsFitToRequirements(Player const* player, uint32 newZone, uint32
                 return false;
 
             if (Battlefield* wintergrasp = sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP))
-                return wintergrasp->IsEnabled() && !wintergrasp->IsWarTime() && player->GetTeamId() == wintergrasp->GetControllingTeamId();
+                return wintergrasp->IsEnabled() && !wintergrasp->IsBattleTime() && player->GetTeamId() == wintergrasp->GetControllingTeamId();
             break;
         }
     }
@@ -1048,9 +1048,9 @@ void SpellMgr::LoadSpellLearnSpells()
         uint32 spell_id = fields[0].GetUInt32();
 
         SpellLearnSpellNode node;
-        node.spell       = fields[1].GetUInt32();
-        node.active      = fields[2].GetBool();
-        node.autoLearned = false;
+        node.Spell       = fields[1].GetUInt32();
+        node.Active      = fields[2].GetBool();
+        node.AutoLearned = false;
 
         if (!GetSpellInfo(spell_id))
         {
@@ -1058,15 +1058,16 @@ void SpellMgr::LoadSpellLearnSpells()
             continue;
         }
 
-        if (!GetSpellInfo(node.spell))
+        SpellInfo const* learnedSpellInfo = GetSpellInfo(node.Spell);
+        if (!learnedSpellInfo)
         {
-            TC_LOG_ERROR("sql.sql", "The spell {} listed in `spell_learn_spell` learning non-existing spell {}.", spell_id, node.spell);
+            TC_LOG_ERROR("sql.sql", "The spell {} listed in `spell_learn_spell` learning non-existing spell {}.", spell_id, node.Spell);
             continue;
         }
 
-        if (GetTalentSpellCost(node.spell))
+        if (learnedSpellInfo->HasAttribute(SPELL_ATTR0_CU_IS_TALENT))
         {
-            TC_LOG_ERROR("sql.sql", "The spell {} listed in `spell_learn_spell` attempts learning talent spell {}, skipped.", spell_id, node.spell);
+            TC_LOG_ERROR("sql.sql", "The spell {} listed in `spell_learn_spell` attempts learning talent spell {}, skipped.", spell_id, node.Spell);
             continue;
         }
 
@@ -1089,27 +1090,27 @@ void SpellMgr::LoadSpellLearnSpells()
             if (spellEffectInfo.IsEffect(SPELL_EFFECT_LEARN_SPELL))
             {
                 SpellLearnSpellNode dbc_node;
-                dbc_node.spell = spellEffectInfo.TriggerSpell;
-                dbc_node.active = true;                     // all dbc based learned spells is active (show in spell book or hide by client itself)
+                dbc_node.Spell = spellEffectInfo.TriggerSpell;
+                dbc_node.Active = true;                     // all dbc based learned spells is active (show in spell book or hide by client itself)
 
                 // ignore learning not existed spells (broken/outdated/or generic learnig spell 483
-                if (!GetSpellInfo(dbc_node.spell))
+                if (!GetSpellInfo(dbc_node.Spell))
                     continue;
 
                 // talent or passive spells or skill-step spells auto-cast and not need dependent learning,
                 // pet teaching spells must not be dependent learning (cast)
                 // other required explicit dependent learning
-                dbc_node.autoLearned = spellEffectInfo.TargetA.GetTarget() == TARGET_UNIT_PET || GetTalentSpellCost(spell) > 0 || entry->IsPassive() || entry->HasEffect(SPELL_EFFECT_SKILL_STEP);
+                dbc_node.AutoLearned = spellEffectInfo.TargetA.GetTarget() == TARGET_UNIT_PET || entry->HasAttribute(SPELL_ATTR0_CU_IS_TALENT) || entry->IsPassive() || entry->HasEffect(SPELL_EFFECT_SKILL_STEP);
 
                 SpellLearnSpellMapBounds db_node_bounds = GetSpellLearnSpellMapBounds(spell);
 
                 bool found = false;
                 for (SpellLearnSpellMap::const_iterator itr = db_node_bounds.first; itr != db_node_bounds.second; ++itr)
                 {
-                    if (itr->second.spell == dbc_node.spell)
+                    if (itr->second.Spell == dbc_node.Spell)
                     {
                         TC_LOG_ERROR("sql.sql", "The spell {} is an auto-learn spell {} in spell.dbc and the record in `spell_learn_spell` is redundant. Please update your DB.",
-                            spell, dbc_node.spell);
+                            spell, dbc_node.Spell);
                         found = true;
                         break;
                     }
@@ -1146,7 +1147,7 @@ void SpellMgr::LoadSpellTargetPositions()
     {
         Field* fields = result->Fetch();
 
-        uint32 Spell_ID = fields[0].GetUInt32();
+        uint32 spellId = fields[0].GetUInt32();
         SpellEffIndex effIndex = SpellEffIndex(fields[1].GetUInt8());
 
         SpellTargetPosition st;
@@ -1160,32 +1161,32 @@ void SpellMgr::LoadSpellTargetPositions()
         MapEntry const* mapEntry = sMapStore.LookupEntry(st.target_mapId);
         if (!mapEntry)
         {
-            TC_LOG_ERROR("sql.sql", "Spell (Id: {}, effIndex: {}) target map (ID: {}) does not exist in `Map.dbc`.", Spell_ID, effIndex, st.target_mapId);
+            TC_LOG_ERROR("sql.sql", "Spell (Id: {}, EffectIndex: {}) is using a non-existant MapID (ID: {}).", spellId, effIndex, st.target_mapId);
             continue;
         }
 
         if (st.target_X==0 && st.target_Y==0 && st.target_Z==0)
         {
-            TC_LOG_ERROR("sql.sql", "Spell (Id: {}, effIndex: {}) target coordinates not provided.", Spell_ID, effIndex);
+            TC_LOG_ERROR("sql.sql", "Spell (Id: {}, EffectIndex: {}): target coordinates not provided.", spellId, effIndex);
             continue;
         }
 
-        SpellInfo const* spellInfo = GetSpellInfo(Spell_ID);
+        SpellInfo const* spellInfo = GetSpellInfo(spellId);
         if (!spellInfo)
         {
-            TC_LOG_ERROR("sql.sql", "Spell (Id: {}) listed in `spell_target_position` does not exist.", Spell_ID);
+            TC_LOG_ERROR("sql.sql", "Spell (Id: {}) listed in `spell_target_position` does not exist.", spellId);
             continue;
         }
 
         if (spellInfo->GetEffect(effIndex).TargetA.GetTarget() == TARGET_DEST_DB || spellInfo->GetEffect(effIndex).TargetB.GetTarget() == TARGET_DEST_DB)
         {
-            std::pair<uint32, SpellEffIndex> key = std::make_pair(Spell_ID, effIndex);
+            std::pair<uint32, SpellEffIndex> key = std::make_pair(spellId, effIndex);
             mSpellTargetPositions[key] = st;
             ++count;
         }
         else
         {
-            TC_LOG_ERROR("sql.sql", "Spell (Id: {}, effIndex: {}) listed in `spell_target_position` does not have a target TARGET_DEST_DB (17).", Spell_ID, effIndex);
+            TC_LOG_ERROR("sql.sql", "Spell (Id: {}, EffectIndex: {}) listed in `spell_target_position` does not have target TARGET_DEST_DB (17).", spellId, effIndex);
             continue;
         }
 
@@ -1193,38 +1194,18 @@ void SpellMgr::LoadSpellTargetPositions()
 
     /*
     // Check all spells
-    for (uint32 i = 1; i < GetSpellInfoStoreSize; ++i)
+    for (SpellInfo const* spellInfo : mSpellInfoMap)
     {
-        SpellInfo const* spellInfo = GetSpellInfo(i);
-        if (!spellInfo)
-            continue;
+        for (SpellEffectInfo const& effect : spellInfo->GetEffects())
+        {
+            if (effect.TargetA.GetTarget() != TARGET_DEST_DB && effect.TargetB.GetTarget() != TARGET_DEST_DB)
+                continue;
 
-        bool found = false;
-        for (int j = 0; j < MAX_SPELL_EFFECTS; ++j)
-        {
-            switch (spellInfo->Effects[j].TargetA)
-            {
-                case TARGET_DEST_DB:
-                    found = true;
-                    break;
-            }
-            if (found)
-                break;
-            switch (spellInfo->Effects[j].TargetB)
-            {
-                case TARGET_DEST_DB:
-                    found = true;
-                    break;
-            }
-            if (found)
-                break;
+            if (!GetSpellTargetPosition(spellInfo->Id, effect.EffectIndex))
+                TC_LOG_DEBUG("spells", "Spell (Id: {}, EffectIndex: {}) does not have record in `spell_target_position`.", spellInfo.Id, effect.EffectIndex);
         }
-        if (found)
-        {
-            if (!sSpellMgr->GetSpellTargetPosition(i))
-                TC_LOG_DEBUG("spells", "Spell (ID: {}) does not have a record in `spell_target_position`.", i);
-        }
-    }*/
+    }
+    */
 
     TC_LOG_INFO("server.loading", ">> Loaded {} spell teleport coordinates in {} ms", count, GetMSTimeDiffToNow(oldMSTime));
 }
@@ -2798,8 +2779,24 @@ void SpellMgr::LoadSpellInfoCustomAttributes()
 
         spellInfo->_InitializeSpellPositivity();
 
+        if (GetTalentSpellPos(spellInfo->Id))
+            spellInfo->AttributesCu |= SPELL_ATTR0_CU_IS_TALENT;
+
         if (spellInfo->SpellVisual[0] == 3879)
             spellInfo->AttributesCu |= SPELL_ATTR0_CU_CONE_BACK;
+
+        if (spellInfo->HasAura(SPELL_AURA_CONTROL_VEHICLE)) // EG
+        {
+            for (SpellEffectInfo const& spellEffectInfo : spellInfo->GetEffects())
+            {
+                if (!spellEffectInfo.IsAura(SPELL_AURA_LINKED))
+                    continue;
+
+                SpellInfo* linkedSpellInfo = _GetSpellInfo(spellEffectInfo.TriggerSpell);
+                if (linkedSpellInfo && linkedSpellInfo->GetEffect(EFFECT_0).IsAura(SPELL_AURA_MOD_HEALING_PCT) && linkedSpellInfo->GetEffect(EFFECT_1).IsAura(SPELL_AURA_MOD_DAMAGE_PERCENT_DONE) && linkedSpellInfo->GetEffect(EFFECT_2).IsAura(SPELL_AURA_MOD_INCREASE_HEALTH_PERCENT))
+                    linkedSpellInfo->AttributesCu |= SPELL_ATTR0_CU_VEHICLE_GEAR_SCALING;
+            }
+        }
 
         switch (spellInfo->SpellFamilyName)
         {
@@ -3959,14 +3956,12 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 3000;
-        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     // Jormungar Strike
     ApplySpellFix({ 56513 }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 2000;
-        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     ApplySpellFix({
@@ -3975,7 +3970,6 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 6000;
-        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     ApplySpellFix({
@@ -3985,7 +3979,6 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 10000;
-        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     ApplySpellFix({
@@ -3994,14 +3987,12 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 12000;
-        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     // Signal Helmet to Attack
     ApplySpellFix({ 51748 }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 15000;
-        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     ApplySpellFix({
@@ -4011,7 +4002,6 @@ void SpellMgr::LoadSpellInfoCorrections()
     }, [](SpellInfo* spellInfo)
     {
         spellInfo->RecoveryTime = 20000;
-        spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
     // Summon Frigid Bones
@@ -5033,7 +5023,7 @@ void SpellMgr::LoadSpellInfoCorrections()
         spellInfo->AttributesCu |= SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET;
     });
 
-    // EG - Alchemy transmutes
+    // Alchemy transmutes
     ApplySpellFix({
         // Vanilla metal
         11479, 11480,
@@ -5041,8 +5031,6 @@ void SpellMgr::LoadSpellInfoCorrections()
         17559, 17560, 17561, 17562, 17563, 17564, 17565, 17566,
         // TBC primal
         28566, 28567, 28568, 28569, 28580, 28581, 28582, 28583, 28584, 28585,
-        // Alchemy specialization passive (also cat 310)
-        46714,
         // WotLK eternal
         53771, 53773, 53774, 53775, 53776, 53777, 53779, 53780, 53781, 53782, 53783, 53784, 54020,
         // WotLK epic gem
@@ -5290,6 +5278,90 @@ void SpellMgr::LoadSpellInfoCorrections()
     ApplySpellFix({ 42300 }, [](SpellInfo* spellInfo)
     {
         spellInfo->_GetEffect(EFFECT_0).TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ANY);
+    });
+
+    // Engineering dragonlings summon as guardians
+    ApplySpellFix({
+        4073, // Mechanical Dragonling
+        12749, // Mithril Mechanical Dragonling
+        19804 // Arcanite Dragonling
+    }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).MiscValueB = 1581;
+    });
+
+    // Curse of Doom Effect
+    ApplySpellFix({ 18662 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->DurationEntry = sSpellDurationStore.LookupEntry(347); // 15 minutes
+    });
+
+    // Wintergrasp graveyard teleports
+    ApplySpellFix({
+        59760, // Teleport: Fortress Graveyard
+        59762, // Teleport: Sunken Ring
+        59763, // Teleport: Broken Temple
+        59765, // Teleport: Horde Landing Zone
+        59766, // Teleport: Westspark Factory Graveyard
+        59767, // Teleport: Eastspark Factory Graveyard
+        59769 // Teleport: Alliance Landing Zone
+    }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_ALLOW_GHOST_TARGET;
+    });
+
+    // Wintergrasp battle rewards
+    ApplySpellFix({
+        56902, // Wintergrasp Victory
+        58494, // Wintergrasp Defeat
+        58931, // Wintergrasp Victory (serverside)
+        59135, // Tower Damaged
+        59136, // Tower Destroyed
+        59201, // Damaged Building Reward
+        59203 // Intact Building Defended
+    }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Attributes |= SPELL_ATTR0_UNAFFECTED_BY_INVULNERABILITY;
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_ALLOW_GHOST_TARGET | SPELL_ATTR0_CU_ALLOW_INFLIGHT_TARGET;
+    });
+
+    // Parachute (Flame Leviathan Smoke Trail)
+    ApplySpellFix({ 61242 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->AuraInterruptFlags |= AURA_INTERRUPT_FLAG_LANDING;
+    });
+
+    // Hookshot Aura (Flame Leviathan)
+    ApplySpellFix({ 62336 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).TriggerSpell = 0;
+    });
+
+    // Flaming Cinder (Koralon)
+    ApplySpellFix({ 66690 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->_GetEffect(EFFECT_0).RadiusEntry = sSpellRadiusStore.LookupEntry(EFFECT_RADIUS_100_YARDS);
+        spellInfo->MaxAffectedTargets = 1;
+    });
+
+    // Tower Kill Credit (Wintergrasp)
+    ApplySpellFix({ 20723 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Attributes |= SPELL_ATTR0_UNAFFECTED_BY_INVULNERABILITY;
+        spellInfo->AttributesEx2 |= SPELL_ATTR2_CAN_TARGET_DEAD;
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_ALLOW_GHOST_TARGET;
+    });
+
+    // Tower Control (Wintergrasp)
+    ApplySpellFix({ 62064 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->Attributes |= SPELL_ATTR0_UNAFFECTED_BY_INVULNERABILITY;
+    });
+
+    // Bomb Blast (Infra-green Bomber)
+    ApplySpellFix({ 60523 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->RangeEntry = sSpellRangeStore.LookupEntry(13); // 50000yd
     });
 
     for (uint32 i = 0; i < GetSpellInfoStoreSize(); ++i)

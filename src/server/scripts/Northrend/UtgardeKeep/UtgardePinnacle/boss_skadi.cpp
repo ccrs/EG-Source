@@ -283,7 +283,7 @@ struct boss_skadi : public BossAI
                     })
                     .Schedule(Seconds(11), [this](TaskContext poisonedSpear)
                     {
-                        if (Unit* target = SelectTarget(SelectTargetMethod::Random))
+                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                             DoCast(target, SPELL_POISONED_SPEAR);
                         poisonedSpear.Repeat();
                     })

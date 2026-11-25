@@ -103,6 +103,7 @@ ObjectData const objectData[] =
     { GO_NAXX_PORTAL_PLAGUE,    DATA_NAXX_PORTAL_PLAGUE    },
     { GO_NAXX_PORTAL_MILITARY,  DATA_NAXX_PORTAL_MILITARY  },
     { GO_KELTHUZAD_THRONE,      DATA_KELTHUZAD_THRONE      },
+    { GO_ORB_FROSTWYRM_LAIR,    DATA_ORB_FROSTWYRM_LAIR    }, // EG
     { 0,                        0,                         }
 };
 
@@ -246,6 +247,10 @@ class instance_naxxramas : public InstanceMapScript
                         if (GetBossState(BOSS_KELTHUZAD) == DONE)
                             go->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
                         break;
+                    case GO_ORB_FROSTWYRM_LAIR: // EG - Sapphiron teleporter locked until every quarter is cleared
+                        if (!AreAllQuartersDone())
+                            go->SetFlag(GO_FLAG_NOT_SELECTABLE);
+                        break;
                     case GO_BIRTH:
                         if (hadSapphironBirth || GetBossState(BOSS_SAPPHIRON) == DONE)
                         {
@@ -340,6 +345,8 @@ class instance_naxxramas : public InstanceMapScript
                 {
                     case DATA_HAD_SAPPHIRON_BIRTH:
                         return hadSapphironBirth ? 1u : 0u;
+                    case DATA_ALL_QUARTERS_DONE: // EG
+                        return AreAllQuartersDone() ? 1u : 0u;
                     default:
                         break;
                 }
@@ -516,6 +523,11 @@ class instance_naxxramas : public InstanceMapScript
                         break;
                 }
 
+                // EG - Sapphiron teleporter locked until every quarter is cleared
+                if (state == DONE && AreAllQuartersDone())
+                    if (GameObject* orb = GetGameObject(DATA_ORB_FROSTWYRM_LAIR))
+                        orb->RemoveFlag(GO_FLAG_NOT_SELECTABLE);
+
                 return true;
             }
 
@@ -607,6 +619,15 @@ class instance_naxxramas : public InstanceMapScript
                             break;
                     }
                 }
+            }
+
+            bool AreAllQuartersDone() const
+            {
+                for (uint32 bossId : { BOSS_MAEXXNA, BOSS_LOATHEB, BOSS_THADDIUS, BOSS_HORSEMEN })
+                    if (GetBossState(bossId) != DONE)
+                        return false;
+
+                return true;
             }
 
             // This Function is called in CheckAchievementCriteriaMeet and CheckAchievementCriteriaMeet is called before SetBossState(bossId, DONE),

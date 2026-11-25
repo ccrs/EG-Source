@@ -51,7 +51,7 @@ enum OHThrallEscortStates
     OH_ESCORT_EPOCH_HUNTER,
     OH_ESCORT_FINISHED,
 
-    OH_ESCORT_DEATH_EVENT       // signals a wipe to the instance
+    OH_ESCORT_DEATH_EVENT
 };
 
 enum OHThrallActions

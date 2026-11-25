@@ -139,6 +139,7 @@ class TC_GAME_API MapManager
         void DecreaseScheduledScriptCount() { --_scheduledScripts; }
         void DecreaseScheduledScriptCount(std::size_t count) { _scheduledScripts -= count; }
         bool IsScriptScheduled() const { return _scheduledScripts > 0; }
+        bool IsUpdatingMaps() const { return _updatingMaps; } // EG
 
     private:
         typedef std::unordered_map<uint32, Trinity::unique_trackable_ptr<Map>> MapMapType;
@@ -167,6 +168,7 @@ class TC_GAME_API MapManager
 
         // atomic op counter for active scripts amount
         std::atomic<std::size_t> _scheduledScripts;
+        bool _updatingMaps = false; // EG
 };
 
 template<typename Worker>

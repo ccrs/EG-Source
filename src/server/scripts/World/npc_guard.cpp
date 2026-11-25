@@ -59,7 +59,7 @@ struct npc_guard_generic : public GuardAI
         _scheduler.Schedule(Seconds(1), [this](TaskContext context)
         {
             // Find a spell that targets friendly and applies an aura (these are generally buffs)
-            if (SpellInfo const* spellInfo = SelectSpell(me, 0, 0, SELECT_TARGET_ANY_FRIEND, 0, 0, 0, 0, SELECT_EFFECT_AURA))
+            if (SpellInfo const* spellInfo = SelectSpell(me, 0, 0, SELECT_TARGET_ANY_FRIEND, 0, 0, SELECT_EFFECT_AURA))
                 DoCast(me, spellInfo->Id);
 
             context.Repeat(Minutes(10));
@@ -117,7 +117,8 @@ struct npc_guard_generic : public GuardAI
         _combatScheduler.SetValidator([this]
         {
             return !me->HasUnitState(UNIT_STATE_CASTING);
-        }).Schedule(Seconds(1), [this](TaskContext meleeContext)
+        })
+        .Schedule(Seconds(1), [this](TaskContext meleeContext)
         {
             Unit* victim = me->GetVictim();
             if (!me->isAttackReady() || !me->IsWithinMeleeRange(victim))
@@ -127,7 +128,7 @@ struct npc_guard_generic : public GuardAI
             }
             if (roll_chance_i(20))
             {
-                if (SpellInfo const* spellInfo = SelectSpell(me->GetVictim(), 0, 0, SELECT_TARGET_ANY_ENEMY, 0, 0, 0, NOMINAL_MELEE_RANGE, SELECT_EFFECT_DONTCARE))
+                if (SpellInfo const* spellInfo = SelectSpell(me->GetVictim(), 0, 0, SELECT_TARGET_ANY_ENEMY, 0, NOMINAL_MELEE_RANGE, SELECT_EFFECT_DONTCARE))
                 {
                     me->resetAttackTimer();
                     DoCastVictim(spellInfo->Id);
@@ -138,20 +139,21 @@ struct npc_guard_generic : public GuardAI
             me->AttackerStateUpdate(victim);
             me->resetAttackTimer();
             meleeContext.Repeat();
-        }).Schedule(Seconds(5), [this](TaskContext spellContext)
+        })
+        .Schedule(Seconds(5), [this](TaskContext spellContext)
         {
             bool healing = false;
             SpellInfo const* spellInfo = nullptr;
 
             // Select a healing spell if less than 30% hp and ONLY 33% of the time
             if (me->HealthBelowPct(30) && roll_chance_i(33))
-                spellInfo = SelectSpell(me, 0, 0, SELECT_TARGET_ANY_FRIEND, 0, 0, 0, 0, SELECT_EFFECT_HEALING);
+                spellInfo = SelectSpell(me, 0, 0, SELECT_TARGET_ANY_FRIEND, 0, 0, SELECT_EFFECT_HEALING);
 
             // No healing spell available, check if we can cast a ranged spell
             if (spellInfo)
                 healing = true;
             else
-                spellInfo = SelectSpell(me->GetVictim(), 0, 0, SELECT_TARGET_ANY_ENEMY, 0, 0, NOMINAL_MELEE_RANGE, 0, SELECT_EFFECT_DONTCARE);
+                spellInfo = SelectSpell(me->GetVictim(), 0, 0, SELECT_TARGET_ANY_ENEMY, NOMINAL_MELEE_RANGE, 0, SELECT_EFFECT_DONTCARE);
 
             // Found a spell
             if (spellInfo)

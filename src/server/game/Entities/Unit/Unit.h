@@ -317,7 +317,7 @@ struct PlayerMovementPendingChange
 {
     PlayerMovementPendingChange();
 
-    uint32 movementCounter = 0;
+    int32 movementCounter = 0;
     MovementChangeType movementChangeType = MovementChangeType::INVALID;
     uint32 time;
 
@@ -1189,6 +1189,7 @@ class TC_GAME_API Unit : public WorldObject
 
         bool IsInWater() const;
         bool IsUnderWater() const;
+        Optional<float> GetLiquidLevel() const { return _liquidLevel; } // EG
         bool IsInAir(Position const destination, float destinationFloor, bool honorHover = true, float tolerance = 0.5f) const;
         bool isInAccessiblePlaceFor(Creature const* c) const;
 
@@ -1288,6 +1289,7 @@ class TC_GAME_API Unit : public WorldObject
         Unit* GetNextRandomRaidMemberOrPet(float radius);
         bool SetCharmedBy(Unit* charmer, CharmType type, AuraApplication const* aurApp = nullptr);
         void RemoveCharmedBy(Unit* charmer);
+        void HandleCharmLinkedAuras(Unit const* charmer, bool apply); // EG
         void RestoreFaction();
 
         ControlList m_Controlled;
@@ -1926,6 +1928,7 @@ class TC_GAME_API Unit : public WorldObject
 
         uint32 m_unitTypeMask;
         LiquidTypeEntry const* _lastLiquid;
+        Optional<float> _liquidLevel; // EG
 
         bool IsAlwaysVisibleFor(WorldObject const* seer) const override;
         bool IsAlwaysDetectableFor(WorldObject const* seer) const override;

@@ -21,6 +21,7 @@
 #include "Battlefield.h"
 #include "BattlefieldEntities.h"
 #include "ScriptMgr.h"
+#include <array>
 #include <memory>
 #include <unordered_map>
 
@@ -30,6 +31,7 @@ enum WintergraspNPCEntries
     NPC_WINTERGRASP_GUARD_HORDE = 30739,
     NPC_WINTERGRASP_GUARD_ALLIANCE = 30740,
     NPC_WINTERGRASP_STALKER = 27869,
+    NPC_WINTERGRASP_INVISIBLE_STALKER = 15214,
 
     NPC_WINTERGRASP_VIERON_BLAZEFEATHER = 31102,
     NPC_WINTERGRASP_STONE_GUARD_MUKAR = 32296, // <WINTERGRASP QUARTERMASTER>
@@ -65,7 +67,78 @@ enum WintergraspNPCEntries
     NPC_WINTERGRASP_DEMOLISHER = 28094,
 
     NPC_WINTERGRASP_PVP_KILL_HORDE = 39019,
-    NPC_WINTERGRASP_PVP_KILL_ALLIANCE = 31086
+    NPC_WINTERGRASP_PVP_KILL_ALLIANCE = 31086,
+    NPC_WINTERGRASP_PVP_KILL_VEHICLE = 31093,
+    NPC_WINTERGRASP_VEHICLE_PROTECTED = 31284,
+    NPC_WINTERGRASP_SOUTHERN_TOWER_KILL = 35074
+};
+
+enum WintergraspSpawnIds
+{
+    SPAWNID_WINTERGRASP_INVISIBLE_STALKER = 131387,
+    SPAWNID_WINTERGRASP_COMMANDER_ZANNETH_KEEP = 88337,
+    SPAWNID_WINTERGRASP_COMMANDER_DARDOSH_KEEP = 88356,
+    SPAWNID_WINTERGRASP_TAUNKA_SPIRIT_GUIDE_WORKSHOP_SE = 88310,
+    SPAWNID_WINTERGRASP_TAUNKA_SPIRIT_GUIDE_WORKSHOP_SW = 88311,
+    SPAWNID_WINTERGRASP_TAUNKA_SPIRIT_GUIDE_WORKSHOP_NE = 88312,
+    SPAWNID_WINTERGRASP_TAUNKA_SPIRIT_GUIDE_WORKSHOP_NW = 88313,
+    SPAWNID_WINTERGRASP_TAUNKA_SPIRIT_GUIDE_KEEP = 88314,
+    SPAWNID_WINTERGRASP_TAUNKA_SPIRIT_GUIDE_HORDE_LANDING = 88315,
+    SPAWNID_WINTERGRASP_DWARVEN_SPIRIT_GUIDE_WORKSHOP_SE = 88316,
+    SPAWNID_WINTERGRASP_DWARVEN_SPIRIT_GUIDE_WORKSHOP_SW = 88317,
+    SPAWNID_WINTERGRASP_DWARVEN_SPIRIT_GUIDE_WORKSHOP_NE = 88318,
+    SPAWNID_WINTERGRASP_DWARVEN_SPIRIT_GUIDE_WORKSHOP_NW = 88319,
+    SPAWNID_WINTERGRASP_DWARVEN_SPIRIT_GUIDE_KEEP = 88320,
+    SPAWNID_WINTERGRASP_DWARVEN_SPIRIT_GUIDE_ALLIANCE_LANDING = 88321
+};
+
+enum WintergraspStalkerTexts
+{
+    SAY_WINTERGRASP_SOUTHERN_TOWER_DAMAGED = 1,
+    SAY_WINTERGRASP_SOUTHERN_TOWER_DESTROYED,
+    SAY_WINTERGRASP_EASTERN_TOWER_DAMAGED,
+    SAY_WINTERGRASP_EASTERN_TOWER_DESTROYED,
+    SAY_WINTERGRASP_WESTERN_TOWER_DAMAGED,
+    SAY_WINTERGRASP_WESTERN_TOWER_DESTROYED,
+    SAY_WINTERGRASP_NORTH_WESTERN_KEEP_TOWER_DAMAGED,
+    SAY_WINTERGRASP_NORTH_WESTERN_KEEP_TOWER_DESTROYED,
+    SAY_WINTERGRASP_SOUTH_EASTERN_KEEP_TOWER_DAMAGED,
+    SAY_WINTERGRASP_SOUTH_EASTERN_KEEP_TOWER_DESTROYED,
+    SAY_WINTERGRASP_BROKEN_TEMPLE_ATTACKED_ALLIANCE,
+    SAY_WINTERGRASP_BROKEN_TEMPLE_CAPTURED_ALLIANCE,
+    SAY_WINTERGRASP_BROKEN_TEMPLE_ATTACKED_HORDE,
+    SAY_WINTERGRASP_BROKEN_TEMPLE_CAPTURED_HORDE,
+    SAY_WINTERGRASP_EASTSPARK_ATTACKED_ALLIANCE,
+    SAY_WINTERGRASP_EASTSPARK_CAPTURED_ALLIANCE,
+    SAY_WINTERGRASP_EASTSPARK_ATTACKED_HORDE,
+    SAY_WINTERGRASP_EASTSPARK_CAPTURED_HORDE,
+    SAY_WINTERGRASP_SUNKEN_RING_ATTACKED_ALLIANCE,
+    SAY_WINTERGRASP_SUNKEN_RING_CAPTURED_ALLIANCE,
+    SAY_WINTERGRASP_SUNKEN_RING_ATTACKED_HORDE,
+    SAY_WINTERGRASP_SUNKEN_RING_CAPTURED_HORDE,
+    SAY_WINTERGRASP_WESTSPARK_ATTACKED_ALLIANCE,
+    SAY_WINTERGRASP_WESTSPARK_CAPTURED_ALLIANCE,
+    SAY_WINTERGRASP_WESTSPARK_ATTACKED_HORDE,
+    SAY_WINTERGRASP_WESTSPARK_CAPTURED_HORDE,
+    SAY_WINTERGRASP_BATTLE_ABOUT_TO_BEGIN,
+    SAY_WINTERGRASP_BATTLE_BEGIN,
+    SAY_WINTERGRASP_FORTRESS_DEFENDED_ALLIANCE,
+    SAY_WINTERGRASP_FORTRESS_CAPTURED_ALLIANCE,
+    SAY_WINTERGRASP_FORTRESS_DEFENDED_HORDE,
+    SAY_WINTERGRASP_FORTRESS_CAPTURED_HORDE,
+    SAY_WINTERGRASP_NORTH_EASTERN_KEEP_TOWER_DAMAGED,
+    SAY_WINTERGRASP_NORTH_EASTERN_KEEP_TOWER_DESTROYED,
+    SAY_WINTERGRASP_SOUTH_WESTERN_KEEP_TOWER_DAMAGED,
+    SAY_WINTERGRASP_SOUTH_WESTERN_KEEP_TOWER_DESTROYED,
+    SAY_WINTERGRASP_RANK_CORPORAL,
+    SAY_WINTERGRASP_RANK_FIRST_LIEUTENANT
+};
+
+enum WintergraspCommanderTexts
+{
+    SAY_WINTERGRASP_COMMANDER_FIRST_TOWER_FALLEN = 0,
+    SAY_WINTERGRASP_COMMANDER_SECOND_TOWER_FALLEN,
+    SAY_WINTERGRASP_COMMANDER_ALL_TOWERS_FALLEN
 };
 
 enum WintergraspGossipText
@@ -115,27 +188,72 @@ enum WintergraspGameObjects
     GO_WINTERGRASP_FORTRESS_VAULT_GATE = 191810,
     GO_WINTERGRASP_FORTRESS_TELEPORTER_HORDE = 190763,
     GO_WINTERGRASP_FORTRESS_TELEPORTER_ALLIANCE = 191575,
-    GO_WINTERGRASP_FORTRESS_TELEPORTER_VEHICLE = 192951
+    GO_WINTERGRASP_FORTRESS_TELEPORTER_VEHICLE = 192951,
+    GO_WINTERGRASP_FACTORY_BANNER_NE_HORDE = 190475,
+    GO_WINTERGRASP_FACTORY_BANNER_NE_ALLIANCE = 192626,
+    GO_WINTERGRASP_FACTORY_BANNER_NW_HORDE = 190487,
+    GO_WINTERGRASP_FACTORY_BANNER_NW_ALLIANCE = 192627,
+    GO_WINTERGRASP_FACTORY_BANNER_SE_HORDE = 194960,
+    GO_WINTERGRASP_FACTORY_BANNER_SE_ALLIANCE = 194959,
+    GO_WINTERGRASP_FACTORY_BANNER_SW_HORDE = 194963,
+    GO_WINTERGRASP_FACTORY_BANNER_SW_ALLIANCE = 194962,
+    GO_WINTERGRASP_TITAN_RELIC_HORDE = 192829,
+    GO_WINTERGRASP_TITAN_RELIC_ALLIANCE = 192834,
+    GO_WINTERGRASP_KEEP_COLLISION_WALL = 194323,
+    GO_WINTERGRASP_KEEP_DOOR_COLLISION = 194162
 };
 
 enum WintergraspSpawnGroups
 {
-    SPAWNGROUP_WINTERGRASP_FORTRESS_TELEPORTERS = 100,
+    SPAWNGROUP_WINTERGRASP_FORTRESS_TELEPORTERS = 1000,
+    SPAWNGROUP_WINTERGRASP_FORTRESS_GATE_GUARDS_HORDE = 1003,
+    SPAWNGROUP_WINTERGRASP_FORTRESS_GATE_GUARDS_ALLIANCE = 1004,
+    SPAWNGROUP_WINTERGRASP_TOWER_1_GUARDS_HORDE = 1005,
+    SPAWNGROUP_WINTERGRASP_TOWER_1_GUARDS_ALLIANCE = 1006,
+    SPAWNGROUP_WINTERGRASP_TOWER_2_GUARDS_HORDE = 1007,
+    SPAWNGROUP_WINTERGRASP_TOWER_2_GUARDS_ALLIANCE = 1008,
+    SPAWNGROUP_WINTERGRASP_TOWER_3_GUARDS_HORDE = 1009,
+    SPAWNGROUP_WINTERGRASP_TOWER_3_GUARDS_ALLIANCE = 1010,
+    SPAWNGROUP_WINTERGRASP_WORKSHOP_SE_GUARDS_HORDE = 1011,
+    SPAWNGROUP_WINTERGRASP_WORKSHOP_SE_GUARDS_ALLIANCE = 1012,
+    SPAWNGROUP_WINTERGRASP_WORKSHOP_SW_GUARDS_HORDE = 1013,
+    SPAWNGROUP_WINTERGRASP_WORKSHOP_SW_GUARDS_ALLIANCE = 1014,
+    SPAWNGROUP_WINTERGRASP_TITAN_RELIC_HORDE = 1015,
+    SPAWNGROUP_WINTERGRASP_TITAN_RELIC_ALLIANCE = 1016,
+    SPAWNGROUP_WINTERGRASP_FORTRESS_CANNONS = 1021,
+    SPAWNGROUP_WINTERGRASP_FORTRESS_TOWER_1_CANNONS = 1022,
+    SPAWNGROUP_WINTERGRASP_FORTRESS_TOWER_2_CANNONS = 1023,
+    SPAWNGROUP_WINTERGRASP_FORTRESS_TOWER_3_CANNONS = 1024,
+    SPAWNGROUP_WINTERGRASP_FORTRESS_TOWER_4_CANNONS = 1025,
+    SPAWNGROUP_WINTERGRASP_TOWER_1_CANNONS = 1026,
+    SPAWNGROUP_WINTERGRASP_TOWER_2_CANNONS = 1027,
+    SPAWNGROUP_WINTERGRASP_TOWER_3_CANNONS = 1028
+};
+
+enum WintergraspEventIds
+{
+    EVENT_WINTERGRASP_TITAN_RELIC = 22097
 };
 
 enum WintergraspSpells
 {
-    // Wartime auras
+    // Battle time auras
     SPELL_WINTERGRASP_RECRUIT = 37795,
     SPELL_WINTERGRASP_CORPORAL = 33280,
     SPELL_WINTERGRASP_LIEUTENANT = 55629,
     SPELL_WINTERGRASP_TENACITY = 58549,
     SPELL_WINTERGRASP_TENACITY_VEHICLE = 59911,
+    SPELL_WINTERGRASP_TENACITY_HEALING = 47802,
     SPELL_WINTERGRASP_TOWER_CONTROL = 62064,
     SPELL_WINTERGRASP_SPIRITUAL_IMMUNITY = 58729,
+    SPELL_WINTERGRASP_HONORABLE = 58553,
+    SPELL_WINTERGRASP_LOK_REGAR = 58554,
     SPELL_WINTERGRASP_GREAT_HONOR = 58555,
     SPELL_WINTERGRASP_GREATER_HONOR = 58556,
     SPELL_WINTERGRASP_GREATEST_HONOR = 58557,
+    SPELL_WINTERGRASP_LOK_NARASH = 58558,
+    SPELL_WINTERGRASP_LOKTAR = 58559,
+    SPELL_WINTERGRASP_LOKTAR_OGAR = 58560,
     SPELL_WINTERGRASP_ALLIANCE_FLAG = 14268,
     SPELL_WINTERGRASP_HORDE_FLAG = 14267,
     SPELL_WINTERGRASP_GRAB_PASSENGER = 61178,
@@ -145,6 +263,7 @@ enum WintergraspSpells
     SPELL_WINTERGRASP_DEFEAT_REWARD = 58494,
     SPELL_WINTERGRASP_DAMAGED_TOWER = 59135,
     SPELL_WINTERGRASP_DESTROYED_TOWER = 59136,
+    SPELL_WINTERGRASP_TOWER_KILL_CREDIT = 20723,
     SPELL_WINTERGRASP_DAMAGED_BUILDING = 59201,
     SPELL_WINTERGRASP_INTACT_BUILDING = 59203,
 
@@ -159,11 +278,20 @@ enum WintergraspSpells
     SPELL_WINTERGRASP_RESTRICTED_FLIGHT_AREA = 58730,
     SPELL_WINTERGRASP_BATTLEGROUND_DAMPENING = 74411,
 
+    // Graveyard teleport spells
+    SPELL_WINTERGRASP_TELEPORT_SUNKEN_RING = 59762,
+    SPELL_WINTERGRASP_TELEPORT_BROKEN_TEMPLE = 59763,
+    SPELL_WINTERGRASP_TELEPORT_EASTSPARK_FACTORY_GRAVEYARD = 59767,
+    SPELL_WINTERGRASP_TELEPORT_WESTSPARK_FACTORY_GRAVEYARD = 59766,
+    SPELL_WINTERGRASP_TELEPORT_FORTRESS_GRAVEYARD = 59760,
+    SPELL_WINTERGRASP_TELEPORT_HORDE_LANDING_ZONE = 59765,
+    SPELL_WINTERGRASP_TELEPORT_ALLIANCE_LANDING_ZONE = 59769,
+
     // Phasing spells
     SPELL_WINTERGRASP_HORDE_CONTROLS_FACTORY_PHASE_SHIFT = 56618, // ADDS PHASE 16
     SPELL_WINTERGRASP_ALLIANCE_CONTROLS_FACTORY_PHASE_SHIFT = 56617, // ADDS PHASE 32
     SPELL_WINTERGRASP_HORDE_CONTROL_PHASE_SHIFT = 55773, // ADDS PHASE 64
-    SPELL_WINTERGRASP_ALLIANCE_CONTROL_PHASE_SHIFT = 55774  // ADDS PHASE 128
+    SPELL_WINTERGRASP_ALLIANCE_CONTROL_PHASE_SHIFT = 55774 // ADDS PHASE 128
 };
 
 enum WintergraspWorldstates
@@ -221,26 +349,77 @@ enum WintergraspWorldstates
     WORLDSTATE_WINTERGRASP_TIMES_DEFENDED_HORDE = 4024,
     WORLDSTATE_WINTERGRASP_TIMES_DEFENDED_ALLIANCE = 4025,
 
-    WORLDSTATE_WINTERGRASP_SHOW_WAR_TIMER = 3710,
+    WORLDSTATE_WINTERGRASP_SHOW_BATTLE_TIMER = 3710,
     WORLDSTATE_WINTERGRASP_TIME_TO_END = 3781,
     WORLDSTATE_WINTERGRASP_SHOW_COOLDOWN = 3801,
-    WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE = 4354
+    WORLDSTATE_WINTERGRASP_CONTROL = 3804,
+    WORLDSTATE_WINTERGRASP_TIME_TO_NEXT_BATTLE = 4354,
+    WORLDSTATE_WINTERGRASP_ICON_ACTIVE = 4375,
+    WORLDSTATE_WINTERGRASP_CAPTURE_NEUTRAL_PERCENT = 3508
+};
+
+enum WintergraspControlStates
+{
+    WINTERGRASP_CONTROL_HORDE = 1,
+    WINTERGRASP_CONTROL_ALLIANCE,
+    WINTERGRASP_CONTROL_BATTLE
+};
+
+enum WintergraspBuildingIds : uint8
+{
+    BUILDING_FORTRESS_GATE = 1,
+    BUILDING_FORTRESS_VAULT_GATE,
+    BUILDING_FORTRESS_WALL_1,
+    BUILDING_FORTRESS_WALL_2,
+    BUILDING_FORTRESS_WALL_3,
+    BUILDING_FORTRESS_WALL_4,
+    BUILDING_FORTRESS_WALL_5,
+    BUILDING_FORTRESS_WALL_6,
+    BUILDING_FORTRESS_WALL_7,
+    BUILDING_FORTRESS_WALL_8,
+    BUILDING_FORTRESS_WALL_9,
+    BUILDING_FORTRESS_WALL_10,
+    BUILDING_FORTRESS_WALL_11,
+    BUILDING_FORTRESS_WALL_12,
+    BUILDING_FORTRESS_WALL_13,
+    BUILDING_FORTRESS_WALL_14,
+    BUILDING_FORTRESS_WALL_15,
+    BUILDING_FORTRESS_WALL_16,
+    BUILDING_FORTRESS_WALL_17,
+    BUILDING_FORTRESS_WALL_18,
+    BUILDING_FORTRESS_WALL_19,
+    BUILDING_FORTRESS_WALL_20,
+    BUILDING_FORTRESS_INTERIOR_WALL_1,
+    BUILDING_FORTRESS_INTERIOR_WALL_2,
+    BUILDING_FORTRESS_INTERIOR_WALL_3,
+    BUILDING_FORTRESS_TOWER_1,
+    BUILDING_FORTRESS_TOWER_2,
+    BUILDING_FORTRESS_TOWER_3,
+    BUILDING_FORTRESS_TOWER_4,
+    BUILDING_TOWER_1,
+    BUILDING_TOWER_2,
+    BUILDING_TOWER_3,
+    BUILDING_WORKSHOP_NE,
+    BUILDING_WORKSHOP_NW,
+    BUILDING_WORKSHOP_SE,
+    BUILDING_WORKSHOP_SW,
+    BUILDING_WORKSHOP_KEEP_W,
+    BUILDING_WORKSHOP_KEEP_E
 };
 
 enum WintergraspGraveyardIds : uint8
 {
-    GRAVEYARD_WORKSHOP_NE = 1,
+    GRAVEYARD_KEEP = 1,
+    GRAVEYARD_WORKSHOP_NE,
     GRAVEYARD_WORKSHOP_NW,
-    GRAVEYARD_WORKSHOP_SE,
     GRAVEYARD_WORKSHOP_SW,
-    GRAVEYARD_KEEP,
+    GRAVEYARD_WORKSHOP_SE,
     GRAVEYARD_HORDE,
     GRAVEYARD_ALLIANCE
 };
 
 enum WintergraspAreaIds
 {
-    AREA_WINTERGRASP_FORTRESS = 4575,
     AREA_THE_SUNKEN_RING = 4538,
     AREA_THE_BROKEN_TEMPLE = 4539,
     AREA_WESTPARK_WORKSHOP = 4611,
@@ -262,6 +441,16 @@ enum WintergraspWorldSafeLocs
 };
 
 static uint32 constexpr MAPID_WINTERGRASP = 571; // Northrend
+static uint32 constexpr MAPID_VAULT_OF_ARCHAVON = 624;
+static Seconds constexpr WINTERGRASP_PREPARATION_DURATION = 15min;
+static Seconds constexpr WINTERGRASP_SOUTHERN_TOWERS_TIME_REDUCTION = 10min;
+static uint32 constexpr WINTERGRASP_VEHICLES_PER_WORKSHOP = 4;
+static uint32 constexpr WINTERGRASP_CAPTURE_NEUTRAL_PERCENT = 80;
+static uint8 constexpr WINTERGRASP_RECRUIT_PROMOTION_STACKS = 6;
+static uint8 constexpr WINTERGRASP_CORPORAL_PROMOTION_STACKS = 10;
+static float constexpr WINTERGRASP_KILL_CREDIT_DISTANCE = 40.0f;
+static float constexpr WINTERGRASP_TOWER_DESTROYER_CREDIT_DISTANCE = 250.0f;
+static float constexpr WINTERGRASP_BATTLE_LOCATION_SPREAD = 5.0f;
 
 namespace WorldPackets
 {
@@ -271,30 +460,55 @@ namespace WorldPackets
     }
 }
 
+class BattlefieldWintergrasp;
 class Creature;
-class GameObject;
 class WorldObject;
 
-class WintergraspBuilding : public BattlefieldBuilding
+class WintergraspZone : public BattlefieldZone
 {
 public:
-    explicit WintergraspBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info);
+    explicit WintergraspZone(BattlefieldWintergrasp* wintergrasp);
+    ~WintergraspZone() { }
+
+    void OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo) override;
+    std::vector<BattlefieldObjectInfo> const* GetObjectInfos() const override;
+
+private:
+    BattlefieldWintergrasp* _wintergrasp;
+};
+
+class WintergraspBuilding : public BattlefieldDestructibleBuilding
+{
+public:
+    explicit WintergraspBuilding(BattlefieldWintergrasp* wintergrasp, BattlefieldBuildingInfo const info);
     ~WintergraspBuilding() { }
 
-    void OnObjectCreate(WorldObject* object) override;
-    void OnObjectRemove(WorldObject* object) override;
-    void InitializeState() override;
+    void OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo) override;
+    std::vector<BattlefieldObjectInfo> const* GetObjectInfos() const override;
+    bool Damage() override;
+    bool Destroy(Player* destroyer) override;
+
+private:
+    void SendText(bool destroyed) const;
+
+    BattlefieldWintergrasp* _wintergrasp;
 };
 
 class WintergraspCapturePoint : public BattlefieldCapturePoint
 {
 public:
-    explicit WintergraspCapturePoint(Battlefield* battlefield, BattlefieldEntityInfo const info);
+    explicit WintergraspCapturePoint(BattlefieldWintergrasp* wintergrasp, BattlefieldCapturePointInfo const info);
     ~WintergraspCapturePoint() { }
 
-    void OnObjectCreate(WorldObject* object) override;
-    void OnObjectRemove(WorldObject* object) override;
-    void InitializeState() override;
+    std::vector<BattlefieldObjectInfo> const* GetObjectInfos() const override;
+    void SetOwner(PvPTeamId pvpTeamId) override;
+    void Attack(PvPTeamId pvpTeamId) override;
+    void Capture(PvPTeamId pvpTeamId) override;
+
+private:
+    void SendText(PvPTeamId pvpTeamId, bool captured) const;
+
+    BattlefieldWintergrasp* _wintergrasp;
 };
 
 class WintergraspGraveyard : public BattlefieldGraveyard
@@ -303,8 +517,7 @@ public:
     explicit WintergraspGraveyard(Battlefield* battlefield, BattlefieldGraveyardInfo const info);
     ~WintergraspGraveyard() { }
 
-    void OnObjectCreate(WorldObject* object) override;
-    void OnObjectRemove(WorldObject* object) override;
+    std::vector<BattlefieldObjectInfo> const* GetObjectInfos() const override;
     void InitializeState() override;
     void SaveWorldState() override { }
 };
@@ -316,30 +529,72 @@ public:
     ~BattlefieldWintergrasp();
 
     bool SetupBattlefield() override;
-    void ChangeTeams(PvPTeamId newControllingTeam) override;
+    void ChangeTeam(PvPTeamId newControllingTeam) override;
+    bool SetPhase(BattlefieldPhase phase) override;
+    void SendPhaseTimes() override;
+    bool TeleportPlayerToBattle(Player* player) override;
+    void TeleportPlayerOutOfBattle(Player* player) override;
+    uint32 GetFaction(PvPTeamId pvpTeamId) const override;
+    void HandlePlayerEnterZone(Player* player) override;
+    void HandleKill(Player* killer, Unit* victim) override;
+    void HandleHonorableKill(Player* player, Player* victim) override;
+    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
+    void SendGlobalWorldStates(Player const* player) override;
     void OnCreatureCreate(Creature* object) override;
     void OnCreatureRemove(Creature* object) override;
     void OnGameObjectCreate(GameObject* object) override;
-    void OnGameObjectRemove(GameObject* object) override;
-    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
-    void SendGlobalWorldStates(Player const* player) const override;
+    void OnUnitDeath(Unit* unit) override;
+    void ProcessEvent(WorldObject* object, uint32 eventId, WorldObject* invoker) override;
 
-    uint8 GetWintergraspGraveyardId(Creature* creature) const;
+    void HandleBuildingDamaged(WintergraspBuilding const& building);
+    void HandleBuildingDestroyed(WintergraspBuilding const& building, Player* destroyer);
+    void SendStalkerText(uint8 textGroup, WorldObject const* whisperTarget = nullptr);
+    void SendVehicleLimits();
 
-    bool IsFlyingMountAllowed() const override { return !IsEnabled() || (IsEnabled() && !IsWarTime()); }
+    bool CanUseTitanRelic(Player const* player) const;
+    bool CanBuildVehicle(PvPTeamId pvpTeamId) const;
+    bool IsFlyingMountAllowed() const override { return !IsEnabled() || (IsEnabled() && !IsBattleTime()); }
     bool IsSpellAreaAllowed(uint32 spellId, Player const* player, uint32 newArea) const override;
+
+protected:
+    void ClearBattleStatus() override;
+    void OnPlayerJoinBattle(Player* player) override;
+    void OnPlayerLeaveBattle(Player* player) override;
+    void OnPlayerBattleResult(Player* player) override;
+    void OnPeriodicUpdate(std::vector<Player*> const& players, Milliseconds diff) override;
 
 private:
     typedef std::unique_ptr<WintergraspBuilding> WintergraspBuildingPointer;
-    typedef std::unordered_map<uint32 /*entry*/, WintergraspBuildingPointer> WintergraspBuildingContainer;
     typedef std::unique_ptr<WintergraspCapturePoint> WintergraspCapturePointPointer;
-    typedef std::unordered_map<uint32 /*entry*/, WintergraspCapturePointPointer> WintergraspCapturePointContainer;
     typedef std::unique_ptr<WintergraspGraveyard> WintergraspGraveyardPointer;
 
     BattlefieldWintergrasp(BattlefieldWintergrasp const&) = delete;
     BattlefieldWintergrasp& operator=(BattlefieldWintergrasp const&) = delete;
 
-    WintergraspBuildingContainer _buildings;
+    void SetKeepCollisionsOpen(bool open);
+    void RemoveRankAuras(Player* player);
+    void PromotePlayer(Player* player);
+    void SendVehicleCount(PvPTeamId pvpTeamId);
+    void AddVehicle(ObjectGuid vehicleGuid, PvPTeamId pvpTeamId);
+    void RemoveVehicle(ObjectGuid vehicleGuid);
+    void DespawnVehicles();
+    void SetTenacity(Player* player, uint32 stack);
+    static void SetStackedAura(Unit* caster, Unit* target, uint32 spellId, uint32 stack);
+    void CastTowerReward(WintergraspBuilding const& building, uint32 spellId);
+
+    uint32 GetControlState() const;
+    uint32 GetTowerControlStack(TeamId teamId) const;
+    uint32 GetVehicleCount(PvPTeamId pvpTeamId) const;
+    uint32 GetVehicleLimit(PvPTeamId pvpTeamId) const;
+    bool IsVaultGateDestroyed() const;
+
+    ObjectGuid _stalkerGUID;
+    std::array<ObjectGuid, PVP_TEAMS_COUNT> _commanderGUIDs;
+    std::array<ObjectGuid, PVP_TEAMS_COUNT> _titanRelicGUIDs;
+    ObjectGuid _keepCollisionWallGUID;
+    ObjectGuid _keepDoorCollisionGUID;
+    std::array<GuidUnorderedSet, PVP_TEAMS_COUNT> _vehicleGUIDs;
+    GuidUnorderedSet _tenacityUnitGUIDs;
 };
 
 #endif

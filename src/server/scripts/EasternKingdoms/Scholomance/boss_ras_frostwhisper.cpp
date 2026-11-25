@@ -89,7 +89,7 @@ struct boss_boss_ras_frostwhisper : public ScriptedAI
                     _events.Repeat(30s, 40s);
                     break;
                 case EVENT_FEAR:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_FEAR);
                     _events.Repeat(20s, 30s);
                     break;

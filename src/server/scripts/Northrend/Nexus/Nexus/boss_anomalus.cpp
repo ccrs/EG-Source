@@ -164,7 +164,7 @@ struct boss_anomalus : public ScriptedAI
             if (Creature* Rift = me->SummonCreature(NPC_CHAOTIC_RIFT, RiftLocation[urand(0, 5)], TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 1s))
             {
                 //DoCast(Rift, SPELL_CHARGE_RIFT);
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     Rift->AI()->AttackStart(target);
                 uiChaoticRiftGUID = Rift->GetGUID();
                 Talk(SAY_RIFT);
@@ -173,7 +173,7 @@ struct boss_anomalus : public ScriptedAI
 
         if (uiSparkTimer <= diff)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                 DoCast(target, SPELL_SPARK);
             uiSparkTimer = 5000;
         }
@@ -219,7 +219,7 @@ struct npc_chaotic_rift : public ScriptedAI
         if (uiChaoticEnergyBurstTimer <= diff)
         {
             Creature* Anomalus = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ANOMALUS));
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
             {
                 if (Anomalus && Anomalus->HasAura(SPELL_RIFT_SHIELD))
                     DoCast(target, SPELL_CHARGED_CHAOTIC_ENERGY_BURST);

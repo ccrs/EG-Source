@@ -20,6 +20,8 @@
 
 #include "Define.h"
 #include "EnumFlag.h"
+#include "Optional.h"
+#include "Position.h"
 #include <string>
 
 #define BASE_MINDAMAGE 1.0f
@@ -436,6 +438,7 @@ struct UnitVehicleExitParameters
     bool ResummonPet = true;
     bool Evade = true;
     bool Despawn = true;
+    Optional<Position> ExitPosition;
 };
 
 #endif // UnitDefines_h__

@@ -22,6 +22,7 @@
 
 #include "ScriptMgr.h"
 #include "Containers.h"
+#include "GridNotifiers.h"
 #include "ScriptedCreature.h"
 #include "SpellScript.h"
 #include "SpellInfo.h"
@@ -160,7 +161,7 @@ struct boss_talon_king_ikiss : public BossAI
         switch (eventId)
         {
             case EVENT_POLYMORPH:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 30.0f))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 30.0f, true))
                     DoCast(target, SPELL_POLYMORPH);
                 events.Repeat(10s, 20s);
                 break;
@@ -212,6 +213,7 @@ class spell_talon_king_ikiss_blink : public SpellScript
 
     void FilterTargets(std::list<WorldObject*>& targets)
     {
+        targets.remove_if(Trinity::ObjectTypeIdCheck(TYPEID_PLAYER, false));
         if (targets.empty())
             return;
 

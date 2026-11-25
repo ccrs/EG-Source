@@ -381,7 +381,7 @@ struct boss_xt002 : public BossAI
                 case EVENT_ENTER_HARD_MODE:
                     me->SetFullHealth();
                     DoCastSelf(SPELL_HEARTBREAK, true);
-                    me->AddLootMode(LOOT_MODE_HARD_MODE_1);
+                    me->SetLootMode(LOOT_MODE_HARD_MODE_1); // EG
                     _hardMode = true;
                     DisposeHeart(_hardMode);
                     break;

@@ -15,493 +15,478 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* ScriptData
-SDName: Trial Of the Champion
-SD%Complete:
-SDComment:
-SDCategory: trial_of_the_champion
-EndScriptData */
-
-/* ContentData
-npc_announcer_toc5
-EndContentData */
-
-#include "ScriptMgr.h"
-#include "GameObject.h"
+#include "trial_of_the_champion.h"
+#include "Containers.h"
 #include "InstanceScript.h"
-#include "Map.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
-#include "TemporarySummon.h"
-#include "trial_of_the_champion.h"
-#include "Vehicle.h"
+#include "ScriptMgr.h"
+#include "SpellInfo.h"
+#include "SpellScript.h"
 
-enum Yells
+enum TrialOfTheChampionHeraldMisc
 {
-    SAY_INTRO_1         = 0,
-    SAY_INTRO_2         = 1,
-    SAY_INTRO_3         = 2,
-    SAY_AGGRO           = 3,
-    SAY_PHASE_2         = 4,
-    SAY_PHASE_3         = 5,
-    SAY_KILL_PLAYER     = 6,
-    SAY_DEATH           = 7
+    SPELL_SPECTATOR_RANDOM_TARGET = 66810,
+
+    SAY_CROWD_CHEER = 0,
+
+    GOSSIP_MENU_HERALD = 10614,
+    GOSSIP_TEXT_NOT_MOUNTED_ALLIANCE = 14757,
+    GOSSIP_TEXT_NOT_MOUNTED_HORDE = 15043,
+    GOSSIP_TEXT_FIRST_CHALLENGE = 14688,
+    GOSSIP_TEXT_NEXT_CHALLENGE = 14737,
+    GOSSIP_TEXT_FINAL_CHALLENGE = 14738
 };
 
-enum Gossip
+struct npc_announcer_toc5 : public ScriptedAI
 {
-    GOSSIP_START_EVENT1_MID = 10614,  //  I'm ready to start challenge.
-    GOSSIP_START_EVENT1_OID = 0,
-    GOSSIP_START_EVENT2_MID = 10614,  //  I'm ready for the next challenge.
-    GOSSIP_START_EVENT2_OID = 1
-};
+    npc_announcer_toc5(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript()) { }
 
-#define ORIENTATION             4.714f
-
-/*######
-## npc_announcer_toc5
-######*/
-
-const Position SpawnPosition = {746.261f, 657.401f, 411.681f, 4.65f};
-
-class npc_announcer_toc5 : public CreatureScript
-{
-public:
-    npc_announcer_toc5() : CreatureScript("npc_announcer_toc5") { }
-
-    struct npc_announcer_toc5AI : public ScriptedAI
+    void JustAppeared() override
     {
-        npc_announcer_toc5AI(Creature* creature) : ScriptedAI(creature)
-        {
-            instance = creature->GetInstanceScript();
+        ScriptedAI::JustAppeared();
 
-            uiSummonTimes = 0;
-            uiPosition = 0;
-            uiLesserChampions = 0;
+        me->SetReactState(REACT_PASSIVE);
 
-            uiFirstBoss = 0;
-            uiSecondBoss = 0;
-            uiThirdBoss = 0;
+        me->SetWalk(true);
 
-            uiArgentChampion = 0;
-
-            uiPhase = 0;
-            uiTimer = 0;
-
-            me->SetReactState(REACT_PASSIVE);
-            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-            me->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
-
-            SetGrandChampionsForEncounter();
-            SetArgentChampion();
-        }
-
-        InstanceScript* instance;
-
-        uint8 uiSummonTimes;
-        uint8 uiPosition;
-        uint8 uiLesserChampions;
-
-        uint32 uiArgentChampion;
-
-        uint32 uiFirstBoss;
-        uint32 uiSecondBoss;
-        uint32 uiThirdBoss;
-
-        uint32 uiPhase;
-        uint32 uiTimer;
-
-        ObjectGuid uiVehicle1GUID;
-        ObjectGuid uiVehicle2GUID;
-        ObjectGuid uiVehicle3GUID;
-
-        GuidList Champion1List;
-        GuidList Champion2List;
-        GuidList Champion3List;
-
-        void NextStep(uint32 uiTimerStep, bool bNextStep = true, uint8 uiPhaseStep = 0)
-        {
-            uiTimer = uiTimerStep;
-            if (bNextStep)
-                ++uiPhase;
-            else
-                uiPhase = uiPhaseStep;
-        }
-
-        void SetData(uint32 uiType, uint32 /*uiData*/) override
-        {
-            switch (uiType)
-            {
-                case DATA_START:
-                    DoSummonGrandChampion(uiFirstBoss);
-                    NextStep(10000, false, 1);
-                    break;
-                case DATA_IN_POSITION: //movement done.
-                    me->GetMotionMaster()->MovePoint(1, 735.81f, 661.92f, 412.39f);
-                    if (GameObject* go = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(DATA_MAIN_GATE)))
-                        instance->HandleGameObject(go->GetGUID(), false);
-                    NextStep(10000, false, 3);
-                    break;
-                case DATA_LESSER_CHAMPIONS_DEFEATED:
-                {
-                    ++uiLesserChampions;
-                    GuidList TempList;
-                    if (uiLesserChampions == 3 || uiLesserChampions == 6)
-                    {
-                        switch (uiLesserChampions)
-                        {
-                            case 3:
-                                TempList = Champion2List;
-                                break;
-                            case 6:
-                                TempList = Champion3List;
-                                break;
-                        }
-
-                        for (GuidList::const_iterator itr = TempList.begin(); itr != TempList.end(); ++itr)
-                            if (Creature* summon = ObjectAccessor::GetCreature(*me, *itr))
-                                AggroAllPlayers(summon);
-                    }else if (uiLesserChampions == 9)
-                        StartGrandChampionsAttack();
-
-                    break;
-                }
-            }
-        }
-
-        void StartGrandChampionsAttack()
-        {
-            Creature* pGrandChampion1 = ObjectAccessor::GetCreature(*me, uiVehicle1GUID);
-            Creature* pGrandChampion2 = ObjectAccessor::GetCreature(*me, uiVehicle2GUID);
-            Creature* pGrandChampion3 = ObjectAccessor::GetCreature(*me, uiVehicle3GUID);
-
-            if (pGrandChampion1 && pGrandChampion2 && pGrandChampion3)
-            {
-                AggroAllPlayers(pGrandChampion1);
-                AggroAllPlayers(pGrandChampion2);
-                AggroAllPlayers(pGrandChampion3);
-            }
-        }
-
-        void MovementInform(uint32 uiType, uint32 uiPointId) override
-        {
-            if (uiType != POINT_MOTION_TYPE)
-                return;
-
-            if (uiPointId == 1)
-                me->SetFacingTo(ORIENTATION);
-        }
-
-        void DoSummonGrandChampion(uint32 uiBoss)
-        {
-            ++uiSummonTimes;
-            uint32 VEHICLE_TO_SUMMON1 = 0;
-            uint32 VEHICLE_TO_SUMMON2 = 0;
-            switch (uiBoss)
-            {
-                case 0:
-                    VEHICLE_TO_SUMMON1 = VEHICLE_MOKRA_SKILLCRUSHER_MOUNT;
-                    VEHICLE_TO_SUMMON2 = VEHICLE_ORGRIMMAR_WOLF;
-                    break;
-                case 1:
-                    VEHICLE_TO_SUMMON1 = VEHICLE_ERESSEA_DAWNSINGER_MOUNT;
-                    VEHICLE_TO_SUMMON2 = VEHICLE_SILVERMOON_HAWKSTRIDER;
-                    break;
-                case 2:
-                    VEHICLE_TO_SUMMON1 = VEHICLE_RUNOK_WILDMANE_MOUNT;
-                    VEHICLE_TO_SUMMON2 = VEHICLE_THUNDER_BLUFF_KODO;
-                    break;
-                case 3:
-                    VEHICLE_TO_SUMMON1 = VEHICLE_ZUL_TORE_MOUNT;
-                    VEHICLE_TO_SUMMON2 = VEHICLE_DARKSPEAR_RAPTOR;
-                    break;
-                case 4:
-                    VEHICLE_TO_SUMMON1 = VEHICLE_DEATHSTALKER_VESCERI_MOUNT;
-                    VEHICLE_TO_SUMMON2 = VEHICLE_FORSAKE_WARHORSE;
-                    break;
-                default:
-                    return;
-            }
-
-            if (Creature* pBoss = me->SummonCreature(VEHICLE_TO_SUMMON1, SpawnPosition))
-            {
-                switch (uiSummonTimes)
-                {
-                    case 1:
-                    {
-                        uiVehicle1GUID = pBoss->GetGUID();
-                        ObjectGuid uiGrandChampionBoss1;
-                        if (Vehicle* pVehicle = pBoss->GetVehicleKit())
-                            if (Unit* unit = pVehicle->GetPassenger(0))
-                                uiGrandChampionBoss1 = unit->GetGUID();
-                        instance->SetGuidData(DATA_GRAND_CHAMPION_VEHICLE_1, uiVehicle1GUID);
-                        instance->SetGuidData(DATA_GRAND_CHAMPION_1, uiGrandChampionBoss1);
-                        pBoss->AI()->SetData(1, 0);
-                        break;
-                    }
-                    case 2:
-                    {
-                        uiVehicle2GUID = pBoss->GetGUID();
-                        ObjectGuid uiGrandChampionBoss2;
-                        if (Vehicle* pVehicle = pBoss->GetVehicleKit())
-                            if (Unit* unit = pVehicle->GetPassenger(0))
-                                uiGrandChampionBoss2 = unit->GetGUID();
-                        instance->SetGuidData(DATA_GRAND_CHAMPION_VEHICLE_2, uiVehicle2GUID);
-                        instance->SetGuidData(DATA_GRAND_CHAMPION_2, uiGrandChampionBoss2);
-                        pBoss->AI()->SetData(2, 0);
-                        break;
-                    }
-                    case 3:
-                    {
-                        uiVehicle3GUID = pBoss->GetGUID();
-                        ObjectGuid uiGrandChampionBoss3;
-                        if (Vehicle* pVehicle = pBoss->GetVehicleKit())
-                            if (Unit* unit = pVehicle->GetPassenger(0))
-                                uiGrandChampionBoss3 = unit->GetGUID();
-                        instance->SetGuidData(DATA_GRAND_CHAMPION_VEHICLE_3, uiVehicle3GUID);
-                        instance->SetGuidData(DATA_GRAND_CHAMPION_3, uiGrandChampionBoss3);
-                        pBoss->AI()->SetData(3, 0);
-                        break;
-                    }
-                    default:
-                        return;
-                }
-
-                for (uint8 i = 0; i < 3; ++i)
-                {
-                    if (Creature* pAdd = me->SummonCreature(VEHICLE_TO_SUMMON2, SpawnPosition, TEMPSUMMON_CORPSE_DESPAWN))
-                    {
-                        switch (uiSummonTimes)
-                        {
-                            case 1:
-                                Champion1List.push_back(pAdd->GetGUID());
-                                break;
-                            case 2:
-                                Champion2List.push_back(pAdd->GetGUID());
-                                break;
-                            case 3:
-                                Champion3List.push_back(pAdd->GetGUID());
-                                break;
-                        }
-
-                        switch (i)
-                        {
-                            case 0:
-                                pAdd->GetMotionMaster()->MoveFollow(pBoss, 2.0f, float(M_PI));
-                                break;
-                            case 1:
-                                pAdd->GetMotionMaster()->MoveFollow(pBoss, 2.0f, float(M_PI) / 2);
-                                break;
-                            case 2:
-                                pAdd->GetMotionMaster()->MoveFollow(pBoss, 2.0f, float(M_PI) / 2 + float(M_PI));
-                                break;
-                        }
-                    }
-
-                }
-            }
-        }
-
-        void DoStartArgentChampionEncounter()
-        {
-            me->GetMotionMaster()->MovePoint(1, 735.81f, 661.92f, 412.39f);
-
-            if (me->SummonCreature(uiArgentChampion, SpawnPosition))
-            {
-                for (uint8 i = 0; i < 3; ++i)
-                {
-                    if (Creature* pTrash = me->SummonCreature(NPC_ARGENT_LIGHWIELDER, SpawnPosition))
-                        pTrash->AI()->SetData(i, 0);
-                    if (Creature* pTrash = me->SummonCreature(NPC_ARGENT_MONK, SpawnPosition))
-                        pTrash->AI()->SetData(i, 0);
-                    if (Creature* pTrash = me->SummonCreature(NPC_PRIESTESS, SpawnPosition))
-                        pTrash->AI()->SetData(i, 0);
-                }
-            }
-        }
-
-        void SetGrandChampionsForEncounter()
-        {
-            uiFirstBoss = urand(0, 4);
-
-            while (uiSecondBoss == uiFirstBoss || uiThirdBoss == uiFirstBoss || uiThirdBoss == uiSecondBoss)
-            {
-                uiSecondBoss = urand(0, 4);
-                uiThirdBoss = urand(0, 4);
-            }
-        }
-
-        void SetArgentChampion()
-        {
-           uint8 uiTempBoss = urand(0, 1);
-
-           switch (uiTempBoss)
-           {
-                case 0:
-                    uiArgentChampion = NPC_EADRIC;
-                    break;
-                case 1:
-                    uiArgentChampion = NPC_PALETRESS;
-                    break;
-           }
-        }
-
-        void StartEncounter()
+        if (_instance->GetBossState(DATA_BLACK_KNIGHT) == DONE)
         {
             me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
-
-            if (instance->GetBossState(BOSS_BLACK_KNIGHT) == NOT_STARTED)
-            {
-                if (instance->GetBossState(BOSS_ARGENT_CHALLENGE_E) == NOT_STARTED && instance->GetBossState(BOSS_ARGENT_CHALLENGE_P) == NOT_STARTED)
-                {
-                    if (instance->GetBossState(BOSS_GRAND_CHAMPIONS) == NOT_STARTED)
-                        SetData(DATA_START, 0);
-
-                    if (instance->GetBossState(BOSS_GRAND_CHAMPIONS) == DONE)
-                        DoStartArgentChampionEncounter();
-                }
-
-               if ((instance->GetBossState(BOSS_GRAND_CHAMPIONS) == DONE &&
-                   instance->GetBossState(BOSS_ARGENT_CHALLENGE_E) == DONE) ||
-                   instance->GetBossState(BOSS_ARGENT_CHALLENGE_P) == DONE)
-                    me->SummonCreature(VEHICLE_BLACK_KNIGHT, 769.834f, 651.915f, 447.035f, 0);
-            }
+            me->NearTeleportTo(721.252f, 597.551f, 411.649f, me->GetOrientation());
+            DoCastSelf(SPELL_HERALD_FEIGN_DEATH, true);
         }
+        else if (_instance->GetBossState(DATA_ARGENT_CHALLENGE) == DONE)
+            me->GetMotionMaster()->MovePoint(1, { .Destination = HeraldArgentSpot, .GeneratePath = true, .FinalOrientation = HeraldArgentSpot.GetOrientation(), .Velocity = HeraldVelocity });
+        else if (_instance->GetBossState(DATA_GRAND_CHAMPIONS) == DONE)
+            me->GetMotionMaster()->MovePoint(1, { .Destination = HeraldCenterSpot, .GeneratePath = true, .FinalOrientation = HeraldCenterSpot.GetOrientation(), .Velocity = HeraldVelocity });
+    }
 
-        void AggroAllPlayers(Creature* temp)
+    void MovementInform(uint32 type, uint32 pointId) override
+    {
+        if (type != SPLINE_CHAIN_MOTION_TYPE)
+            return;
+
+        switch (pointId)
         {
-            Map::PlayerList const& PlList = me->GetMap()->GetPlayers();
-            if (PlList.isEmpty())
-                return;
-
-            for (Map::PlayerList::const_iterator i = PlList.begin(); i != PlList.end(); ++i)
-            {
-                if (Player* player = i->GetSource())
-                {
-                    if (player->IsGameMaster())
-                        continue;
-
-                    if (player->IsAlive())
-                    {
-                        temp->SetHomePosition(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), me->GetOrientation());
-                        temp->RemoveUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-                        temp->SetReactState(REACT_AGGRESSIVE);
-                        AddThreat(player, 0.0f, temp);
-                    }
-                }
-            }
+            case POINT_HERALD_ARGENT_FIGHT:
+                me->SetFacingTo(HeraldArgentFightSpot.GetOrientation());
+                break;
+            case POINT_HERALD_ARGENT_RETURN:
+                me->SetFacingTo(HeraldArgentSpot.GetOrientation());
+                break;
+            default:
+                break;
         }
+    }
 
-       void UpdateAI(uint32 uiDiff) override
+    bool OnGossipHello(Player* player) override
+    {
+        InitGossipMenuFor(player, GOSSIP_MENU_HERALD);
+
+        bool const paused = _instance->GetData(DATA_STAGE_PAUSED) != 0;
+        EncounterState const championsState = _instance->GetBossState(DATA_GRAND_CHAMPIONS);
+        EncounterState const argentState = _instance->GetBossState(DATA_ARGENT_CHALLENGE);
+
+        uint32 textId = 0;
+        if (championsState == NOT_STARTED || (championsState == SPECIAL && paused))
         {
-            ScriptedAI::UpdateAI(uiDiff);
-
-            if (uiTimer <= uiDiff)
+            if (player->GetVehicle())
             {
-                switch (uiPhase)
-                {
-                    case 1:
-                        DoSummonGrandChampion(uiSecondBoss);
-                        NextStep(10000, true);
-                        break;
-                    case 2:
-                        DoSummonGrandChampion(uiThirdBoss);
-                        NextStep(0, false);
-                        break;
-                    case 3:
-                        if (!Champion1List.empty())
-                        {
-                            for (GuidList::const_iterator itr = Champion1List.begin(); itr != Champion1List.end(); ++itr)
-                                if (Creature* summon = ObjectAccessor::GetCreature(*me, *itr))
-                                    AggroAllPlayers(summon);
-                            NextStep(0, false);
-                        }
-                        break;
-                }
-            } else uiTimer -= uiDiff;
-
-            if (!UpdateVictim())
-                return;
-        }
-
-        void JustSummoned(Creature* summon) override
-        {
-            if (instance->GetBossState(BOSS_GRAND_CHAMPIONS) == NOT_STARTED)
-            {
-                summon->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
-                summon->SetReactState(REACT_PASSIVE);
-            }
-        }
-
-        void SummonedCreatureDespawn(Creature* summon) override
-        {
-            switch (summon->GetEntry())
-            {
-                case VEHICLE_DARNASSIA_NIGHTSABER:
-                case VEHICLE_EXODAR_ELEKK:
-                case VEHICLE_STORMWIND_STEED:
-                case VEHICLE_GNOMEREGAN_MECHANOSTRIDER:
-                case VEHICLE_IRONFORGE_RAM:
-                case VEHICLE_FORSAKE_WARHORSE:
-                case VEHICLE_THUNDER_BLUFF_KODO:
-                case VEHICLE_ORGRIMMAR_WOLF:
-                case VEHICLE_SILVERMOON_HAWKSTRIDER:
-                case VEHICLE_DARKSPEAR_RAPTOR:
-                    SetData(DATA_LESSER_CHAMPIONS_DEFEATED, 0);
-                    break;
-            }
-        }
-
-        bool OnGossipHello(Player* player) override
-        {
-            if (((instance->GetBossState(BOSS_GRAND_CHAMPIONS) == DONE &&
-                    instance->GetBossState(BOSS_BLACK_KNIGHT) == DONE &&
-                    instance->GetBossState(BOSS_ARGENT_CHALLENGE_E) == DONE) ||
-                    instance->GetBossState(BOSS_ARGENT_CHALLENGE_P) == DONE))
-                return false;
-
-            if (instance->GetBossState(BOSS_GRAND_CHAMPIONS) == NOT_STARTED &&
-                instance->GetBossState(BOSS_ARGENT_CHALLENGE_E) == NOT_STARTED &&
-                instance->GetBossState(BOSS_ARGENT_CHALLENGE_P) == NOT_STARTED &&
-                instance->GetBossState(BOSS_BLACK_KNIGHT) == NOT_STARTED)
-            {
-                InitGossipMenuFor(player, GOSSIP_START_EVENT1_MID);
-                AddGossipItemFor(player, GOSSIP_START_EVENT1_MID, GOSSIP_START_EVENT1_OID, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-                SendGossipMenuFor(player, player->GetGossipTextId(GOSSIP_START_EVENT1_MID, me), me->GetGUID());
+                textId = GOSSIP_TEXT_FIRST_CHALLENGE;
+                AddGossipItemFor(player, GOSSIP_MENU_HERALD, GOSSIP_OPTION_START, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + uint32(GOSSIP_OPTION_START));
+                if (championsState == NOT_STARTED)
+                    AddGossipItemFor(player, GOSSIP_MENU_HERALD, GOSSIP_OPTION_START_SKIP, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + uint32(GOSSIP_OPTION_START_SKIP));
             }
             else
-            {
-                InitGossipMenuFor(player, GOSSIP_START_EVENT2_MID);
-                AddGossipItemFor(player, GOSSIP_START_EVENT2_MID, GOSSIP_START_EVENT2_OID, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-                SendGossipMenuFor(player, player->GetGossipTextId(GOSSIP_START_EVENT2_MID, me), me->GetGUID());
-            }
-
-            return true;
+                textId = me->GetEntry() == NPC_ARELAS_BRIGHTSTAR ? GOSSIP_TEXT_NOT_MOUNTED_ALLIANCE : GOSSIP_TEXT_NOT_MOUNTED_HORDE;
         }
-
-        bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
+        else if (championsState == DONE && argentState == NOT_STARTED)
         {
-            uint32 const action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
-            ClearGossipMenuFor(player);
-            if (action == GOSSIP_ACTION_INFO_DEF + 1)
-            {
-                CloseGossipMenuFor(player);
-                StartEncounter();
-            }
-            return true;
+            textId = GOSSIP_TEXT_NEXT_CHALLENGE;
+            AddGossipItemFor(player, GOSSIP_MENU_HERALD, GOSSIP_OPTION_NEXT_CHALLENGE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + uint32(GOSSIP_OPTION_NEXT_CHALLENGE));
         }
-    };
+        else if (argentState == DONE && _instance->GetBossState(DATA_BLACK_KNIGHT) == NOT_STARTED)
+        {
+            textId = GOSSIP_TEXT_FINAL_CHALLENGE;
+            AddGossipItemFor(player, GOSSIP_MENU_HERALD, GOSSIP_OPTION_FINAL_CHALLENGE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + uint32(GOSSIP_OPTION_FINAL_CHALLENGE));
+        }
 
-    CreatureAI* GetAI(Creature* creature) const override
+        if (!textId)
+            return true;
+
+        SendGossipMenuFor(player, textId, me);
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
     {
-        return GetTrialOfTheChampionAI<npc_announcer_toc5AI>(creature);
+        uint32 const option = player->PlayerTalkClass->GetGossipOptionAction(gossipListId) - GOSSIP_ACTION_INFO_DEF;
+        CloseGossipMenuFor(player);
+        _instance->SetData(DATA_HERALD_GOSSIP, option);
+        return true;
+    }
+
+    void UpdateAI(uint32 /*diff*/) override { }
+
+private:
+    InstanceScript* _instance;
+};
+
+// 66654, 66671, 66673 - Argent Dungeon - Summon Champion
+class spell_toc5_summon_champion : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_summon_champion);
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        InstanceScript* instance = GetCaster()->GetInstanceScript();
+        if (!instance)
+            return;
+
+        switch (GetSpellInfo()->Id)
+        {
+            case SPELL_SUMMON_CHAMPION_1:
+                instance->SetData(DATA_SUMMON_CHAMPION, 0);
+                break;
+            case SPELL_SUMMON_CHAMPION_2:
+                instance->SetData(DATA_SUMMON_CHAMPION, 1);
+                break;
+            case SPELL_SUMMON_CHAMPION_3:
+                instance->SetData(DATA_SUMMON_CHAMPION, 2);
+                break;
+            default:
+                break;
+        }
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_summon_champion::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 67295 - Argent Dungeon - Summon Champion Retainer Wave
+class spell_toc5_summon_champion_retainer_wave : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_summon_champion_retainer_wave);
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        if (InstanceScript* instance = GetCaster()->GetInstanceScript())
+            instance->SetData(DATA_RETAINER_WAVE, 0);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_summon_champion_retainer_wave::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 67396 - Argent Dungeon - Summon Boss 4
+class spell_toc5_summon_boss_4 : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_summon_boss_4);
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        if (InstanceScript* instance = GetCaster()->GetInstanceScript())
+            instance->SetData(DATA_SUMMON_ARGENT_CHAMPION, 0);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_summon_boss_4::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 66810 - Argent Raid - Spectator - Master - FX - Bunny - Random Target, Spell
+// 67551 - Argent Raid - Spectator - Master - FX - Salute (Random Player)
+class spell_toc5_spectator_random_target : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_spectator_random_target);
+
+    bool Validate(SpellInfo const* spellInfo) override
+    {
+        return ValidateSpellInfo({ uint32(spellInfo->GetEffect(EFFECT_0).CalcValue()) });
+    }
+
+    void FilterTargets(std::list<WorldObject*>& targets)
+    {
+        Trinity::Containers::RandomResize(targets, 1);
+    }
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        Unit* caster = GetCaster();
+        uint32 const spellId = uint32(GetEffectValue());
+        ObjectGuid const targetGUID = GetHitUnit()->GetGUID();
+        caster->m_Events.AddEventAtOffset([caster, targetGUID, spellId]
+        {
+            if (Unit* target = ObjectAccessor::GetUnit(*caster, targetGUID))
+                caster->CastSpell(target, spellId, true);
+        }, GetSpellInfo()->Id == SPELL_SPECTATOR_RANDOM_TARGET ? randtime(400ms, 800ms) : 400ms);
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_toc5_spectator_random_target::FilterTargets, EFFECT_0, TARGET_UNIT_DEST_AREA_ENTRY);
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_spectator_random_target::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 66461 - Argent Raid - Spectator - Master - FX - Random All
+class spell_toc5_spectator_master_fx_random : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_spectator_master_fx_random);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_MASTER_FX_CHEER, SPELL_MASTER_FX_SALUTE, SPELL_MASTER_FX_RUDE, SPELL_MASTER_FX_CHANT });
+    }
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        Unit* caster = GetCaster();
+        ObjectGuid const targetGUID = GetHitUnit()->GetGUID();
+        caster->m_Events.AddEventAtOffset([caster, targetGUID]
+        {
+            if (Unit* target = ObjectAccessor::GetUnit(*caster, targetGUID))
+                caster->CastSpell(target, RAND(SPELL_MASTER_FX_CHEER, SPELL_MASTER_FX_SALUTE, SPELL_MASTER_FX_RUDE, SPELL_MASTER_FX_CHANT), true);
+        }, 800ms);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_spectator_master_fx_random::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 66410 - Argent Raid - Spectator - Master - FX - Cheer
+// 66417 - Argent Raid - Spectator - Master - FX - Salute
+// 66420 - Argent Raid - Spectator - Master - FX - Rude
+// 66423 - Argent Raid - Spectator - Master - FX - Chant
+class spell_toc5_spectator_master_fx : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_spectator_master_fx);
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        Player* player = GetHitPlayer();
+        if (!player)
+            return;
+
+        bool const alliance = player->GetTeamId() == TEAM_ALLIANCE;
+        uint32 spellId = 0;
+        switch (GetSpellInfo()->Id)
+        {
+            case SPELL_MASTER_FX_CHEER:
+                spellId = alliance ? SPELL_FORCE_RESPONSE_CHEER_ALLIANCE : SPELL_FORCE_RESPONSE_CHEER_HORDE;
+                break;
+            case SPELL_MASTER_FX_SALUTE:
+                spellId = alliance ? SPELL_FORCE_RESPONSE_SALUTE_ALLIANCE : SPELL_FORCE_RESPONSE_SALUTE_HORDE;
+                break;
+            case SPELL_MASTER_FX_RUDE:
+                spellId = alliance ? SPELL_FORCE_RESPONSE_RUDE_HORDE : SPELL_FORCE_RESPONSE_RUDE_ALLIANCE;
+                break;
+            case SPELL_MASTER_FX_CHANT:
+                switch (player->GetRace())
+                {
+                    case RACE_HUMAN:
+                        spellId = SPELL_FORCE_CHANT_HUMAN;
+                        break;
+                    case RACE_ORC:
+                        spellId = SPELL_FORCE_CHANT_ORC;
+                        break;
+                    case RACE_DWARF:
+                        spellId = SPELL_FORCE_CHANT_DWARF;
+                        break;
+                    case RACE_NIGHTELF:
+                        spellId = SPELL_FORCE_CHANT_NIGHT_ELF;
+                        break;
+                    case RACE_UNDEAD_PLAYER:
+                        spellId = SPELL_FORCE_CHANT_UNDEAD;
+                        break;
+                    case RACE_TAUREN:
+                        spellId = SPELL_FORCE_CHANT_TAUREN;
+                        break;
+                    case RACE_GNOME:
+                        spellId = SPELL_FORCE_CHANT_GNOME;
+                        break;
+                    case RACE_TROLL:
+                        spellId = SPELL_FORCE_CHANT_TROLL;
+                        break;
+                    case RACE_BLOODELF:
+                        spellId = SPELL_FORCE_CHANT_BLOOD_ELF;
+                        break;
+                    case RACE_DRAENEI:
+                        spellId = SPELL_FORCE_CHANT_DRAENEI;
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            default:
+                break;
+        }
+
+        if (!spellId)
+            return;
+
+        player->m_Events.AddEventAtOffset([player, spellId]
+        {
+            player->CastSpell(player, spellId, true);
+        }, 400ms);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_spectator_master_fx::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 66382, 66383 - [DND] Argent Raid - Spectator - Force Response - Salute
+// 66384, 66385 - [DND] Argent Raid - Spectator - Force Response - Cheer
+// 66386, 66387 - [DND] Argent Raid - Spectator - Force Response - Rude
+class spell_toc5_spectator_force_response : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_spectator_force_response);
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        Creature* spectator = GetHitCreature();
+        if (!spectator)
+            return;
+
+        spectator->SetFacingToObject(GetCaster());
+
+        switch (GetSpellInfo()->Id)
+        {
+            case SPELL_FORCE_RESPONSE_SALUTE_ALLIANCE:
+            case SPELL_FORCE_RESPONSE_SALUTE_HORDE:
+                spectator->HandleEmoteCommand(EMOTE_ONESHOT_SALUTE);
+                break;
+            case SPELL_FORCE_RESPONSE_CHEER_ALLIANCE:
+            case SPELL_FORCE_RESPONSE_CHEER_HORDE:
+                spectator->HandleEmoteCommand(EMOTE_ONESHOT_CHEER_NO_SHEATHE);
+                if (spectator->GetEntry() == NPC_CROWD_ALLIANCE || spectator->GetEntry() == NPC_CROWD_HORDE)
+                    spectator->AI()->Talk(SAY_CROWD_CHEER, GetCaster());
+                break;
+            case SPELL_FORCE_RESPONSE_RUDE_ALLIANCE:
+            case SPELL_FORCE_RESPONSE_RUDE_HORDE:
+                spectator->HandleEmoteCommand(EMOTE_ONESHOT_RUDE);
+                break;
+            default:
+                break;
+        }
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_spectator_force_response::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 66345, 66348, 66349, 66350, 66352, 66353, 66354, 66355, 66356, 66357 - Spectator - Force Chant
+class spell_toc5_spectator_force_chant : public SpellScript
+{
+    PrepareSpellScript(spell_toc5_spectator_force_chant);
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        Creature* spectator = GetHitCreature();
+        if (!spectator)
+            return;
+
+        switch (spectator->GetEntry())
+        {
+            case NPC_CROWD_HUMAN:
+            case NPC_CROWD_ORC:
+            case NPC_CROWD_TROLL:
+            case NPC_CROWD_TAUREN:
+            case NPC_CROWD_BLOOD_ELF:
+            case NPC_CROWD_UNDEAD:
+            case NPC_CROWD_DWARF:
+            case NPC_CROWD_DRAENEI:
+            case NPC_CROWD_NIGHT_ELF:
+            case NPC_CROWD_GNOME:
+                spectator->AI()->Talk(SAY_CROWD_CHEER, GetCaster());
+                return;
+            default:
+                break;
+        }
+
+        Emote emote = EMOTE_ONESHOT_NONE;
+        Milliseconds duration = 0ms;
+        switch (GetSpellInfo()->Id)
+        {
+            case SPELL_FORCE_CHANT_DWARF:
+                spectator->HandleEmoteCommand(EMOTE_ONESHOT_RUDE);
+                return;
+            case SPELL_FORCE_CHANT_TAUREN:
+                spectator->HandleEmoteCommand(EMOTE_ONESHOT_FLEX);
+                return;
+            case SPELL_FORCE_CHANT_TROLL:
+                emote = EMOTE_STATE_DANCE;
+                duration = 13s;
+                break;
+            case SPELL_FORCE_CHANT_GNOME:
+                emote = EMOTE_STATE_WORK;
+                duration = 15s;
+                break;
+            case SPELL_FORCE_CHANT_DRAENEI:
+                emote = EMOTE_STATE_APPLAUD;
+                duration = 5s;
+                break;
+            case SPELL_FORCE_CHANT_HUMAN:
+                emote = EMOTE_STATE_DANCESPECIAL;
+                duration = 15s;
+                break;
+            case SPELL_FORCE_CHANT_NIGHT_ELF:
+                emote = EMOTE_STATE_APPLAUD;
+                duration = 15s;
+                break;
+            case SPELL_FORCE_CHANT_BLOOD_ELF:
+                emote = EMOTE_STATE_WORK;
+                duration = 6s;
+                break;
+            case SPELL_FORCE_CHANT_ORC:
+                emote = EMOTE_STATE_SPELL_CHANNEL_OMNI;
+                duration = 6s;
+                break;
+            case SPELL_FORCE_CHANT_UNDEAD:
+                emote = EMOTE_STATE_WORK;
+                duration = 5s;
+                break;
+            default:
+                return;
+        }
+
+        spectator->SetEmoteState(emote);
+        spectator->m_Events.AddEventAtOffset([spectator]()
+        {
+            spectator->SetEmoteState(EMOTE_ONESHOT_NONE);
+        }, duration);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_toc5_spectator_force_chant::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
     }
 };
 
 void AddSC_trial_of_the_champion()
 {
-    new npc_announcer_toc5();
+    RegisterTrialOfTheChampionCreatureAI(npc_announcer_toc5);
+    RegisterSpellScript(spell_toc5_summon_champion);
+    RegisterSpellScript(spell_toc5_summon_champion_retainer_wave);
+    RegisterSpellScript(spell_toc5_summon_boss_4);
+    RegisterSpellScript(spell_toc5_spectator_random_target);
+    RegisterSpellScript(spell_toc5_spectator_master_fx_random);
+    RegisterSpellScript(spell_toc5_spectator_master_fx);
+    RegisterSpellScript(spell_toc5_spectator_force_response);
+    RegisterSpellScript(spell_toc5_spectator_force_chant);
 }

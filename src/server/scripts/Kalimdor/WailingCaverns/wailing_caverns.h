@@ -45,7 +45,8 @@ enum WCCreatureIds
 
 enum WCActions
 {
-    ACTION_ALL_DONE           = 0
+    ACTION_ALL_DONE           = 0,
+    ACTION_MUTANUS_DEFEATED // EG
 };
 
 template <class AI, class T>

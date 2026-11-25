@@ -606,7 +606,7 @@ struct boss_ellris_duskhallow : public boss_priestess_lackey_commonAI
 
         if (Seed_of_Corruption_Timer <= diff)
         {
-            if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0))
+            if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                 DoCast(unit, SPELL_SEED_OF_CORRUPTION);
 
             Seed_of_Corruption_Timer = 10000;
@@ -614,7 +614,7 @@ struct boss_ellris_duskhallow : public boss_priestess_lackey_commonAI
 
         if (Curse_of_Agony_Timer <= diff)
         {
-            if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0))
+            if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                 DoCast(unit, SPELL_CURSE_OF_AGONY);
 
             Curse_of_Agony_Timer = 13000;
@@ -622,7 +622,7 @@ struct boss_ellris_duskhallow : public boss_priestess_lackey_commonAI
 
         if (Fear_Timer <= diff)
         {
-            if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0))
+            if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                 DoCast(unit, SPELL_FEAR);
 
             Fear_Timer = 10000;
@@ -745,7 +745,7 @@ struct boss_yazzai : public boss_priestess_lackey_commonAI
 
         if (Polymorph_Timer <= diff)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
             {
                 DoCast(target, SPELL_POLYMORPH);
                 Polymorph_Timer = 20000;
@@ -760,7 +760,7 @@ struct boss_yazzai : public boss_priestess_lackey_commonAI
 
         if (Blizzard_Timer <= diff)
         {
-            if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0))
+            if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                 DoCast(unit, SPELL_BLIZZARD);
 
             Blizzard_Timer = 8000;
@@ -877,7 +877,7 @@ struct boss_warlord_salaris : public boss_priestess_lackey_commonAI
             //if nobody is in melee range than try to use Intercept
             if (!InMeleeRange)
             {
-                if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(unit, SPELL_INTERCEPT_STUN);
             }
 
@@ -1100,7 +1100,7 @@ struct boss_apoko : public boss_priestess_lackey_commonAI
 
         if (Purge_Timer <= diff)
         {
-            if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0))
+            if (Unit* unit = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                 DoCast(unit, SPELL_PURGE);
 
             Purge_Timer = 15000;

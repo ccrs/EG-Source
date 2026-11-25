@@ -263,6 +263,7 @@ enum UlduarGameObjects
     GO_LEVIATHAN_DOOR                       = 194905,
     GO_LEVIATHAN_GATE                       = 194630,
     GO_LEVIATHAN_PROTECTIVE_BUBBLE          = 194484,
+    GO_LEVIATHAN_INTRO_COLLISION            = 201612,
 
     // Razorscale
     GO_MOLE_MACHINE                         = 194316,
@@ -524,8 +525,7 @@ enum UlduarData
     DATA_ARCHMAGE_RHYDIAN,
     DATA_FL_INTRO_PLAYER,
     DATA_FL_HARDMODE_CONFIRMED,
-    DATA_FL_HARDMODE_PLAYER,
-    DATA_FL_INTRO_COMPLETED, // DB condition
+    DATA_FL_INTRO_COMPLETED = 89, // DB condition
     DATA_VERIFY_YS_KEEPERS,
 
     DATA_CALL_TRAM              = 710

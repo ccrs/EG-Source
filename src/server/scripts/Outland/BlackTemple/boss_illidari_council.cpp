@@ -295,7 +295,7 @@ public:
 
     bool operator()(Unit* unit) const
     {
-        return _me->IsInRange(unit, 10.0f, 40.0f);
+        return unit->IsPlayer() && _me->IsInRange(unit, 10.0f, 40.0f);
     }
 
 private:
@@ -390,13 +390,13 @@ struct boss_high_nethermancer_zerevor : public IllidariCouncilBossAI
         switch (eventId)
         {
             case EVENT_FLAMESTRIKE:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_FLAMESTRIKE);
                 Talk(SAY_COUNCIL_SPECIAL);
                 events.Repeat(40s);
                 break;
             case EVENT_BLIZZARD:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_BLIZZARD);
                 events.Repeat(15s, 40s);
                 break;

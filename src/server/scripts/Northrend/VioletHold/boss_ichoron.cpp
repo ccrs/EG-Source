@@ -221,7 +221,7 @@ struct boss_ichoron : public BossAI
 
         scheduler.Schedule(6s, 9s, [this](TaskContext task)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 50.0f))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 50.0f, true))
                 DoCast(target, SPELL_WATER_BLAST);
             task.Repeat(6s, 9s);
         });

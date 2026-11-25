@@ -166,7 +166,7 @@ struct ValithriaManaVoidSelector
 
         bool operator()(Unit* unit) const
         {
-            return unit->GetPowerType() == POWER_MANA && _source->GetDistance(unit) > 15.0f;
+            return unit->IsPlayer() && unit->GetPowerType() == POWER_MANA && _source->GetDistance(unit) > 15.0f;
         }
 
         WorldObject const* _source;

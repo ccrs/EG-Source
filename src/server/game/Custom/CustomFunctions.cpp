@@ -21,6 +21,7 @@
 #include "BattlegroundQueue.h"
 #include "InstanceSaveMgr.h"
 #include "InstanceScript.h"
+#include "BattlefieldMgr.h"
 #include "CellImpl.h"
 #include "Channel.h"
 #include "ChannelPackets.h"
@@ -32,17 +33,18 @@
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
 #include "GameEventMgr.h"
+#include "GameObject.h"
 #include "GameTime.h"
 #include "GenericMovementGenerator.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "Group.h"
+#include "GroupMgr.h"
 #include "Item.h"
 #include "ItemTemplate.h"
 #include "Language.h"
-#include "LFGMgr.h"
-#include "LFGQueue.h"
 #include "Map.h"
+#include "MapInstanced.h"
 #include "MapManager.h"
 #include "MotionMaster.h"
 #include "MovementInfo.h"
@@ -54,16 +56,22 @@
 #include "ObjectGuid.h"
 #include "ObjectMgr.h"
 #include "Optional.h"
+#include "OutdoorPvPMgr.h"
 #include "Pet.h"
 #include "Player.h"
 #include "PlayerTaxi.h"
 #include "Realm.h"
 #include "ScriptedCreature.h"
+#include "ScriptMgr.h"
 #include "SharedDefines.h"
 #include "SmartAI.h"
 #include "Spell.h"
+#include "SpellAuraEffects.h"
+#include "SpellAuras.h"
+#include "SpellHistory.h"
 #include "SpellMgr.h"
 #include "SpellInfo.h"
+#include "SpellPackets.h"
 #include "StringConvert.h"
 #include "TemporarySummon.h"
 #include "Transmogrification.h"
@@ -73,7 +81,9 @@
 #include "Vehicle.h"
 #include "VehicleDefines.h"
 #include "World.h"
+#include "WorldPacket.h"
 #include "WorldSession.h"
+#include <G3D/Vector3.h>
 #include <algorithm>
 #include <cmath>
 #include <unordered_map>
@@ -84,6 +94,22 @@ namespace
 {
     bool BoostedDayActive = false;
     std::set<uint32> RealmFirstRetiredOrigins;
+}
+
+void EG::SendHardcoreDeathMessage(Player const* player)
+{
+    if (!player->GetSession())
+        return;
+
+    ChatHandler handler(player->GetSession());
+    if (!player->CanAbandonHardcore())
+    {
+        handler.SendSysMessage("|cffff0000You died in Hardcore mode. This death is permanent.|r");
+        return;
+    }
+
+    handler.PSendSysMessage("|cffff0000You fell in Hardcore mode at level %u.|r Because you got past level %u you may abandon this run and return to regular play instead of staying dead.", uint32(player->GetLevel()), uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
+    handler.SendSysMessage("To abandon Hardcore, type: |cffffffff.settings hardcore|r");
 }
 
 bool EG::IsBoostedDay()
@@ -133,6 +159,111 @@ bool EG::CanEarnRealmFirst(Player const* player, AchievementEntry const* achieve
     return true;
 }
 
+bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
+{
+    if (_includeSelf && _source == unit && unit->GetHealthPct() < _hp)
+    {
+        _hp = unit->GetHealthPct();
+        return true;
+    }
+
+    if (((_playerOnly && unit->IsPlayer()) || !_playerOnly)
+        && unit->IsAlive()
+        && !unit->IsCritter()
+        && ((_source->IsInCombat() && unit->IsInCombat()) || (!_source->IsInCombat()))
+        && _source->IsValidAssistTarget(unit)
+        && _source->IsWithinDistInMap(unit, _range)
+        && _source->IsWithinLOSInMap(unit)
+        && unit->GetHealthPct() < _hp
+    )
+    {
+        _hp = unit->GetHealthPct();
+        return true;
+    }
+
+    return false;
+}
+
+bool EG::AnyFriendlyUnitInObjectRangeCheck::operator()(Unit const* unit) const
+{
+    if (_options.Alive && !unit->IsAlive())
+        return false;
+
+    if (_options.MaxHealthPct && unit->GetHealthPct() > *_options.MaxHealthPct)
+        return false;
+
+    if (_options.IncludeSelf && _source == unit)
+        return true;
+
+    if (unit->IsCritter())
+        return false;
+
+    if (!_options.ExcludedEntries.empty() && _options.ExcludedEntries.contains(unit->GetEntry()))
+        return false;
+
+    if (((_options.PlayerOnly && unit->IsPlayer()) || !_options.PlayerOnly)
+        && (!_source->IsUnit() || (_source->ToUnit()->IsInCombat() && unit->IsInCombat()) || (!_source->ToUnit()->IsInCombat()))
+        && _source->IsValidAssistTarget(unit)
+        && _source->IsWithinDistInMap(unit, _options.Range)
+        && _source->IsWithinLOSInMap(unit)
+    )
+        return true;
+
+    return false;
+}
+
+EG::SetRaceMasqueradeSetting::SetRaceMasqueradeSetting(Player* owner, Races selectedRace) : _owner(owner), _selectedRace(selectedRace)
+{
+}
+
+bool EG::SetRaceMasqueradeSetting::Execute(uint64, uint32)
+{
+    if (!_owner->IsInWorld())
+    {
+        _owner->m_Events.AddEvent(this, _owner->m_Events.CalculateTime(100ms));
+        return false;
+    }
+
+    _owner->SetMasqueradeRace(_selectedRace);
+    return true;
+}
+
+EG::CleanRaceMasquerade::CleanRaceMasquerade(Player* owner) : _owner(owner)
+{
+}
+
+bool EG::CleanRaceMasquerade::Execute(uint64, uint32)
+{
+    if (_owner->CleanMasqueradeRaceValue())
+        return true;
+
+    _owner->m_Events.AddEvent(this, _owner->m_Events.CalculateTime(100ms));
+    return false;
+}
+
+void Aura::AddGenerator(ObjectGuid generatorGuid)
+{
+    if (std::find(_generatorGuids.begin(), _generatorGuids.end(), generatorGuid) == _generatorGuids.end())
+        _generatorGuids.push_back(generatorGuid);
+}
+
+bool Aura::UpdateGenerators()
+{
+    Trinity::Containers::EraseIf(_generatorGuids, [this](ObjectGuid const& generatorGuid)
+    {
+        GameObject* generator = GetOwner()->GetMap()->GetGameObject(generatorGuid);
+        return !generator || !generator->IsWithinDistInMap(GetOwner(), float(generator->GetGOInfo()->auraGenerator.radius));
+    });
+
+    return !_generatorGuids.empty();
+}
+
+float Creature::GetMinSwimDepth(bool swimming) const
+{
+    float const startDepth = std::max(CREATURE_SURFACE_SWIM_DEPTH, GetCollisionHeight() * CREATURE_SWIM_START_DEPTH_FACTOR);
+    return swimming ? startDepth * CREATURE_SWIM_STOP_DEPTH_RATIO : startDepth;
+}
+
 void Creature::ProcessDelayedLOSEntries()
 {
     if (_LOSQueue.empty() || !IsAlive() || HasUnitState(UNIT_STATE_SIGHTLESS) || !IsAIEnabled())
@@ -172,6 +303,19 @@ void Creature::InsertLOSEntry(ObjectGuid guid)
         _uniqueLOSEntries.insert(guid);
         _LOSQueue.push_back(guid);
     }
+}
+
+bool Creature::IsInSwimmableWater() const
+{
+    if (!IsInWater())
+        return false;
+
+    Optional<float> const liquidLevel = GetLiquidLevel();
+    float const floorZ = GetStaticFloorZ();
+    if (!liquidLevel || floorZ <= INVALID_HEIGHT)
+        return true;
+
+    return *liquidLevel - floorZ >= GetMinSwimDepth(IsSwimming());
 }
 
 void Creature::LoadCreaturesAddonAuras()
@@ -453,6 +597,89 @@ bool GameEventMgr::SetHolidayEventTimeFromRule(GameEventData& event, EG::Holiday
     }
 
     return false;
+}
+
+void Group::ConvertFromBattlefieldGroup()
+{
+    if (!isBFGroup())
+        return;
+
+    m_bfGroup = nullptr;
+    m_groupType = GroupType(m_groupType & ~GROUPTYPE_BG);
+
+    InitializeStoredGroup(ObjectAccessor::FindConnectedPlayer(m_leaderGuid));
+    for (MemberSlot const& member : m_memberSlots)
+    {
+        Player* player = ObjectAccessor::FindConnectedPlayer(member.guid);
+        InitializeStoredMember(member, player);
+        if (player && !player->GetGroup())
+            player->SetGroup(this, member.group);
+
+        sScriptMgr->OnGroupAddMember(this, member.guid);
+    }
+
+    SendUpdate();
+}
+
+uint8 Group::GetClientGroupType() const
+{
+    return isBFGroup() ? uint8(m_groupType & ~GROUPTYPE_BG) : uint8(m_groupType);
+}
+
+void Group::InitializeStoredGroup(Player* leader)
+{
+    if (leader)
+    {
+        m_dungeonDifficulty = leader->GetDungeonDifficultyID();
+        m_raidDifficulty = leader->GetRaidDifficultyID();
+    }
+
+    m_dbStoreId = sGroupMgr->GenerateNewGroupDbStoreId();
+    sGroupMgr->RegisterGroupDbStoreId(m_dbStoreId, this);
+
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_GROUP);
+
+    uint8 index = 0;
+
+    stmt->setUInt32(index++, m_dbStoreId);
+    stmt->setUInt32(index++, m_leaderGuid.GetCounter());
+    stmt->setUInt8(index++, uint8(m_lootMethod));
+    stmt->setUInt32(index++, m_looterGuid.GetCounter());
+    stmt->setUInt8(index++, uint8(m_lootThreshold));
+    stmt->setUInt64(index++, m_targetIcons[0].GetRawValue());
+    stmt->setUInt64(index++, m_targetIcons[1].GetRawValue());
+    stmt->setUInt64(index++, m_targetIcons[2].GetRawValue());
+    stmt->setUInt64(index++, m_targetIcons[3].GetRawValue());
+    stmt->setUInt64(index++, m_targetIcons[4].GetRawValue());
+    stmt->setUInt64(index++, m_targetIcons[5].GetRawValue());
+    stmt->setUInt64(index++, m_targetIcons[6].GetRawValue());
+    stmt->setUInt64(index++, m_targetIcons[7].GetRawValue());
+    stmt->setUInt8(index++, uint8(m_groupType));
+    stmt->setUInt32(index++, uint8(m_dungeonDifficulty));
+    stmt->setUInt32(index++, uint8(m_raidDifficulty));
+    stmt->setUInt32(index++, m_masterLooterGuid.GetCounter());
+
+    CharacterDatabase.Execute(stmt);
+
+    if (leader)
+        ConvertLeaderInstancesToGroup(leader, this, false);
+}
+
+void Group::InitializeStoredMember(MemberSlot const& member, Player* player)
+{
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_GROUP_MEMBER);
+    stmt->setUInt32(0, m_dbStoreId);
+    stmt->setUInt32(1, member.guid.GetCounter());
+    stmt->setUInt8(2, member.flags);
+    stmt->setUInt8(3, member.group);
+    stmt->setUInt8(4, member.roles);
+    CharacterDatabase.Execute(stmt);
+
+    if (player && !IsLeader(member.guid))
+    {
+        player->ResetInstances(INSTANCE_RESET_GROUP_JOIN, false);
+        player->ResetInstances(INSTANCE_RESET_GROUP_JOIN, true);
+    }
 }
 
 Item* Player::GetWeaponForDamageMods(WeaponAttackType attackType) const
@@ -919,22 +1146,6 @@ void Player::HandleHardcoreDeath(Unit* killer)
     EG::SendHardcoreDeathMessage(this);
 }
 
-void EG::SendHardcoreDeathMessage(Player const* player)
-{
-    if (!player->GetSession())
-        return;
-
-    ChatHandler handler(player->GetSession());
-    if (!player->CanAbandonHardcore())
-    {
-        handler.SendSysMessage("|cffff0000You died in Hardcore mode. This death is permanent.|r");
-        return;
-    }
-
-    handler.PSendSysMessage("|cffff0000You fell in Hardcore mode at level %u.|r Because you got past level %u you may abandon this run and return to regular play instead of staying dead.", uint32(player->GetLevel()), uint32(EG::HARDCORE_ABANDON_MIN_LEVEL));
-    handler.SendSysMessage("To abandon Hardcore, type: |cffffffff.settings hardcore|r");
-}
-
 /*static*/ bool Player::IsHardcoreCharacter(ObjectGuid guid)
 {
     if (Player* player = ObjectAccessor::FindConnectedPlayer(guid))
@@ -1103,6 +1314,18 @@ bool Player::InArenaQueue() const
     return false;
 }
 
+void Player::NearTeleportPetToOwner()
+{
+    Pet* pet = GetPet();
+    if (!pet || pet->IsInCombat() || pet->IsMovedByClient())
+        return;
+
+    Position petTeleportPosition;
+    GetNearPoint(pet, petTeleportPosition.m_positionX, petTeleportPosition.m_positionY, petTeleportPosition.m_positionZ, PET_FOLLOW_DIST, GetOrientation() + pet->GetFollowAngle());
+    petTeleportPosition.SetOrientation(GetOrientation());
+    pet->NearTeleportTo(petTeleportPosition);
+}
+
 void Player::UpdateHostileAreaState(AreaTableEntry const* zone)
 {
     // a boosted day forces the realm to behave like a PvP realm for flagging purposes
@@ -1162,6 +1385,27 @@ void Player::FlushNonArenaBattlegroundQueues()
         BattlegroundMgr::BuildBattlegroundStatusNone(&status, i);
         SendDirectMessage(status.Write());
     }
+}
+
+void Spell::SendForcedSpellCooldown()
+{
+    Unit* unitCaster = m_caster->ToUnit();
+    if (!unitCaster || IsIgnoringCooldowns() || m_spellInfo->IsCooldownStartedOnEvent() || m_spellInfo->IsPassive())
+        return;
+
+    Player* player = unitCaster->GetCharmerOrOwnerPlayerOrPlayerItself();
+    if (!player)
+        return;
+
+    uint32 cooldown = unitCaster->GetSpellHistory()->GetRemainingCooldown(m_spellInfo);
+    if (!cooldown)
+        return;
+
+    WorldPackets::Spells::SpellCooldown spellCooldown;
+    spellCooldown.Caster = unitCaster->GetGUID();
+    spellCooldown.Flags = SPELL_COOLDOWN_FLAG_NONE;
+    spellCooldown.SpellCooldowns.emplace_back(m_spellInfo->Id, cooldown);
+    player->SendDirectMessage(spellCooldown.Write());
 }
 
 void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicleExitParameters params)
@@ -1266,6 +1510,24 @@ void Unit::ExitVehicleHandling(Vehicle* vehicle, Position const& pos, UnitVehicl
         if (toCreature->IsVehicle())
             toCreature->GetVehicleKit()->Reset(true);
     }
+}
+
+void Unit::HandleCharmLinkedAuras(Unit const* charmer, bool apply)
+{
+    std::vector<std::pair<AuraApplication*, AuraEffect*>> linkedEffects;
+    for (AuraApplicationMap::value_type const& pair : m_appliedAuras)
+    {
+        AuraApplication* aurApp = pair.second;
+        if (aurApp->GetBase()->GetCasterGUID() != charmer->GetGUID() || !aurApp->GetBase()->GetSpellInfo()->HasAura(SPELL_AURA_CONTROL_VEHICLE))
+            continue;
+
+        for (uint8 effIndex = 0; effIndex < MAX_SPELL_EFFECTS; ++effIndex)
+            if (aurApp->HasEffect(effIndex) && aurApp->GetBase()->GetEffect(effIndex)->GetAuraType() == SPELL_AURA_LINKED)
+                linkedEffects.emplace_back(aurApp, aurApp->GetBase()->GetEffect(effIndex));
+    }
+
+    for (auto const& [aurApp, aurEff] : linkedEffects)
+        aurEff->HandleEffect(aurApp, AURA_EFFECT_HANDLE_CHARM, apply);
 }
 
 void Unit::InterruptSpellsCastedOnMe(bool killDelayed, bool interruptFriendlySpells)
@@ -1449,6 +1711,17 @@ Unit* WorldObject::DoFindLowestHPFriendlyInRange(FriendlySearchOptions options) 
     return unit;
 }
 
+void WorldObject::GetHitSpherePointFor(Position const* reference, Position const& dest, float& x, float& y, float& z) const
+{
+    G3D::Vector3 vReference(reference->GetPositionX(), reference->GetPositionY(), reference->GetPositionZ() + GetCollisionHeight());
+    G3D::Vector3 vDest(dest.GetPositionX(), dest.GetPositionY(), dest.GetPositionZ());
+    G3D::Vector3 contactPoint = vReference + (vDest - vReference).directionOrZero() * std::min(dest.GetExactDist(reference), GetCombatReach());
+
+    x = contactPoint.x;
+    y = contactPoint.y;
+    z = contactPoint.z;
+}
+
 void WorldObject::GetNearPoint2D(WorldObject const* searcher, Position const* reference, float& x, float& y, float distance, float absAngle) const
 {
     float effectiveReach = GetCombatReach();
@@ -1536,59 +1809,47 @@ bool WorldObject::IsWithinLOSInMap(Position const* reference, WorldObject const*
         z += GetCollisionHeight();
     }
     else
-        GetHitSpherePointFor({ reference->GetPositionX(), reference->GetPositionY(), reference->GetPositionZ() + obj->GetCollisionHeight() }, x, y, z);
+        GetHitSpherePointFor(reference, { obj->GetPositionX(), obj->GetPositionY(), obj->GetPositionZ() + obj->GetCollisionHeight() }, x, y, z);
 
     return GetMap()->isInLineOfSight(x, y, z, ox, oy, oz, GetPhaseMask(), checks, ignoreFlags);
 }
 
-bool EG::MostHPMissingFriendlyUnitInRangeSearcher::operator()(Unit* unit)
+void WorldObject::UpdateWorldZoneScript()
 {
-    if (_includeSelf && _source == unit && unit->GetHealthPct() < _hp)
+    if (GetTypeId() != TYPEID_UNIT && GetTypeId() != TYPEID_GAMEOBJECT)
+        return;
+
+    Map* map = FindMap();
+    if (!map || map->Instanceable())
+        return;
+
+    if (m_zoneScript && !dynamic_cast<WorldZoneScript*>(m_zoneScript))
+        return;
+
+    if (sBattlefieldMgr->GetBattlefield(GetZoneId()) || sOutdoorPvPMgr->GetZoneScript(GetZoneId()))
+        return;
+
+    ZoneScript* zoneScript = sScriptMgr->GetWorldZoneScript(map->GetId(), GetZoneId(), GetPhaseMask());
+    if (zoneScript == m_zoneScript)
+        return;
+
+    if (IsInWorld() && m_zoneScript)
     {
-        _hp = unit->GetHealthPct();
-        return true;
+        if (Creature* creature = ToCreature())
+            m_zoneScript->OnCreatureRemove(creature);
+        else if (GameObject* gameObject = ToGameObject())
+            m_zoneScript->OnGameObjectRemove(gameObject);
     }
 
-    if (((_playerOnly && unit->IsPlayer()) || !_playerOnly)
-        && unit->IsAlive()
-        && !unit->IsCritter()
-        && ((_source->IsInCombat() && unit->IsInCombat()) || (!_source->IsInCombat()))
-        && _source->IsValidAssistTarget(unit)
-        && _source->IsWithinDistInMap(unit, _range)
-        && _source->IsWithinLOSInMap(unit)
-        && unit->GetHealthPct() < _hp
-    )
+    m_zoneScript = zoneScript;
+
+    if (IsInWorld() && m_zoneScript)
     {
-        _hp = unit->GetHealthPct();
-        return true;
+        if (Creature* creature = ToCreature())
+            m_zoneScript->OnCreatureCreate(creature);
+        else if (GameObject* gameObject = ToGameObject())
+            m_zoneScript->OnGameObjectCreate(gameObject);
     }
-
-    return false;
-}
-
-bool EG::AnyFriendlyUnitInObjectRangeCheck::operator()(Unit const* unit) const
-{
-    if (_options.Alive && !unit->IsAlive())
-        return false;
-
-    if (_options.IncludeSelf && _source == unit)
-        return true;
-
-    if (unit->IsCritter())
-        return false;
-
-    if (!_options.ExcludedEntries.empty() && _options.ExcludedEntries.contains(unit->GetEntry()))
-        return false;
-
-    if (((_options.PlayerOnly && unit->IsPlayer()) || !_options.PlayerOnly)
-        && (!_source->IsUnit() || (_source->ToUnit()->IsInCombat() && unit->IsInCombat()) || (!_source->ToUnit()->IsInCombat()))
-        && _source->IsValidAssistTarget(unit)
-        && _source->IsWithinDistInMap(unit, _options.Range)
-        && _source->IsWithinLOSInMap(unit)
-    )
-        return true;
-
-    return false;
 }
 
 void SmartAI::SetCombatMovement()
@@ -1758,6 +2019,135 @@ void WorldSession::SendWorldChannelInvite()
     }, 5s);
 }
 
+void InstanceMap::PermBindPlayers(std::vector<ObjectGuid> const& players)
+{
+    InstanceSave* save = sInstanceSaveMgr->GetInstanceSave(GetInstanceId());
+    if (!save)
+    {
+        Map* selfLookup = sMapMgr->FindMap(GetId(), GetInstanceId());
+        uint32 groupBoundInstanceId = 0;
+        for (MapRefManager::iterator itr = m_mapRefManager.begin(); itr != m_mapRefManager.end(); ++itr)
+        {
+            Player* player = itr->GetSource();
+            if (player->IsGameMaster())
+                continue;
+
+            if (Group* group = player->GetGroup())
+                if (InstanceGroupBind* bind = group->GetBoundInstance(this))
+                    if (bind->save)
+                        groupBoundInstanceId = bind->save->GetInstanceId();
+
+            break;
+        }
+
+        InstanceScript const* script = GetInstanceScript();
+        TC_LOG_ERROR("maps", "Cannot bind players to instance map (Name: {}, Entry: {}, Difficulty: {}, ID: {}) because no instance save is available! [players: {}, self-lookup: {}, group-bound-instance: {}, save-under-group-bind: {}, encounters: {}]", GetMapName(), GetId(), static_cast<uint32>(GetDifficultyID()), GetInstanceId(), GetPlayersCountExceptGMs(), selfLookup == this ? "self" : (selfLookup ? "other-map" : "null"), groupBoundInstanceId, groupBoundInstanceId ? (sInstanceSaveMgr->GetInstanceSave(groupBoundInstanceId) ? "present" : "missing") : "n/a", script ? script->GetEncounterStateNames() : "no-script");
+        return;
+    }
+
+    for (ObjectGuid const& guid : players)
+    {
+        Player* player = ObjectAccessor::FindConnectedPlayer(guid);
+        if (!player)
+            continue;
+
+        InstancePlayerBind* bind = player->GetBoundInstance(save->GetMapId(), save->GetDifficultyID());
+        if (bind && bind->perm)
+        {
+            if (bind->save && bind->save->GetInstanceId() != save->GetInstanceId())
+            {
+                TC_LOG_ERROR("maps", "Player ({}, Name: {}) is in instance map (Name: {}, Entry: {}, Difficulty: {}, ID: {}) that is being bound, but already has a save for the map on ID {}!", player->GetGUID().ToString(), player->GetName(), GetMapName(), save->GetMapId(), static_cast<uint32>(save->GetDifficultyID()), save->GetInstanceId(), bind->save->GetInstanceId());
+            }
+            else if (!bind->save)
+            {
+                TC_LOG_ERROR("maps", "Player ({}, Name: {}) is in instance map (Name: {}, Entry: {}, Difficulty: {}, ID: {}) that is being bound, but already has a bind (without associated save) for the map!", player->GetGUID().ToString(), player->GetName(), GetMapName(), save->GetMapId(), static_cast<uint32>(save->GetDifficultyID()), save->GetInstanceId());
+            }
+        }
+        else
+        {
+            player->BindToInstance(save, true);
+            WorldPacket data(SMSG_INSTANCE_SAVE_CREATED, 4);
+            data << uint32(0);
+            player->SendDirectMessage(&data);
+            player->GetSession()->SendCalendarRaidLockoutAdded(save);
+
+            // if group leader is in instance, group also gets bound
+            if (Group* group = player->GetGroup())
+                if (group->GetLeaderGUID() == player->GetGUID())
+                    group->BindToInstance(save, true);
+        }
+    }
+}
+
+void InstanceMap::UpdateEntrySnapshot()
+{
+    _entryPlayerCount = GetPlayersCountExceptGMs();
+    _entryEncounterInProgress = i_data && i_data->IsEncounterInProgress();
+}
+
+void InstanceSaveManager::HandleInstanceMapEvent(InstanceMapEvent&& event)
+{
+    if (!sMapMgr->IsUpdatingMaps())
+    {
+        ProcessInstanceMapEvent(event);
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(_instanceMapEventsLock);
+    _instanceMapEvents.push_back(std::move(event));
+}
+
+void InstanceSaveManager::ProcessInstanceMapEvents()
+{
+    std::vector<InstanceMapEvent> events;
+    {
+        std::lock_guard<std::mutex> lock(_instanceMapEventsLock);
+        events.swap(_instanceMapEvents);
+    }
+
+    for (InstanceMapEvent const& event : events)
+        ProcessInstanceMapEvent(event);
+}
+
+void InstanceSaveManager::ProcessInstanceMapEvent(InstanceMapEvent const& event)
+{
+    switch (event.Type)
+    {
+        case INSTANCE_MAP_EVENT_PLAYER_LEFT:
+            if (Map* map = sMapMgr->FindMap(event.MapId, event.InstanceId))
+                if (InstanceMap* instanceMap = map->ToInstanceMap())
+                    instanceMap->SetResetSchedule(true);
+            UnloadInstanceSave(event.InstanceId);
+            break;
+        case INSTANCE_MAP_EVENT_NORMAL_RESET_TIME:
+            if (InstanceSave* save = GetInstanceSave(event.InstanceId))
+                if (save->GetResetTime() < event.ResetTime)
+                    save->SetResetTime(event.ResetTime);
+            break;
+        case INSTANCE_MAP_EVENT_PERM_BIND:
+        {
+            Map* map = sMapMgr->FindMap(event.MapId, event.InstanceId);
+            if (InstanceMap* instanceMap = map ? map->ToInstanceMap() : nullptr)
+                instanceMap->PermBindPlayers(event.Players);
+            else
+                TC_LOG_ERROR("maps", "InstanceSaveManager::ProcessInstanceMapEvent: map {} instance {} is not loaded, {} players were not bound", event.MapId, event.InstanceId, event.Players.size());
+            break;
+        }
+        case INSTANCE_MAP_EVENT_PENDING_BIND:
+            if (Player* player = ObjectAccessor::FindConnectedPlayer(event.PlayerGuid))
+            {
+                if (player->GetPendingBindId() == event.InstanceId)
+                {
+                    player->BindToInstance();
+                    player->SetPendingBind(0, 0);
+                }
+            }
+            break;
+        default:
+            break;
+    }
+}
+
 void InstanceScript::EnforceItemLevelCap()
 {
     AccessRequirement const* ar = sObjectMgr->GetAccessRequirement(instance->GetId(), instance->GetDifficultyID());
@@ -1814,191 +2204,14 @@ void InstanceScript::ForceRespawnQueuedCreaturesByEntry(std::vector<uint32> cons
     }
 }
 
-bool lfg::LFGQueue::CompatibleKeyContainsGuid(std::string const& key, ObjectGuid guid)
+void MapInstanced::DestroyPendingInstances()
 {
-    std::string const wanted = std::to_string(guid.GetRawValue());
-    std::string::size_type begin = 0;
-
-    while (begin <= key.size())
+    for (uint32 instanceId : _pendingDestroys)
     {
-        std::string::size_type end = key.find('|', begin);
-        std::string token = end == std::string::npos ? key.substr(begin) : key.substr(begin, end - begin);
-
-        if (token == wanted)
-            return true;
-
-        if (end == std::string::npos)
-            break;
-
-        begin = end + 1;
+        InstancedMaps::iterator itr = m_InstancedMaps.find(instanceId);
+        if (itr != m_InstancedMaps.end())
+            DestroyInstance(itr);
     }
 
-    return false;
-}
-
-uint8 lfg::LFGQueue::CountGuidsInCompatibleKey(std::string const& key)
-{
-    if (key.empty())
-        return 0;
-
-    return uint8(std::count(key.begin(), key.end(), '|') + 1);
-}
-
-lfg::LFGMgr::LfgBindCleanupResult lfg::LFGMgr::TryClearOldLfgGroupBind(Group* group, uint32 lfgDungeonId, uint32 oldInstanceId)
-{
-    if (!group || !group->isLFGGroup() || !lfgDungeonId)
-        return LfgBindCleanupResult::NoBind;
-
-    LFGDungeonData const* dungeon = GetLFGDungeon(lfgDungeonId);
-    if (!dungeon)
-        return LfgBindCleanupResult::NoBind;
-
-    MapEntry const* mapEntry = sMapStore.LookupEntry(dungeon->map);
-    if (!mapEntry || !mapEntry->IsDungeon())
-        return LfgBindCleanupResult::NoBind;
-
-    // LFG requeue must never become a way to bypass raid or protected instance locks.
-    if (mapEntry->IsRaid())
-    {
-        TC_LOG_DEBUG("lfg.teleport", "LFG requeue: not clearing old group bind for raid map {}", dungeon->map);
-        return LfgBindCleanupResult::Protected;
-    }
-
-    Difficulty difficulty = Difficulty(dungeon->difficulty);
-    GetDownscaledMapDifficultyData(dungeon->map, difficulty);
-
-    // Match existing reset-all semantics: do not clear heroic/protected dungeon binds here.
-    if (difficulty > DUNGEON_DIFFICULTY_NORMAL)
-    {
-        TC_LOG_DEBUG("lfg.teleport", "LFG requeue: not clearing old group bind for heroic/protected dungeon map {} difficulty {}",
-            dungeon->map, uint32(difficulty));
-        return LfgBindCleanupResult::Protected;
-    }
-
-    InstanceGroupBind* bind = group->GetBoundInstance(difficulty, dungeon->map);
-    if (!bind || !bind->save)
-        return LfgBindCleanupResult::NoBind;
-
-    // Only clear the exact copy the player left - a faster member may already have rebound the group to a fresh one.
-    if (oldInstanceId && bind->save->GetInstanceId() != oldInstanceId)
-        return LfgBindCleanupResult::NoBind;
-
-    // Permanent binds are authoritative locks and must not be bypassed by LFG requeue.
-    if (bind->perm)
-    {
-        TC_LOG_DEBUG("lfg.teleport", "LFG requeue: not clearing permanent group bind group={} map={} difficulty={} instance={}",
-            group->GetGUID().ToString(), dungeon->map, uint32(difficulty), bind->save->GetInstanceId());
-        return LfgBindCleanupResult::Protected;
-    }
-
-    // Non-resettable saves are protected by the instance system.
-    if (!bind->save->CanReset())
-    {
-        TC_LOG_DEBUG("lfg.teleport", "LFG requeue: not clearing non-resettable group bind group={} map={} difficulty={} instance={}",
-            group->GetGUID().ToString(), dungeon->map, uint32(difficulty), bind->save->GetInstanceId());
-        return LfgBindCleanupResult::Protected;
-    }
-
-    uint32 const instanceId = bind->save->GetInstanceId();
-
-    if (Map* boundMap = sMapMgr->FindMap(dungeon->map, instanceId))
-        if (boundMap->IsDungeon())
-            static_cast<InstanceMap*>(boundMap)->Reset(INSTANCE_RESET_RESPAWN_DELAY);
-
-    group->UnbindInstance(dungeon->map, uint8(difficulty), false);
-
-    TC_LOG_DEBUG("lfg.teleport", "LFG requeue: cleared resettable non-permanent group bind group={} map={} difficulty={} instance={}",
-        group->GetGUID().ToString(), dungeon->map, uint32(difficulty), instanceId);
-
-    return LfgBindCleanupResult::Cleared;
-}
-
-void lfg::LFGMgr::ProcessPendingTeleportIns(time_t currTime)
-{
-    for (std::map<ObjectGuid, PendingTeleportInData>::iterator itr = PendingTeleportInStore.begin(); itr != PendingTeleportInStore.end();)
-    {
-        ObjectGuid guid = itr->first;
-        time_t expireTime = itr->second.ExpireTime;
-        uint32 previousDungeonId = itr->second.PreviousDungeonId;
-        uint32 oldInstanceId = itr->second.OldInstanceId;
-
-        Player* player = ObjectAccessor::FindConnectedPlayer(guid);
-        if (!player)
-        {
-            if (currTime >= expireTime)
-                itr = PendingTeleportInStore.erase(itr);
-            else
-                ++itr;
-
-            continue;
-        }
-
-        if (player->IsBeingTeleported())
-        {
-            if (currTime >= expireTime)
-                itr = PendingTeleportInStore.erase(itr);
-            else
-                ++itr;
-
-            continue;
-        }
-
-        Group* group = player->GetGroup();
-        if (!group || !group->isLFGGroup())
-        {
-            itr = PendingTeleportInStore.erase(itr);
-            continue;
-        }
-
-        LFGDungeonData const* dungeon = GetLFGDungeon(GetDungeon(group->GetGUID()));
-        if (!dungeon)
-        {
-            itr = PendingTeleportInStore.erase(itr);
-            continue;
-        }
-
-        if (player->GetMapId() == uint32(dungeon->map) && player->GetMap()->IsDungeon())
-        {
-            if (currTime >= expireTime)
-            {
-                TC_LOG_DEBUG("lfg.teleport", "Deferred LFG teleport for player {} expired while still inside map {}", player->GetName(), dungeon->map);
-                itr = PendingTeleportInStore.erase(itr);
-            }
-            else
-                ++itr;
-
-            continue;
-        }
-
-        if (previousDungeonId)
-            TryClearOldLfgGroupBind(group, previousDungeonId, oldInstanceId);
-
-        itr = PendingTeleportInStore.erase(itr);
-        TeleportPlayer(player, false, false, true, previousDungeonId);
-    }
-}
-
-EG::SetRaceMasqueradeSetting::SetRaceMasqueradeSetting(Player* owner, Races selectedRace) : _owner(owner), _selectedRace(selectedRace)
-{
-}
-
-bool EG::SetRaceMasqueradeSetting::Execute(uint64, uint32)
-{
-    if (!_owner->IsInWorld())
-        return false;
-
-    _owner->SetMasqueradeRace(_selectedRace);
-    return true;
-}
-
-EG::CleanRaceMasquerade::CleanRaceMasquerade(Player* owner) : _owner(owner)
-{
-}
-
-bool EG::CleanRaceMasquerade::Execute(uint64, uint32)
-{
-    if (!_owner->CleanMasqueradeRaceValue())
-        return false;
-
-    return true;
+    _pendingDestroys.clear();
 }

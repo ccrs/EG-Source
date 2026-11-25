@@ -230,6 +230,13 @@ void Vehicle::ApplyAllImmunities()
         case 338: // Salvaged Demolisher
             _me->ApplySpellImmune(0, IMMUNITY_STATE, SPELL_AURA_MOD_DAMAGE_PERCENT_TAKEN, false); // Battering Ram
             break;
+        case 273: // EG - Infra-green Bomber: Infra-Green Shield absorbs
+        case 274: // EG - Infra-green Bomber: Infra-Green Shield absorbs
+        case 277: // EG - Infra-green Bomber: Infra-Green Shield absorbs
+        case 278: // EG - Infra-green Bomber: Infra-Green Shield absorbs
+        case 287: // EG - Infra-green Bomber: Infra-Green Shield absorbs
+            _me->ApplySpellImmune(0, IMMUNITY_STATE, SPELL_AURA_SCHOOL_ABSORB, false); // EG - Infra-green Bomber: Infra-Green Shield absorbs
+            break;
         default:
             break;
     }

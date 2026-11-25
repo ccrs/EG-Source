@@ -286,7 +286,7 @@ struct npc_shadowmoon_channeler : public ScriptedAI
             })
             .Schedule(5s, 15s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, false, true, -SPELL_MARK_OF_SHADOW))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true, true, -SPELL_MARK_OF_SHADOW))
                     DoCast(target, SPELL_MARK_OF_SHADOW);
                 task.Repeat(5s, 15s);
             });

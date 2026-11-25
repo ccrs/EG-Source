@@ -410,7 +410,7 @@ struct npc_hellfire_channeler : public ScriptedAI
             })
             .Schedule(15s, 55s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_BURNING_ABYSSAL);
                 task.Repeat(60s, 80s);
             })
@@ -426,7 +426,7 @@ struct npc_hellfire_channeler : public ScriptedAI
             })
             .Schedule(15s, 20s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 0.0f, true))
                     DoCast(target, SPELL_FEAR);
                 task.Repeat(25s, 40s);
             });

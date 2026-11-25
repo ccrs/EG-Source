@@ -88,7 +88,7 @@ public:
             switch (eventId)
             {
                 case EVENT_SHADOWBOLT:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_SHADOWBOLT);
                     events.Repeat(10s);
                     break;

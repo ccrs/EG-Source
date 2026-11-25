@@ -489,7 +489,7 @@ struct boss_sartharion : public BossAI
                     events.ScheduleEvent(EVENT_CLEAVE_ATTACK, 7s, 10s);
                     break;
                 case EVENT_LAVA_STRIKE:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     {
                         CastLavaStrikeOnTarget(target);
                         if (urand(0, 5) == 0)

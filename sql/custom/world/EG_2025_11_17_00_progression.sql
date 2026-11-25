@@ -1,32 +1,27 @@
 -- Instances and Raids
-DELETE FROM `disables` WHERE (`sourceType` = 2) AND (`entry` IN (249,603,631,632,649,650,658,668,724));
-DELETE FROM `disables` WHERE (`sourceType` = 8) AND (`entry` IN (249,603,631,632,649,650,658,668,724));
+DELETE FROM `disables` WHERE (`sourceType` = 2) AND (`entry` IN (249,603,624,631,632,649,650,658,668,724));
+DELETE FROM `disables` WHERE (`sourceType` = 8) AND (`entry` IN (249,603,624,631,632,649,650,658,668,724));
 INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, `comment`) VALUES
 (2, 249, 3, '', '', "Onyxia\'s Lair"),
-(2, 603, 19, '2', '', 'Ulduar - 3 closed + 16 admits origin realm 2'),
 (2, 631, 15, '', '', 'Icecrown Citadel'),
 (2, 632, 3, '', '', 'The Forge of Souls'),
 (2, 649, 15, '', '', 'Trial of the Crusader'),
-(2, 650, 3, '', '', 'Trial of the Champion'),
 (2, 658, 3, '', '', 'Pit of Saron'),
 (2, 668, 3, '', '', 'Halls of Reflection'),
 (2, 724, 15, '', '', 'Ruby Sanctum'),
 (8, 249, 3, '', '', "Onyxia\'s Lair"),
-(8, 603, 19, '2', '', 'Ulduar - 3 closed + 16 admits origin realm 2'),
 (8, 631, 15, '', '', 'Icecrown Citadel'),
 (8, 632, 3, '', '', 'The Forge of Souls'),
 (8, 649, 15, '', '', 'Trial of the Crusader'),
-(8, 650, 3, '', '', 'Trial of the Champion'),
 (8, 658, 3, '', '', 'Pit of Saron'),
 (8, 668, 3, '', '', 'Halls of Reflection'),
 (8, 724, 15, '', '', 'Ruby Sanctum');
 
+-- Koralon (Trial of the Crusader phase) and Toravon (Icecrown Citadel phase)
+DELETE FROM `instance_spawn_groups` WHERE `instanceMapId` = 624 AND `spawnGroupId` IN (30,31);
+
 DELETE FROM `disables` WHERE (`sourceType` = 1) AND (`entry` IN (24585,24586,24587,24588,24589,24590));
 INSERT INTO `disables` (`sourceType`, `entry`, `flags`, `params_0`, `params_1`, `comment`) VALUES
-(1, 24585, 0, '', '', 'Flame Leviathan Must Die!'),
-(1, 24586, 0, '', '', 'Razorscale Must Die!'),
-(1, 24587, 0, '', '', 'Ignis the Furnace Master Must Die!'),
-(1, 24588, 0, '', '', 'XT-002 Deconstructor Must Die!'),
 (1, 24589, 0, '', '', 'Lord Jaraxxus Must Die!'),
 (1, 24590, 0, '', '', 'Lord Marrowgar Must Die!');
 
@@ -79,7 +74,8 @@ INSERT INTO `quest_pool_members` (`questId`, `poolId`, `poolIndex`, `description
 (13253, 5800, 8, 'Loken'),
 (13254, 5800, 9, 'Anub\'arak'),
 (13255, 5800, 10, 'Herald Volazj'),
-(13256, 5800, 11, 'Cyanigosa');
+(13256, 5800, 11, 'Cyanigosa'),
+(14199, 5800, 12, 'The Black Knight');
 
 DELETE FROM `creature_queststarter` WHERE `id` = 20735;
 INSERT INTO `creature_queststarter` (`id`, `quest`) VALUES
@@ -95,6 +91,7 @@ INSERT INTO `creature_queststarter` (`id`, `quest`) VALUES
 (20735, 13254),
 (20735, 13255),
 (20735, 13256),
+(20735, 14199),
 (20735, 24579),
 (20735, 24580),
 (20735, 24581),
@@ -122,6 +119,7 @@ INSERT INTO `creature_questender` (`id`, `quest`) VALUES
 (20735, 13254),
 (20735, 13255),
 (20735, 13256),
+(20735, 14199),
 (20735, 24579),
 (20735, 24580),
 (20735, 24581),
@@ -146,7 +144,6 @@ UPDATE `creature_loot_template` SET `item` = 40753 WHERE `item` = 47241 AND `ent
 15956, -- Anub'Rekhan
 31125, -- Archavon the Stone Watcher
 29932, -- Eck the Ferocious
-33993, -- Emalon the Storm Watcher
 15932, -- Gluth
 16060, -- Gothik the Harvester
 15953, -- Grand Widow Faerlina
@@ -179,7 +176,6 @@ UPDATE `creature_loot_template` SET `item` = 40753 WHERE `item` = 47241 AND `ent
 31367, -- Drakkari Elemental (1)
 31558, -- Drakos the Interrogator (1)
 31456, -- Elder Nadox (1)
-33994, -- Emalon the Storm Watcher (1)
 31507, -- Erekem (1)
 31368, -- Gal'darah (1)
 31533, -- General Bjarngrim (1)
@@ -230,6 +226,7 @@ UPDATE `creature_loot_template` SET `item` = 40753 WHERE `item` = 47241 AND `ent
 31370, -- Slad'ran (1)
 30810, -- Svala Sorrowgrave (1)
 29448, -- Thaddius (1)
+35490, -- The Black Knight (1)
 31360, -- The Prophet Tharon'ja (1)
 31362, -- Trollgore (1)
 31559, -- Varos Cloudstrider (1)
@@ -244,6 +241,9 @@ UPDATE `gameobject_loot_template` SET `item` = 40753 WHERE `item` = 47241 AND `e
 26094, -- Alexstrasza's Gift
 26097, -- Alexstrasza's Gift
 24524, -- Cache of Eregos
+27414, -- Champion's Cache (1)
+27417, -- Confessor's Cache (1)
+27416, -- Eadric's Cache (1)
 25192, -- Four Horsemen Chest
 25193, -- Four Horsemen Chest
 24589, -- Dark Runed Chest
@@ -272,6 +272,10 @@ UPDATE `creature_loot_template` SET `item` = 45624 WHERE `item` = 47241 AND `ent
 33885, -- XT-002 Deconstructor (1)
 33288, -- Yogg-Saron
 33955); -- Yogg-Saron (1)
+
+-- Vault of Archavon: Emalon
+UPDATE `creature_loot_template` SET `item` = 45624 WHERE `item` IN (40753, 47241) AND `entry` IN (33993, 33994);
+
 UPDATE `item_loot_template` SET `item` = 45624 WHERE `item` = 47241 AND `entry` IN (
 45875, -- Algalon
 45878); -- Algalon HC

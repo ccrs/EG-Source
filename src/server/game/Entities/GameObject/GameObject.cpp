@@ -35,9 +35,11 @@
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "OutdoorPvPMgr.h"
+#include "Player.h"
 #include "PoolMgr.h"
 #include "QueryPackets.h"
 #include "ScriptMgr.h"
+#include "SpellAuras.h"
 #include "SpellMgr.h"
 #include "Transport.h"
 #include "LocalTransport.h"
@@ -217,6 +219,8 @@ void GameObject::AddToWorld()
 
         // The state can be changed after GameObject::Create but before GameObject::AddToWorld
         bool toggledState = GetGoType() == GAMEOBJECT_TYPE_CHEST ? getLootState() == GO_READY : (GetGoState() == GO_STATE_READY || IsTransport());
+        if (IsDestructibleBuilding() && GetDestructibleState() == GO_DESTRUCTIBLE_DESTROYED) // EG
+            toggledState = false;
         if (m_model)
         {
             if (Transport* trans = ToTransport(); trans && GetGOInfo()->type == GAMEOBJECT_TYPE_MAP_OBJ_TRANSPORT)
@@ -366,6 +370,10 @@ bool GameObject::Create(ObjectGuid::LowType guidlow, uint32 name_id, Map* map, u
             break;
         case GAMEOBJECT_TYPE_FISHINGNODE:
             SetGoAnimProgress(0);
+            break;
+        case GAMEOBJECT_TYPE_AURA_GENERATOR: // EG
+            SetPhaseMask(PHASEMASK_ANYWHERE, false);
+            SetGoAnimProgress(animprogress);
             break;
         case GAMEOBJECT_TYPE_TRAP:
             if (GetGOInfo()->trap.stealthed)
@@ -687,6 +695,41 @@ void GameObject::Update(uint32 diff)
                     if (target)
                         SetLootState(GO_ACTIVATED, target);
 
+                }
+                else if (goInfo->type == GAMEOBJECT_TYPE_AURA_GENERATOR) // EG
+                {
+                    if (GameTime::GetGameTimeMS() < m_cooldownTime)
+                        break;
+
+                    m_cooldownTime = GameTime::GetGameTimeMS() + IN_MILLISECONDS;
+                    std::vector<Player*> players;
+                    GetPlayerListInGrid(players, float(goInfo->auraGenerator.radius));
+                    for (uint32 spellId : { goInfo->auraGenerator.conditionID1 ? 0 : goInfo->auraGenerator.auraID1, goInfo->auraGenerator.conditionID2 ? 0 : goInfo->auraGenerator.auraID2 })
+                    {
+                        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
+                        if (!spellInfo)
+                            continue;
+
+                        for (Player* player : players)
+                        {
+                            Aura* aura = nullptr;
+                            for (auto [itr, end] = player->GetOwnedAuras().equal_range(spellId); itr != end && !aura; ++itr)
+                                if (itr->second->GetCasterGUID().IsEmpty())
+                                    aura = itr->second;
+
+                            if (!aura && !player->HasAura(spellId) && !player->IsImmunedToSpell(spellInfo, this) && spellInfo->CheckLocation(player->GetMapId(), player->GetZoneId(), player->GetAreaId(), player) == SPELL_CAST_OK && spellInfo->CheckTarget(this, player) == SPELL_CAST_OK)
+                            {
+                                AuraCreateInfo createInfo(spellInfo, MAX_EFFECT_MASK, player);
+                                if (Aura* newAura = Aura::TryRefreshStackOrCreate(createInfo.SetCasterGUID(GetGUID())))
+                                {
+                                    newAura->AddGenerator(GetGUID());
+                                    newAura->ApplyForTargets();
+                                }
+                            }
+                            else if (aura)
+                                aura->AddGenerator(GetGUID());
+                        }
+                    }
                 }
                 else if (uint32 max_charges = goInfo->GetCharges())
                 {
@@ -1079,6 +1122,7 @@ bool GameObject::LoadFromDB(ObjectGuid::LowType spawnId, Map* map, bool addToMap
 
     m_spawnId = spawnId;
     m_respawnCompatibilityMode = ((data->spawnGroupData->flags & SPAWNGROUP_FLAG_COMPATIBILITY_MODE) != 0);
+    m_goData = data; // EG
     if (!Create(map->GenerateLowGuid<HighGuid::GameObject>(), entry, map, phaseMask, data->spawnPoint, data->rotation, animprogress, go_state, artKit, !m_respawnCompatibilityMode))
         return false;
 
@@ -1117,8 +1161,6 @@ bool GameObject::LoadFromDB(ObjectGuid::LowType spawnId, Map* map, bool addToMap
         m_respawnDelayTime = -data->spawntimesecs;
         m_respawnTime = 0;
     }
-
-    m_goData = data;
 
     m_stringIds[AsUnderlyingType(StringIdType::Spawn)] = &data->StringId;
 
@@ -2278,7 +2320,7 @@ void GameObject::EventInform(uint32 eventId, WorldObject* invoker /*= nullptr*/)
         AI()->EventInform(eventId);
 
     if (GetZoneScript())
-        GetZoneScript()->ProcessEvent(this, eventId);
+        GetZoneScript()->ProcessEvent(this, eventId, invoker); // EG
 
     if (BattlegroundMap* bgMap = GetMap()->ToBattlegroundMap())
         if (bgMap->GetBG())

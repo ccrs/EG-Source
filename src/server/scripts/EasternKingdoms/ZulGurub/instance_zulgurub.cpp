@@ -89,7 +89,7 @@ class instance_zulgurub : public InstanceMapScript
                 }
             }
 
-            void ProcessEvent(WorldObject* /*obj*/, uint32 eventId) override
+            void ProcessEvent(WorldObject* /*obj*/, uint32 eventId, WorldObject* /*invoker*/) override
             {
                 if (eventId == EVENT_MUDSKUNK_LURE && GetBossState(DATA_GAHZRANKA) != DONE && !GetCreature(DATA_GAHZRANKA))
                     instance->SummonCreature(NPC_GAHZRANKA, { -11688.5f, -1737.74f, 2.6789f, 3.9f });

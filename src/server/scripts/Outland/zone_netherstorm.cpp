@@ -423,7 +423,7 @@ public:
             {
                 std::list<Unit*> UnitsWithMana;
                 for (auto* ref : me->GetThreatManager().GetUnsortedThreatList())
-                    if (ref->GetVictim()->GetPower(POWER_MANA))
+                    if (ref->GetVictim()->IsPlayer() && ref->GetVictim()->GetPower(POWER_MANA))
                         UnitsWithMana.push_back(ref->GetVictim());
                 if (!UnitsWithMana.empty())
                 {

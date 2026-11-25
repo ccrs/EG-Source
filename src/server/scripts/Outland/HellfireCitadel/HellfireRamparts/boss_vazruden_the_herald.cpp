@@ -392,14 +392,14 @@ struct boss_vazruden_the_herald : public BossAI
                     break;
                 case EVENT_FIREBALL_RANDOM:
                     if (me->GetReactState() != REACT_PASSIVE)
-                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                             DoCast(target, DUNGEON_MODE(SPELL_FIREBALL_RANDOM, SPELL_FIREBALL_RANDOM_H));
                     events.Repeat(10s, 15s);
                     break;
 
                 // Ground Phase
                 case EVENT_FIREBALL_GROUND:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, DUNGEON_MODE(SPELL_FIREBALL_GROUND, SPELL_FIREBALL_GROUND_H));
                     events.Repeat(5s, 15s);
                     break;

@@ -103,6 +103,7 @@ class TC_GAME_API PathGenerator
         dtNavMeshQuery const* _navMeshQuery;    // the nav mesh query used to find the path
 
         dtQueryFilter _filter;  // use single filter for all movements, update it when needed
+        Optional<LiquidData> _sourceLiquidData; // EG
 
         void SetStartPosition(G3D::Vector3 const& point) { _startPosition = point; }
         void SetEndPosition(G3D::Vector3 const& point) { _actualEndPosition = point; _endPosition = point; }
@@ -121,6 +122,7 @@ class TC_GAME_API PathGenerator
 
         dtPolyRef GetPathPolyByPosition(dtPolyRef const* polyPath, uint32 polyPathSize, float const* Point, float* Distance = nullptr) const;
         dtPolyRef GetPolyByLocation(float const* Point, float* Distance) const;
+        dtPolyRef FindLiquidSurfacePoly(G3D::Vector3 const& pos, float level) const; // EG
         bool HaveTile(G3D::Vector3 const& p) const;
 
         void BuildPolyPath(G3D::Vector3 const& startPos, G3D::Vector3 const& endPos);

@@ -140,6 +140,13 @@ bool HomeMovementGenerator<Creature>::DoUpdate(Creature* owner, uint32 /*diff*/)
         AddFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED);
         return false;
     }
+
+    if (HasFlag(MOVEMENTGENERATOR_FLAG_SPEED_UPDATE_PENDING))
+    {
+        RemoveFlag(MOVEMENTGENERATOR_FLAG_SPEED_UPDATE_PENDING);
+        SetTargetLocation(owner);
+    }
+
     return true;
 }
 

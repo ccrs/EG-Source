@@ -53,6 +53,7 @@
 #include "SpellAuras.h"
 #include "SpellHistory.h"
 #include "SpellMgr.h"
+#include "SpellPackets.h"
 #include "TemporarySummon.h"
 #include "Totem.h"
 #include "UpdateMask.h"
@@ -1182,7 +1183,7 @@ void Spell::EffectSendEvent()
     TC_LOG_DEBUG("spells", "Spell ScriptStart {} for spellid {} in EffectSendEvent ", effectInfo->MiscValue, m_spellInfo->Id);
 
     if (ZoneScript* zoneScript = m_caster->GetZoneScript())
-        zoneScript->ProcessEvent(target, effectInfo->MiscValue);
+        zoneScript->ProcessEvent(target, effectInfo->MiscValue, m_caster); // EG
     else if (InstanceScript* instanceScript = m_caster->GetInstanceScript())    // needed in case Player is the caster
         instanceScript->ProcessEvent(target, effectInfo->MiscValue);
 
@@ -1494,7 +1495,7 @@ void Spell::DoCreateItem(uint32 itemId)
 
         // set the "Crafted by ..." property of the item
         if (pItem->GetTemplate()->HasSignature())
-            pItem->SetGuidValue(ITEM_FIELD_CREATOR, player->GetGUID());
+            pItem->SetCreator(player->GetGUID());
 
         // send info to the client
         player->SendNewItem(pItem, num_to_add, true, bgType == 0);
@@ -1871,7 +1872,7 @@ void Spell::EffectOpenLock()
         SendLoot(guid, LOOT_SKINNING);
     else if (itemTarget)
     {
-        itemTarget->SetFlag(ITEM_FIELD_FLAGS, ITEM_FIELD_FLAG_UNLOCKED);
+        itemTarget->SetItemFlag(ITEM_FIELD_FLAG_UNLOCKED);
         itemTarget->SetState(ITEM_CHANGED, itemTarget->GetOwner());
     }
 
@@ -3789,7 +3790,7 @@ void Spell::EffectApplyGlyph()
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT)
         return;
 
-    if (m_glyphIndex >= MAX_GLYPH_SLOT_INDEX)
+    if (m_misc.GlyphSlot >= MAX_GLYPH_SLOT_INDEX)
         return;
 
     Player* player = m_caster->ToPlayer();
@@ -3798,7 +3799,7 @@ void Spell::EffectApplyGlyph()
 
     // glyph sockets level requirement
     uint8 minLevel = 0;
-    switch (m_glyphIndex)
+    switch (m_misc.GlyphSlot)
     {
         case 0:
         case 1: minLevel = 15; break;
@@ -3818,7 +3819,7 @@ void Spell::EffectApplyGlyph()
     {
         if (GlyphPropertiesEntry const* newGlyphProperties = sGlyphPropertiesStore.LookupEntry(newGlyph))
         {
-            if (GlyphSlotEntry const* newGlyphSlot = sGlyphSlotStore.LookupEntry(player->GetGlyphSlot(m_glyphIndex)))
+            if (GlyphSlotEntry const* newGlyphSlot = sGlyphSlotStore.LookupEntry(player->GetGlyphSlot(m_misc.GlyphSlot)))
             {
                 if (newGlyphProperties->GlyphSlotFlags != newGlyphSlot->Type)
                 {
@@ -3828,17 +3829,17 @@ void Spell::EffectApplyGlyph()
             }
 
             // remove old glyph
-            if (uint32 oldGlyph = player->GetGlyph(player->GetActiveTalentGroup(), m_glyphIndex))
+            if (uint32 oldGlyph = player->GetGlyph(player->GetActiveTalentGroup(), m_misc.GlyphSlot))
             {
                 if (GlyphPropertiesEntry const* oldGlyphProperties = sGlyphPropertiesStore.LookupEntry(oldGlyph))
                 {
                     player->RemoveAurasDueToSpell(oldGlyphProperties->SpellID);
-                    player->SetGlyph(m_glyphIndex, 0);
+                    player->SetGlyph(m_misc.GlyphSlot, 0);
                 }
             }
 
             player->CastSpell(player, newGlyphProperties->SpellID, true);
-            player->SetGlyph(m_glyphIndex, newGlyph);
+            player->SetGlyph(m_misc.GlyphSlot, newGlyph);
             player->SendTalentsInfoData(false);
         }
     }
@@ -4238,9 +4239,9 @@ void Spell::EffectForceDeselect()
     Cell::VisitWorldObjects(unitCaster, notifierBreak, dist);
 
     // and selection
-    data.Initialize(SMSG_CLEAR_TARGET, 8);
-    data << unitCaster->GetGUID();
-    Trinity::MessageDistDelivererToHostile notifierClear(unitCaster, &data, dist);
+    WorldPackets::Spells::ClearTarget clearTarget;
+    clearTarget.Guid = unitCaster->GetGUID();
+    Trinity::MessageDistDelivererToHostile notifierClear(unitCaster, clearTarget.Write(), dist);
     Cell::VisitWorldObjects(unitCaster, notifierClear, dist);
 
     // we should also force pets to remove us from current target
@@ -4669,10 +4670,13 @@ void Spell::EffectDestroyAllTotems()
                 mana += spellInfo->ManaCost;
                 mana += int32(CalculatePct(unitCaster->GetCreateMana(), spellInfo->ManaCostPercentage));
             }
+
             totem->ToTotem()->UnSummon();
         }
     }
+
     ApplyPct(mana, damage);
+
     if (mana)
     {
         CastSpellExtraArgs args(TRIGGERED_FULL_MASK);
@@ -5312,7 +5316,20 @@ void Spell::SummonGuardian(SpellEffectInfo const& spellEffectInfo, uint32 entry,
         if (ItemTemplate const* proto = m_CastItem->GetTemplate())
             if (proto->GetRequiredSkill() == SKILL_ENGINEERING)
                 if (uint16 skill202 = unitCaster->ToPlayer()->GetSkillValue(SKILL_ENGINEERING))
-                    level = skill202 / 5;
+                    level = std::min<uint16>(skill202 / 5, DEFAULT_MAX_LEVEL); // EG
+
+    // EG - summon levels seen in sniffs
+    switch (m_spellInfo->Id)
+    {
+        case 12749: // Mithril Mechanical Dragonling
+            level = 50;
+            break;
+        case 19804: // Arcanite Dragonling
+            level = 60;
+            break;
+        default:
+            break;
+    }
 
     float radius = 5.0f;
     int32 duration = m_spellInfo->GetDuration();
@@ -5490,12 +5507,8 @@ void Spell::EffectCastButtons()
         if (!spellInfo->HasAttribute(SPELL_ATTR7_SUMMON_PLAYER_TOTEM))
             continue;
 
-        uint32 cost = spellInfo->CalcPowerCost(player, spellInfo->GetSchoolMask());
-        if (player->GetPower(POWER_MANA) < cost)
-            continue;
-
         CastSpellExtraArgs args;
-        args.TriggerFlags = TRIGGERED_IGNORE_GCD | TRIGGERED_IGNORE_CAST_IN_PROGRESS | TRIGGERED_CAST_DIRECTLY;
+        args.TriggerFlags = TRIGGERED_IGNORE_GCD | TRIGGERED_IGNORE_CAST_IN_PROGRESS | TRIGGERED_CAST_DIRECTLY | TRIGGERED_DONT_REPORT_CAST_ERROR;
         m_caster->CastSpell(m_caster, spellInfo->Id, args);
     }
 }

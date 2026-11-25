@@ -1839,6 +1839,7 @@ class spell_thorim_stormhammer : public SpellScript
 
     void FilterTargets(std::list<WorldObject*>& targets)
     {
+        targets.remove_if(Trinity::ObjectTypeIdCheck(TYPEID_PLAYER, false));
         targets.remove_if([](WorldObject* target) -> bool { return ThorimHeightPositionCheck(true)(target) || OutOfArenaCheck()(target); });
 
         if (targets.empty())

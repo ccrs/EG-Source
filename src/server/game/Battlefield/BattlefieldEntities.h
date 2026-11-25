@@ -19,6 +19,8 @@
 #define TRINITY_BATTLEFIELD_ENTITIES_H_
 
 #include "Common.h"
+#include "Duration.h"
+#include "EnumFlag.h"
 #include "ObjectGuid.h"
 #include "SharedDefines.h"
 #include <initializer_list>
@@ -26,15 +28,34 @@
 #include <vector>
 
 class Battlefield;
+class GameObject;
 class Player;
 class WorldObject;
+struct GameObjectTemplate;
 
 enum BattlefieldEntityType : uint8
 {
     BATTLEFIELD_ENTITY_TYPE_BUILDING = 0,
     BATTLEFIELD_ENTITY_TYPE_CAPTUREPOINT,
-    BATTLEFIELD_ENTITY_TYPE_GRAVEYARD
+    BATTLEFIELD_ENTITY_TYPE_GRAVEYARD,
+    BATTLEFIELD_ENTITY_TYPE_ZONE
 };
+
+enum BattlefieldObjectInfoPhase : uint8
+{
+    BATTLEFIELD_OBJECT_INFO_PHASE_ANY = 0,
+    BATTLEFIELD_OBJECT_INFO_PHASE_BATTLE,
+    BATTLEFIELD_OBJECT_INFO_PHASE_IDLE
+};
+
+enum BattlefieldObjectInfoFlags : uint8
+{
+    BATTLEFIELD_OBJECT_INFO_FLAG_NONE = 0x00,
+    BATTLEFIELD_OBJECT_INFO_FLAG_NOT_DESTROYED = 0x01,
+    BATTLEFIELD_OBJECT_INFO_FLAG_OPPOSITE_TEAM = 0x02
+};
+
+DEFINE_ENUM_FLAG(BattlefieldObjectInfoFlags);
 
 enum BattlefieldBuildingType : uint8
 {
@@ -43,7 +64,8 @@ enum BattlefieldBuildingType : uint8
     BATTLEFIELD_BUILDING_TYPE_KEEP_TOWER,
     BATTLEFIELD_BUILDING_TYPE_DOOR,
     BATTLEFIELD_BUILDING_TYPE_DOOR_LAST,
-    BATTLEFIELD_BUILDING_TYPE_TITANRELIC
+    BATTLEFIELD_BUILDING_TYPE_TITANRELIC,
+    BATTLEFIELD_BUILDING_TYPE_WORKSHOP
 };
 
 enum BattlefieldBuildingState : uint8
@@ -60,16 +82,21 @@ enum BattlefieldBuildingState : uint8
     BATTLEFIELD_BUILDING_STATE_ALLIANCE_DESTROYED
 };
 
-enum BattlefieldCapturePointState : uint8
+enum BattlefieldCapturePointArtKit : uint8
 {
-    BATTLEFIELD_CAPTUREPOINT_STATE_NEUTRAL = 0,
-    BATTLEFIELD_CAPTUREPOINT_STATE_ALLIANCE,
-    BATTLEFIELD_CAPTUREPOINT_STATE_HORDE,
-    BATTLEFIELD_CAPTUREPOINT_STATE_NEUTRAL_ALLIANCE_CHALLENGE,
-    BATTLEFIELD_CAPTUREPOINT_STATE_NEUTRAL_HORDE_CHALLENGE,
-    BATTLEFIELD_CAPTUREPOINT_STATE_ALLIANCE_HORDE_CHALLENGE,
-    BATTLEFIELD_CAPTUREPOINT_STATE_HORDE_ALLIANCE_CHALLENGE
+    BATTLEFIELD_CAPTUREPOINT_ARTKIT_HORDE = 1,
+    BATTLEFIELD_CAPTUREPOINT_ARTKIT_ALLIANCE
 };
+
+enum BattlefieldCapturePointFlags : uint8
+{
+    BATTLEFIELD_CAPTUREPOINT_FLAG_NONE = 0x00,
+    BATTLEFIELD_CAPTUREPOINT_FLAG_CAPTURABLE = 0x01,
+    BATTLEFIELD_CAPTUREPOINT_FLAG_STARTS_WITH_ATTACKER = 0x02,
+    BATTLEFIELD_CAPTUREPOINT_FLAG_KEEPS_OWNER = 0x04
+};
+
+DEFINE_ENUM_FLAG(BattlefieldCapturePointFlags);
 
 enum BattlefieldGraveyardState : uint8
 {
@@ -80,19 +107,26 @@ enum BattlefieldGraveyardState : uint8
 
 struct BattlefieldEntityInfo
 {
-    BattlefieldEntityInfo(BattlefieldEntityType type) : EntityType(type), WorldState(0) { }
-    BattlefieldEntityInfo(BattlefieldEntityType type, uint32 worldState) : EntityType(type), WorldState(worldState) { }
-    BattlefieldEntityInfo(BattlefieldEntityType type, uint32 worldState, uint32 entry) : EntityType(type), WorldState(worldState), ObjectEntriesByPvPTeamId({{ PVP_TEAM_NEUTRAL, { entry } }}) { }
-    BattlefieldEntityInfo(BattlefieldEntityType type, uint32 worldState, std::initializer_list<uint32> neutralEntryList) : EntityType(type), WorldState(worldState), ObjectEntriesByPvPTeamId({{ PVP_TEAM_NEUTRAL, { neutralEntryList } }}) { }
-    BattlefieldEntityInfo(BattlefieldEntityType type, uint32 worldState, std::initializer_list<uint32> hordeEntryList, std::initializer_list<uint32> allianceEntryList) : EntityType(type), WorldState(worldState), ObjectEntriesByPvPTeamId({{ PVP_TEAM_HORDE, { hordeEntryList } }, { PVP_TEAM_ALLIANCE, { allianceEntryList } }}) { }
-    BattlefieldEntityInfo(BattlefieldEntityType type, uint32 worldState, std::initializer_list<uint32> hordeEntryList, std::initializer_list<uint32> allianceEntryList, std::initializer_list<uint32> neutralEntryList) : EntityType(type), WorldState(worldState), ObjectEntriesByPvPTeamId({{ PVP_TEAM_HORDE, { hordeEntryList } }, { PVP_TEAM_ALLIANCE, { allianceEntryList } }, { PVP_TEAM_NEUTRAL, { neutralEntryList } }}) { }
-
-    uint32 GetNeutralObjectEntry() const { return ObjectEntriesByPvPTeamId.contains(PVP_TEAM_NEUTRAL) ? ObjectEntriesByPvPTeamId.at(PVP_TEAM_NEUTRAL)[0] : 0; }
-    bool ValidateObjectEntry(uint32 entry) const;
+    BattlefieldEntityInfo(BattlefieldEntityType type, uint8 id) : EntityType(type), Id(id), WorldState(0) { }
+    BattlefieldEntityInfo(BattlefieldEntityType type, uint8 id, uint32 worldState) : EntityType(type), Id(id), WorldState(worldState) { }
 
     BattlefieldEntityType EntityType;
+    uint8 Id;
     uint32 WorldState;
-    std::unordered_map<PvPTeamId, std::vector<uint32 /*entry*/>> ObjectEntriesByPvPTeamId;
+};
+
+struct BattlefieldObjectInfo
+{
+    BattlefieldObjectInfo(PvPTeamId team, TypeID objectType, std::initializer_list<uint32> entries, std::initializer_list<ObjectGuid::LowType> spawnIds = { }) : Team(team), Phase(BATTLEFIELD_OBJECT_INFO_PHASE_ANY), Flags(BATTLEFIELD_OBJECT_INFO_FLAG_NONE), SpawnGroupId(0), Entries(entries), SpawnIds(spawnIds), ObjectType(objectType) { }
+    BattlefieldObjectInfo(PvPTeamId team, BattlefieldObjectInfoPhase phase, EnumFlag<BattlefieldObjectInfoFlags> flags, uint32 spawnGroupId) : Team(team), Phase(phase), Flags(flags), SpawnGroupId(spawnGroupId), ObjectType(TYPEID_OBJECT) { }
+
+    PvPTeamId Team;
+    BattlefieldObjectInfoPhase Phase;
+    EnumFlag<BattlefieldObjectInfoFlags> Flags;
+    uint32 SpawnGroupId;
+    std::vector<uint32> Entries;
+    std::vector<ObjectGuid::LowType> SpawnIds;
+    TypeID ObjectType;
 };
 
 namespace WorldPackets
@@ -109,25 +143,41 @@ public:
     explicit BattlefieldEntity(Battlefield* battlefield, BattlefieldEntityInfo const info);
     virtual ~BattlefieldEntity() { }
 
-    virtual void OnObjectCreate(WorldObject* object);
-    virtual void OnObjectRemove(WorldObject* object);
-    virtual void Update(uint32 /*diff*/) { }
+    virtual void OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo);
+    virtual void OnObjectRemove(WorldObject* object, BattlefieldObjectInfo const& objectInfo);
     virtual PvPTeamId GetPvPTeamId() const { return PVP_TEAM_NEUTRAL; }
+    virtual PvPTeamId GetDisplayedPvPTeamId() const { return GetPvPTeamId(); }
+    virtual std::vector<BattlefieldObjectInfo> const* GetObjectInfos() const { return nullptr; }
+    virtual bool IsObjectInfoActive(BattlefieldObjectInfo const& objectInfo) const;
     virtual void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet);
     virtual void InitializeState() { }
     virtual void SaveWorldState() { }
 
-    bool ValidateObjectEntry(uint32 entry) const { return Info.ValidateObjectEntry(entry); }
+    void UpdateObjectSpawns();
+
+    BattlefieldObjectInfo const* FindObjectInfo(WorldObject const* object) const;
     bool ValidateObjectGUID(ObjectGuid reference) const;
 
     Battlefield* Battle;
     BattlefieldEntityInfo Info;
-    std::unordered_map<PvPTeamId, GuidUnorderedSet> ObjectGUIDsByPvPTeamId;
+    std::unordered_map<BattlefieldObjectInfo const*, GuidUnorderedSet> ObjectGUIDs;
+};
+
+class BattlefieldZone : public BattlefieldEntity
+{
+public:
+    static constexpr BattlefieldEntityType Type = BATTLEFIELD_ENTITY_TYPE_ZONE;
+    typedef BattlefieldZone StorageClass;
+
+    explicit BattlefieldZone(Battlefield* battlefield);
+    virtual ~BattlefieldZone() { }
+
+    PvPTeamId GetDisplayedPvPTeamId() const override;
 };
 
 struct BattlefieldBuildingInfo
 {
-    BattlefieldBuildingInfo(uint32 worldState, uint32 entry, BattlefieldBuildingType type) : BattlefieldBuildingInfo(BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_BUILDING, worldState, entry), type) { }
+    BattlefieldBuildingInfo(uint8 id, uint32 worldState, BattlefieldBuildingType type) : BattlefieldBuildingInfo(BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_BUILDING, id, worldState), type) { }
     BattlefieldBuildingInfo(BattlefieldEntityInfo const info, BattlefieldBuildingType type) : Info(info), Type(type) { }
 
     BattlefieldEntityInfo Info;
@@ -137,67 +187,125 @@ struct BattlefieldBuildingInfo
 class BattlefieldBuilding : public BattlefieldEntity
 {
 public:
+    static constexpr BattlefieldEntityType Type = BATTLEFIELD_ENTITY_TYPE_BUILDING;
+    typedef BattlefieldBuilding StorageClass;
+
     explicit BattlefieldBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info);
     virtual ~BattlefieldBuilding() { }
 
     PvPTeamId GetPvPTeamId() const override;
+    bool IsObjectInfoActive(BattlefieldObjectInfo const& objectInfo) const override;
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void SaveWorldState() override;
 
-    bool IsIntact() const { return State == BATTLEFIELD_BUILDING_STATE_NEUTRAL_INTACT || State == BATTLEFIELD_BUILDING_STATE_HORDE_INTACT || State == BATTLEFIELD_BUILDING_STATE_ALLIANCE_INTACT; }
-    bool IsDestroyed() const { return State == BATTLEFIELD_BUILDING_STATE_NEUTRAL_DESTROYED || State == BATTLEFIELD_BUILDING_STATE_HORDE_DESTROYED || State == BATTLEFIELD_BUILDING_STATE_ALLIANCE_DESTROYED; }
-    bool IsDamaged() const { return State == BATTLEFIELD_BUILDING_STATE_NEUTRAL_DAMAGED || State == BATTLEFIELD_BUILDING_STATE_HORDE_DAMAGED || State == BATTLEFIELD_BUILDING_STATE_ALLIANCE_DAMAGED; }
+    virtual void Reset() { }
+    virtual void ChangeTeam() { }
+    virtual void Update(std::vector<Player*> const& /*players*/, Milliseconds /*diff*/) { }
+    virtual bool Damage();
+    virtual bool Destroy(Player* destroyer);
+    GameObjectDestructibleState GetDestructibleState() const;
+    std::vector<GameObject*> GetGameObjects() const;
 
     BattlefieldBuildingType BuildingType;
     BattlefieldBuildingState State;
+
+protected:
+    bool SetState(PvPTeamId pvpTeamId, GameObjectDestructibleState destructibleState);
+    void UpdateWorldState();
 };
 
-class BattlefieldCapturePoint : public BattlefieldEntity
+class BattlefieldDestructibleBuilding : public BattlefieldBuilding
 {
 public:
-    explicit BattlefieldCapturePoint(Battlefield* battlefield, uint32 worldState, uint32 entry) : BattlefieldCapturePoint(battlefield, BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_CAPTUREPOINT, worldState, entry)) { }
-    explicit BattlefieldCapturePoint(Battlefield* battlefield, BattlefieldEntityInfo const info);
+    explicit BattlefieldDestructibleBuilding(Battlefield* battlefield, BattlefieldBuildingInfo const info);
+    virtual ~BattlefieldDestructibleBuilding() { }
+
+    void OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo) override;
+    PvPTeamId GetDisplayedPvPTeamId() const override;
+    void InitializeState() override;
+    void Reset() override;
+    void ChangeTeam() override;
+
+private:
+    PvPTeamId GetPhaseOwnerPvPTeamId() const;
+    uint32 GetFaction() const;
+};
+
+struct BattlefieldCapturePointInfo
+{
+    BattlefieldCapturePointInfo(uint8 id, uint32 worldState, uint8 graveyardId, EnumFlag<BattlefieldCapturePointFlags> flags) : Info(BattlefieldEntityInfo(BATTLEFIELD_ENTITY_TYPE_CAPTUREPOINT, id, worldState), BATTLEFIELD_BUILDING_TYPE_WORKSHOP), GraveyardId(graveyardId), Flags(flags) { }
+
+    BattlefieldBuildingInfo Info;
+    uint8 GraveyardId;
+    EnumFlag<BattlefieldCapturePointFlags> Flags;
+};
+
+class BattlefieldCapturePoint : public BattlefieldBuilding
+{
+public:
+    explicit BattlefieldCapturePoint(Battlefield* battlefield, BattlefieldCapturePointInfo const info);
     virtual ~BattlefieldCapturePoint() { }
 
-    PvPTeamId GetPvPTeamId() const override;
-    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
+    void OnObjectCreate(WorldObject* object, BattlefieldObjectInfo const& objectInfo) override;
+    void InitializeState() override;
     void SaveWorldState() override;
+    void Reset() override;
+    void ChangeTeam() override;
+    void Update(std::vector<Player*> const& players, Milliseconds diff) override;
 
-    BattlefieldCapturePointState State;
+    virtual void SetOwner(PvPTeamId pvpTeamId);
+    virtual void Attack(PvPTeamId /*pvpTeamId*/) { }
+    virtual void Capture(PvPTeamId pvpTeamId);
+
+    uint8 GraveyardId;
+    EnumFlag<BattlefieldCapturePointFlags> Flags;
+
+private:
+    GameObjectTemplate const* GetReferenceTemplate() const;
+    void SendCaptureBar(Player* player, bool show) const;
+    void SendCaptureBarValue() const;
+
+    float _slider;
+    bool _contested;
+    GuidUnorderedSet _capturePlayers;
 };
 
 struct BattlefieldGraveyardInfo
 {
-    BattlefieldGraveyardInfo(uint32 worldState, uint32 hordeEntry, uint32 allianceEntry, uint32 neutralEntry, uint8 id, uint16 worldSafeLocsEntryId, uint32 textId) : Info(BATTLEFIELD_ENTITY_TYPE_GRAVEYARD, worldState, { hordeEntry }, { allianceEntry }, { neutralEntry }), Id(id), WorldSafeLocsEntryId(worldSafeLocsEntryId), TextId(textId) { }
+    BattlefieldGraveyardInfo(uint8 id, uint32 worldState, uint16 worldSafeLocsEntryId, uint32 textId, uint32 teleportSpellId) : Info(BATTLEFIELD_ENTITY_TYPE_GRAVEYARD, id, worldState), WorldSafeLocsEntryId(worldSafeLocsEntryId), TextId(textId), TeleportSpellId(teleportSpellId) { }
 
     BattlefieldEntityInfo Info;
-    uint8 Id;
     uint16 WorldSafeLocsEntryId;
     uint32 TextId;
+    uint32 TeleportSpellId;
 };
 
 class BattlefieldGraveyard : public BattlefieldEntity
 {
 public:
+    static constexpr BattlefieldEntityType Type = BATTLEFIELD_ENTITY_TYPE_GRAVEYARD;
+    typedef BattlefieldGraveyard StorageClass;
+
     explicit BattlefieldGraveyard(Battlefield* battlefield, BattlefieldGraveyardInfo const info);
     virtual ~BattlefieldGraveyard() { }
-
-    void AddPlayerToResurrectionQueue(Player* player);
-    void RemovePlayerFromResurrectionQueue(Player* player);
-    void ResurrectPlayers();
 
     PvPTeamId GetPvPTeamId() const override;
     void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
     void SaveWorldState() override;
-    uint16 GetWorldSafeLocsEntryId() const { return WorldSafeLocsEntryId; }
-    bool IsSpellAreaForzed() const { return SpellAreaForzed; }
 
-    uint8 Id;
+    void AddPlayerToResurrectionQueue(Player* player);
+    void RemovePlayerFromResurrectionQueue(Player* player);
+    void ResurrectPlayers();
+    void SetOwner(PvPTeamId pvpTeamId);
+
+    uint16 GetWorldSafeLocsEntryId() const { return WorldSafeLocsEntryId; }
+    uint32 GetTeleportSpellId() const { return TeleportSpellId; }
+
     uint16 WorldSafeLocsEntryId;
     uint32 TextId;
     BattlefieldGraveyardState State;
     GuidUnorderedSet ResurrectionQueue;
-    bool SpellAreaForzed;
+    uint32 TeleportSpellId;
 };
 
 #endif

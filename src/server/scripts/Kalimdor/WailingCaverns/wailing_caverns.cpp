@@ -125,15 +125,51 @@ enum DiscipleMisc
 // 3678 - Disciple of Naralex
 struct npc_disciple_of_naralex : public ScriptedAI
 {
-    npc_disciple_of_naralex(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript()) { }
+    npc_disciple_of_naralex(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript()), _summons(creature), _eventStarted(false), _awaitingMutanus(false) { } // EG
 
     void Reset() override
     {
         _combatEvents.Reset();
     }
 
+    void EnterEvadeMode(EvadeReason why) override // EG
+    {
+        if (!_eventStarted)
+        {
+            ScriptedAI::EnterEvadeMode(why);
+            return;
+        }
+
+        me->CombatStop(false);
+        EngagementOver();
+        me->GetMotionMaster()->MoveTargetedHome();
+        Reset();
+    }
+
+    void JustDied(Unit* /*killer*/) override // EG
+    {
+        _summons.DespawnAll();
+
+        if (_instance->GetBossState(DATA_MUTANUS_THE_DEVOURER) == DONE)
+        {
+            if (Creature* naralex = _instance->GetCreature(DATA_NARALEX))
+                naralex->DespawnOrUnsummon(0s, 7_days);
+
+            me->DespawnOrUnsummon(5s, 7_days);
+            return;
+        }
+
+        if (Creature* naralex = _instance->GetCreature(DATA_NARALEX))
+            naralex->DespawnOrUnsummon(0s, 1s);
+
+        me->DespawnOrUnsummon(5s, 30s);
+    }
+
     void JustEngagedWith(Unit* who) override
     {
+        if (me->HasReactState(REACT_PASSIVE)) // EG
+            return;
+
         _combatEvents.ScheduleEvent(EVENT_SLEEP, 5s, 10s);
         _combatEvents.ScheduleEvent(EVENT_DRUIDS_POTION, 5s, 10s);
 
@@ -143,13 +179,29 @@ struct npc_disciple_of_naralex : public ScriptedAI
 
     void JustSummoned(Creature* summoned) override
     {
+        _summons.Summon(summoned); // EG
         summoned->AI()->AttackStart(me);
+    }
+
+    void SummonedCreatureDespawn(Creature* summon) override // EG
+    {
+        _summons.Despawn(summon);
+    }
+
+    void SummonedCreatureDies(Creature* summon, Unit* /*killer*/) override // EG
+    {
+        _summons.Despawn(summon);
     }
 
     void DoAction(int32 action) override
     {
         if (action == ACTION_ALL_DONE)
             Talk(SAY_ALL_DONE);
+        else if (action == ACTION_MUTANUS_DEFEATED && _awaitingMutanus) // EG
+        {
+            _awaitingMutanus = false;
+            _events.ScheduleEvent(EVENT_PROGRESS_21, 0s);
+        }
     }
 
     void WaypointPathEnded(uint32/* waypointId*/, uint32 pathId) override
@@ -246,6 +298,7 @@ struct npc_disciple_of_naralex : public ScriptedAI
                         _events.ScheduleEvent(EVENT_PROGRESS_15, 5s);
                         break;
                     case EVENT_PROGRESS_15:
+                        me->SetReactState(REACT_PASSIVE); // EG
                         DoCastSelf(SPELL_NARALEXS_AWAKENING);
                         Talk(SAY_PROGRESS_8);
                         _events.ScheduleEvent(EVENT_PROGRESS_16, 4s);
@@ -276,6 +329,12 @@ struct npc_disciple_of_naralex : public ScriptedAI
                         break;
                     case EVENT_PROGRESS_21:
                     {
+                        if (_instance->GetBossState(DATA_MUTANUS_THE_DEVOURER) != DONE) // EG
+                        {
+                            _awaitingMutanus = true;
+                            break;
+                        }
+
                         if (Creature* naralex = _instance->GetCreature(DATA_NARALEX))
                         {
                             naralex->SetStandState(UNIT_STAND_STATE_STAND);
@@ -319,6 +378,7 @@ struct npc_disciple_of_naralex : public ScriptedAI
                     }
 
                     case EVENT_PROGRESS_27:
+                        _summons.DespawnAll(); // EG
                         if (Creature* naralex = _instance->GetCreature(DATA_NARALEX))
                             naralex->DespawnOrUnsummon();
                         me->DespawnOrUnsummon();
@@ -329,10 +389,13 @@ struct npc_disciple_of_naralex : public ScriptedAI
             }
         }
 
-        if (!UpdateVictim())
+        if (!UpdateVictim() || me->HasReactState(REACT_PASSIVE)) // EG
             return;
 
         _combatEvents.Update(diff);
+
+        if (me->HasUnitState(UNIT_STATE_CASTING)) // EG
+            return;
 
         while (uint32 eventId = _combatEvents.ExecuteEvent())
         {
@@ -351,6 +414,9 @@ struct npc_disciple_of_naralex : public ScriptedAI
                 default:
                     break;
             }
+
+            if (me->HasUnitState(UNIT_STATE_CASTING)) // EG
+                return;
         }
 
         DoMeleeAttackIfReady();
@@ -361,7 +427,8 @@ struct npc_disciple_of_naralex : public ScriptedAI
         DoCast(player, SPELL_MARK_OF_THE_WILD);
 
         if (_instance->GetBossState(DATA_LORD_COBRAHN) == DONE && _instance->GetBossState(DATA_LORD_PYTHAS) == DONE
-            && _instance->GetBossState(DATA_LADY_ANACONDRA) == DONE && _instance->GetBossState(DATA_LORD_SERPENTIS) == DONE)
+            && _instance->GetBossState(DATA_LADY_ANACONDRA) == DONE && _instance->GetBossState(DATA_LORD_SERPENTIS) == DONE
+            && _instance->GetBossState(DATA_MUTANUS_THE_DEVOURER) != DONE) // EG
         {
             player->PrepareGossipMenu(me, GOSSIP_MENU_EVENT, true);
             player->SendPreparedGossip(me);
@@ -374,6 +441,11 @@ struct npc_disciple_of_naralex : public ScriptedAI
     bool OnGossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
     {
         CloseGossipMenuFor(player);
+
+        if (_eventStarted) // EG
+            return false;
+
+        _eventStarted = true;
         _events.ScheduleEvent(EVENT_PROGRESS_1, 0s);
 
         return false;
@@ -383,6 +455,9 @@ private:
     EventMap _events;
     EventMap _combatEvents;
     InstanceScript* _instance;
+    SummonList _summons; // EG
+    bool _eventStarted; // EG
+    bool _awaitingMutanus; // EG
 };
 
 void AddSC_wailing_caverns()

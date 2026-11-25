@@ -84,6 +84,8 @@ struct boss_vaelastrasz : public BossAI
     {
         _Reset();
 
+        me->SetFaction(FACTION_FRIENDLY);
+        me->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
         me->SetStandState(UNIT_STAND_STATE_DEAD);
         Initialize();
     }
@@ -188,7 +190,7 @@ struct boss_vaelastrasz : public BossAI
                     {
                         //selects a random target that isn't the current victim and is a mana user (selects mana users) but not pets
                         //it also ignores targets who have the aura. We don't want to place the debuff on the same target twice.
-                        if (Unit *target = SelectTarget(SelectTargetMethod::Random, 1, [&](Unit* u) { return u && !u->IsPet() && u->GetPowerType() == POWER_MANA && !u->HasAura(SPELL_BURNINGADRENALINE); }))
+                        if (Unit *target = SelectTarget(SelectTargetMethod::Random, 1, [&](Unit* u) { return u && u->IsPlayer() && u->GetPowerType() == POWER_MANA && !u->HasAura(SPELL_BURNINGADRENALINE); }))
                         {
                             me->CastSpell(target, SPELL_BURNINGADRENALINE, true);
                         }

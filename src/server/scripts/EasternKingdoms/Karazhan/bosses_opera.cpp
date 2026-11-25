@@ -155,7 +155,7 @@ struct boss_dorothee : public ScriptedAI
             })
             .Schedule(0s, [this](TaskContext task)
             {
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_WATER_BOLT);
                 task.Repeat(2400ms);
             })

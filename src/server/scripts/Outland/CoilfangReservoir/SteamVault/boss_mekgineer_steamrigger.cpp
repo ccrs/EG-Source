@@ -160,7 +160,7 @@ struct boss_mekgineer_steamrigger : public BossAI
                     events.Repeat(8s, 15s);
                     break;
                 case EVENT_ELECTRIFIED_NET:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_ELECTRIFIED_NET);
                     events.Repeat(20s, 30s);
                     break;

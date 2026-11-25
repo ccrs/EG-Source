@@ -326,7 +326,7 @@ struct boss_fathomguard_sharkkis : public FathomGuardBaseAI
         switch (eventId)
         {
             case EVENT_LEECHING_THROW:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_LEECHING_THROW);
                 Events.Repeat(5s, 10s);
                 break;
@@ -335,7 +335,7 @@ struct boss_fathomguard_sharkkis : public FathomGuardBaseAI
                 Events.Repeat(30s, 40s);
                 break;
             case EVENT_MULTI_TOSS:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_MULTI_TOSS);
                 Events.Repeat(20s, 30s);
                 break;
@@ -429,7 +429,7 @@ struct boss_fathomguard_caribdis : public FathomGuardBaseAI
                 Events.Repeat(15s, 25s);
                 break;
             case EVENT_SUMMON_CYCLONE:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_SUMMON_CYCLONE);
                 Events.Repeat(40s, 50s);
                 break;

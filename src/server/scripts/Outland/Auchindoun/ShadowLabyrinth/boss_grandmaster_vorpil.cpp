@@ -148,7 +148,7 @@ struct boss_grandmaster_vorpil : public BossAI
                     events.Repeat(10s, 25s);
                     break;
                 case EVENT_BANISH:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, false))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                         DoCast(target, SPELL_BANISH);
                     events.Repeat(20s, 30s);
                     break;

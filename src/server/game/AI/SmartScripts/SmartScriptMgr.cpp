@@ -1793,9 +1793,9 @@ bool SmartAIMgr::IsEventValid(SmartScriptHolder& e)
             }
             else if (e.action.setInstanceData.type == 1)
             {
-                if (e.action.setInstanceData.data > TO_BE_DECIDED)
+                if (e.action.setInstanceData.data >= TO_BE_DECIDED) // EG
                 {
-                    TC_LOG_ERROR("sql.sql", "Entry {} SourceType {} Event {} Action {} uses invalid boss state {} (value range 0-5), skipped.", e.entryOrGuid, e.GetScriptType(), e.event_id, e.GetActionType(), e.action.setInstanceData.data);
+                    TC_LOG_ERROR("sql.sql", "Entry {} SourceType {} Event {} Action {} uses invalid boss state {} (value range 0-4), skipped.", e.entryOrGuid, e.GetScriptType(), e.event_id, e.GetActionType(), e.action.setInstanceData.data); // EG
                     return false;
                 }
             }

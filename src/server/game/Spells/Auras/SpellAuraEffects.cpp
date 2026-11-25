@@ -703,6 +703,7 @@ void AuraEffect::HandleEffect(AuraApplication * aurApp, uint8 mode, bool apply)
         || mode == AURA_EFFECT_HANDLE_CHANGE_AMOUNT
         || mode == AURA_EFFECT_HANDLE_STAT
         || mode == AURA_EFFECT_HANDLE_SKILL
+        || mode == AURA_EFFECT_HANDLE_CHARM // EG
         || mode == AURA_EFFECT_HANDLE_REAPPLY
         || mode == (AURA_EFFECT_HANDLE_CHANGE_AMOUNT | AURA_EFFECT_HANDLE_REAPPLY));
 
@@ -4894,11 +4895,17 @@ void AuraEffect::HandleAuraLinked(AuraApplication const* aurApp, uint8 mode, boo
     if (!triggeredSpellInfo)
         return;
 
-    if (mode & AURA_EFFECT_HANDLE_REAL)
+    bool const charmDependent = triggeredSpellInfo->HasAttribute(SPELL_ATTR0_CU_VEHICLE_GEAR_SCALING) && target->IsVehicle(); // EG
+    bool const triggeredByCaster = charmDependent || triggeredSpellInfo->NeedsToBeTriggeredByCaster(m_spellInfo);
+
+    if ((mode & AURA_EFFECT_HANDLE_REAL) || (charmDependent && (mode & AURA_EFFECT_HANDLE_CHARM))) // EG
     {
         if (apply)
         {
-            Unit* caster = triggeredSpellInfo->NeedsToBeTriggeredByCaster(m_spellInfo) ? GetCaster() : target;
+            if (charmDependent && !(mode & AURA_EFFECT_HANDLE_CHARM)) // EG
+                return;
+
+            Unit* caster = triggeredByCaster ? GetCaster() : target; // EG
             if (!caster)
                 return;
 
@@ -4910,13 +4917,13 @@ void AuraEffect::HandleAuraLinked(AuraApplication const* aurApp, uint8 mode, boo
         }
         else
         {
-            ObjectGuid casterGUID = triggeredSpellInfo->NeedsToBeTriggeredByCaster(m_spellInfo) ? GetCasterGUID() : target->GetGUID();
+            ObjectGuid casterGUID = triggeredByCaster ? GetCasterGUID() : target->GetGUID(); // EG
             target->RemoveAura(triggeredSpellId, casterGUID);
         }
     }
     else if (mode & AURA_EFFECT_HANDLE_REAPPLY && apply)
     {
-        ObjectGuid casterGUID = triggeredSpellInfo->NeedsToBeTriggeredByCaster(m_spellInfo) ? GetCasterGUID() : target->GetGUID();
+        ObjectGuid casterGUID = triggeredByCaster ? GetCasterGUID() : target->GetGUID(); // EG
         // change the stack amount to be equal to stack amount of our aura
         if (Aura* triggeredAura = target->GetAura(triggeredSpellId, casterGUID))
             triggeredAura->ModStackAmount(GetBase()->GetStackAmount() - triggeredAura->GetStackAmount());
@@ -5389,33 +5396,6 @@ void AuraEffect::HandlePeriodicHealAurasTick(Unit* target, Unit* caster) const
     if (caster)
         target->GetThreatManager().ForwardThreatForAssistingMe(caster, healInfo.GetEffectiveHeal() * 0.5f, GetSpellInfo());
 
-    bool haveCastItem = !GetBase()->GetCastItemGUID().IsEmpty();
-
-    // Health Funnel
-    // damage caster for heal amount
-    if (target != caster && GetSpellInfo()->HasAttribute(SPELL_ATTR2_HEALTH_FUNNEL))
-    {
-        uint32 funnelDamage = GetSpellInfo()->ManaPerSecond; // damage is not affected by spell power
-
-        if (funnelDamage > healInfo.GetEffectiveHeal() && healInfo.GetEffectiveHeal())
-            funnelDamage = healInfo.GetEffectiveHeal();
-
-        uint32 funnelAbsorb = 0;
-        Unit::DealDamageMods(caster, funnelDamage, &funnelAbsorb);
-
-        if (caster)
-        {
-            SpellNonMeleeDamage log(caster, caster, GetId(), GetSpellInfo()->GetSchoolMask());
-            log.damage = funnelDamage;
-            log.absorb = funnelAbsorb;
-            log.periodicLog = true;
-            caster->SendSpellNonMeleeDamageLog(&log);
-        }
-
-        CleanDamage cleanDamage = CleanDamage(0, 0, BASE_ATTACK, MELEE_HIT_NORMAL);
-        Unit::DealDamage(caster, caster, funnelDamage, &cleanDamage, SELF_DAMAGE, GetSpellInfo()->GetSchoolMask(), GetSpellInfo(), true);
-    }
-
     // %-based heal - does not proc auras
     if (GetAuraType() == SPELL_AURA_OBS_MOD_HEALTH)
         return;
@@ -5424,7 +5404,7 @@ void AuraEffect::HandlePeriodicHealAurasTick(Unit* target, Unit* caster) const
     uint32 procVictim   = PROC_FLAG_TAKEN_PERIODIC;
     uint32 hitMask = crit ? PROC_HIT_CRITICAL : PROC_HIT_NORMAL;
     // ignore item heals
-    if (!haveCastItem)
+    if (GetBase()->GetCastItemGUID().IsEmpty())
         Unit::ProcSkillsAndAuras(caster, target, procAttacker, procVictim, PROC_SPELL_TYPE_HEAL, PROC_SPELL_PHASE_HIT, hitMask, nullptr, nullptr, &healInfo);
 }
 
@@ -5447,17 +5427,6 @@ void AuraEffect::HandlePeriodicManaLeechAuraTick(Unit* target, Unit* caster) con
 
     // ignore negative values (can be result apply spellmods to aura damage
     int32 drainAmount = std::max(GetAmount(), 0);
-
-    // Special case: draining x% of mana (up to a maximum of 2*x% of the caster's maximum mana)
-    // It's mana percent cost spells, m_amount is percent drain from target
-    if (m_spellInfo->ManaCostPercentage)
-    {
-        // max value
-        int32 maxmana = CalculatePct(caster->GetMaxPower(powerType), drainAmount * 2.0f);
-        ApplyPct(drainAmount, target->GetMaxPower(powerType));
-        if (drainAmount > maxmana)
-            drainAmount = maxmana;
-    }
 
     TC_LOG_DEBUG("spells.aura.effect", "PeriodicTick: {} power leech of {} for {} dmg inflicted by {}",
         GetCasterGUID().ToString(), target->GetGUID().ToString(), drainAmount, GetId());

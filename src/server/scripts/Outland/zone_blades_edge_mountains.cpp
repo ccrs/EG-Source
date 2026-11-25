@@ -927,7 +927,6 @@ enum ScannerMasterBunny
     SPELL_SUMMON_TOP_BUNNY_CASTER               = 37392, // EG - serverside
     SPELL_SUMMON_AURA_GENERATOR_000             = 37373, // EG - serverside
     SPELL_TOP_BUNNY_BEAM                        = 37418,
-    SPELL_OSCILLATING_FREQUENCY_SCANNER         = 37407,
     SPELL_OSCILLATION_FIELD                     = 37408,
     QUEST_GAUGING_THE_RESONANT_FREQUENCY        = 10594
 };
@@ -949,13 +948,8 @@ public:
             if (summoner->IsPlayer())
                 playerGuid = summoner->GetGUID();
 
-            if (GetClosestCreatureWithEntry(me, NPC_OSCILLATING_FREQUENCY_SCANNER_TOP_BUNNY, 25.0f))
-                me->DespawnOrUnsummon();
-            else
-            {
-                DoCastSelf(SPELL_SUMMON_TOP_BUNNY_CASTER, true);
-                DoCastSelf(SPELL_SUMMON_AURA_GENERATOR_000, true);
-            }
+            DoCastSelf(SPELL_SUMMON_TOP_BUNNY_CASTER, true);
+            DoCastSelf(SPELL_SUMMON_AURA_GENERATOR_000, true);
         }
 
         void JustSummoned(Creature* summon) override
@@ -985,59 +979,6 @@ public:
     CreatureAI* GetAI(Creature* creature) const override
     {
         return new npc_oscillating_frequency_scanner_master_bunnyAI(creature);
-    }
-};
-
-// 184926 - Oscillating Frequency Scanner
-class go_aura_generator_000 : public GameObjectScript
-{
-public:
-    go_aura_generator_000() : GameObjectScript("go_aura_generator_000") { }
-
-    struct go_aura_generator_000AI : public GameObjectAI
-    {
-        go_aura_generator_000AI(GameObject* go) : GameObjectAI(go)
-        {
-            timer = 1000;
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            if (timer <= diff)
-            {
-                timer = 1000;
-
-                Unit* owner = me->GetOwner();
-                if (!owner)
-                    return;
-
-                TempSummon* summon = owner->ToTempSummon();
-                if (!summon)
-                    return;
-
-                Player* player = ObjectAccessor::GetPlayer(*me, summon->GetSummonerGUID());
-                if (!player)
-                    return;
-
-                if (player->IsWithinDist3d(me, float(me->GetGOInfo()->auraGenerator.radius)))
-                {
-                    if (!player->GetAura(SPELL_OSCILLATING_FREQUENCY_SCANNER))
-                        player->CastSpell(nullptr, SPELL_OSCILLATING_FREQUENCY_SCANNER);
-                }
-                else
-                    player->RemoveAurasDueToSpell(SPELL_OSCILLATING_FREQUENCY_SCANNER);
-            }
-            else
-                timer -= diff;
-        }
-
-    private:
-        uint32 timer;
-    };
-
-    GameObjectAI* GetAI(GameObject* go) const override
-    {
-        return new go_aura_generator_000AI(go);
     }
 };
 
@@ -1506,7 +1447,6 @@ void AddSC_blades_edge_mountains()
     new go_simon_cluster();
     new go_apexis_relic();
     new npc_oscillating_frequency_scanner_master_bunny();
-    new go_aura_generator_000();
     new spell_oscillating_field();
     RegisterSpellScript(spell_bem_dispelling_analysis);
     RegisterSpellScript(spell_bem_wicked_strong_fetish);

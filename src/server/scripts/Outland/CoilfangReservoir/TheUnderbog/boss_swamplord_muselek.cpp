@@ -241,7 +241,7 @@ struct boss_swamplord_muselek : public BossAI
                 case EVENT_COMBAT_SEQUENCE_1:
                     DoCastSelf(SPELL_HUNTERS_MARK);
 
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_FREEZING_TRAP);
 
                     me->SetReactState(REACT_PASSIVE);
@@ -407,7 +407,7 @@ struct npc_claw : public ScriptedAI
                 case EVENT_FERAL_CHARGE:
                     if (_currentChargeCount < _chargeCounter)
                     {
-                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                        if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                             DoCast(target, SPELL_FERAL_CHARGE);
 
                         ++_currentChargeCount;

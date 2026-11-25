@@ -295,8 +295,8 @@ enum RuneType : uint8
 
 struct RuneInfo
 {
-    uint8 BaseRune;
-    uint8 CurrentRune;
+    RuneType BaseRune;
+    RuneType CurrentRune;
     uint32 Cooldown;
     std::unordered_set<AuraEffect const*> ConvertAuras;
 };
@@ -436,6 +436,12 @@ enum PlayerFieldByte2Flags
     PLAYER_FIELD_BYTE2_NONE                 = 0x00,
     PLAYER_FIELD_BYTE2_STEALTH              = 0x20,
     PLAYER_FIELD_BYTE2_INVISIBILITY_GLOW    = 0x40
+};
+
+enum PlayerFieldKillsOffsets
+{
+    PLAYER_FIELD_KILLS_OFFSET_TODAY_KILLS     = 0,
+    PLAYER_FIELD_KILLS_OFFSET_YESTERDAY_KILLS = 1
 };
 
 enum MirrorTimerType
@@ -1259,8 +1265,8 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void RemoveItemFromBuyBackSlot(uint32 slot, bool del);
         uint32 GetMaxKeyringSize() const { return KEYRING_SLOT_END-KEYRING_SLOT_START; }
         void SendEquipError(InventoryResult msg, Item const* item1 = nullptr, Item const* item2 = nullptr, uint32 itemId = 0) const;
-        void SendBuyError(BuyResult msg, Creature* creature, uint32 item, uint32 param) const;
-        void SendSellError(SellResult msg, Creature* creature, ObjectGuid guid, uint32 param) const;
+        void SendBuyError(BuyResult msg, Creature const* creature, uint32 vendorslot) const;
+        void SendSellError(SellResult msg, Creature const* creature, ObjectGuid guid) const;
         void AddWeaponProficiency(uint32 newflag) { m_WeaponProficiency |= newflag; }
         void AddArmorProficiency(uint32 newflag) { m_ArmorProficiency |= newflag; }
         uint32 GetWeaponProficiency() const { return m_WeaponProficiency; }
@@ -1502,7 +1508,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void RemoveMail(uint32 id);
 
         void AddMail(Mail* mail) { m_mail.push_front(mail);}// for call from WorldSession::SendMailTo
-        uint32 GetMailSize() { return m_mail.size();}
+        uint32 GetMailSize() { return uint32(m_mail.size()); }
         Mail* GetMail(uint32 id);
 
         PlayerMails const& GetMails() const { return m_mail; }
@@ -1649,6 +1655,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void SendInitialActionButtons() const { SendActionButtons(1); }
         void SendActionButtons(uint32 state) const;
         bool IsActionButtonDataValid(uint8 button, uint32 action, uint8 type) const;
+        void SetMultiActionBars(uint8 mask) { SetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_ACTION_BAR_TOGGLES, mask); }
 
         PvPInfo pvpInfo;
         void InitPvP();
@@ -2033,7 +2040,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void UpdateEquipSpellsAtFormChange();
         void CastItemCombatSpell(DamageInfo const& damageInfo);
         void CastItemCombatSpell(DamageInfo const& damageInfo, Item* item, ItemTemplate const* proto);
-        void CastItemUseSpell(Item* item, uint32 spellId, SpellCastTargets const& targets, uint8 cast_count, uint32 glyphIndex);
+        void CastItemUseSpell(Item* item, uint32 spellId, SpellCastTargets const& targets, uint8 castCount, uint32 misc);
 
         void SendEquipmentSetList();
         void SetEquipmentSet(EquipmentSetInfo::EquipmentSetData const& eqset);
@@ -2210,12 +2217,13 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void SetTemporaryUnsummonedPetNumber(uint32 petnumber) { m_temporaryUnsummonedPetNumber = petnumber; }
         void UnsummonPetTemporaryIfAny();
         void ResummonPetTemporaryUnSummonedIfAny();
+        void NearTeleportPetToOwner(); // EG
         bool IsPetNeedBeTemporaryUnsummoned() const;
 
         void SendCinematicStart(uint32 CinematicSequenceId) const;
         void SendMovieStart(uint32 movieId);
 
-        uint32 DoRandomRoll(uint32 minimum, uint32 maximum);
+        int32 DoRandomRoll(int32 minimum, int32 maximum);
 
         /*********************************************************/
         /***                 INSTANCE SYSTEM                   ***/
@@ -2238,6 +2246,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void BindToInstance();
         void SetPendingBind(uint32 instanceId, uint32 bindTimer);
         bool HasPendingBind() const { return _pendingBindId > 0; }
+        uint32 GetPendingBindId() const { return _pendingBindId; } // EG
         void SendRaidInfo();
         void SendSavedInstances();
         bool Satisfy(AccessRequirement const* ar, uint32 target_map, bool report = false);
@@ -2321,6 +2330,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         bool HasTitle(uint32 bitIndex) const;
         bool HasTitle(CharTitlesEntry const* title) const;
         void SetTitle(CharTitlesEntry const* title, bool lost = false);
+        void SetChosenTitle(int32 title) { SetUInt32Value(PLAYER_CHOSEN_TITLE, title); }
 
         //bool isActiveObject() const { return true; }
         bool CanSeeSpellClickOn(Creature const* creature) const;

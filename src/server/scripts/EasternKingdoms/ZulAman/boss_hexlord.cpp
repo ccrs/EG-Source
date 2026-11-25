@@ -24,6 +24,7 @@
 
 #include "ScriptMgr.h"
 #include "Containers.h"
+#include "GridNotifiers.h"
 #include "InstanceScript.h"
 #include "Map.h"
 #include "ScriptedCreature.h"
@@ -433,7 +434,7 @@ struct boss_hexlord_malacrass : public BossAI
                     break;
 
                 case EVENT_RO_BLIND:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 10.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 10.0f, true))
                         DoCast(target, SPELL_RO_BLIND);
                     _specialEvents.Repeat(15s, 20s);
                     break;
@@ -464,18 +465,18 @@ struct boss_hexlord_malacrass : public BossAI
                     _specialEvents.Repeat(10s, 15s);
                     break;
                 case EVENT_DK_DEATH_AND_DECAY:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
                         DoCast(target, SPELL_DK_DEATH_AND_DECAY);
                     _specialEvents.Repeat(15s, 20s);
                     break;
                 case EVENT_DK_MARK_OF_BLOOD:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
                         DoCast(target, SPELL_DK_MARK_OF_BLOOD);
                     _specialEvents.Repeat(10s, 15s);
                     break;
 
                 case EVENT_SH_CHAIN_LIGHTNING:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
                         DoCast(target, SPELL_SH_CHAIN_LIGHTNING);
                     _specialEvents.Repeat(10s, 15s);
                     break;
@@ -493,12 +494,12 @@ struct boss_hexlord_malacrass : public BossAI
                     _specialEvents.Repeat(15s, 20s);
                     break;
                 case EVENT_MG_ICE_LANCE:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
                         DoCast(target, SPELL_MG_ICE_LANCE);
                     _specialEvents.Repeat(5s, 10s);
                     break;
                 case EVENT_MG_FROSTBOLT:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
                         DoCast(target, SPELL_MG_FROSTBOLT);
                     _specialEvents.Repeat(5s, 10s);
                     break;
@@ -509,7 +510,7 @@ struct boss_hexlord_malacrass : public BossAI
                     _specialEvents.Repeat(10s, 15s);
                     break;
                 case EVENT_WL_RAIN_OF_FIRE:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 40.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 40.0f, true))
                         DoCast(target, SPELL_WL_RAIN_OF_FIRE);
                     _specialEvents.Repeat(10s, 15s);
                     break;
@@ -528,7 +529,7 @@ struct boss_hexlord_malacrass : public BossAI
                     _specialEvents.Repeat(10s, 15s);
                     break;
                 case EVENT_DR_MOONFIRE:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
                         DoCast(target, SPELL_DR_MOONFIRE);
                     _specialEvents.Repeat(3s, 4s);
                     break;
@@ -657,7 +658,7 @@ struct boss_alyson_antille : public MalacrassCompanionBaseAI
                 if (urand(0, 1))
                     target = me->DoFindLowestHPFriendlyInRange(40.0f);
                 else
-                    target = SelectTarget(SelectTargetMethod::Random, 0);
+                    target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true);
                 if (target)
                     DoCast(target, SPELL_DISPEL_MAGIC);
                 task.Repeat(10s, 15s);
@@ -902,6 +903,7 @@ class spell_malacrass_mind_control : public SpellScript
     void FilterTargets(std::list<WorldObject*>& targets)
     {
         // Target count - verified. Removing victim - guessed
+        targets.remove_if(Trinity::ObjectTypeIdCheck(TYPEID_PLAYER, false));
         targets.remove(GetCaster()->GetVictim());
         Trinity::Containers::RandomResize(targets, 1);
     }

@@ -531,7 +531,7 @@ struct npc_nerubian_burrower : public ScriptedAI
         {
             case ACTION_SHADOW_STRIKE:
                 if (!me->HasAura(SPELL_AWAKENED))
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_SHADOW_STRIKE);
                 break;
             default:

@@ -32,6 +32,7 @@ namespace WorldPackets
 {
     namespace Spells
     {
+        struct SpellCastRequest;
         struct SpellTargetData;
         struct SpellAmmo;
         struct SpellCastData;
@@ -72,6 +73,7 @@ enum WeaponAttackType : uint8;
 #define SPELL_CHANNEL_UPDATE_INTERVAL (1 * IN_MILLISECONDS)
 #define MAX_SPELL_RANGE_TOLERANCE 3.0f
 #define TRAJECTORY_MISSILE_SIZE 3.0f
+#define AOE_DAMAGE_TARGET_CAP SI64LIT(10)
 
 enum SpellCastFlags
 {
@@ -375,6 +377,7 @@ class TC_GAME_API Spell
         void SendSpellStart();
         void SendSpellGo();
         void SendSpellCooldown();
+        void SendForcedSpellCooldown(); // EG
         void SendLogExecute();
         void ExecuteLogEffectTakeTargetPower(uint8 effIndex, Unit* target, uint32 powerType, uint32 powerTaken, float gainMultiplier);
         void ExecuteLogEffectExtraAttacks(uint8 effIndex, Unit* victim, uint32 attCount);
@@ -400,7 +403,13 @@ class TC_GAME_API Spell
         uint32 m_castItemEntry;
         uint8 m_cast_count;
         bool m_fromClient;
-        uint32 m_glyphIndex;
+        union
+        {
+            // Alternate names for this value
+            uint32 GlyphSlot;
+
+            uint32 Data;
+        } m_misc;
         SpellCastTargets m_targets;
 
         void AddComboPointGain(Unit* target, int8 amount)
@@ -456,6 +465,7 @@ class TC_GAME_API Spell
         int32 GetPowerCost() const { return m_powerCost; }
 
         bool UpdatePointers();                              // must be used at call Spell code after time delay (non triggered spell cast/update spell call/etc)
+        void UpdateOriginalCasterPointer();
 
         void CleanupTargetList();
 
@@ -633,6 +643,8 @@ class TC_GAME_API Spell
         void DoProcessTargetContainer(Container& targetContainer);
 
         SpellDestination m_destTargets[MAX_SPELL_EFFECTS];
+
+        int32 GetUnitTargetIndexForEffect(ObjectGuid const& target, SpellEffIndex effect) const;
 
         void AddUnitTarget(Unit* target, uint32 effectMask, bool checkIfValid = true, bool implicit = true, Position const* losPosition = nullptr);
         void AddGOTarget(GameObject* target, uint32 effectMask);

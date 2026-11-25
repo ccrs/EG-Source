@@ -216,6 +216,7 @@ class spell_najentus_needle_spine : public SpellScript
 
     void FilterTargets(std::list<WorldObject*>& targets)
     {
+        targets.remove_if(Trinity::ObjectTypeIdCheck(TYPEID_PLAYER, false));
         targets.remove_if(Trinity::UnitAuraCheck(true, SPELL_IMPALING_SPINE));
     }
 

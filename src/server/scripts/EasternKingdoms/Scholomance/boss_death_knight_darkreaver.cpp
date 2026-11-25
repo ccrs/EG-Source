@@ -101,7 +101,7 @@ struct boss_death_knight_darkreaver : public ScriptedAI
                     _events.Repeat(15s, 25s);
                     break;
                 case EVENT_DOMINATE_MIND:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 0.0f, true))
                         DoCast(target, SPELL_DOMINATE_MIND);
                     _events.Repeat(15s, 20s);
                     break;

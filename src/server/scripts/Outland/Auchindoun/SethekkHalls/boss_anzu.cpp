@@ -223,7 +223,7 @@ struct boss_anzu : public BossAI
                     events.Repeat(25s, 35s);
                     break;
                 case EVENT_SPELL_BOMB:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [](Unit const* unit) { return unit && unit->GetPowerType() == POWER_MANA; }))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, [](Unit const* unit) { return unit && unit->IsPlayer() && unit->GetPowerType() == POWER_MANA; }))
                     {
                         DoCast(target, SPELL_SPELL_BOMB);
                         Talk(SAY_BOMB, target);
@@ -231,7 +231,7 @@ struct boss_anzu : public BossAI
                     events.Repeat(20s, 30s);
                     break;
                 case EVENT_CYCLONE_OF_FEATHERS:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_CYCLONE_OF_FEATHERS);
                     events.Repeat(20s, 25s);
                     break;

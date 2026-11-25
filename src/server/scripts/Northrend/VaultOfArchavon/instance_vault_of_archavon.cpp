@@ -15,106 +15,89 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ScriptMgr.h"
+#include "vault_of_archavon.h"
+#include "Battlefield/BattlefieldWG.h"
+#include "BattlefieldMgr.h"
 #include "GameTime.h"
 #include "InstanceScript.h"
-#include "vault_of_archavon.h"
-
-/* Vault of Archavon encounters:
-1 - Archavon the Stone Watcher event
-2 - Emalon the Storm Watcher event
-3 - Koralon the Flame Watcher event
-4 - Toravon the Ice Watcher event
-*/
+#include "Player.h"
+#include "ScriptMgr.h"
+#include <algorithm>
+#include <array>
 
 ObjectData const creatureData[] =
 {
     { NPC_ARCHAVON, DATA_ARCHAVON },
-    { NPC_EMALON,   DATA_EMALON   },
-    { NPC_KORALON,  DATA_KORALON  },
-    { NPC_TORAVON,  DATA_TORAVON  },
-    { 0,            0,            }
+    { NPC_EMALON, DATA_EMALON },
+    { NPC_KORALON, DATA_KORALON },
+    { NPC_TORAVON, DATA_TORAVON },
+    { 0, 0 }
 };
 
 class instance_vault_of_archavon : public InstanceMapScript
 {
-    public:
-        instance_vault_of_archavon() : InstanceMapScript(VoAScriptName, 624) { }
+public:
+    instance_vault_of_archavon() : InstanceMapScript(VaultOfArchavonScriptName, 624) { }
 
-        struct instance_vault_of_archavon_InstanceMapScript : public InstanceScript
+    struct instance_vault_of_archavon_InstanceMapScript : public InstanceScript
+    {
+        instance_vault_of_archavon_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
         {
-            instance_vault_of_archavon_InstanceMapScript(InstanceMap* map) : InstanceScript(map)
-            {
-                SetHeaders(DataHeader);
-                SetBossNumber(EncounterCount);
-                LoadObjectData(creatureData, nullptr);
-
-                ArchavonDeath   = 0;
-                EmalonDeath     = 0;
-                KoralonDeath    = 0;
-            }
-
-            bool SetBossState(uint32 type, EncounterState state) override
-            {
-                if (!InstanceScript::SetBossState(type, state))
-                    return false;
-
-                if (state != DONE)
-                   return true;
-
-                switch (type)
-                {
-                    case DATA_ARCHAVON:
-                        ArchavonDeath = GameTime::GetGameTime();
-                        break;
-                    case DATA_EMALON:
-                        EmalonDeath = GameTime::GetGameTime();
-                        break;
-                    case DATA_KORALON:
-                        KoralonDeath = GameTime::GetGameTime();
-                        break;
-                    default:
-                        return true;
-                }
-
-                // on every death of Archavon, Emalon and Koralon check our achievement
-                DoCastSpellOnPlayers(SPELL_EARTH_WIND_FIRE_ACHIEVEMENT_CHECK);
-
-                return true;
-            }
-
-            bool CheckAchievementCriteriaMeet(uint32 criteria_id, Player const* /*source*/, Unit const* /*target*/, uint32 /*miscvalue1*/) override
-            {
-                switch (criteria_id)
-                {
-                    case CRITERIA_EARTH_WIND_FIRE_10:
-                    case CRITERIA_EARTH_WIND_FIRE_25:
-                        if (ArchavonDeath && EmalonDeath && KoralonDeath)
-                        {
-                            // instance difficulty check is already done in db (achievement_criteria_data)
-                            // int() for Visual Studio, compile errors with abs(time_t)
-                            return (abs(int(ArchavonDeath-EmalonDeath)) < MINUTE && \
-                                abs(int(EmalonDeath-KoralonDeath)) < MINUTE && \
-                                abs(int(KoralonDeath-ArchavonDeath)) < MINUTE);
-                        }
-                        break;
-                    default:
-                        break;
-                }
-
-                return false;
-            }
-
-        private:
-            time_t ArchavonDeath;
-            time_t EmalonDeath;
-            time_t KoralonDeath;
-        };
-
-        InstanceScript* GetInstanceScript(InstanceMap* map) const override
-        {
-            return new instance_vault_of_archavon_InstanceMapScript(map);
+            SetHeaders(DataHeader);
+            SetBossNumber(EncounterCount);
+            LoadObjectData(creatureData, nullptr);
         }
+
+        void OnPlayerEnter(Player* player) override
+        {
+            if (player->IsGameMaster())
+                return;
+
+            BattlefieldWintergrasp* wintergrasp = dynamic_cast<BattlefieldWintergrasp*>(sBattlefieldMgr->GetBattlefield(BATTLEFIELD_BATTLEID_WINTERGRASP));
+            if (wintergrasp && wintergrasp->IsEnabled() && (wintergrasp->GetPhase() != BATTLEFIELD_PHASE_IDLE || player->GetTeamId() != wintergrasp->GetControllingTeamId()))
+                wintergrasp->TeleportPlayerToBattle(player);
+        }
+
+        bool SetBossState(uint32 type, EncounterState state) override
+        {
+            if (!InstanceScript::SetBossState(type, state))
+                return false;
+
+            if (state == DONE && type != DATA_TORAVON)
+            {
+                _watcherDeathTimes[type] = GameTime::Now();
+                DoCastSpellOnPlayers(SPELL_EARTH_WIND_FIRE_ACHIEVEMENT_CHECK);
+            }
+
+            return true;
+        }
+
+        bool CheckAchievementCriteriaMeet(uint32 criteriaId, Player const* source, Unit const* target, uint32 miscValue1) override
+        {
+            switch (criteriaId)
+            {
+                case CRITERIA_EARTH_WIND_FIRE_10:
+                case CRITERIA_EARTH_WIND_FIRE_25:
+                {
+                    if (std::ranges::find(_watcherDeathTimes, TimePoint()) != _watcherDeathTimes.end())
+                        return false;
+
+                    auto const [firstDeath, lastDeath] = std::ranges::minmax(_watcherDeathTimes);
+                    return lastDeath - firstDeath <= 1min;
+                }
+                default:
+                    return InstanceScript::CheckAchievementCriteriaMeet(criteriaId, source, target, miscValue1);
+            }
+        }
+
+    private:
+        std::array<TimePoint, 3> _watcherDeathTimes = { };
+    };
+
+    InstanceScript* GetInstanceScript(InstanceMap* map) const override
+    {
+        return new instance_vault_of_archavon_InstanceMapScript(map);
+    }
 };
 
 void AddSC_instance_vault_of_archavon()

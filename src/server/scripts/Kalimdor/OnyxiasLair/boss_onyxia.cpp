@@ -453,7 +453,7 @@ struct boss_onyxia : public BossAI
                     case EVENT_FIREBALL:         // Phase PHASE_BREATH
                         if (!IsMoving)
                         {
-                            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                                 DoCast(target, SPELL_FIREBALL);
                             events.ScheduleEvent(EVENT_FIREBALL, 8s);
                         }

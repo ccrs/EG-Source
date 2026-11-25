@@ -76,7 +76,7 @@ struct boss_vectus : public ScriptedAI
                     _events.Repeat(20s, 30s);
                     break;
                 case EVENT_FLAMESTRIKE:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_FLAMESTRIKE);
                     _events.Repeat(10s, 15s);
                     break;

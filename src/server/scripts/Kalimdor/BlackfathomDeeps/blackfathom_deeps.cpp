@@ -144,7 +144,7 @@ struct npc_blackfathom_deeps_event : public ScriptedAI
                     _events.Repeat(25s, 30s);
                     break;
                 case EVENT_FROST_BOLT_VOLLEY:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_FROST_BOLT_VOLLEY);
                     _events.Repeat(5s, 8s);
                     break;

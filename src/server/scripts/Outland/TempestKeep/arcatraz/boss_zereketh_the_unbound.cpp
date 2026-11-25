@@ -99,7 +99,7 @@ struct boss_zereketh_the_unbound : public BossAI
             switch (eventId)
             {
                 case EVENT_VOID_ZONE:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_VOID_ZONE);
                     events.Repeat(15s);
                     break;
@@ -108,7 +108,7 @@ struct boss_zereketh_the_unbound : public BossAI
                     events.Repeat(15s, 20s);
                     break;
                 case EVENT_SEED_OF_CORRUPTION:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, SPELL_SEED_OF_CORRUPTION);
                     events.Repeat(15s, 20s);
                     break;

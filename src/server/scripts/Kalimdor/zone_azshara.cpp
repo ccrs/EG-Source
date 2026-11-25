@@ -107,7 +107,8 @@ struct npc_rizzle_sprysprocket : public ScriptedAI
             }
             else
                 checkDistanceContext.Repeat(1s);
-        }).Schedule(20s, [this](TaskContext granadeContext)
+        })
+        .Schedule(20s, [this](TaskContext granadeContext)
         {
             if (Player* player = ObjectAccessor::GetPlayer(*me, _playerGUID))
             {

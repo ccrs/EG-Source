@@ -227,7 +227,7 @@ struct boss_erekem : public BossAI
 
         scheduler.Schedule(2s, [this](TaskContext task)
         {
-            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 40.0f))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 40.0f, true))
                 DoCast(target, SPELL_LIGHTNING_BOLT);
 
             task.Repeat(2500ms);

@@ -188,6 +188,21 @@ WorldPacket const* WorldPackets::Misc::Weather::Write()
     return &_worldPacket;
 }
 
+void WorldPackets::Misc::StandStateChange::Read()
+{
+    uint32 state;
+    _worldPacket >> state;
+
+    StandState = UnitStandStateType(state);
+}
+
+WorldPacket const* WorldPackets::Misc::StandStateUpdate::Write()
+{
+    _worldPacket << uint8(State);
+
+    return &_worldPacket;
+}
+
 WorldPacket const* WorldPackets::Misc::StartMirrorTimer::Write()
 {
     _worldPacket << uint32(Timer);
@@ -211,6 +226,14 @@ WorldPacket const* WorldPackets::Misc::PauseMirrorTimer::Write()
 WorldPacket const* WorldPackets::Misc::StopMirrorTimer::Write()
 {
     _worldPacket << uint32(Timer);
+
+    return &_worldPacket;
+}
+
+WorldPacket const* WorldPackets::Misc::ExplorationExperience::Write()
+{
+    _worldPacket << int32(AreaID);
+    _worldPacket << int32(Experience);
 
     return &_worldPacket;
 }

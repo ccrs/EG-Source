@@ -122,14 +122,9 @@ void SpellDestination::RelocateOffset(Position const& offset)
     _collisionResult.reset();
 }
 
-SpellCastTargets::SpellCastTargets() : m_pitch(0), m_speed(0), m_strTarget()
+SpellCastTargets::SpellCastTargets() : m_targetMask(0), m_objectTarget(nullptr), m_itemTarget(nullptr),
+    m_itemTargetEntry(0), m_pitch(0.0f), m_speed(0.0f)
 {
-    m_objectTarget = nullptr;
-    m_itemTarget = nullptr;
-
-    m_itemTargetEntry  = 0;
-
-    m_targetMask = 0;
 }
 
 SpellCastTargets::SpellCastTargets(Unit* caster, WorldPackets::Spells::SpellCastRequest const& spellCastRequest) :
@@ -580,14 +575,7 @@ m_caster((info->HasAttribute(SPELL_ATTR6_CAST_BY_CHARMER) && caster->GetCharmerO
     else
         m_originalCasterGUID = m_caster->GetGUID();
 
-    if (m_originalCasterGUID == m_caster->GetGUID())
-        m_originalCaster = m_caster->ToUnit();
-    else
-    {
-        m_originalCaster = ObjectAccessor::GetUnit(*m_caster, m_originalCasterGUID);
-        if (m_originalCaster && !m_originalCaster->IsInWorld())
-            m_originalCaster = nullptr;
-    }
+    UpdateOriginalCasterPointer();
 
     m_spellState = SPELL_STATE_NULL;
     _triggeredCastFlags = triggerFlags;
@@ -614,7 +602,7 @@ m_caster((info->HasAttribute(SPELL_ATTR6_CAST_BY_CHARMER) && caster->GetCharmerO
     m_hitMask = 0;
     focusObject = nullptr;
     m_cast_count = 0;
-    m_glyphIndex = 0;
+    m_misc.Data = 0;
     m_triggeredByAuraSpell  = nullptr;
     _spellAura = nullptr;
     _dynObjAura = nullptr;
@@ -2389,9 +2377,26 @@ void Spell::AddDestTarget(SpellDestination const& dest, uint32 effIndex)
     m_destTargets[effIndex] = dest;
 }
 
+int32 Spell::GetUnitTargetIndexForEffect(ObjectGuid const& target, SpellEffIndex effect) const
+{
+    int32 index = 0;
+    for (TargetInfo const& uniqueTargetInfo : m_UniqueTargetInfo)
+    {
+        if (uniqueTargetInfo.MissCondition == SPELL_MISS_NONE && uniqueTargetInfo.EffectMask & (1 << effect))
+        {
+            if (uniqueTargetInfo.TargetGUID == target)
+                return index;
+
+            ++index;
+        }
+    }
+
+    return -1;
+}
+
 int64 Spell::GetUnitTargetCountForEffect(SpellEffIndex effect) const
 {
-    return std::count_if(m_UniqueTargetInfo.begin(), m_UniqueTargetInfo.end(), [effect](TargetInfo const& targetInfo)
+    return std::ranges::count_if(m_UniqueTargetInfo, [effect](TargetInfo const& targetInfo)
     {
         return targetInfo.EffectMask & (1 << effect);
     });
@@ -2399,7 +2404,7 @@ int64 Spell::GetUnitTargetCountForEffect(SpellEffIndex effect) const
 
 int64 Spell::GetGameObjectTargetCountForEffect(SpellEffIndex effect) const
 {
-    return std::count_if(m_UniqueGOTargetInfo.begin(), m_UniqueGOTargetInfo.end(), [effect](GOTargetInfo const& targetInfo)
+    return std::ranges::count_if(m_UniqueGOTargetInfo, [effect](GOTargetInfo const& targetInfo)
     {
         return targetInfo.EffectMask & (1 << effect);
     });
@@ -2407,7 +2412,7 @@ int64 Spell::GetGameObjectTargetCountForEffect(SpellEffIndex effect) const
 
 int64 Spell::GetItemTargetCountForEffect(SpellEffIndex effect) const
 {
-    return std::count_if(m_UniqueItemInfo.begin(), m_UniqueItemInfo.end(), [effect](ItemTargetInfo const& targetInfo)
+    return std::ranges::count_if(m_UniqueItemInfo, [effect](ItemTargetInfo const& targetInfo)
     {
         return targetInfo.EffectMask & (1 << effect);
     });
@@ -3346,6 +3351,9 @@ void Spell::cancel(SpellCastResult result /*= SPELL_FAILED_INTERRUPTED*/, Option
     if (m_selfContainer && *m_selfContainer == this)
         *m_selfContainer = nullptr;
 
+    // update original caster pointer to prevent access to non-existed already object (grid unload)
+    UpdateOriginalCasterPointer();
+
     // originalcaster handles gameobjects/dynobjects for gob caster
     if (m_originalCaster)
     {
@@ -3571,6 +3579,9 @@ void Spell::_cast(bool skipCheck)
 
     // we must send smsg_spell_go packet before m_castItem delete in TakeCastItem()...
     SendSpellGo();
+
+    if (m_spellInfo->HasAttribute(SPELL_ATTR0_CU_FORCE_COOLDOWN_PACKET)) // EG
+        SendForcedSpellCooldown();
 
     if (!m_spellInfo->IsChanneled())
         if (Creature* creatureCaster = m_caster->ToCreature())
@@ -7370,7 +7381,7 @@ void Spell::DelayedChannel()
     SendChannelUpdate(m_timer);
 }
 
-bool Spell::UpdatePointers()
+void Spell::UpdateOriginalCasterPointer()
 {
     if (m_originalCasterGUID == m_caster->GetGUID())
         m_originalCaster = m_caster->ToUnit();
@@ -7380,6 +7391,11 @@ bool Spell::UpdatePointers()
         if (m_originalCaster && !m_originalCaster->IsInWorld())
             m_originalCaster = nullptr;
     }
+}
+
+bool Spell::UpdatePointers()
+{
+    UpdateOriginalCasterPointer();
 
     if (!m_focusObjectGUID.IsEmpty())
         focusObject = ObjectAccessor::GetGameObject(*m_caster, m_focusObjectGUID);
@@ -7516,7 +7532,7 @@ bool Spell::CheckEffectTarget(Unit const* target, SpellEffectInfo const& spellEf
             if (target->GetGUID() != corpse->GetOwnerGUID())
                 return false;
 
-            if (!corpse->HasFlag(CORPSE_FIELD_FLAGS, CORPSE_FLAG_LOOTABLE))
+            if (!corpse->HasCorpseFlag(CORPSE_FLAG_LOOTABLE))
                 return false;
 
             if (!corpse->IsWithinLOSInMap(m_caster, LINEOFSIGHT_ALL_CHECKS, VMAP::ModelIgnoreFlags::M2))
@@ -7853,16 +7869,18 @@ void Spell::DoEffectOnLaunchTarget(TargetInfo& targetInfo, float multiplier, Spe
 
     if (m_originalCaster && m_damage > 0)
     {
-        if (spellEffectInfo.IsTargetingArea() || spellEffectInfo.IsAreaAuraEffect() || spellEffectInfo.IsEffect(SPELL_EFFECT_PERSISTENT_AREA_AURA))
+        bool isAoeTarget = spellEffectInfo.IsTargetingArea() || spellEffectInfo.IsAreaAuraEffect() || spellEffectInfo.IsEffect(SPELL_EFFECT_PERSISTENT_AREA_AURA);
+        if (isAoeTarget)
         {
             m_damage = unit->CalculateAOEAvoidance(m_damage, m_spellInfo->SchoolMask, m_originalCaster->GetGUID());
 
             if (m_originalCaster->GetTypeId() == TYPEID_PLAYER)
             {
+                int64 targetCount = GetUnitTargetCountForEffect(spellEffectInfo.EffectIndex);
+
                 // cap damage of player AOE
-                int64 targetAmount = GetUnitTargetCountForEffect(spellEffectInfo.EffectIndex);
-                if (targetAmount > 10)
-                    m_damage = m_damage * 10 / targetAmount;
+                if (targetCount > AOE_DAMAGE_TARGET_CAP)
+                    m_damage = m_damage * AOE_DAMAGE_TARGET_CAP / targetCount;
             }
         }
     }

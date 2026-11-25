@@ -367,15 +367,23 @@ class TC_GAME_API WorldZoneScript : public ScriptObject, public ZoneScript
         uint32 GetMapId() const { return _mapId; }
         uint32 GetPhaseMask() const { return _phaseMask; }
         bool HasZone(uint32 zoneId) const;
+        bool HasPlayer(ObjectGuid const& guid) const { return _players.contains(guid); }
+        GuidUnorderedSet const& GetPlayers() const { return _players; }
 
-        // Called when a player enters one of the zones, after zone dependent auras were updated.
+        void HandlePlayerEnter(Player* player, uint32 zoneId);
+        void HandlePlayerLeave(Player* player, uint32 zoneId);
+
+        // Called when a player in one of the zones starts sharing the phase, after zone dependent auras were updated.
         virtual void OnPlayerEnter(Player* player, uint32 zoneId);
 
-        // Called when a player leaves one of the zones, including logout and map change.
+        // Called when a registered player leaves the zones or the phase, including logout and map change.
         virtual void OnPlayerLeave(Player* player, uint32 zoneId);
 
-        // Called while the initial world states of one of the zones are built for a player.
+        // Called while the initial world states of one of the zones are built for a registered player.
         virtual void FillInitialWorldStates(Player* player, WorldPackets::WorldState::InitWorldStates& packet);
+
+        // Called after OnPlayerLeave unless the player is logging out.
+        virtual void SendRemoveWorldStates(Player* player);
 
         // Called on every update of the map the zones belong to.
         virtual void OnUpdate(Map* map, uint32 diff);
@@ -385,6 +393,7 @@ class TC_GAME_API WorldZoneScript : public ScriptObject, public ZoneScript
         uint32 _mapId;
         std::vector<uint32> _zoneIds;
         uint32 _phaseMask;
+        GuidUnorderedSet _players;
 };
 
 class TC_GAME_API ItemScript : public ScriptObject
@@ -959,6 +968,7 @@ class TC_GAME_API ScriptMgr
         ZoneScript* GetWorldZoneScript(uint32 mapId, uint32 zoneId, uint32 phaseMask);
         void OnPlayerEnterWorldZone(Player* player, uint32 zoneId);
         void OnPlayerLeaveWorldZone(Player* player, uint32 zoneId);
+        void OnPlayerChangeWorldZonePhase(Player* player, uint32 zoneId, uint32 areaId);
         void FillWorldZoneInitialWorldStates(Player* player, uint32 zoneId, WorldPackets::WorldState::InitWorldStates& packet);
 
     public: /* InstanceMapScript */

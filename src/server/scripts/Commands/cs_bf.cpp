@@ -19,6 +19,10 @@
 #include "Battlefield.h"
 #include "BattlefieldMgr.h"
 #include "Chat.h"
+#include "GameTime.h"
+#include "Group.h"
+#include "GroupMgr.h"
+#include "Player.h"
 #include "RBAC.h"
 
 using namespace Trinity::ChatCommands;
@@ -30,6 +34,14 @@ public:
 
     ChatCommandTable GetCommands() const override
     {
+        static ChatCommandTable battlefieldRaidCommandTable =
+        {
+            { "release", HandleBattlefieldRaidRelease, rbac::RBAC_PERM_COMMAND_BF_RAID, Console::No },
+            { "add", HandleBattlefieldRaidAdd, rbac::RBAC_PERM_COMMAND_BF_RAID, Console::No },
+            { "remove", HandleBattlefieldRaidRemove, rbac::RBAC_PERM_COMMAND_BF_RAID, Console::No },
+            { "list", HandleBattlefieldRaidList, rbac::RBAC_PERM_COMMAND_BF_RAID, Console::No },
+        };
+
         static ChatCommandTable battlefieldcommandTable =
         {
             { "start",  HandleBattlefieldStart,  rbac::RBAC_PERM_COMMAND_BF_START,  Console::No },
@@ -37,6 +49,7 @@ public:
             { "switch", HandleBattlefieldSwitch, rbac::RBAC_PERM_COMMAND_BF_SWITCH, Console::No },
             { "timer",  HandleBattlefieldTimer,  rbac::RBAC_PERM_COMMAND_BF_TIMER,  Console::No },
             { "enable", HandleBattlefieldEnable, rbac::RBAC_PERM_COMMAND_BF_ENABLE, Console::No },
+            { "raid", battlefieldRaidCommandTable },
         };
 
         static ChatCommandTable commandTable =
@@ -46,18 +59,49 @@ public:
         return commandTable;
     }
 
-    static bool HandleBattlefieldStart(ChatHandler* /*handler*/)
+    static bool HandleBattlefieldStart(ChatHandler* handler, uint8 battleId)
     {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        if (battlefield->IsBattleTime() || !battlefield->SetPhase(BATTLEFIELD_PHASE_BATTLE))
+        {
+            handler->PSendSysMessage("Battlefield %u: the battle cannot be started.", battleId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        handler->PSendSysMessage("Battlefield %u: battle started.", battleId);
         return true;
     }
 
-    static bool HandleBattlefieldEnd(ChatHandler* /*handler*/)
+    static bool HandleBattlefieldEnd(ChatHandler* handler, uint8 battleId)
     {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        if (!battlefield->IsBattleTime())
+        {
+            handler->PSendSysMessage("Battlefield %u: the battle cannot be ended.", battleId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        battlefield->SetPhase(BATTLEFIELD_PHASE_IDLE);
+        handler->PSendSysMessage("Battlefield %u: battle ended.", battleId);
         return true;
     }
 
-    static bool HandleBattlefieldEnable(ChatHandler* /*handler*/)
+    static bool HandleBattlefieldEnable(ChatHandler* handler, uint8 battleId)
     {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        battlefield->SetEnabled(!battlefield->IsEnabled());
+        handler->PSendSysMessage("Battlefield %u: %s.", battleId, battlefield->IsEnabled() ? "enabled" : "disabled");
         return true;
     }
 
@@ -69,22 +113,131 @@ public:
         if (!battlefield)
             return false;
 
+        if (battlefield->IsBattleTime())
+        {
+            handler->PSendSysMessage("Battlefield %u: the controlling team cannot be switched during a battle.", battleId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
         if (newControllingTeam)
         {
             PvPTeamId teamId = PvPTeamId(*newControllingTeam);
             if (teamId != PVP_TEAM_ALLIANCE && teamId != PVP_TEAM_HORDE)
                 return false;
 
-            battlefield->ChangeTeams(teamId);
+            battlefield->ChangeTeam(teamId);
         }
         else
-            battlefield->ChangeTeams(battlefield->GetControllingTeam() == PVP_TEAM_ALLIANCE ? PVP_TEAM_HORDE : PVP_TEAM_ALLIANCE);
+            battlefield->ChangeTeam(battlefield->GetControllingTeam() == PVP_TEAM_ALLIANCE ? PVP_TEAM_HORDE : PVP_TEAM_ALLIANCE);
         handler->PSendSysMessage("Battlefield: %u switched to team %u", battleId, battlefield->GetControllingTeam());
         return true;
     }
 
-    static bool HandleBattlefieldTimer(ChatHandler* /*handler*/)
+    static bool HandleBattlefieldTimer(ChatHandler* handler, uint8 battleId, uint32 seconds)
     {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        if (!battlefield->IsEnabled() || battlefield->IsBattleTime())
+        {
+            handler->PSendSysMessage("Battlefield %u: the phase times can only be changed during idle or preparation.", battleId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        time_t const now = GameTime::GetGameTime();
+        Seconds const phaseLimit = battlefield->GetValues().Get<Seconds>(battlefield->IsInPreparation() ? BATTLEFIELD_VALUE_DURATION_PHASE_PREPARATION : BATTLEFIELD_VALUE_INTERVAL_PHASE_BATTLE_START);
+        time_t const phaseLimitTime = battlefield->GetValues().Get<time_t>(BATTLEFIELD_VALUE_TIME_PHASE_START) + phaseLimit.count();
+        uint32 const maximum = phaseLimitTime > now ? uint32(phaseLimitTime - now) : 0;
+        if (seconds > maximum)
+        {
+            handler->PSendSysMessage("Battlefield %u: the maximum is %u seconds.", battleId, maximum);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        battlefield->SetPhaseTime(now + seconds);
+        handler->PSendSysMessage("Battlefield %u: next battle starts in %u seconds.", battleId, seconds);
+        return true;
+    }
+
+    static Battlefield* GetBattlefieldById(uint8 battleId)
+    {
+        if (battleId == 0 || battleId >= BattlefieldBattleId::BATTLEFIELD_BATTLEID_MAX)
+            return nullptr;
+        return sBattlefieldMgr->GetBattlefield(BattlefieldBattleId(battleId));
+    }
+
+    static bool HandleBattlefieldRaidRelease(ChatHandler* handler, uint8 battleId)
+    {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        battlefield->QueueEvent<BattlefieldRaidReleaseEvent>();
+        handler->PSendSysMessage("Battlefield %u: battlefield raid release queued.", battleId);
+        return true;
+    }
+
+    static bool HandleBattlefieldRaidAdd(ChatHandler* handler, uint8 battleId, Optional<PlayerIdentifier> player)
+    {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        if (!player)
+            player = PlayerIdentifier::FromTargetOrSelf(handler);
+        if (!player)
+            return false;
+
+        if (!player->IsConnected())
+        {
+            handler->PSendSysMessage("Battlefield %u: %s is not online.", battleId, player->GetName().c_str());
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        Player* target = player->GetConnectedPlayer();
+        if (!target->IsInWorld() || !battlefield->IsPlayerInBattle(target) || !battlefield->QueueEvent<BattlefieldRaidAddEvent>(target->GetGUID()))
+        {
+            handler->PSendSysMessage("Battlefield %u: %s cannot be added to the battlefield raid now.", battleId, player->GetName().c_str());
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        handler->PSendSysMessage("Battlefield %u: %s battlefield raid add queued.", battleId, player->GetName().c_str());
+        return true;
+    }
+
+    static bool HandleBattlefieldRaidRemove(ChatHandler* handler, uint8 battleId, Optional<PlayerIdentifier> player)
+    {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        if (!player)
+            player = PlayerIdentifier::FromTargetOrSelf(handler);
+        if (!player)
+            return false;
+
+        battlefield->QueueEvent<BattlefieldBattleRaidLeaveEvent>(player->GetGUID());
+        battlefield->QueueEvent<BattlefieldRaidRemoveEvent>(player->GetGUID());
+        handler->PSendSysMessage("Battlefield %u: %s battlefield raid remove queued.", battleId, player->GetName().c_str());
+        return true;
+    }
+
+    static bool HandleBattlefieldRaidList(ChatHandler* handler, uint8 battleId)
+    {
+        Battlefield* battlefield = GetBattlefieldById(battleId);
+        if (!battlefield)
+            return false;
+
+        for (TeamId teamId : { TEAM_ALLIANCE, TEAM_HORDE })
+            for (ObjectGuid groupGuid : battlefield->GetBattlefieldRaids(teamId))
+                if (Group* group = sGroupMgr->GetGroupByGUID(groupGuid))
+                    handler->PSendSysMessage("%s raid %u: %u members, leader %s", teamId == TEAM_ALLIANCE ? "Alliance" : "Horde", groupGuid.GetCounter(), group->GetMembersCount(), group->GetLeaderName());
         return true;
     }
 };

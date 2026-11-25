@@ -87,7 +87,7 @@ struct boss_rokmar_the_crackler : public BossAI
                     events.Repeat(20s, 30s);
                     break;
                 case EVENT_ENSNARING_MOSS:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                         DoCast(target, SPELL_ENSNARING_MOSS);
                     events.Repeat(20s, 30s);
                     break;

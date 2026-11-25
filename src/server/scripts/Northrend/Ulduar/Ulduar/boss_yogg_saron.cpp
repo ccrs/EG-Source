@@ -462,6 +462,21 @@ protected:
         return SimpleCharmedPlayerAI::CanAIAttack(who);
     }
 
+    Unit* SelectAttackTarget() const override
+    {
+        Creature* charmer = GetCharmer();
+        if (!charmer)
+            return nullptr;
+
+        std::vector<Unit*> targets;
+        for (MapReference const& ref : me->GetMap()->GetPlayers())
+            if (Player* player = ref.GetSource())
+                if ((player->HasAura(SPELL_ILLUSION_ROOM) || charmer->AI()->IsInBoundary(player)) && CanAIAttack(player))
+                    targets.push_back(player);
+
+        return targets.empty() ? nullptr : Trinity::Containers::SelectRandomContainerElement(targets);
+    }
+
 private:
     bool HasReachableTarget() const
     {
@@ -520,6 +535,12 @@ struct boss_voice_of_yogg_saron : public BossAI
 
                 player->RemoveAurasDueToSpell(SPELL_SANITY);
                 player->RemoveAurasDueToSpell(SPELL_INSANE);
+
+                if (player->HasAura(SPELL_ILLUSION_ROOM))
+                {
+                    player->CastSpell(player, SPELL_TELEPORT_BACK_TO_MAIN_ROOM);
+                    player->RemoveAurasDueToSpell(SPELL_ILLUSION_ROOM);
+                }
             }
     }
 
@@ -1022,10 +1043,11 @@ struct boss_yogg_saron : public PassiveAI
         if (damage >= me->GetHealth())
             damage = me->GetHealth() - 1;
 
-        if (me->GetHealth() - damage >= CalculatePct(me->GetMaxHealth(), 1.5f))
+        if (me->GetHealth() - damage >= CalculatePct(me->GetMaxHealth(), 1.f))
             return;
 
         _defeated = true;
+        _events.Reset();
         me->InterruptNonMeleeSpells(true);
         DoCast(me, SPELL_DEATH_ANIMATION, true);
 
@@ -1319,7 +1341,7 @@ struct npc_corruptor_tentacle : public ScriptedAI
             switch (eventId)
             {
                 case EVENT_CAST_RANDOM_SPELL:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                         DoCast(target, RAND(SPELL_BLACK_PLAGUE, SPELL_CURSE_OF_DOOM, SPELL_APATHY, SPELL_DRAINING_POISON));
                     _events.ScheduleEvent(EVENT_CAST_RANDOM_SPELL, 3s);
                     break;

@@ -163,7 +163,7 @@ class boss_mal_ganis : public CreatureScript
                             events.Repeat(Seconds(30));
                             break;
                         case EVENT_SLEEP:
-                            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 100.0f))
+                            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 100.0f, true))
                                 DoCast(target, SPELL_SLEEP);
                             else
                                 DoCastVictim(SPELL_SLEEP);

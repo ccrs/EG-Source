@@ -101,7 +101,7 @@ struct boss_gatewatcher_gyrokill : public BossAI
                     events.Repeat(35s, 50s);
                     break;
                 case EVENT_SAW_BLADE:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100.0f, true))
                         DoCast(target, SPELL_SAW_BLADE);
                     events.Repeat(20s, 30s);
                     break;

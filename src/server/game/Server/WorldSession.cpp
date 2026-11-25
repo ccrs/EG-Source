@@ -23,8 +23,11 @@
 #include "AccountMgr.h"
 #include "AddonMgr.h"
 #include "AnticheatMgr.h"
+#include "Battlefield.h"
+#include "BattlefieldMgr.h"
 #include "BattlegroundMgr.h"
 #include "CharacterPackets.h"
+#include "ChatPackets.h"
 #include "ClientConfigPackets.h"
 #include "Config.h"
 #include "Common.h"
@@ -589,6 +592,11 @@ void WorldSession::LogoutPlayer(bool save)
                 group->StartLeaderOfflineTimer();
         }
 
+        sBattlefieldMgr->ForEach([this](Battlefield* battlefield) // EG
+        {
+            battlefield->HandlePlayerLogout(_player);
+        });
+
         //! Broadcast a logout message to the player's friends
         sSocialMgr->SendFriendStatus(_player, FRIEND_OFFLINE, _player->GetGUID(), true);
         _player->RemoveSocial();
@@ -669,7 +677,7 @@ bool WorldSession::DisallowHyperlinksAndMaybeKick(std::string const& str)
     return false;
 }
 
-void WorldSession::SendNotification(const char *format, ...)
+void WorldSession::SendNotification(char const* format, ...)
 {
     if (format)
     {
@@ -680,27 +688,23 @@ void WorldSession::SendNotification(const char *format, ...)
         vsnprintf(szStr, 1024, format, ap);
         va_end(ap);
 
-        WorldPacket data(SMSG_NOTIFICATION, (strlen(szStr) + 1));
-        data << szStr;
-        SendPacket(&data);
+        SendPacket(WorldPackets::Chat::PrintNotification(szStr).Write());
     }
 }
 
-void WorldSession::SendNotification(uint32 string_id, ...)
+void WorldSession::SendNotification(uint32 stringId, ...)
 {
-    char const* format = GetTrinityString(string_id);
+    char const* format = GetTrinityString(stringId);
     if (format)
     {
         va_list ap;
         char szStr[1024];
         szStr[0] = '\0';
-        va_start(ap, string_id);
+        va_start(ap, stringId);
         vsnprintf(szStr, 1024, format, ap);
         va_end(ap);
 
-        WorldPacket data(SMSG_NOTIFICATION, (strlen(szStr) + 1));
-        data << szStr;
-        SendPacket(&data);
+        SendPacket(WorldPackets::Chat::PrintNotification(szStr).Write());
     }
 }
 
@@ -742,12 +746,6 @@ void WorldSession::Handle_ServerSide(WorldPacket& recvPacket)
 {
     TC_LOG_ERROR("network.opcode", "Received server-side opcode {} from {}"
         , GetOpcodeNameForLogging(static_cast<OpcodeServer>(recvPacket.GetOpcode())), GetPlayerInfo());
-}
-
-void WorldSession::Handle_Deprecated(WorldPacket& recvPacket)
-{
-    TC_LOG_ERROR("network.opcode", "Received deprecated opcode {} from {}"
-        , GetOpcodeNameForLogging(static_cast<OpcodeClient>(recvPacket.GetOpcode())), GetPlayerInfo());
 }
 
 void WorldSession::SendAuthWaitQueue(uint32 position)

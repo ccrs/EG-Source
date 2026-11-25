@@ -1202,17 +1202,17 @@ struct npc_toc_warlock : public boss_faction_championsAI
                     events.ScheduleEvent(EVENT_HELLFIRE, 10s, 30s);
                     return;
                 case EVENT_CORRUPTION:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                         DoCast(target, SPELL_CORRUPTION);
                     events.ScheduleEvent(EVENT_CORRUPTION, 15s, 25s);
                     return;
                 case EVENT_CURSE_OF_AGONY:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                         DoCast(target, SPELL_CURSE_OF_AGONY);
                     events.ScheduleEvent(EVENT_CURSE_OF_AGONY, 20s, 35s);
                     return;
                 case EVENT_CURSE_OF_EXHAUSTION:
-                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 30.0f, true))
                         DoCast(target, SPELL_CURSE_OF_EXHAUSTION);
                     events.ScheduleEvent(EVENT_CURSE_OF_EXHAUSTION, 20s, 35s);
                     return;

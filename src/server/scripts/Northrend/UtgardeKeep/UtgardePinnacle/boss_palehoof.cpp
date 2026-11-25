@@ -420,7 +420,7 @@ struct boss_ferocious_rhino : public PalehoofMinionsBossAI
                 events.Repeat(Seconds(19));
                 break;
             case EVENT_GRIEVOUS_WOUND:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 0.0f, true))
                     DoCast(target, SPELL_GRIEVOUS_WOUND);
                 events.Repeat(Seconds(18));
                 break;
@@ -468,7 +468,7 @@ struct boss_massive_jormungar : public PalehoofMinionsBossAI
                 events.Repeat(Seconds(16));
                 break;
             case EVENT_POISON_BREATH:
-                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 0.0f, true))
                     DoCast(target, SPELL_POISON_BREATH);
                 events.Repeat(Seconds(14));
                 break;
