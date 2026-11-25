@@ -241,6 +241,23 @@ bool EG::CleanRaceMasquerade::Execute(uint64, uint32)
     return false;
 }
 
+void Aura::AddGenerator(ObjectGuid generatorGuid)
+{
+    if (std::find(_generatorGuids.begin(), _generatorGuids.end(), generatorGuid) == _generatorGuids.end())
+        _generatorGuids.push_back(generatorGuid);
+}
+
+bool Aura::UpdateGenerators()
+{
+    Trinity::Containers::EraseIf(_generatorGuids, [this](ObjectGuid const& generatorGuid)
+    {
+        GameObject* generator = GetOwner()->GetMap()->GetGameObject(generatorGuid);
+        return !generator || !generator->IsWithinDistInMap(GetOwner(), float(generator->GetGOInfo()->auraGenerator.radius));
+    });
+
+    return !_generatorGuids.empty();
+}
+
 float Creature::GetMinSwimDepth(bool swimming) const
 {
     float const startDepth = std::max(CREATURE_SURFACE_SWIM_DEPTH, GetCollisionHeight() * CREATURE_SWIM_START_DEPTH_FACTOR);

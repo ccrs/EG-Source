@@ -241,6 +241,10 @@ class TC_GAME_API Aura
         bool CheckAreaTarget(Unit* target);
         bool CanStackWith(Aura const* existingAura) const;
 
+        void AddGenerator(ObjectGuid generatorGuid); // EG
+        bool HasGenerators() const { return !_generatorGuids.empty(); } // EG
+        bool UpdateGenerators(); // EG
+
         bool IsProcOnCooldown(TimePoint now) const;
         void AddProcCooldown(TimePoint cooldownEnd);
         void ResetProcCooldown();
@@ -336,6 +340,7 @@ class TC_GAME_API Aura
 
     private:
         std::vector<AuraApplication*> _removedApplications;
+        std::vector<ObjectGuid> _generatorGuids; // EG
 
         struct NoopAuraDeleter { void operator()(Aura*) const { /*noop - not managed*/ } };
         Trinity::unique_trackable_ptr<Aura> m_scriptRef;

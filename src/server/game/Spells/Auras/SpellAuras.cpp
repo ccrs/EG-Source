@@ -1099,6 +1099,9 @@ bool Aura::CanBeSaved() const
     if (IsPassive())
         return false;
 
+    if (HasGenerators()) // EG
+        return false;
+
     if (GetSpellInfo()->IsChanneled())
         return false;
 
@@ -2642,6 +2645,9 @@ void UnitAura::FillTargetMap(std::unordered_map<Unit*, uint8>& targets, Unit* ca
             continue;
 
         std::vector<Unit*> units;
+        if (!caster && HasGenerators()) // EG
+            units.push_back(GetUnitOwner());
+
         ConditionContainer* condList = spellEffectInfo.ImplicitTargetConditions;
 
         float radius = spellEffectInfo.CalcRadius(ref);

@@ -2907,6 +2907,8 @@ void Unit::_UpdateSpells(uint32 time)
             RemoveOwnedAura(i, AURA_REMOVE_BY_EXPIRE);
         else if (i->second->GetSpellInfo()->IsChanneled() && i->second->GetCasterGUID() != GetGUID() && !ObjectAccessor::GetWorldObject(*this, i->second->GetCasterGUID()))
             RemoveOwnedAura(i, AURA_REMOVE_BY_CANCEL); // remove channeled auras when caster is not on the same map
+        else if (i->second->HasGenerators() && !i->second->UpdateGenerators()) // EG
+            RemoveOwnedAura(i, AURA_REMOVE_BY_DEFAULT);
         else
             ++i;
     }

@@ -35,9 +35,11 @@
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "OutdoorPvPMgr.h"
+#include "Player.h"
 #include "PoolMgr.h"
 #include "QueryPackets.h"
 #include "ScriptMgr.h"
+#include "SpellAuras.h"
 #include "SpellMgr.h"
 #include "Transport.h"
 #include "LocalTransport.h"
@@ -369,6 +371,10 @@ bool GameObject::Create(ObjectGuid::LowType guidlow, uint32 name_id, Map* map, u
         case GAMEOBJECT_TYPE_FISHINGNODE:
             SetGoAnimProgress(0);
             break;
+        case GAMEOBJECT_TYPE_AURA_GENERATOR: // EG
+            SetPhaseMask(PHASEMASK_ANYWHERE, false);
+            SetGoAnimProgress(animprogress);
+            break;
         case GAMEOBJECT_TYPE_TRAP:
             if (GetGOInfo()->trap.stealthed)
             {
@@ -689,6 +695,41 @@ void GameObject::Update(uint32 diff)
                     if (target)
                         SetLootState(GO_ACTIVATED, target);
 
+                }
+                else if (goInfo->type == GAMEOBJECT_TYPE_AURA_GENERATOR) // EG
+                {
+                    if (GameTime::GetGameTimeMS() < m_cooldownTime)
+                        break;
+
+                    m_cooldownTime = GameTime::GetGameTimeMS() + IN_MILLISECONDS;
+                    std::vector<Player*> players;
+                    GetPlayerListInGrid(players, float(goInfo->auraGenerator.radius));
+                    for (uint32 spellId : { goInfo->auraGenerator.conditionID1 ? 0 : goInfo->auraGenerator.auraID1, goInfo->auraGenerator.conditionID2 ? 0 : goInfo->auraGenerator.auraID2 })
+                    {
+                        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
+                        if (!spellInfo)
+                            continue;
+
+                        for (Player* player : players)
+                        {
+                            Aura* aura = nullptr;
+                            for (auto [itr, end] = player->GetOwnedAuras().equal_range(spellId); itr != end && !aura; ++itr)
+                                if (itr->second->GetCasterGUID().IsEmpty())
+                                    aura = itr->second;
+
+                            if (!aura && !player->HasAura(spellId) && !player->IsImmunedToSpell(spellInfo, this) && spellInfo->CheckLocation(player->GetMapId(), player->GetZoneId(), player->GetAreaId(), player) == SPELL_CAST_OK && spellInfo->CheckTarget(this, player) == SPELL_CAST_OK)
+                            {
+                                AuraCreateInfo createInfo(spellInfo, MAX_EFFECT_MASK, player);
+                                if (Aura* newAura = Aura::TryRefreshStackOrCreate(createInfo.SetCasterGUID(GetGUID())))
+                                {
+                                    newAura->AddGenerator(GetGUID());
+                                    newAura->ApplyForTargets();
+                                }
+                            }
+                            else if (aura)
+                                aura->AddGenerator(GetGUID());
+                        }
+                    }
                 }
                 else if (uint32 max_charges = goInfo->GetCharges())
                 {
