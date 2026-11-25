@@ -370,3 +370,7 @@ INSERT INTO `npc_vendor` (`entry`, `slot`, `item`, `maxcount`, `incrtime`, `Exte
 (32172, 0, 47731, 0, 0, 2685, 0),
 (32172, 0, 47732, 0, 0, 2685, 0),
 (32172, 0, 47733, 0, 0, 2685, 0);
+
+-- Wintergrasp quartermasters: only Naxxramas and Ulduar phase goods, the Trial of the Crusader (226/232) and Icecrown Citadel (245/251) goods are removed
+DELETE FROM `npc_vendor` WHERE `entry` IN (32294, 32296) AND `item` IN (48974, 48975, 48976, 48977, 48978, 48979, 48980, 48981, 48982, 48983, 48987, 48988, 48990, 48991, 48992, 48993, 48994, 48997, 48998, 48999, 49000);
+DELETE FROM `npc_vendor` WHERE `entry` IN (39172, 39173);
