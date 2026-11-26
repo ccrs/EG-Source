@@ -31,6 +31,7 @@
 #include "WaypointManager.h"
 #include "WorldStatePackets.h"
 #include <algorithm>
+#include <array>
 #include <functional>
 #include <list>
 #include <map>
@@ -403,6 +404,20 @@ enum BattleForTheUndercityMisc
     DATA_RUN_STATE = 1,
     DATA_THRALL,
     DATA_VARIAN_WRYNN,
+    DATA_SYLVANAS,
+    DATA_VARIMATHRAS,
+    DATA_VARIMATHRAS_PORTAL,
+    DATA_VARIAN_WRYNN_HORDE_RUN,
+    DATA_JAINA_PROUDMOORE_HORDE_RUN,
+    DATA_SAURFANG,
+    DATA_WARSONG_BATTLEGUARD,
+    DATA_BLOCKED_PASSAGE_1,
+    DATA_BLOCKED_PASSAGE_2,
+    DATA_BLOCKED_PASSAGE_3,
+    DATA_THRALL_ALLIANCE_RUN,
+    DATA_JAINA_PROUDMOORE,
+    DATA_GRAND_APOTHECARY_PUTRESS,
+    DATA_KHANOK,
 
     ACTION_ONWARD = 1,
     ACTION_COURTYARD_CONTROLLED,
@@ -574,20 +589,86 @@ public:
     {
         EG_zone_undercity_battle::OnCreatureCreate(creature);
 
-        if (creature->GetEntry() == NPC_THRALL)
-            _thrallGUID = creature->GetGUID();
+        switch (creature->GetEntry())
+        {
+            case NPC_THRALL:
+                _thrallGUID = creature->GetGUID();
+                break;
+            case NPC_SYLVANAS:
+                _sylvanasGUID = creature->GetGUID();
+                break;
+            case NPC_VARIMATHRAS:
+                _varimathrasGUID = creature->GetGUID();
+                break;
+            case NPC_VARIMATHRAS_PORTAL:
+                if (TempSummon const* summon = creature->ToTempSummon())
+                    if (summon->GetSummonerGUID() == _varimathrasGUID)
+                        _varimathrasPortalGUID = creature->GetGUID();
+                break;
+            case NPC_VARIAN_WRYNN_HORDE_RUN:
+                _varianGUID = creature->GetGUID();
+                break;
+            case NPC_JAINA_PROUDMOORE_HORDE_RUN:
+                _jainaGUID = creature->GetGUID();
+                break;
+            case NPC_SAURFANG:
+                _saurfangGUID = creature->GetGUID();
+                break;
+            case NPC_WARSONG_BATTLEGUARD:
+                if (!creature->IsSummon() && _battleguardGUID.IsEmpty())
+                    _battleguardGUID = creature->GetGUID();
+                break;
+            default:
+                break;
+        }
     }
 
     void OnCreatureRemove(Creature* creature) override
     {
         EG_zone_undercity_battle::OnCreatureRemove(creature);
 
-        if (creature->GetGUID() != _thrallGUID)
+        ObjectGuid const guid = creature->GetGUID();
+        if (guid == _thrallGUID)
+        {
+            _thrallGUID.Clear();
+            if (RunState != RUN_STATE_IDLE)
+                EndRun();
+        }
+        else if (guid == _sylvanasGUID)
+            _sylvanasGUID.Clear();
+        else if (guid == _varimathrasGUID)
+            _varimathrasGUID.Clear();
+        else if (guid == _varimathrasPortalGUID)
+            _varimathrasPortalGUID.Clear();
+        else if (guid == _varianGUID)
+            _varianGUID.Clear();
+        else if (guid == _jainaGUID)
+            _jainaGUID.Clear();
+        else if (guid == _saurfangGUID)
+            _saurfangGUID.Clear();
+        else if (guid == _battleguardGUID)
+            _battleguardGUID.Clear();
+    }
+
+    void OnGameObjectCreate(GameObject* go) override
+    {
+        if (go->GetEntry() != GO_BLOCKED_PASSAGE)
             return;
 
-        _thrallGUID.Clear();
-        if (RunState != RUN_STATE_IDLE)
-            EndRun();
+        GameObjectData const* data = go->GetGameObjectData();
+        if (!data || !data->spawnGroupData || data->spawnGroupData->groupId != SPAWN_GROUP_HORDE_BLOCKED_PASSAGES)
+            return;
+
+        auto slot = std::find(_blockedPassageGUIDs.begin(), _blockedPassageGUIDs.end(), ObjectGuid::Empty);
+        if (slot != _blockedPassageGUIDs.end())
+            *slot = go->GetGUID();
+    }
+
+    void OnGameObjectRemove(GameObject* go) override
+    {
+        auto slot = std::find(_blockedPassageGUIDs.begin(), _blockedPassageGUIDs.end(), go->GetGUID());
+        if (slot != _blockedPassageGUIDs.end())
+            slot->Clear();
     }
 
     void OnUnitDeath(Unit* unit) override
@@ -630,7 +711,31 @@ public:
 
     ObjectGuid GetGuidData(uint32 type) const override
     {
-        return type == DATA_THRALL ? _thrallGUID : ObjectGuid::Empty;
+        switch (type)
+        {
+            case DATA_THRALL:
+                return _thrallGUID;
+            case DATA_SYLVANAS:
+                return _sylvanasGUID;
+            case DATA_VARIMATHRAS:
+                return _varimathrasGUID;
+            case DATA_VARIMATHRAS_PORTAL:
+                return _varimathrasPortalGUID;
+            case DATA_VARIAN_WRYNN_HORDE_RUN:
+                return _varianGUID;
+            case DATA_JAINA_PROUDMOORE_HORDE_RUN:
+                return _jainaGUID;
+            case DATA_SAURFANG:
+                return _saurfangGUID;
+            case DATA_WARSONG_BATTLEGUARD:
+                return _battleguardGUID;
+            case DATA_BLOCKED_PASSAGE_1:
+            case DATA_BLOCKED_PASSAGE_2:
+            case DATA_BLOCKED_PASSAGE_3:
+                return _blockedPassageGUIDs[type - DATA_BLOCKED_PASSAGE_1];
+            default:
+                return ObjectGuid::Empty;
+        }
     }
 
     void ProcessEvent(WorldObject* obj, uint32 eventId, WorldObject* /*invoker*/) override
@@ -794,6 +899,14 @@ private:
     }
 
     ObjectGuid _thrallGUID;
+    ObjectGuid _sylvanasGUID;
+    ObjectGuid _varimathrasGUID;
+    ObjectGuid _varimathrasPortalGUID;
+    ObjectGuid _varianGUID;
+    ObjectGuid _jainaGUID;
+    ObjectGuid _saurfangGUID;
+    ObjectGuid _battleguardGUID;
+    std::array<ObjectGuid, 3> _blockedPassageGUIDs;
     bool _runStartPending;
     bool _onwardPending;
     bool _creditPending;
@@ -816,6 +929,15 @@ public:
             case NPC_JAINA_PROUDMOORE:
                 _jainaGUID = creature->GetGUID();
                 break;
+            case NPC_GRAND_APOTHECARY_PUTRESS:
+                _putressGUID = creature->GetGUID();
+                break;
+            case NPC_KHANOK:
+                _khanokGUID = creature->GetGUID();
+                break;
+            case NPC_THRALL:
+                _thrallGUID = creature->GetGUID();
+                break;
             default:
                 break;
         }
@@ -825,12 +947,21 @@ public:
     {
         EG_zone_undercity_battle::OnCreatureRemove(creature);
 
-        if (creature->GetGUID() != _varianGUID)
-            return;
-
-        _varianGUID.Clear();
-        if (RunState != RUN_STATE_IDLE)
-            EndRun();
+        ObjectGuid const guid = creature->GetGUID();
+        if (guid == _varianGUID)
+        {
+            _varianGUID.Clear();
+            if (RunState != RUN_STATE_IDLE)
+                EndRun();
+        }
+        else if (guid == _jainaGUID)
+            _jainaGUID.Clear();
+        else if (guid == _putressGUID)
+            _putressGUID.Clear();
+        else if (guid == _khanokGUID)
+            _khanokGUID.Clear();
+        else if (guid == _thrallGUID)
+            _thrallGUID.Clear();
     }
 
     void OnUnitDeath(Unit* unit) override
@@ -864,7 +995,21 @@ public:
 
     ObjectGuid GetGuidData(uint32 type) const override
     {
-        return type == DATA_VARIAN_WRYNN ? _varianGUID : ObjectGuid::Empty;
+        switch (type)
+        {
+            case DATA_VARIAN_WRYNN:
+                return _varianGUID;
+            case DATA_JAINA_PROUDMOORE:
+                return _jainaGUID;
+            case DATA_GRAND_APOTHECARY_PUTRESS:
+                return _putressGUID;
+            case DATA_KHANOK:
+                return _khanokGUID;
+            case DATA_THRALL_ALLIANCE_RUN:
+                return _thrallGUID;
+            default:
+                return ObjectGuid::Empty;
+        }
     }
 
     void OnUpdate(Map* map, uint32 diff) override
@@ -957,6 +1102,9 @@ private:
 
     ObjectGuid _varianGUID;
     ObjectGuid _jainaGUID;
+    ObjectGuid _putressGUID;
+    ObjectGuid _khanokGUID;
+    ObjectGuid _thrallGUID;
     bool _manhuntPending;
 };
 
@@ -988,12 +1136,12 @@ struct EG_npc_undercity_thrall : public EscortAI
         })
         .Schedule(197s, [this](TaskContext /*context*/)
         {
-            if (Creature* battleguard = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_WARSONG_BATTLEGUARD }))
+            if (Creature* battleguard = GetActor(DATA_WARSONG_BATTLEGUARD))
                 battleguard->AI()->Talk(SAY_BATTLEGUARD_BURN);
         })
         .Schedule(216s, [this](TaskContext /*context*/)
         {
-            if (Creature* battleguard = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_WARSONG_BATTLEGUARD }))
+            if (Creature* battleguard = GetActor(DATA_WARSONG_BATTLEGUARD))
                 battleguard->AI()->Talk(SAY_BATTLEGUARD_PUTRESS);
         })
         .Schedule(241s, [this](TaskContext /*context*/)
@@ -1030,7 +1178,7 @@ struct EG_npc_undercity_thrall : public EscortAI
         {
             case ACTION_ONWARD:
                 Talk(SAY_THRALL_ONWARD);
-                if (Creature* sylvanas = me->FindNearestCreatureWithOptions(20.0f, { .CreatureId = NPC_SYLVANAS }))
+                if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                     sylvanas->AI()->DoAction(ACTION_SYLVANAS_GATE);
                 LoadPath(PATH_THRALL);
                 SetDespawnAtEnd(false);
@@ -1043,7 +1191,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                 _summons.DespawnEntry(NPC_APOTHECARY_CHEMIST);
                 _summons.DespawnEntry(NPC_BLIGHT_SLINGER);
                 me->SummonCreatureGroup(SUMMON_GROUP_COURTYARD_BATTLEGUARDS);
-                if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                     sylvanas->AI()->DoAction(ACTION_SYLVANAS_FOLLOW);
                 SetEscortPaused(false);
                 break;
@@ -1051,7 +1199,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                 _scheduler.CancelGroup(GROUP_INNER_SANCTUM_WAVES);
                 for (uint32 entry : { NPC_FELGUARD_MARAUDER, NPC_PERFIDIOUS_DREADLORD, NPC_TREACHEROUS_GUARDIAN, NPC_BLIGHT_DOCTOR, NPC_APOTHECARY_CHEMIST, NPC_RAVISHING_BETRAYER, NPC_PLAGUED_FELBEAST, NPC_DOOMGUARD_PILLAGER })
                     _summons.DespawnEntry(entry);
-                if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                     sylvanas->AI()->DoAction(ACTION_SYLVANAS_FOLLOW);
                 SetEscortPaused(false);
                 break;
@@ -1075,7 +1223,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                 me->Dismount();
                 _scheduler.Schedule(1s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* sylvanas = me->FindNearestCreatureWithOptions(20.0f, { .CreatureId = NPC_SYLVANAS }))
+                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                         sylvanas->Dismount();
                 })
                 .Schedule(4s, [this](TaskContext /*context*/)
@@ -1088,7 +1236,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                 })
                 .Schedule(14s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* sylvanas = me->FindNearestCreatureWithOptions(20.0f, { .CreatureId = NPC_SYLVANAS }))
+                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                         sylvanas->AI()->DoAction(ACTION_SYLVANAS_COURTYARD);
                     SetEscortPaused(false);
                 });
@@ -1103,31 +1251,31 @@ struct EG_npc_undercity_thrall : public EscortAI
                 })
                 .Schedule(9s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* varimathras = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIMATHRAS }))
+                    if (Creature* varimathras = GetActor(DATA_VARIMATHRAS))
                         varimathras->AI()->Talk(SAY_VARIMATHRAS_WELCOME);
                 })
                 .Schedule(14s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* varimathras = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIMATHRAS }))
+                    if (Creature* varimathras = GetActor(DATA_VARIMATHRAS))
                         varimathras->AI()->Talk(SAY_VARIMATHRAS_MINION);
                 })
                 .Schedule(23s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* varimathras = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIMATHRAS }))
+                    if (Creature* varimathras = GetActor(DATA_VARIMATHRAS))
                         varimathras->AI()->Talk(SAY_VARIMATHRAS_ENOUGH);
                 })
                 .Schedule(30s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* varimathras = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIMATHRAS }))
+                    if (Creature* varimathras = GetActor(DATA_VARIMATHRAS))
                         varimathras->CastSpell(varimathras, SPELL_LEGION_PORTAL);
                 })
                 .Schedule(43s, [this](TaskContext /*context*/)
                 {
-                    Creature* varimathras = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIMATHRAS });
+                    Creature* varimathras = GetActor(DATA_VARIMATHRAS);
                     if (!varimathras)
                         return;
 
-                    if (Creature* portal = varimathras->FindNearestCreatureWithOptions(15.0f, { .CreatureId = NPC_VARIMATHRAS_PORTAL }))
+                    if (Creature* portal = GetActor(DATA_VARIMATHRAS_PORTAL))
                     {
                         varimathras->GetMotionMaster()->MovePoint(0, portal->GetPosition());
                         portal->DespawnOrUnsummon(6s);
@@ -1155,7 +1303,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                         }
                     }
 
-                    if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                         sylvanas->AI()->DoAction(ACTION_SYLVANAS_FOLLOW);
                     if (ZoneScript* zoneScript = me->GetZoneScript())
                         zoneScript->SetData(DATA_RUN_STATE, RUN_STATE_COURTYARD_FIGHT);
@@ -1190,7 +1338,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                 Talk(SAY_THRALL_ELEVATOR_DESTROYED);
                 _scheduler.Schedule(10s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                         sylvanas->AI()->Talk(SAY_SYLVANAS_SHAFT_TRAPPED);
                 })
                 .Schedule(13s, [this](TaskContext /*context*/)
@@ -1217,12 +1365,12 @@ struct EG_npc_undercity_thrall : public EscortAI
 
                     Position const landing(bottom->x, bottom->y, bottom->z);
                     me->GetMotionMaster()->MoveJump(landing, 40.0f, 40.0f);
-                    if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                         sylvanas->GetMotionMaster()->MoveJump(landing, 40.0f, 40.0f);
                 })
                 .Schedule(37s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                         sylvanas->AI()->DoAction(ACTION_SYLVANAS_FOLLOW);
                     SetEscortPaused(false);
                 });
@@ -1234,11 +1382,11 @@ struct EG_npc_undercity_thrall : public EscortAI
                 break;
             case POINT_THRALL_LOWER_CITY:
                 SetEscortPaused(true);
-                if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                     sylvanas->AI()->Talk(SAY_SYLVANAS_BEAUTIFUL_CITY);
                 _scheduler.Schedule(5s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                         sylvanas->AI()->Talk(SAY_SYLVANAS_REDEMPTION);
                 })
                 .Schedule(13s, [this](TaskContext /*context*/)
@@ -1247,7 +1395,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                 })
                 .Schedule(18s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                         sylvanas->AI()->Talk(SAY_SYLVANAS_ROYAL_QUARTER_THIS_WAY);
                 })
                 .Schedule(23s, [this](TaskContext context)
@@ -1291,18 +1439,18 @@ struct EG_npc_undercity_thrall : public EscortAI
                 SetEscortPaused(true);
                 _scheduler.Schedule(10s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                         sylvanas->AI()->Talk(SAY_SYLVANAS_DARK_MAGIC);
                     me->SummonCreatureGroup(SUMMON_GROUP_VARIMATHRAS_INNER_SANCTUM);
                 })
                 .Schedule(15s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* varimathras = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIMATHRAS }))
+                    if (Creature* varimathras = GetActor(DATA_VARIMATHRAS))
                         varimathras->AI()->Talk(SAY_VARIMATHRAS_CLEVER_GIRL);
                 })
                 .Schedule(20s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* varimathras = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIMATHRAS }))
+                    if (Creature* varimathras = GetActor(DATA_VARIMATHRAS))
                     {
                         varimathras->AI()->Talk(SAY_VARIMATHRAS_BROTHERS_HUNGRY);
                         varimathras->CastSpell(varimathras, SPELL_LEGION_PORTAL);
@@ -1310,11 +1458,11 @@ struct EG_npc_undercity_thrall : public EscortAI
                 })
                 .Schedule(26s, [this](TaskContext /*context*/)
                 {
-                    Creature* varimathras = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIMATHRAS });
+                    Creature* varimathras = GetActor(DATA_VARIMATHRAS);
                     if (!varimathras)
                         return;
 
-                    if (Creature* portal = varimathras->FindNearestCreatureWithOptions(15.0f, { .CreatureId = NPC_VARIMATHRAS_PORTAL }))
+                    if (Creature* portal = GetActor(DATA_VARIMATHRAS_PORTAL))
                     {
                         varimathras->GetMotionMaster()->MovePoint(0, portal->GetPosition());
                         portal->DespawnOrUnsummon(3s);
@@ -1380,7 +1528,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                 break;
             case POINT_THRALL_ROYAL_QUARTER_APPROACH:
                 SetEscortPaused(true);
-                if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                     sylvanas->AI()->Talk(SAY_SYLVANAS_ROYAL_QUARTER_AHEAD);
                 _scheduler.Schedule(8s, [this](TaskContext /*context*/)
                 {
@@ -1417,7 +1565,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                     Talk(SAY_THRALL_LETS_GO_QUICKLY);
                     if (ZoneScript* zoneScript = me->GetZoneScript())
                         zoneScript->SetData(DATA_RUN_STATE, RUN_STATE_ROYAL_QUARTER_FIGHT);
-                    if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                         sylvanas->AI()->DoAction(ACTION_SYLVANAS_FOLLOW);
                     SetEscortPaused(false);
                 });
@@ -1427,7 +1575,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                 Talk(SAY_THRALL_WHAT_IS_THIS);
                 _scheduler.Schedule(5s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* varimathras = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIMATHRAS }))
+                    if (Creature* varimathras = GetActor(DATA_VARIMATHRAS))
                     {
                         varimathras->AI()->Talk(SAY_VARIMATHRAS_WELCOME_TO_YOUR_FUTURE);
                         varimathras->CastSpell(me, SPELL_OPENING_LEGION_PORTALS);
@@ -1445,15 +1593,29 @@ struct EG_npc_undercity_thrall : public EscortAI
                             me->SummonCreatureGroup(SUMMON_GROUP_ROYAL_QUARTER_WAVE_2);
                             break;
                         default:
-                            if (Creature* portal = me->FindNearestCreatureWithOptions(200.0f, { .CreatureId = NPC_VARIMATHRAS_PORTAL }))
+                        {
+                            Creature* portal = nullptr;
+                            for (ObjectGuid const& guid : _summons)
+                            {
+                                Creature* summon = ObjectAccessor::GetCreature(*me, guid);
+                                if (summon && summon->GetEntry() == NPC_VARIMATHRAS_PORTAL)
+                                {
+                                    portal = summon;
+                                    break;
+                                }
+                            }
+
+                            if (portal)
                             {
                                 me->SummonCreature(NPC_LEGION_OVERLORD, portal->GetPosition(), TEMPSUMMON_DEAD_DESPAWN);
                                 portal->DespawnOrUnsummon();
                             }
+
                             if (step / 3 < 5)
-                                if (Creature* varimathras = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIMATHRAS }))
+                                if (Creature* varimathras = GetActor(DATA_VARIMATHRAS))
                                     varimathras->AI()->Talk(SAY_VARIMATHRAS_TOO_LONG + step / 3);
                             break;
+                        }
                     }
 
                     if (step < 17)
@@ -1461,7 +1623,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                     else
                         context.Schedule(5s, [this](TaskContext /*context*/)
                         {
-                            Creature* varimathras = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIMATHRAS });
+                            Creature* varimathras = GetActor(DATA_VARIMATHRAS);
                             if (!varimathras)
                                 return;
 
@@ -1492,18 +1654,18 @@ struct EG_npc_undercity_thrall : public EscortAI
                 SetEscortPaused(true);
                 _scheduler.Schedule(8s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                         me->SetFacingToObject(sylvanas);
                     Talk(SAY_THRALL_JOIN_ME);
                 })
                 .Schedule(11s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                         sylvanas->CastSpell(sylvanas, SPELL_LEAP_TO_PLATFORM);
                 })
                 .Schedule(13s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                     {
                         sylvanas->AI()->Talk(SAY_SYLVANAS_FATE_OF_ALL_ENEMIES);
                         sylvanas->SetFacingToObject(me);
@@ -1514,7 +1676,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                 .Schedule(16s, [this](TaskContext /*context*/)
                 {
                     Talk(SAY_THRALL_WE_SHALL);
-                    if (Creature* sylvanas = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SYLVANAS }))
+                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
                         sylvanas->AI()->DoAction(ACTION_SYLVANAS_FOLLOW);
                     SetEscortPaused(false);
                 });
@@ -1528,22 +1690,22 @@ struct EG_npc_undercity_thrall : public EscortAI
                 })
                 .Schedule(9s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* varian = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIAN_WRYNN_HORDE_RUN }))
+                    if (Creature* varian = GetActor(DATA_VARIAN_WRYNN_HORDE_RUN))
                         varian->AI()->Talk(SAY_VARIAN_HORDE_RUN_AWAY_TOO_LONG);
                 })
                 .Schedule(24s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* varian = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIAN_WRYNN_HORDE_RUN }))
+                    if (Creature* varian = GetActor(DATA_VARIAN_WRYNN_HORDE_RUN))
                         varian->AI()->Talk(SAY_VARIAN_HORDE_RUN_MAKE_THINGS_RIGHT);
                 })
                 .Schedule(39s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* varian = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIAN_WRYNN_HORDE_RUN }))
+                    if (Creature* varian = GetActor(DATA_VARIAN_WRYNN_HORDE_RUN))
                         varian->AI()->Talk(SAY_VARIAN_HORDE_RUN_WAITED_LONG);
                 })
                 .Schedule(55500ms, [this](TaskContext /*context*/)
                 {
-                    if (Creature* varian = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_VARIAN_WRYNN_HORDE_RUN }))
+                    if (Creature* varian = GetActor(DATA_VARIAN_WRYNN_HORDE_RUN))
                         varian->AI()->Talk(SAY_VARIAN_HORDE_RUN_IT_ENDS_NOW);
                 })
                 .Schedule(61500ms, [this](TaskContext /*context*/)
@@ -1561,7 +1723,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                 })
                 .Schedule(67500ms, [this](TaskContext /*context*/)
                 {
-                    if (Creature* jaina = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_JAINA_PROUDMOORE_HORDE_RUN }))
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE_HORDE_RUN))
                     {
                         jaina->GetMotionMaster()->MovePath(PATH_JAINA_PROUDMOORE_HORDE_RUN, false);
                         jaina->AI()->Talk(SAY_JAINA_HORDE_RUN_VARIAN_NO);
@@ -1569,7 +1731,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                 })
                 .Schedule(75500ms, [this](TaskContext /*context*/)
                 {
-                    if (Creature* jaina = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_JAINA_PROUDMOORE_HORDE_RUN }))
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE_HORDE_RUN))
                     {
                         jaina->CastSpell(jaina, SPELL_DEEP_FREEZE_STUN);
                         jaina->AI()->Talk(SAY_JAINA_HORDE_RUN_DID_NOT_HAVE_TO_BE);
@@ -1577,7 +1739,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                 })
                 .Schedule(80500ms, [this](TaskContext /*context*/)
                 {
-                    if (Creature* jaina = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_JAINA_PROUDMOORE_HORDE_RUN }))
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE_HORDE_RUN))
                         jaina->CastSpell(jaina, SPELL_GREATER_MASS_TELEPORT_DUMMY);
                 })
                 .Schedule(85500ms, [this](TaskContext /*context*/)
@@ -1603,7 +1765,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                 })
                 .Schedule(10s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* saurfang = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SAURFANG }))
+                    if (Creature* saurfang = GetActor(DATA_SAURFANG))
                     {
                         saurfang->AI()->Talk(SAY_SAURFANG_WHAT_HE_WOULD_DO);
                         saurfang->SetStandState(UNIT_STAND_STATE_SIT);
@@ -1611,12 +1773,12 @@ struct EG_npc_undercity_thrall : public EscortAI
                 })
                 .Schedule(16s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* saurfang = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SAURFANG }))
+                    if (Creature* saurfang = GetActor(DATA_SAURFANG))
                         saurfang->AI()->Talk(SAY_SAURFANG_LEAD_YOUR_PEOPLE);
                 })
                 .Schedule(22s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* saurfang = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_SAURFANG }))
+                    if (Creature* saurfang = GetActor(DATA_SAURFANG))
                         saurfang->AI()->Talk(SAY_SAURFANG_LETS_GO_HOME);
                 })
                 .Schedule(27s, [this](TaskContext /*context*/)
@@ -1729,6 +1891,12 @@ struct EG_npc_undercity_thrall : public EscortAI
     }
 
 private:
+    Creature* GetActor(uint32 type) const
+    {
+        ZoneScript* zoneScript = me->GetZoneScript();
+        return zoneScript ? ObjectAccessor::GetCreature(*me, zoneScript->GetGuidData(type)) : nullptr;
+    }
+
     SummonList _summons;
     TaskScheduler _scheduler;
     bool _courtyardAttack;
@@ -1903,7 +2071,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 })
                 .Schedule(15500ms, [this](TaskContext /*context*/)
                 {
-                    if (Creature* jaina = GetJaina())
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                     {
                         jaina->AI()->DoAction(ACTION_JAINA_HOLD);
                         jaina->GetMotionMaster()->MovePath(PATH_JAINA_PROUDMOORE, false);
@@ -1922,7 +2090,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 _scheduler.Schedule(10s, [this](TaskContext /*context*/)
                 {
                     Talk(SAY_VARIAN_ABERRATIONS);
-                    if (Creature* jaina = GetJaina())
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                         jaina->AI()->DoAction(ACTION_JAINA_FOLLOW);
                 })
                 .Schedule(15s, [this](TaskContext /*context*/)
@@ -1936,7 +2104,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 Talk(SAY_VARIAN_JUSTICE_SERVED);
                 _scheduler.Schedule(4s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* putress = me->FindNearestCreatureWithOptions(50.0f, { .CreatureId = NPC_GRAND_APOTHECARY_PUTRESS, .IsAlive = false }))
+                    if (Creature* putress = GetActor(DATA_GRAND_APOTHECARY_PUTRESS))
                         me->SetFacingToObject(putress);
                     Talk(SAY_VARIAN_WHAT_SAY_YOU_NOW);
                 })
@@ -1962,12 +2130,12 @@ struct EG_npc_undercity_varian : public EscortAI
                     me->SummonCreatureGroup(summonGroup);
                 _scheduler.Schedule(9500ms, [this](TaskContext /*context*/)
                 {
-                    if (Creature* jaina = GetJaina())
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                         jaina->AI()->Talk(SAY_JAINA_RIGHT_AWAY);
                 })
                 .Schedule(11500ms, [this](TaskContext /*context*/)
                 {
-                    if (Creature* jaina = GetJaina())
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                         jaina->CastSpell(jaina, SPELL_IMPROVED_BRILLIANCE_AURA);
                 })
                 .Schedule(12500ms, [this](TaskContext /*context*/)
@@ -1978,13 +2146,13 @@ struct EG_npc_undercity_varian : public EscortAI
                 })
                 .Schedule(13500ms, [this](TaskContext /*context*/)
                 {
-                    if (Creature* jaina = GetJaina())
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                         jaina->AI()->DoAction(ACTION_JAINA_FOLLOW);
                 });
                 break;
             case POINT_VARIAN_SEWERS:
                 SetEscortPaused(true);
-                if (Creature* jaina = GetJaina())
+                if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                     jaina->AI()->DoAction(ACTION_JAINA_HOLD);
                 Talk(SAY_VARIAN_STAND_YOUR_GROUND);
                 _scheduler.Schedule(3500ms, GROUP_SEWERS_WAVES, [this](TaskContext context)
@@ -2034,7 +2202,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 break;
             case POINT_VARIAN_CANALS:
                 SetEscortPaused(true);
-                if (Creature* jaina = GetJaina())
+                if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                 {
                     jaina->AI()->DoAction(ACTION_JAINA_HOLD);
                     jaina->GetMotionMaster()->MovePath(PATH_JAINA_PROUDMOORE_CANALS, false);
@@ -2047,7 +2215,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 break;
             case POINT_VARIAN_KHANOK:
                 SetEscortPaused(true);
-                if (Creature* khanok = me->FindNearestCreatureWithOptions(30.0f, { .CreatureId = NPC_KHANOK, .IsAlive = false }))
+                if (Creature* khanok = GetActor(DATA_KHANOK))
                     me->SetFacingToObject(khanok);
                 me->SetStandState(UNIT_STAND_STATE_KNEEL);
                 _scheduler.Schedule(1s, [this](TaskContext /*context*/)
@@ -2066,20 +2234,20 @@ struct EG_npc_undercity_varian : public EscortAI
                 {
                     if (ZoneScript* zoneScript = me->GetZoneScript())
                         zoneScript->SetData(DATA_RUN_STATE, RUN_STATE_APOTHECARIUM_FIGHT);
-                    if (Creature* putress = me->FindNearestCreatureWithOptions(200.0f, { .CreatureId = NPC_GRAND_APOTHECARY_PUTRESS }))
+                    if (Creature* putress = GetActor(DATA_GRAND_APOTHECARY_PUTRESS))
                         putress->AI()->Talk(SAY_PUTRESS_DO_NOT_LET_THEM_PASS);
                     me->SummonCreatureGroup(SUMMON_GROUP_APOTHECARIUM_GUARDIANS);
                 })
                 .Schedule(27500ms, [this](TaskContext /*context*/)
                 {
                     me->SetStandState(UNIT_STAND_STATE_STAND);
-                    if (Creature* jaina = GetJaina())
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                         jaina->AI()->DoAction(ACTION_JAINA_FOLLOW);
                     SetEscortPaused(false);
                 });
                 break;
             case POINT_VARIAN_PUTRESS_WARNING:
-                if (Creature* putress = me->FindNearestCreatureWithOptions(200.0f, { .CreatureId = NPC_GRAND_APOTHECARY_PUTRESS }))
+                if (Creature* putress = GetActor(DATA_GRAND_APOTHECARY_PUTRESS))
                     putress->AI()->Talk(SAY_PUTRESS_KILL_THEM);
                 break;
             case POINT_VARIAN_MAIN_CHAMBER:
@@ -2104,7 +2272,7 @@ struct EG_npc_undercity_varian : public EscortAI
             case POINT_VARIAN_THERE:
                 SetEscortPaused(true);
                 Talk(SAY_VARIAN_THERE);
-                if (Creature* jaina = GetJaina())
+                if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                 {
                     jaina->AI()->DoAction(ACTION_JAINA_HOLD);
                     jaina->GetMotionMaster()->MovePath(PATH_JAINA_PROUDMOORE_APOTHECARIUM, false);
@@ -2119,35 +2287,35 @@ struct EG_npc_undercity_varian : public EscortAI
                 Talk(SAY_VARIAN_NOWHERE_TO_RUN);
                 _scheduler.Schedule(4s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* putress = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_GRAND_APOTHECARY_PUTRESS }))
+                    if (Creature* putress = GetActor(DATA_GRAND_APOTHECARY_PUTRESS))
                         putress->AI()->Talk(SAY_PUTRESS_STARE_INTO_THE_ABYSS);
                     me->SummonCreatureGroup(SUMMON_GROUP_FAILED_EXPERIMENTS);
                 })
                 .Schedule(11500ms, [this](TaskContext /*context*/)
                 {
-                    if (Creature* putress = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_GRAND_APOTHECARY_PUTRESS }))
+                    if (Creature* putress = GetActor(DATA_GRAND_APOTHECARY_PUTRESS))
                         putress->AI()->Talk(SAY_PUTRESS_NO_MATCH);
                 })
                 .Schedule(19s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* putress = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_GRAND_APOTHECARY_PUTRESS }))
+                    if (Creature* putress = GetActor(DATA_GRAND_APOTHECARY_PUTRESS))
                         putress->AI()->Talk(SAY_PUTRESS_CANNOT_BE_HAPPENING);
                     me->SummonCreatureGroup(SUMMON_GROUP_FAILED_EXPERIMENTS);
                 })
                 .Schedule(26500ms, [this](TaskContext /*context*/)
                 {
-                    if (Creature* putress = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_GRAND_APOTHECARY_PUTRESS }))
+                    if (Creature* putress = GetActor(DATA_GRAND_APOTHECARY_PUTRESS))
                         putress->AI()->Talk(SAY_PUTRESS_WILL_NOT_END);
                 })
                 .Schedule(36500ms, [this](TaskContext /*context*/)
                 {
-                    if (Creature* putress = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_GRAND_APOTHECARY_PUTRESS }))
+                    if (Creature* putress = GetActor(DATA_GRAND_APOTHECARY_PUTRESS))
                         putress->AI()->Talk(SAY_PUTRESS_POWER_WASHES);
                     me->SummonCreatureGroup(SUMMON_GROUP_FAILED_EXPERIMENTS);
                 })
                 .Schedule(44s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* putress = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_GRAND_APOTHECARY_PUTRESS }))
+                    if (Creature* putress = GetActor(DATA_GRAND_APOTHECARY_PUTRESS))
                     {
                         putress->AI()->Talk(SAY_PUTRESS_MORE_SUFFERING);
                         putress->CastSpell(putress, SPELL_BLIGHT_OVERLOAD);
@@ -2155,7 +2323,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 })
                 .Schedule(44500ms, [this](TaskContext /*context*/)
                 {
-                    Creature* putress = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_GRAND_APOTHECARY_PUTRESS });
+                    Creature* putress = GetActor(DATA_GRAND_APOTHECARY_PUTRESS);
                     if (!putress)
                         return;
 
@@ -2164,7 +2332,7 @@ struct EG_npc_undercity_varian : public EscortAI
                     putress->SetReactState(REACT_AGGRESSIVE);
                     putress->AI()->AttackStart(me);
                     AttackStart(putress);
-                    if (Creature* jaina = GetJaina())
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                         jaina->AI()->DoAction(ACTION_JAINA_FOLLOW);
                 });
                 break;
@@ -2194,12 +2362,12 @@ struct EG_npc_undercity_varian : public EscortAI
                 })
                 .Schedule(29s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* thrall = me->FindNearestCreatureWithOptions(200.0f, { .CreatureId = NPC_THRALL }))
+                    if (Creature* thrall = GetActor(DATA_THRALL_ALLIANCE_RUN))
                         thrall->AI()->Talk(SAY_THRALL_ALLIANCE_RUN_VICTORIOUS);
                 })
                 .Schedule(32s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* thrall = me->FindNearestCreatureWithOptions(200.0f, { .CreatureId = NPC_THRALL }))
+                    if (Creature* thrall = GetActor(DATA_THRALL_ALLIANCE_RUN))
                         thrall->AI()->Talk(SAY_THRALL_ALLIANCE_RUN_LOKTAR);
                 })
                 .Schedule(37s, [this](TaskContext /*context*/)
@@ -2217,7 +2385,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 })
                 .Schedule(42s, [this](TaskContext /*context*/)
                 {
-                    if (Creature* jaina = GetJaina())
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                         jaina->AI()->Talk(SAY_JAINA_WONT_HELP_YOU);
                 });
                 break;
@@ -2227,7 +2395,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 _scheduler.Schedule(10s, [this](TaskContext /*context*/)
                 {
                     Talk(SAY_VARIAN_TO_THE_THRONE_ROOM);
-                    if (Creature* jaina = GetJaina())
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                     {
                         jaina->AI()->DoAction(ACTION_JAINA_HOLD);
                         jaina->SetImmuneToAll(true);
@@ -2304,7 +2472,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 })
                 .Schedule(58500ms, [this](TaskContext /*context*/)
                 {
-                    if (Creature* jaina = GetJaina())
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                     {
                         jaina->GetMotionMaster()->MovePath(PATH_JAINA_PROUDMOORE_THRONE, false);
                         jaina->AI()->Talk(SAY_JAINA_VARIAN_NO);
@@ -2312,7 +2480,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 })
                 .Schedule(66500ms, [this](TaskContext /*context*/)
                 {
-                    if (Creature* jaina = GetJaina())
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                     {
                         jaina->CastSpell(jaina, SPELL_DEEP_FREEZE_CREDIT);
                         jaina->AI()->Talk(SAY_JAINA_DID_NOT_HAVE_TO_BE);
@@ -2320,7 +2488,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 })
                 .Schedule(71500ms, [this](TaskContext /*context*/)
                 {
-                    if (Creature* jaina = GetJaina())
+                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
                         jaina->CastSpell(jaina, SPELL_GREATER_MASS_TELEPORT);
                 })
                 .Schedule(77s, [this](TaskContext /*context*/)
@@ -2418,9 +2586,10 @@ struct EG_npc_undercity_varian : public EscortAI
     }
 
 private:
-    Creature* GetJaina() const
+    Creature* GetActor(uint32 type) const
     {
-        return me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_JAINA_PROUDMOORE });
+        ZoneScript* zoneScript = me->GetZoneScript();
+        return zoneScript ? ObjectAccessor::GetCreature(*me, zoneScript->GetGuidData(type)) : nullptr;
     }
 
     SummonList _summons;
@@ -2585,8 +2754,10 @@ struct EG_npc_undercity_thrall_orgrimmar : public ScriptedAI
 
         std::list<Creature*> guards;
         me->GetCreatureListWithOptionsInGrid(guards, 50.0f, { .CreatureId = NPC_KORKRON_ELITE_ORGRIMMAR });
+        _korkronGuids.clear();
         for (Creature* guard : guards)
         {
+            _korkronGuids.push_back(guard->GetGUID());
             guard->SetWalk(false);
             if (jaina)
                 guard->GetMotionMaster()->MovePoint(0, jaina->GetPosition());
@@ -2606,10 +2777,9 @@ struct EG_npc_undercity_thrall_orgrimmar : public ScriptedAI
 
         _scheduler.Schedule(1700ms, [this](TaskContext /*context*/)
         {
-            std::list<Creature*> guards;
-            me->GetCreatureListWithOptionsInGrid(guards, 50.0f, { .CreatureId = NPC_KORKRON_ELITE_ORGRIMMAR });
-            for (Creature* guard : guards)
-                guard->AI()->EnterEvadeMode();
+            for (ObjectGuid const& guid : _korkronGuids)
+                if (Creature* guard = ObjectAccessor::GetCreature(*me, guid))
+                    guard->AI()->EnterEvadeMode();
         })
         .Schedule(5700ms, [this](TaskContext /*context*/)
         {
@@ -2722,6 +2892,7 @@ private:
     TaskScheduler _scheduler;
     ObjectGuid _jainaGuid;
     ObjectGuid _sylvanasGuid;
+    GuidVector _korkronGuids;
     bool _sceneInProgress;
 };
 
@@ -2732,10 +2903,13 @@ class EG_spell_undercity_call_of_earth : public SpellScript
 
     void HandleAfterCast()
     {
-        std::list<GameObject*> passages;
-        GetCaster()->GetGameObjectListWithOptionsInGrid(passages, 80.0f, { .GameObjectId = GO_BLOCKED_PASSAGE });
-        for (GameObject* passage : passages)
-            passage->UseDoorOrButton();
+        ZoneScript* zoneScript = GetCaster()->GetZoneScript();
+        if (!zoneScript)
+            return;
+
+        for (uint32 type : { DATA_BLOCKED_PASSAGE_1, DATA_BLOCKED_PASSAGE_2, DATA_BLOCKED_PASSAGE_3 })
+            if (GameObject* passage = ObjectAccessor::GetGameObject(*GetCaster(), zoneScript->GetGuidData(type)))
+                passage->UseDoorOrButton();
     }
 
     void Register() override
