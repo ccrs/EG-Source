@@ -221,6 +221,8 @@ enum BattleForTheUndercityMisc
     POINT_VARIAN_THRONE_HALL = 87,
     POINT_VARIAN_THRONE = 88,
 
+    POINT_VARIMATHRAS_PORTAL = 1,
+
     SAY_THRALL_PREPARATION_1 = 2,
     SAY_THRALL_PREPARATION_2,
     SAY_THRALL_PREPARATION_3,
@@ -1273,11 +1275,9 @@ struct EG_npc_undercity_thrall : public EscortAI
                         return;
 
                     if (Creature* portal = GetActor(DATA_VARIMATHRAS_PORTAL))
-                    {
-                        varimathras->GetMotionMaster()->MovePoint(0, portal->GetPosition());
-                        portal->DespawnOrUnsummon(6s);
-                    }
-                    varimathras->DespawnOrUnsummon(3s);
+                        varimathras->GetMotionMaster()->MovePoint(POINT_VARIMATHRAS_PORTAL, portal->GetPosition());
+                    else
+                        varimathras->DespawnOrUnsummon();
                 })
                 .Schedule(44s, [this](TaskContext /*context*/)
                 {
@@ -1460,11 +1460,9 @@ struct EG_npc_undercity_thrall : public EscortAI
                         return;
 
                     if (Creature* portal = GetActor(DATA_VARIMATHRAS_PORTAL))
-                    {
-                        varimathras->GetMotionMaster()->MovePoint(0, portal->GetPosition());
-                        portal->DespawnOrUnsummon(3s);
-                    }
-                    varimathras->DespawnOrUnsummon(3s);
+                        varimathras->GetMotionMaster()->MovePoint(POINT_VARIMATHRAS_PORTAL, portal->GetPosition());
+                    else
+                        varimathras->DespawnOrUnsummon();
                 })
                 .Schedule(28s, GROUP_INNER_SANCTUM_WAVES, [this](TaskContext context)
                 {
