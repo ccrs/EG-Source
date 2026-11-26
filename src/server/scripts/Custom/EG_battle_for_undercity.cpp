@@ -1123,9 +1123,6 @@ struct EG_npc_undercity_thrall : public EscortAI
     {
         EscortAI::JustAppeared();
 
-        if (me->IsSummon())
-            return;
-
         _scheduler.Schedule(177s, [this](TaskContext /*context*/)
         {
             Talk(SAY_THRALL_PREPARATION_1);
@@ -1902,6 +1899,55 @@ private:
     bool _courtyardAttack;
 };
 
+// 32518 - Thrall
+struct EG_npc_undercity_thrall_alliance_run : public ScriptedAI
+{
+    EG_npc_undercity_thrall_alliance_run(Creature* creature) : ScriptedAI(creature)
+    {
+        _scheduler.SetValidator([this]
+        {
+            return !me->HasUnitState(UNIT_STATE_CASTING);
+        });
+    }
+
+    void JustEngagedWith(Unit* /*who*/) override
+    {
+        _scheduler.Schedule(5s, 8s, [this](TaskContext context)
+        {
+            DoCastVictim(SPELL_CHAIN_LIGHTNING);
+            context.Repeat(5s, 8s);
+        })
+        .Schedule(3s, 5s, [this](TaskContext context)
+        {
+            DoCastVictim(SPELL_LAVA_BURST);
+            context.Repeat(3s, 5s);
+        })
+        .Schedule(15s, [this](TaskContext context)
+        {
+            DoCastSelf(SPELL_THUNDER);
+            context.Repeat(15s);
+        });
+    }
+
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        _scheduler.CancelAll();
+        ScriptedAI::EnterEvadeMode(why);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        _scheduler.Update(diff);
+        DoMeleeAttackIfReady();
+    }
+
+private:
+    TaskScheduler _scheduler;
+};
+
 // 32365 - Lady Sylvanas Windrunner
 struct EG_npc_undercity_sylvanas : public ScriptedAI
 {
@@ -2002,6 +2048,67 @@ private:
         return zoneScript ? ObjectAccessor::GetCreature(*me, zoneScript->GetGuidData(DATA_THRALL)) : nullptr;
     }
 
+    TaskScheduler _scheduler;
+};
+
+// 32365 - Lady Sylvanas Windrunner
+struct EG_npc_undercity_sylvanas_alliance_run : public ScriptedAI
+{
+    EG_npc_undercity_sylvanas_alliance_run(Creature* creature) : ScriptedAI(creature)
+    {
+        _scheduler.SetValidator([this]
+        {
+            return !me->HasUnitState(UNIT_STATE_CASTING);
+        });
+    }
+
+    void JustEngagedWith(Unit* /*who*/) override
+    {
+        DoCastSelf(SPELL_SONG_OF_SYLVANAS);
+        _scheduler.Schedule(6s, 9s, [this](TaskContext context)
+        {
+            DoCastVictim(SPELL_BLACK_ARROW);
+            context.Repeat(6s, 9s);
+        })
+        .Schedule(5s, 10s, [this](TaskContext context)
+        {
+            DoCastVictim(SPELL_SHOOT);
+            context.Repeat(5s, 10s);
+        })
+        .Schedule(10s, 13s, [this](TaskContext context)
+        {
+            DoCastVictim(SPELL_MULTI_SHOT);
+            context.Repeat(10s, 13s);
+        })
+        .Schedule(3s, [this](TaskContext context)
+        {
+            DoCastVictim(SPELL_SHRIEK_OF_THE_HIGHBORNE);
+            context.Repeat(3s);
+        })
+        .Schedule(10s, [this](TaskContext context)
+        {
+            if (!me->HasAura(SPELL_SONG_OF_SYLVANAS))
+                DoCastSelf(SPELL_SONG_OF_SYLVANAS);
+            context.Repeat(10s);
+        });
+    }
+
+    void EnterEvadeMode(EvadeReason why) override
+    {
+        _scheduler.CancelAll();
+        ScriptedAI::EnterEvadeMode(why);
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        if (!UpdateVictim())
+            return;
+
+        _scheduler.Update(diff);
+        DoMeleeAttackIfReady();
+    }
+
+private:
     TaskScheduler _scheduler;
 };
 
@@ -2959,7 +3066,9 @@ class EG_spell_undercity_ingest : public SpellScript
 void AddSC_EG_battle_for_undercity()
 {
     RegisterCreatureAI(EG_npc_undercity_thrall);
+    RegisterCreatureAI(EG_npc_undercity_thrall_alliance_run);
     RegisterCreatureAI(EG_npc_undercity_sylvanas);
+    RegisterCreatureAI(EG_npc_undercity_sylvanas_alliance_run);
     RegisterCreatureAI(EG_npc_undercity_thrall_staging);
     RegisterCreatureAI(EG_npc_undercity_varian);
     RegisterCreatureAI(EG_npc_undercity_jaina);

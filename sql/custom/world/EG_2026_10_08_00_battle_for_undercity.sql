@@ -581,8 +581,8 @@ DELETE FROM `creature_questender` WHERE `id`=32518 AND `quest`=13267;
 INSERT INTO `creature_questender` (`id`, `quest`) VALUES
 (32518, 13267);
 
-UPDATE `creature_template` SET `npcflag`=2, `ScriptName`='EG_npc_undercity_thrall' WHERE `entry`=32518;
-UPDATE `creature_template` SET `ScriptName`='EG_npc_undercity_sylvanas' WHERE `entry`=32365;
+UPDATE `creature_template` SET `ScriptName`='EG_npc_undercity_thrall_alliance_run' WHERE `entry`=32518;
+UPDATE `creature_template` SET `ScriptName`='EG_npc_undercity_sylvanas_alliance_run' WHERE `entry`=32365;
 UPDATE `creature_template` SET `unit_flags`=33554432 WHERE `entry`=31811;
 UPDATE `creature_template_addon` SET `auras`='68424' WHERE `entry`=31811;
 UPDATE `creature_template` SET `AIName`='SmartAI' WHERE `entry` IN (31526,31532,31576,31652,31765,31782,31844);
@@ -594,9 +594,9 @@ INSERT INTO `spawn_group_template` (`groupId`, `groupName`, `groupFlags`) VALUES
 (1031, 'Battle for the Undercity - Horde courtyard banners', 4);
 
 DELETE FROM `creature` WHERE `guid` IN (1300148,1300149);
-INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `wander_distance`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `dynamicflags`, `VerifiedBuild`) VALUES
-(1300148, 32518, 0, 85, 153, 1, 64, 0, 1, 1945.72, 234.06, 43.911, 3.155, 300, 0, 0, 1, 0, 0, 0, 0, 0, 0),
-(1300149, 32365, 0, 85, 153, 1, 64, 0, 1, 1945.26, 240.223, 44.0046, 2.9, 300, 0, 0, 1, 0, 0, 0, 0, 0, 0);
+INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `wander_distance`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `dynamicflags`, `VerifiedBuild`, `ScriptName`) VALUES
+(1300148, 32518, 0, 85, 153, 1, 64, 0, 1, 1945.72, 234.06, 43.911, 3.155, 300, 0, 0, 1, 0, 0, 2, 0, 0, 0, 'EG_npc_undercity_thrall'),
+(1300149, 32365, 0, 85, 153, 1, 64, 0, 1, 1945.26, 240.223, 44.0046, 2.9, 300, 0, 0, 1, 0, 0, 0, 0, 0, 0, 'EG_npc_undercity_sylvanas');
 
 DELETE FROM `creature_addon` WHERE `guid` IN (1300148,1300149);
 INSERT INTO `creature_addon` (`guid`, `path_id`, `mount`, `MountCreatureID`, `StandState`, `AnimTier`, `VisFlags`, `SheathState`, `PvPFlags`, `emote`, `visibilityDistanceType`, `auras`) VALUES
