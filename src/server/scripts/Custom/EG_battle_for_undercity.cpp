@@ -1343,7 +1343,7 @@ protected:
     uint32 GetBattleState() const
     {
         ZoneScript* zoneScript = me->GetZoneScript();
-        return zoneScript ? zoneScript->GetData(DATA_BATTLE_STATE) : BATTLE_STATE_IDLE;
+        return zoneScript ? zoneScript->GetData(DATA_BATTLE_STATE) : uint32(BATTLE_STATE_IDLE);
     }
 
     virtual void PathEnded() { }
@@ -2312,7 +2312,7 @@ protected:
     uint32 GetBattleState() const
     {
         ZoneScript* zoneScript = me->GetZoneScript();
-        return zoneScript ? zoneScript->GetData(DATA_BATTLE_STATE) : BATTLE_STATE_IDLE;
+        return zoneScript ? zoneScript->GetData(DATA_BATTLE_STATE) : uint32(BATTLE_STATE_IDLE);
     }
 
     TaskScheduler Scheduler;
