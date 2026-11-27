@@ -84,6 +84,11 @@ enum BattleForTheUndercityMisc
 
     GO_BLOCKED_PASSAGE = 194935,
 
+    FACTION_HORDE = 1801,
+
+    MODEL_THRALL_MOUNT = 14575,
+    MODEL_SYLVANAS_MOUNT = 10721,
+
     SPELL_WARCHIEFS_BLESSING = 64670,
     SPELL_CALL_OF_AIR = 59898,
     SPELL_TIDAL_WAVE = 59627,
@@ -126,6 +131,7 @@ enum BattleForTheUndercityMisc
     SPAWN_GROUP_HORDE_STAGING = 1030,
     SPAWN_GROUP_HORDE_COURTYARD_BANNERS = 1031,
     SPAWN_GROUP_HORDE_BLOCKED_PASSAGES = 1032,
+    SPAWN_GROUP_HORDE_PLAGUE_STALKERS = 1033,
 
     SUMMON_GROUP_GREAT_WIND_VORTEX_1 = 0,
     SUMMON_GROUP_GREAT_WIND_VORTEX_2 = 1,
@@ -171,6 +177,7 @@ enum BattleForTheUndercityMisc
     PATH_THRALL = 3251800,
     PATH_SYLVANAS_GATE = 3236500,
     PATH_SYLVANAS_COURTYARD = 3236501,
+    PATH_SYLVANAS_SHAFT = 3236502,
     PATH_GREAT_WIND_VORTEX_1 = 3178200,
     PATH_GREAT_WIND_VORTEX_2 = 3178201,
     PATH_BATTLEGUARD_CHARGE = 3173900,
@@ -430,9 +437,11 @@ enum BattleForTheUndercityMisc
     ACTION_APOTHECARIUM_SECURED,
     ACTION_JAINA_FOLLOW,
     ACTION_JAINA_HOLD,
+    ACTION_JAINA_BRILLIANCE,
     ACTION_SYLVANAS_GATE,
     ACTION_SYLVANAS_COURTYARD,
     ACTION_SYLVANAS_FOLLOW,
+    ACTION_SYLVANAS_LEAP,
 
     RUN_STATE_IDLE = 0,
     RUN_STATE_COUNTDOWN,
@@ -898,6 +907,7 @@ private:
         map->SpawnGroupDespawn(SPAWN_GROUP_HORDE_COURTYARD_BANNERS);
         map->SpawnGroupDespawn(SPAWN_GROUP_HORDE_BLOCKED_PASSAGES);
         map->SpawnGroupSpawn(SPAWN_GROUP_HORDE_STAGING, true);
+        map->SpawnGroupSpawn(SPAWN_GROUP_HORDE_PLAGUE_STALKERS, true);
     }
 
     ObjectGuid _thrallGUID;
@@ -1099,7 +1109,12 @@ private:
         _manhuntPending = false;
         for (ObjectGuid const& guid : { _varianGUID, _jainaGUID })
             if (Creature* leader = map->GetCreature(guid))
+            {
+                float x, y, z, o;
+                leader->GetRespawnPosition(x, y, z, &o);
+                leader->SetHomePosition(x, y, z, o);
                 leader->DespawnOrUnsummon(0s, 5s);
+            }
     }
 
     ObjectGuid _varianGUID;
@@ -1113,7 +1128,7 @@ private:
 // 32518 - Thrall
 struct EG_npc_undercity_thrall : public EscortAI
 {
-    EG_npc_undercity_thrall(Creature* creature) : EscortAI(creature), _summons(me), _courtyardAttack(false)
+    EG_npc_undercity_thrall(Creature* creature) : EscortAI(creature), _summons(me), _courtyardAttack(false), _pathStarted(false)
     {
         _scheduler.SetValidator([this]
         {
@@ -1124,6 +1139,7 @@ struct EG_npc_undercity_thrall : public EscortAI
     void JustAppeared() override
     {
         EscortAI::JustAppeared();
+        me->Mount(MODEL_THRALL_MOUNT);
 
         _scheduler.Schedule(177s, [this](TaskContext /*context*/)
         {
@@ -1215,6 +1231,8 @@ struct EG_npc_undercity_thrall : public EscortAI
 
     void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
     {
+        _pathStarted = true;
+
         switch (waypointId)
         {
             case POINT_THRALL_GATE:
@@ -1304,6 +1322,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                         sylvanas->AI()->DoAction(ACTION_SYLVANAS_FOLLOW);
                     if (ZoneScript* zoneScript = me->GetZoneScript())
                         zoneScript->SetData(DATA_RUN_STATE, RUN_STATE_COURTYARD_FIGHT);
+                    me->GetMap()->SetSpawnGroupInactive(SPAWN_GROUP_HORDE_PLAGUE_STALKERS);
                     SetEscortPaused(false);
                 });
                 break;
@@ -1359,11 +1378,15 @@ struct EG_npc_undercity_thrall : public EscortAI
                     {
                         return node.id == POINT_THRALL_SHAFT_BOTTOM;
                     });
+                    if (bottom == path->nodes.end())
+                        return;
 
-                    Position const landing(bottom->x, bottom->y, bottom->z);
-                    me->GetMotionMaster()->MoveJump(landing, 40.0f, 40.0f);
-                    if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
-                        sylvanas->GetMotionMaster()->MoveJump(landing, 40.0f, 40.0f);
+                    me->GetMotionMaster()->MoveJump(Position(bottom->x, bottom->y, bottom->z), 40.0f, 40.0f);
+
+                    Creature* sylvanas = GetActor(DATA_SYLVANAS);
+                    WaypointPath const* sylvanasPath = sWaypointMgr->GetPath(PATH_SYLVANAS_SHAFT);
+                    if (sylvanas && sylvanasPath)
+                        sylvanas->GetMotionMaster()->MoveJump(Position(sylvanasPath->nodes.front().x, sylvanasPath->nodes.front().y, sylvanasPath->nodes.front().z), 40.0f, 40.0f);
                 })
                 .Schedule(37s, [this](TaskContext /*context*/)
                 {
@@ -1589,6 +1612,9 @@ struct EG_npc_undercity_thrall : public EscortAI
                             break;
                         default:
                         {
+                            if (step / 3 >= 5)
+                                break;
+
                             Creature* portal = nullptr;
                             for (ObjectGuid const& guid : _summons)
                             {
@@ -1603,12 +1629,12 @@ struct EG_npc_undercity_thrall : public EscortAI
                             if (portal)
                             {
                                 me->SummonCreature(NPC_LEGION_OVERLORD, portal->GetPosition(), TEMPSUMMON_DEAD_DESPAWN);
-                                portal->DespawnOrUnsummon();
+                                if (step / 3 < 4)
+                                    portal->DespawnOrUnsummon();
                             }
 
-                            if (step / 3 < 5)
-                                if (Creature* varimathras = GetActor(DATA_VARIMATHRAS))
-                                    varimathras->AI()->Talk(SAY_VARIMATHRAS_TOO_LONG + step / 3);
+                            if (Creature* varimathras = GetActor(DATA_VARIMATHRAS))
+                                varimathras->AI()->Talk(SAY_VARIMATHRAS_TOO_LONG + step / 3);
                             break;
                         }
                     }
@@ -1616,8 +1642,10 @@ struct EG_npc_undercity_thrall : public EscortAI
                     if (step < 17)
                         context.Repeat(10s);
                     else
-                        context.Schedule(5s, [this](TaskContext /*context*/)
+                        context.Schedule(5s, GROUP_ROYAL_QUARTER_WAVES, [this](TaskContext /*context*/)
                         {
+                            _summons.DespawnEntry(NPC_VARIMATHRAS_PORTAL);
+
                             Creature* varimathras = GetActor(DATA_VARIMATHRAS);
                             if (!varimathras)
                                 return;
@@ -1656,7 +1684,7 @@ struct EG_npc_undercity_thrall : public EscortAI
                 .Schedule(11s, [this](TaskContext /*context*/)
                 {
                     if (Creature* sylvanas = GetActor(DATA_SYLVANAS))
-                        sylvanas->CastSpell(sylvanas, SPELL_LEAP_TO_PLATFORM);
+                        sylvanas->AI()->DoAction(ACTION_SYLVANAS_LEAP);
                 })
                 .Schedule(13s, [this](TaskContext /*context*/)
                 {
@@ -1711,7 +1739,10 @@ struct EG_npc_undercity_thrall : public EscortAI
                         if (!soldier || (soldier->GetEntry() != NPC_VARIAN_WRYNN_HORDE_RUN && soldier->GetEntry() != NPC_STORMWIND_ELITE))
                             continue;
 
-                        soldier->SetImmuneToNPC(false);
+                        if (soldier->GetEntry() == NPC_STORMWIND_ELITE)
+                            soldier->SetImmuneToAll(false);
+                        else
+                            soldier->SetImmuneToNPC(false);
                         soldier->SetReactState(REACT_AGGRESSIVE);
                         soldier->AI()->AttackStart(me);
                     }
@@ -1732,14 +1763,16 @@ struct EG_npc_undercity_thrall : public EscortAI
                         jaina->AI()->Talk(SAY_JAINA_HORDE_RUN_DID_NOT_HAVE_TO_BE);
                     }
                 })
-                .Schedule(80500ms, [this](TaskContext /*context*/)
+                .Schedule(80500ms, [this](TaskContext context)
                 {
-                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE_HORDE_RUN))
+                    Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE_HORDE_RUN);
+                    if (!jaina)
+                        return;
+
+                    if (jaina->HasUnitState(UNIT_STATE_CASTING))
+                        context.Repeat(500ms);
+                    else
                         jaina->CastSpell(jaina, SPELL_GREATER_MASS_TELEPORT_DUMMY);
-                })
-                .Schedule(85500ms, [this](TaskContext /*context*/)
-                {
-                    _summons.DespawnEntry(NPC_JAINA_PROUDMOORE_HORDE_RUN);
                 })
                 .Schedule(88500ms, [this](TaskContext /*context*/)
                 {
@@ -1877,6 +1910,14 @@ struct EG_npc_undercity_thrall : public EscortAI
 
     void UpdateEscortAI(uint32 diff) override
     {
+        if (_pathStarted && HasEscortState(STATE_ESCORT_ESCORTING) && me->GetMotionMaster()->GetCurrentMovementGeneratorType(MOTION_SLOT_DEFAULT) != WAYPOINT_MOTION_TYPE)
+        {
+            _pathStarted = false;
+            if (ZoneScript* zoneScript = me->GetZoneScript())
+                zoneScript->SetData(DATA_RUN_STATE, RUN_STATE_IDLE);
+            return;
+        }
+
         _scheduler.Update(diff);
 
         if (!UpdateVictim())
@@ -1895,6 +1936,7 @@ private:
     SummonList _summons;
     TaskScheduler _scheduler;
     bool _courtyardAttack;
+    bool _pathStarted;
 };
 
 // 32518 - Thrall
@@ -1957,6 +1999,13 @@ struct EG_npc_undercity_sylvanas : public ScriptedAI
         });
     }
 
+    void JustAppeared() override
+    {
+        ScriptedAI::JustAppeared();
+        me->SetFaction(FACTION_HORDE);
+        me->Mount(MODEL_SYLVANAS_MOUNT);
+    }
+
     void DoAction(int32 action) override
     {
         switch (action)
@@ -1971,6 +2020,10 @@ struct EG_npc_undercity_sylvanas : public ScriptedAI
                 me->SetImmuneToNPC(false);
                 if (Unit* thrall = GetThrall())
                     me->GetMotionMaster()->MoveFollow(thrall, 1.0f, ChaseAngle(float(M_PI_2)));
+                break;
+            case ACTION_SYLVANAS_LEAP:
+                me->GetMotionMaster()->Clear(MOTION_SLOT_ACTIVE);
+                DoCastSelf(SPELL_LEAP_TO_PLATFORM);
                 break;
             default:
                 break;
@@ -1987,7 +2040,8 @@ struct EG_npc_undercity_sylvanas : public ScriptedAI
         })
         .Schedule(5s, 10s, [this](TaskContext context)
         {
-            DoCastVictim(SPELL_SHOOT);
+            if (!me->IsWithinMeleeRange(me->GetVictim()))
+                DoCastVictim(SPELL_SHOOT);
             context.Repeat(5s, 10s);
         })
         .Schedule(10s, 13s, [this](TaskContext context)
@@ -2029,6 +2083,7 @@ struct EG_npc_undercity_sylvanas : public ScriptedAI
     {
         if (!UpdateVictim())
         {
+            me->SetHomePosition(me->GetPosition());
             if (Unit* thrall = GetThrall())
                 if (Unit* victim = thrall->GetVictim())
                     AttackStart(victim);
@@ -2070,7 +2125,8 @@ struct EG_npc_undercity_sylvanas_alliance_run : public ScriptedAI
         })
         .Schedule(5s, 10s, [this](TaskContext context)
         {
-            DoCastVictim(SPELL_SHOOT);
+            if (!me->IsWithinMeleeRange(me->GetVictim()))
+                DoCastVictim(SPELL_SHOOT);
             context.Repeat(5s, 10s);
         })
         .Schedule(10s, 13s, [this](TaskContext context)
@@ -2143,7 +2199,7 @@ struct EG_npc_undercity_thrall_staging : public ScriptedAI
 // 32401 - King Varian Wrynn
 struct EG_npc_undercity_varian : public EscortAI
 {
-    EG_npc_undercity_varian(Creature* creature) : EscortAI(creature), _summons(me)
+    EG_npc_undercity_varian(Creature* creature) : EscortAI(creature), _summons(me), _pathStarted(false)
     {
         _scheduler.SetValidator([this]
         {
@@ -2226,6 +2282,8 @@ struct EG_npc_undercity_varian : public EscortAI
 
     void WaypointReached(uint32 waypointId, uint32 /*pathId*/) override
     {
+        _pathStarted = true;
+
         switch (waypointId)
         {
             case POINT_VARIAN_SEWERS_ENTRANCE:
@@ -2241,7 +2299,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 .Schedule(11500ms, [this](TaskContext /*context*/)
                 {
                     if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
-                        jaina->CastSpell(jaina, SPELL_IMPROVED_BRILLIANCE_AURA);
+                        jaina->AI()->DoAction(ACTION_JAINA_BRILLIANCE);
                 })
                 .Schedule(12500ms, [this](TaskContext /*context*/)
                 {
@@ -2262,7 +2320,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 Talk(SAY_VARIAN_STAND_YOUR_GROUND);
                 _scheduler.Schedule(3500ms, GROUP_SEWERS_WAVES, [this](TaskContext context)
                 {
-                    me->SummonCreatureGroup(context.GetRepeatCounter() == 1 || context.GetRepeatCounter() == 4 ? SUMMON_GROUP_SEWERS_WAVE_5 : SUMMON_GROUP_SEWERS_WAVE_4);
+                    SummonAttackers(context.GetRepeatCounter() == 1 || context.GetRepeatCounter() == 4 ? SUMMON_GROUP_SEWERS_WAVE_5 : SUMMON_GROUP_SEWERS_WAVE_4);
                     if (context.GetRepeatCounter() < 4)
                         context.Repeat(15s);
                 })
@@ -2394,7 +2452,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 {
                     if (Creature* putress = GetActor(DATA_GRAND_APOTHECARY_PUTRESS))
                         putress->AI()->Talk(SAY_PUTRESS_STARE_INTO_THE_ABYSS);
-                    me->SummonCreatureGroup(SUMMON_GROUP_FAILED_EXPERIMENTS);
+                    SummonAttackers(SUMMON_GROUP_FAILED_EXPERIMENTS);
                 })
                 .Schedule(11500ms, [this](TaskContext /*context*/)
                 {
@@ -2405,7 +2463,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 {
                     if (Creature* putress = GetActor(DATA_GRAND_APOTHECARY_PUTRESS))
                         putress->AI()->Talk(SAY_PUTRESS_CANNOT_BE_HAPPENING);
-                    me->SummonCreatureGroup(SUMMON_GROUP_FAILED_EXPERIMENTS);
+                    SummonAttackers(SUMMON_GROUP_FAILED_EXPERIMENTS);
                 })
                 .Schedule(26500ms, [this](TaskContext /*context*/)
                 {
@@ -2416,7 +2474,7 @@ struct EG_npc_undercity_varian : public EscortAI
                 {
                     if (Creature* putress = GetActor(DATA_GRAND_APOTHECARY_PUTRESS))
                         putress->AI()->Talk(SAY_PUTRESS_POWER_WASHES);
-                    me->SummonCreatureGroup(SUMMON_GROUP_FAILED_EXPERIMENTS);
+                    SummonAttackers(SUMMON_GROUP_FAILED_EXPERIMENTS);
                 })
                 .Schedule(44s, [this](TaskContext /*context*/)
                 {
@@ -2568,8 +2626,8 @@ struct EG_npc_undercity_varian : public EscortAI
 
                     for (size_t i = 0; i < elites.size() && i < battleguards.size(); ++i)
                     {
-                        elites[i]->SetImmuneToNPC(false);
-                        battleguards[i]->SetImmuneToNPC(false);
+                        elites[i]->SetImmuneToAll(false);
+                        battleguards[i]->SetImmuneToAll(false);
                         battleguards[i]->SetReactState(REACT_AGGRESSIVE);
                         elites[i]->AI()->AttackStart(battleguards[i]);
                         battleguards[i]->AI()->AttackStart(elites[i]);
@@ -2591,15 +2649,23 @@ struct EG_npc_undercity_varian : public EscortAI
                         jaina->AI()->Talk(SAY_JAINA_DID_NOT_HAVE_TO_BE);
                     }
                 })
-                .Schedule(71500ms, [this](TaskContext /*context*/)
+                .Schedule(71500ms, [this](TaskContext context)
                 {
-                    if (Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE))
+                    Creature* jaina = GetActor(DATA_JAINA_PROUDMOORE);
+                    if (jaina && jaina->HasUnitState(UNIT_STATE_CASTING))
+                    {
+                        context.Repeat(500ms);
+                        return;
+                    }
+
+                    if (jaina)
                         jaina->CastSpell(jaina, SPELL_GREATER_MASS_TELEPORT);
-                })
-                .Schedule(77s, [this](TaskContext /*context*/)
-                {
-                    if (ZoneScript* zoneScript = me->GetZoneScript())
-                        zoneScript->SetData(DATA_RUN_STATE, RUN_STATE_IDLE);
+
+                    context.Schedule(5500ms, [this](TaskContext /*context*/)
+                    {
+                        if (ZoneScript* zoneScript = me->GetZoneScript())
+                            zoneScript->SetData(DATA_RUN_STATE, RUN_STATE_IDLE);
+                    });
                 });
                 break;
             default:
@@ -2626,7 +2692,8 @@ struct EG_npc_undercity_varian : public EscortAI
         })
         .Schedule(15s, 30s, GROUP_COMBAT, [this](TaskContext context)
         {
-            DoCastVictim(SPELL_HEROIC_LEAP);
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, -8.0f))
+                DoCast(target, SPELL_HEROIC_LEAP);
             context.Repeat(15s, 30s);
         });
     }
@@ -2639,6 +2706,14 @@ struct EG_npc_undercity_varian : public EscortAI
 
     void UpdateEscortAI(uint32 diff) override
     {
+        if (_pathStarted && HasEscortState(STATE_ESCORT_ESCORTING) && me->GetMotionMaster()->GetCurrentMovementGeneratorType(MOTION_SLOT_DEFAULT) != WAYPOINT_MOTION_TYPE)
+        {
+            _pathStarted = false;
+            if (ZoneScript* zoneScript = me->GetZoneScript())
+                zoneScript->SetData(DATA_RUN_STATE, RUN_STATE_IDLE);
+            return;
+        }
+
         _scheduler.Update(diff);
 
         if (!UpdateVictim())
@@ -2697,8 +2772,17 @@ private:
         return zoneScript ? ObjectAccessor::GetCreature(*me, zoneScript->GetGuidData(type)) : nullptr;
     }
 
+    void SummonAttackers(uint8 summonGroup)
+    {
+        std::list<TempSummon*> attackers;
+        me->SummonCreatureGroup(summonGroup, &attackers);
+        for (TempSummon* attacker : attackers)
+            attacker->AI()->AttackStart(me);
+    }
+
     SummonList _summons;
     TaskScheduler _scheduler;
+    bool _pathStarted;
 };
 
 // 32402 - Lady Jaina Proudmoore
@@ -2725,7 +2809,17 @@ struct EG_npc_undercity_jaina : public ScriptedAI
                 break;
             case ACTION_JAINA_HOLD:
                 _following = false;
+                me->GetMotionMaster()->Clear(MOTION_SLOT_ACTIVE);
                 me->GetMotionMaster()->MoveIdle();
+                break;
+            case ACTION_JAINA_BRILLIANCE:
+                DoCastSelf(SPELL_IMPROVED_BRILLIANCE_AURA);
+                _scheduler.Schedule(10s, [this](TaskContext context)
+                {
+                    if (!me->HasAura(SPELL_IMPROVED_BRILLIANCE_AURA))
+                        DoCastSelf(SPELL_IMPROVED_BRILLIANCE_AURA);
+                    context.Repeat(10s);
+                });
                 break;
             default:
                 break;
@@ -2771,16 +2865,20 @@ struct EG_npc_undercity_jaina : public ScriptedAI
 
     void UpdateAI(uint32 diff) override
     {
+        _scheduler.Update(diff);
+
         if (!UpdateVictim())
         {
-            if (_following)
-                if (Unit* varian = GetVarian())
-                    if (Unit* victim = varian->GetVictim())
-                        AttackStart(victim);
+            if (!_following)
+                return;
+
+            me->SetHomePosition(me->GetPosition());
+            if (Unit* varian = GetVarian())
+                if (Unit* victim = varian->GetVictim())
+                    AttackStart(victim);
             return;
         }
 
-        _scheduler.Update(diff);
         DoMeleeAttackIfReady();
     }
 
@@ -2874,6 +2972,7 @@ struct EG_npc_undercity_thrall_orgrimmar : public ScriptedAI
         if (Creature* sylvanas = me->FindNearestCreatureWithOptions(50.0f, { .CreatureId = NPC_SYLVANAS_ORGRIMMAR }))
         {
             _sylvanasGuid = sylvanas->GetGUID();
+            _sylvanasHome = sylvanas->GetHomePosition();
             sylvanas->SetWalk(true);
             sylvanas->SetStandState(UNIT_STAND_STATE_STAND);
         }
@@ -2965,7 +3064,7 @@ struct EG_npc_undercity_thrall_orgrimmar : public ScriptedAI
         .Schedule(123700ms, [this](TaskContext /*context*/)
         {
             if (Creature* jaina = ObjectAccessor::GetCreature(*me, _jainaGuid))
-                jaina->GetMotionMaster()->MovePoint(0, jaina->GetHomePosition());
+                jaina->GetMotionMaster()->MovePoint(0, _jainaHome);
         })
         .Schedule(126700ms, [this](TaskContext /*context*/)
         {
@@ -2974,7 +3073,10 @@ struct EG_npc_undercity_thrall_orgrimmar : public ScriptedAI
         .Schedule(127700ms, [this](TaskContext /*context*/)
         {
             if (Creature* sylvanas = ObjectAccessor::GetCreature(*me, _sylvanasGuid))
+            {
+                sylvanas->SetHomePosition(_sylvanasHome);
                 sylvanas->AI()->EnterEvadeMode();
+            }
         })
         .Schedule(170s, [this](TaskContext /*context*/)
         {
@@ -2985,6 +3087,7 @@ struct EG_npc_undercity_thrall_orgrimmar : public ScriptedAI
     void JustSummoned(Creature* summon) override
     {
         _jainaGuid = summon->GetGUID();
+        _jainaHome = summon->GetPosition();
         summon->CastSpell(summon, SPELL_AIR_REVENANT_ENTRANCE);
     }
 
@@ -2997,6 +3100,8 @@ private:
     TaskScheduler _scheduler;
     ObjectGuid _jainaGuid;
     ObjectGuid _sylvanasGuid;
+    Position _jainaHome;
+    Position _sylvanasHome;
     GuidVector _korkronGuids;
     bool _sceneInProgress;
 };
@@ -3034,9 +3139,16 @@ class EG_spell_undercity_greater_mass_teleport : public SpellScript
             target->DespawnOrUnsummon(1s);
     }
 
+    void HandleAfterCast()
+    {
+        if (Creature* caster = GetCaster()->ToCreature())
+            caster->DespawnOrUnsummon(1s);
+    }
+
     void Register() override
     {
         OnEffectHitTarget += SpellEffectFn(EG_spell_undercity_greater_mass_teleport::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+        AfterCast += SpellCastFn(EG_spell_undercity_greater_mass_teleport::HandleAfterCast);
     }
 };
 
